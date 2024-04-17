@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"github.com/Tomas-vilte/GoMusicBot/internal/config"
 	"github.com/bwmarrin/discordgo"
 	"log"
 )
@@ -15,8 +16,8 @@ type BotService interface {
 	Close()
 }
 
-func NewBot(token string, handlers ...func(*discordgo.Session, *discordgo.MessageCreate)) (*Bot, error) {
-	session, err := discordgo.New("Bot " + token)
+func NewBot(config *config.Config, handlers ...func(*discordgo.Session, *discordgo.MessageCreate)) (*Bot, error) {
+	session, err := discordgo.New("Bot " + config.DiscordBotToken)
 	if err != nil {
 		log.Fatalln("Error al crear la session de discord:", err)
 	}

@@ -21,8 +21,9 @@ func main() {
 	commandHandler := handler.NewCommandHandler()
 	commandHandler.RegisterCommand("ping", &handler.PingCommand{})
 	commandHandler.RegisterCommand("help", &handler.HelpCommand{})
+	commandHandler.RegisterCommand("play", &handler.MusicCommand{})
 
-	botDs, err := bot.NewBot(cfg.DiscordBotToken, commandHandler.Handle)
+	botDs, err := bot.NewBot(cfg, commandHandler.Handle)
 	if err != nil {
 		fmt.Println("Error creating bot: ", err)
 		return
