@@ -31,24 +31,27 @@ func (h *CommandHandler) RegisterCommand(name string, command Command) {
 func (h *CommandHandler) Handle(session *discordgo.Session, message *discordgo.MessageCreate) {
 	log.Println("Recibiendo un nuevo mensaje:", message.Content)
 	content := message.Content
-	if !strings.HasPrefix(content, "!") {
+	if !strings.HasPrefix(content, "/") {
 		log.Println("El mensaje no es un comando.")
 		return
 	}
 
 	// Dividir el mensaje en comando y argumentos
 	parts := strings.Fields(content)
-	commandName := parts[0][1:] // Eliminar el prefijo "!"
+	if len(parts) == 0 {
+		log.Println("Comando vacío.")
+		return
+	}
+	commandName := parts[0][1:] // Eliminar el prefijo "/"
 
 	command, ok := h.commands[commandName]
 	if !ok {
-		// commando desconocido
+		// Comando desconocido
 		log.Println("Comando desconocido:", commandName)
 		h.sendErrorMessage(session, message.ChannelID, "Comando desconocido: "+commandName)
 		return
 	}
 
-	// Validar que el mensaje se envió desde el canal correcto para el comando de música
 	if commandName == "play" {
 		musicChannelID := h.findMusicChannel(session, message.GuildID)
 		if musicChannelID == "" || message.ChannelID != musicChannelID {
