@@ -5,9 +5,7 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/app/handler"
 	"github.com/Tomas-vilte/GoMusicBot/internal/bot"
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
-	"os"
-	"os/signal"
-	"syscall"
+	"log"
 )
 
 func main() {
@@ -18,31 +16,26 @@ func main() {
 		return
 	}
 
+	// Crear el manejador de comandos
 	commandHandler := handler.NewCommandHandler()
-	commandHandler.RegisterCommand("ping", &handler.PingCommand{})
-	commandHandler.RegisterCommand("help", &handler.HelpCommand{})
-	commandHandler.RegisterCommand("play", &handler.MusicCommand{})
+	registerCommands(commandHandler)
 
+	// Crear y configurar el bot
 	botDs, err := bot.NewBot(cfg, commandHandler.Handle)
 	if err != nil {
-		fmt.Println("Error creating bot: ", err)
+		fmt.Println("Error en crear el bot: ", err)
 		return
 	}
 
-	// Abrir sesión de Discord
-	err = botDs.Open()
-	if err != nil {
-		fmt.Println("Error opening Discord session: ", err)
+	// Iniciar el bot
+	if err := botDs.Run(); err != nil {
+		log.Println("Error en correr el bot: ", err)
 		return
 	}
+}
 
-	fmt.Println("Bot is now running. Press CTRL-C to exit.")
-
-	// Esperar a que se reciba una señal de cierre (CTRL-C)
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
-	<-sc
-
-	// Cerrar sesión de Discord
-	botDs.Close()
+func registerCommands(handlers *handler.CommandHandler) {
+	handlers.RegisterCommand("ping", &handler.PingCommand{})
+	handlers.RegisterCommand("help", &handler.HelpCommand{})
+	handlers.RegisterCommand("play", &handler.MusicCommand{})
 }
