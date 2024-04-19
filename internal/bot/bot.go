@@ -4,47 +4,30 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
 	"github.com/bwmarrin/discordgo"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
-// Bot Representa el bot de ds
-type Bot struct {
-	session *discordgo.Session
+// SessionFactory define la interfaz para la fábrica de sesiones de bot.
+type SessionFactory interface {
+	NewBotSession(cfg *config.Config) (*discordgo.Session, error)
 }
 
-func NewBot(config *config.Config, handlers ...func(*discordgo.Session, *discordgo.MessageCreate)) (*Bot, error) {
-	session, err := discordgo.New("Bot " + config.DiscordBotToken)
+// ProductionBotSessionFactory es una implementación concreta de SessionFactory para producción.
+type ProductionBotSessionFactory struct{}
+
+// NewBotSession crea una nueva sesión de bot y la devuelve.
+func (f *ProductionBotSessionFactory) NewBotSession(cfg *config.Config) (*discordgo.Session, error) {
+	session, err := discordgo.New("Bot " + cfg.DiscordBotToken)
 	if err != nil {
-		log.Fatalln("Error al crear la session de discord:", err)
+		log.Fatalf("Error al crear la sesion de discord: %v", err)
+		return nil, err
 	}
 
-	bot := &Bot{
-		session: session,
-	}
-
-	for _, handler := range handlers {
-		bot.session.AddHandler(handler)
-	}
-	return bot, nil
-}
-
-// Run inicia el bot y comienza a escuchar los eventos.
-func (b *Bot) Run() error {
-	err := b.session.Open()
+	err = session.Open()
 	if err != nil {
-		log.Fatalf("Error al abrir session con discord: %v", err)
-		return err
+		log.Fatalf("Error al estar la sesion de discord: %v", err)
+		return nil, err
 	}
-	defer b.session.Close()
 
-	log.Println("Bot corriendo, Apreta CTRL + C para cerrarlo")
-
-	// Esperar a que se reciba una señal de cierre (CTRL-C)
-	sc := make(chan os.Signal, 1)
-	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
-	<-sc
-
-	return nil
+	log.Println("Bot corriendo, apreta CTRL-C para salir")
+	return session, nil
 }

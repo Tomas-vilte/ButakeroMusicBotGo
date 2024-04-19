@@ -1,41 +1,59 @@
 package main
 
 import (
-	"fmt"
 	"github.com/Tomas-vilte/GoMusicBot/internal/app/handler"
+	"github.com/Tomas-vilte/GoMusicBot/internal/app/service"
 	"github.com/Tomas-vilte/GoMusicBot/internal/bot"
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
-	// Cargar la configuración desde el archivo .env
+	var sessionFactory bot.SessionFactory
+	// Obtener la configuración del bot
 	cfg, err := config.NewConfig()
 	if err != nil {
-		fmt.Println("Error al cargar config:", err)
+		log.Fatalf("Error al cargar la configuración del bot: %v", err)
 		return
 	}
 
-	// Crear el manejador de comandos
-	commandHandler := handler.NewCommandHandler()
-	registerCommands(commandHandler)
+	// Obtener la fábrica de sesiones de bot
+	sessionFactory = &bot.ProductionBotSessionFactory{}
 
-	// Crear y configurar el bot
-	botDs, err := bot.NewBot(cfg, commandHandler.Handle)
+	// Obtener la sesión del bot
+	session, err := sessionFactory.NewBotSession(cfg)
 	if err != nil {
-		fmt.Println("Error en crear el bot: ", err)
+		log.Fatalf("Error al crear la sesión del bot: %v", err)
 		return
 	}
 
-	// Iniciar el bot
-	if err := botDs.Run(); err != nil {
-		log.Println("Error en correr el bot: ", err)
+	// Crear el servicio de ping
+	pingService := &service.PingServiceImpl{}
+
+	// Crear el manejador de comandos de ping
+	pingCommandHandler := &handler.PingCommandHandler{
+		PingService: pingService,
+	}
+
+	// Registrar y manejar comandos
+	_, err = pingCommandHandler.RegisterCommands(session)
+	if err != nil {
+		log.Fatalf("Error al registrar comandos: %v", err)
 		return
 	}
-}
 
-func registerCommands(handlers *handler.CommandHandler) {
-	handlers.RegisterCommand("ping", &handler.PingCommand{})
-	handlers.RegisterCommand("help", &handler.HelpCommand{})
-	handlers.RegisterCommand("play", &handler.MusicCommand{})
+	session.AddHandler(pingCommandHandler.HandleInteraction)
+
+	log.Println("Bot is now running. Press CTRL-C to exit.")
+
+	// Esperar a que se reciba una señal de cierre (CTRL-C)
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
+	<-sc
+
+	// Cerrar la sesión de Discord
+	session.Close()
 }
