@@ -47,7 +47,7 @@ func (h *PingCommandHandler) HandleInteraction(s *discordgo.Session, i *discordg
 //	h.commands[name] = command
 //}
 //
-//// Handle maneja los comandos del bot.
+//// Handle maneja los comandos del discord.
 //func (h *CommandHandler) Handle(session *discordgo.Session, message *discordgo.MessageCreate) {
 //	log.Println("Recibiendo un nuevo mensaje:", message.Content)
 //	content := message.Content
