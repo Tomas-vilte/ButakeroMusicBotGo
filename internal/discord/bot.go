@@ -1,4 +1,4 @@
-package bot
+package discord
 
 import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
@@ -6,7 +6,7 @@ import (
 	"log"
 )
 
-// SessionFactory define la interfaz para la fábrica de sesiones de bot.
+// SessionFactory define la interfaz para la fábrica de sesiones de discord.
 type SessionFactory interface {
 	NewBotSession(cfg *config.Config) (*discordgo.Session, error)
 }
@@ -14,7 +14,7 @@ type SessionFactory interface {
 // ProductionBotSessionFactory es una implementación concreta de SessionFactory para producción.
 type ProductionBotSessionFactory struct{}
 
-// NewBotSession crea una nueva sesión de bot y la devuelve.
+// NewBotSession crea una nueva sesión de discord y la devuelve.
 func (f *ProductionBotSessionFactory) NewBotSession(cfg *config.Config) (*discordgo.Session, error) {
 	session, err := discordgo.New("Bot " + cfg.DiscordBotToken)
 	if err != nil {
