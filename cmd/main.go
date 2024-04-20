@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/app/handler"
 	"github.com/Tomas-vilte/GoMusicBot/internal/app/service"
-	"github.com/Tomas-vilte/GoMusicBot/internal/bot"
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord"
 	"log"
 	"os"
 	"os/signal"
@@ -12,21 +12,21 @@ import (
 )
 
 func main() {
-	var sessionFactory bot.SessionFactory
-	// Obtener la configuración del bot
+	var sessionFactory discord.SessionFactory
+	// Obtener la configuración del discord
 	cfg, err := config.NewConfig()
 	if err != nil {
-		log.Fatalf("Error al cargar la configuración del bot: %v", err)
+		log.Fatalf("Error al cargar la configuración del discord: %v", err)
 		return
 	}
 
-	// Obtener la fábrica de sesiones de bot
-	sessionFactory = &bot.ProductionBotSessionFactory{}
+	// Obtener la fábrica de sesiones de discord
+	sessionFactory = &discord.ProductionBotSessionFactory{}
 
-	// Obtener la sesión del bot
+	// Obtener la sesión del discord
 	session, err := sessionFactory.NewBotSession(cfg)
 	if err != nil {
-		log.Fatalf("Error al crear la sesión del bot: %v", err)
+		log.Fatalf("Error al crear la sesión del discord: %v", err)
 		return
 	}
 
