@@ -22,6 +22,8 @@ func (f *ProductionBotSessionFactory) NewBotSession(cfg *config.Config) (*discor
 		return nil, err
 	}
 
+	session.Identify.Intents = discordgo.IntentsGuildMessages | discordgo.IntentGuildMessageTyping | discordgo.IntentGuildVoiceStates | discordgo.IntentGuilds
+
 	err = session.Open()
 	if err != nil {
 		log.Fatalf("Error al estar la sesion de discord: %v", err)
