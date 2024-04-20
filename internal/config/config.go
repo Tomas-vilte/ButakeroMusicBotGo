@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+var config *Config
+
 type Config struct {
 	DiscordBotToken string
 	ChannelID       string
@@ -36,4 +38,24 @@ func NewConfig() (*Config, error) {
 		BotID:           botID,
 	}
 	return cfg, nil
+}
+
+func GetDiscordToken() string {
+	return config.DiscordBotToken
+}
+
+func GetChannelID() string {
+	return config.ChannelID
+}
+
+func GetServerID() string {
+	return config.ServerID
+}
+
+func GetBotRoleID() string {
+	return config.BotRoleID
+}
+
+func GetBotID() string {
+	return config.BotID
 }
