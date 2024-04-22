@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/Tomas-vilte/GoMusicBot/internal/music"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
 	"io"
 	"log"
 	"os/exec"
@@ -27,7 +27,7 @@ func NewYoutubeFetcher() *YoutubeFetcher {
 }
 
 // LookupSongs busca canciones en YouTube y devuelve metadatos de canciones.
-func (yf *YoutubeFetcher) LookupSongs(ctx context.Context, query string) ([]*music.Song, error) {
+func (yf *YoutubeFetcher) LookupSongs(ctx context.Context, query string) ([]*bot.Song, error) {
 	// Columnas a imprimir de la salida de yt-dlp
 	ytDlpPrintColumns := []string{"title", "original_url", "is_live", "duration", "thumbnail", "thumbnails"}
 	printColumns := strings.Join(ytDlpPrintColumns, ",")
@@ -60,7 +60,7 @@ func (yf *YoutubeFetcher) LookupSongs(ctx context.Context, query string) ([]*mus
 	songCount := len(ytOutLines) / linesPerSong
 
 	// Crear un slice para almacenar las canciones
-	songs := make([]*music.Song, 0, songCount)
+	songs := make([]*bot.Song, 0, songCount)
 	for i := 0; i < songCount; i++ {
 		// Parsear la duración de la canción a float64
 		duration, _ := strconv.ParseFloat(ytOutLines[linesPerSong*i+3], 32)
@@ -80,7 +80,7 @@ func (yf *YoutubeFetcher) LookupSongs(ctx context.Context, query string) ([]*mus
 		}
 
 		// Crear un objeto Song con la información obtenida
-		song := &music.Song{
+		song := &bot.Song{
 			Type:         "youtube",
 			Title:        ytOutLines[linesPerSong*i],
 			URL:          ytOutLines[linesPerSong*i+1],
@@ -101,7 +101,7 @@ func (yf *YoutubeFetcher) LookupSongs(ctx context.Context, query string) ([]*mus
 }
 
 // GetDCAData obtiene datos de audio DCA para una canción de YouTube.
-func (y *YoutubeFetcher) GetDCAData(ctx context.Context, song *music.Song) (io.Reader, error) {
+func (y *YoutubeFetcher) GetDCAData(ctx context.Context, song *bot.Song) (io.Reader, error) {
 	// Crear una tubería para leer y escribir datos
 	reader, writer := io.Pipe()
 
