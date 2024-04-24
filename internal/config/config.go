@@ -11,7 +11,7 @@ type Config struct {
 	DiscordToken  string `required:"true"`
 	OpenAIToken   string
 	GuildID       string
-	CommandPrefix string `default:"air"`
+	CommandPrefix string `default:"seso"`
 	Store         StoreConfig
 }
 
@@ -39,7 +39,7 @@ func GetPlaylistStore(cfg *Config, guildID string) bot.PlaylistManager {
 		}
 		return s
 	default:
-		panic("")
+		panic("tipo de store invalido")
 	}
 
 }
