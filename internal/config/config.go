@@ -1,82 +1,45 @@
 package config
 
 import (
-	"github.com/joho/godotenv"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store"
 	"os"
+	"path/filepath"
 )
 
-var config *Config
-
 type Config struct {
-	DiscordBotToken     string
-	BotStatus           string
-	BotGuildJoinMessage string
-	ChannelID           string
-	ServerID            string
-	BotRoleID           string
-	BotID               string
-	BotPrefix           string
+	DiscordToken  string `required:"true"`
+	OpenAIToken   string
+	GuildID       string
+	CommandPrefix string `default:"air"`
+	Store         StoreConfig
 }
 
-// NewConfig crea una nueva instancia de Config cargando variables de entorno.
-func NewConfig() (*Config, error) {
-	// Carga las variables de entorno desde el archivo .env
-	if err := godotenv.Load(); err != nil {
-		return nil, err
+type StoreConfig struct {
+	Type string `default:"memory"`
+	File FileStoreConfig
+}
+
+type FileStoreConfig struct {
+	Dir string `default:"./playlist"`
+}
+
+func GetPlaylistStore(cfg *Config, guildID string) bot.PlaylistManager {
+	switch cfg.Store.Type {
+	case "memory":
+		return store.NewInmemoryGuildPlayerState()
+	case "file":
+		if err := os.MkdirAll(cfg.Store.File.Dir, 0755); err != nil {
+			panic(err)
+		}
+		path := filepath.Join(cfg.Store.File.Dir, guildID+".json")
+		s, err := store.NewFilePlaylistStorage(path)
+		if err != nil {
+			panic(err)
+		}
+		return s
+	default:
+		panic("")
 	}
 
-	// Lee las variables de entorno
-	discordBotToken := os.Getenv("DISCORD_BOT_TOKEN")
-	botStatus := os.Getenv("BOT_STATUS")
-	botGuildJoinMessage := os.Getenv("BOT_GUILD_JOIN_MESSAGE")
-	channelID := os.Getenv("CHANNEL_ID")
-	serverID := os.Getenv("SERVER_ID")
-	botRoleID := os.Getenv("BOT_ROLE_ID")
-	botID := os.Getenv("BOT_ID")
-	botPrefix := os.Getenv("BOT_PREFIX")
-
-	// Crea una instancia de Config con las variables cargadas
-	cfg := &Config{
-		DiscordBotToken:     discordBotToken,
-		BotStatus:           botStatus,
-		BotGuildJoinMessage: botGuildJoinMessage,
-		ChannelID:           channelID,
-		ServerID:            serverID,
-		BotRoleID:           botRoleID,
-		BotID:               botID,
-		BotPrefix:           botPrefix,
-	}
-	return cfg, nil
-}
-
-func GetDiscordToken() string {
-	return config.DiscordBotToken
-}
-
-func GetChannelID() string {
-	return config.ChannelID
-}
-
-func GetServerID() string {
-	return config.ServerID
-}
-
-func GetBotRoleID() string {
-	return config.BotRoleID
-}
-
-func GetBotID() string {
-	return config.BotID
-}
-
-func GetBotStatus() string {
-	return config.BotStatus
-}
-
-func GetBotGuildJoinMessage() string {
-	return config.BotGuildJoinMessage
-}
-
-func GetBotPrefix() string {
-	return config.BotPrefix
 }
