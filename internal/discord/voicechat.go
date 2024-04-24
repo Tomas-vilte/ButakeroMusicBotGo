@@ -11,20 +11,20 @@ import (
 	"time"
 )
 
-// VoiceChatSession representa una sesión de chat de voz en Discord.
-type VoiceChatSession struct {
+// DiscordVoiceChatSession representa una sesión de chat de voz en Discord.
+type DiscordVoiceChatSession struct {
 	discordSession  *discordgo.Session         // Sesión de Discord para enviar mensajes de texto y manejar la voz.
 	guildID         string                     // ID del servidor de Discord al que pertenece la sesión.
 	voiceConnection *discordgo.VoiceConnection // Conexión de voz en Discord.
 }
 
 // Close cierra la sesión de Discord.
-func (session *VoiceChatSession) Close() error {
+func (session *DiscordVoiceChatSession) Close() error {
 	return session.discordSession.Close()
 }
 
 // SendMessage envía un mensaje de texto a un canal específico en Discord.
-func (session *VoiceChatSession) SendMessage(channelID, message string) error {
+func (session *DiscordVoiceChatSession) SendMessage(channelID, message string) error {
 	_, err := session.discordSession.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
 		Content: message,
 	})
@@ -36,7 +36,7 @@ func (session *VoiceChatSession) SendMessage(channelID, message string) error {
 }
 
 // SendPlayMessage envía un mensaje de reproducción con detalles sobre la canción que se está reproduciendo en el canal de Discord.
-func (session *VoiceChatSession) SendPlayMessage(channelID string, message *bot.PlayMessage) (string, error) {
+func (session *DiscordVoiceChatSession) SendPlayMessage(channelID string, message *bot.PlayMessage) (string, error) {
 	// Enviar el mensaje de reproducción al canal especificado.
 	msg, err := session.discordSession.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
 		Embed: GeneratePlayingSongEmbed(message),
@@ -49,7 +49,7 @@ func (session *VoiceChatSession) SendPlayMessage(channelID string, message *bot.
 }
 
 // EditPlayMessage edita un mensaje de reproducción previamente enviado para actualizar los detalles sobre la canción que se está reproduciendo.
-func (session *VoiceChatSession) EditPlayMessage(channelID string, messageID string, message *bot.PlayMessage) error {
+func (session *DiscordVoiceChatSession) EditPlayMessage(channelID string, messageID string, message *bot.PlayMessage) error {
 	// Editar el mensaje de reproducción con los nuevos detalles de la canción.
 	embeds := []*discordgo.MessageEmbed{GeneratePlayingSongEmbed(message)}
 	_, err := session.discordSession.ChannelMessageEditComplex(&discordgo.MessageEdit{
@@ -65,7 +65,7 @@ func (session *VoiceChatSession) EditPlayMessage(channelID string, messageID str
 }
 
 // JoinVoiceChannel se une a un canal de voz en Discord.
-func (session *VoiceChatSession) JoinVoiceChannel(channelID string) error {
+func (session *DiscordVoiceChatSession) JoinVoiceChannel(channelID string) error {
 	// Unirse al canal de voz en Discord.
 	vc, err := session.discordSession.ChannelVoiceJoin(session.guildID, channelID, false, true)
 	if err != nil {
@@ -77,7 +77,7 @@ func (session *VoiceChatSession) JoinVoiceChannel(channelID string) error {
 }
 
 // LeaveVoiceChannel abandona el canal de voz en Discord.
-func (session *VoiceChatSession) LeaveVoiceChannel() error {
+func (session *DiscordVoiceChatSession) LeaveVoiceChannel() error {
 	if session.voiceConnection == nil {
 		return nil
 	}
@@ -93,7 +93,7 @@ func (session *VoiceChatSession) LeaveVoiceChannel() error {
 }
 
 // SendAudio envía datos de audio a través de la conexión de voz en Discord utilizando el códec DCA.
-func (session *VoiceChatSession) SendAudio(ctx context.Context, reader io.Reader, positionCallback func(time.Duration)) error {
+func (session *DiscordVoiceChatSession) SendAudio(ctx context.Context, reader io.Reader, positionCallback func(time.Duration)) error {
 	// Indicar que el bot está hablando en el canal de voz.
 	if err := session.voiceConnection.Speaking(true); err != nil {
 		log.Printf("Error al comenzar a hablar: %v\n", err)
