@@ -98,6 +98,10 @@ type GuildPlayer struct {
 	songCtxCancel   context.CancelFunc
 }
 
+var (
+	ErrRemoveInvalidPosition = errors.New("posicion invalida")
+)
+
 // NewGuildPlayer crea una nueva instancia de GuildPlayer con los parametros proporcionados.
 func NewGuildPlayer(ctx context.Context, session VoiceChatSession, guildID string, playlistManager PlaylistManager, channelManager ChannelManager, dcaDataGetter DCADataGetter) *GuildPlayer {
 	return &GuildPlayer{
