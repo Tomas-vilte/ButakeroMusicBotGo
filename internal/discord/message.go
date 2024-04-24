@@ -23,7 +23,6 @@ const (
 
 // GeneratePlayingSongEmbed un mensaje embed para mostrar que se está agregando una canción a la cola de reproducción.
 func GeneratePlayingSongEmbed(message *bot.PlayMessage) *discordgo.MessageEmbed {
-	// TODO: impl
 	progressBar := generateProgressBar(float64(message.Position)/float64(message.Song.Duration), 20)
 
 	embed := &discordgo.MessageEmbed{
