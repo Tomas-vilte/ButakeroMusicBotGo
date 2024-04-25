@@ -57,7 +57,7 @@ type VoiceChatSession interface {
 }
 
 // DCADataGetter es una funcion para obtener datos de audio codificados en DCA para una canción especifica.
-type DCADataGetter func(ctx context.Context, song Song) (io.Reader, error)
+type DCADataGetter func(ctx context.Context, song *Song) (io.Reader, error)
 
 // PlayedSong representa una cancion que ha sido reproducida.
 type PlayedSong struct {
@@ -103,12 +103,11 @@ var (
 )
 
 // NewGuildPlayer crea una nueva instancia de GuildPlayer con los parametros proporcionados.
-func NewGuildPlayer(ctx context.Context, session VoiceChatSession, guildID string, playlistManager PlaylistManager, channelManager ChannelManager, dcaDataGetter DCADataGetter) *GuildPlayer {
+func NewGuildPlayer(ctx context.Context, session VoiceChatSession, guildID string, playlistManager PlaylistManager, dcaDataGetter DCADataGetter) *GuildPlayer {
 	return &GuildPlayer{
 		ctx:             ctx,
 		session:         session,
 		playlistManager: playlistManager,
-		channelManager:  channelManager,
 		dcaDataGetter:   dcaDataGetter,
 		audioBufferSize: 1024 * 1024, //1mib
 		logger:          zap.NewNop(),
@@ -301,7 +300,7 @@ func (p *GuildPlayer) playSong(ctx context.Context, song *Song, textChannelID st
 	if err != nil {
 		return fmt.Errorf("error al enviar el mensaje con el nombre de la canción: %w", err)
 	}
-	dcaData, err := p.dcaDataGetter(ctx, *song)
+	dcaData, err := p.dcaDataGetter(ctx, song)
 	if err != nil {
 		return fmt.Errorf("error al obtener los datos DCA de la canción %v: %w", song, err)
 	}

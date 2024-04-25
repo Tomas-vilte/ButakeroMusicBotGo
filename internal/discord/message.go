@@ -21,6 +21,41 @@ const (
 	EmbedMessageFailedToAdd = "No se pudo agregar la cola"
 )
 
+func GenerateAddingSongEmbed(input string, member *discordgo.Member) *discordgo.MessageEmbed {
+	return generateAddingSongEmbed(input, "🎵  Añadiendo cancion a la cola...", member)
+}
+
+func GenerateFailedToAddSongEmbed(input string, member *discordgo.Member) *discordgo.MessageEmbed {
+	return generateAddingSongEmbed(input, "😨  error al añadir la cancion a la cola", member)
+}
+
+func GenerateFailedToFindSong(input string, member *discordgo.Member) *discordgo.MessageEmbed {
+	return generateAddingSongEmbed(input, "😨 No se pudo encontrar ninguna canción reproducible.", member)
+}
+
+func GenerateAskAddPlaylistEmbed(songs []*bot.Song, requestor *discordgo.Member) *discordgo.MessageEmbed {
+	title := fmt.Sprintf("👀  La canción es parte de una lista de reproducción que contiene %d canciones. Qué queres que haga?", len(songs))
+	return generateAddingSongEmbed(title, "", requestor)
+}
+
+func GenerateAddedSongEmbed(song *bot.Song, member *discordgo.Member) *discordgo.MessageEmbed {
+	embed := generateAddingSongEmbed(song.GetHumanName(), "🎵  Agregado a la cola.", member)
+	embed.Fields = []*discordgo.MessageEmbedField{
+		{
+			Name:  "Duracion",
+			Value: utils.FmtDuration(song.Duration),
+		},
+	}
+
+	if song.ThumbnailURL != nil {
+		embed.Thumbnail = &discordgo.MessageEmbedThumbnail{
+			URL: *song.ThumbnailURL,
+		}
+	}
+
+	return embed
+}
+
 // GeneratePlayingSongEmbed un mensaje embed para mostrar que se está agregando una canción a la cola de reproducción.
 func GeneratePlayingSongEmbed(message *bot.PlayMessage) *discordgo.MessageEmbed {
 	progressBar := generateProgressBar(float64(message.Position)/float64(message.Song.Duration), 20)
