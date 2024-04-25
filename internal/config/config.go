@@ -24,7 +24,7 @@ type FileStoreConfig struct {
 	Dir string `default:"./playlist"`
 }
 
-func GetPlaylistStore(cfg *Config, guildID string) bot.PlaylistManager {
+func GetPlaylistStore(cfg *Config, guildID string) bot.GuildPlayerState {
 	switch cfg.Store.Type {
 	case "memory":
 		return store.NewInmemoryGuildPlayerState()

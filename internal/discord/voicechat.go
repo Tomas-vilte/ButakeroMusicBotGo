@@ -99,11 +99,9 @@ func (session *DiscordVoiceChatSession) SendAudio(ctx context.Context, reader io
 		log.Printf("Error al comenzar a hablar: %v\n", err)
 		return fmt.Errorf("mientras se comenzaba a hablar: %w", err)
 	}
-	// Crear un adaptador para el lector io.Reader
-	adapter := codec.NewFileDecoder(reader)
 
 	// Transmitir los datos de audio utilizando el códec DCA.
-	if err := codec.StreamDCAData(ctx, adapter, session.voiceConnection.OpusSend, positionCallback); err != nil {
+	if err := codec.StreamDCAData(ctx, reader, session.voiceConnection.OpusSend, positionCallback); err != nil {
 		log.Printf("Error al transmitir datos DCA: %v\n", err)
 		return fmt.Errorf("mientras se transmitían datos DCA: %w", err)
 	}

@@ -12,13 +12,6 @@ import (
 const (
 	ErrorMessageNotInVoiceChannel = "No estas en un canal de voz down. Tenes que unirte a uno para reproducir musica loco"
 	ErrorMessageFailedToAddSong   = "No se pudo agregar la cancion kkkk"
-	ErrorMessageFailedToFindSong  = "No se encontraron canciones reproducibles kkkk"
-)
-
-const (
-	EmbedMessageAddingSong  = "Agregando musica a la cola"
-	EmbedMessageAddedSong   = "Agregada en cola"
-	EmbedMessageFailedToAdd = "No se pudo agregar la cola"
 )
 
 func GenerateAddingSongEmbed(input string, member *discordgo.Member) *discordgo.MessageEmbed {
@@ -26,7 +19,7 @@ func GenerateAddingSongEmbed(input string, member *discordgo.Member) *discordgo.
 }
 
 func GenerateFailedToAddSongEmbed(input string, member *discordgo.Member) *discordgo.MessageEmbed {
-	return generateAddingSongEmbed(input, "😨  error al añadir la cancion a la cola", member)
+	return generateAddingSongEmbed(input, "😨 Error al añadir la cancion a la cola", member)
 }
 
 func GenerateFailedToFindSong(input string, member *discordgo.Member) *discordgo.MessageEmbed {

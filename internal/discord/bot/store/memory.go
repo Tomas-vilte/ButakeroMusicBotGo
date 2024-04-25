@@ -5,16 +5,16 @@ import (
 	"sync"
 )
 
-// InmemoryPlaylistStorage proporciona metodos para almacenar y manipular listas de reproduccipn en memoria.
+// InmemoryPlaylistStorage es una implementación de GuildPlayerState que almacena la lista de reproducción en memoria.
 type InmemoryPlaylistStorage struct {
 	mutex        sync.RWMutex
-	songs        []*bot.Song
-	currentSong  bot.PlayedSong
-	textChannel  string
-	voiceChannel string
+	songs        []*bot.Song     // Lista de canciones.
+	currentSong  *bot.PlayedSong // Canción actual que se está reproduciendo.
+	textChannel  string          // ID del canal de texto.
+	voiceChannel string          // ID del canal de voz.
 }
 
-// NewInmemoryGuildPlayerState crea una nueva instancia de NewInmemoryGuildPlayerState.
+// NewInmemoryGuildPlayerState crea una nueva instancia de InmemoryPlaylistStorage.
 func NewInmemoryGuildPlayerState() *InmemoryPlaylistStorage {
 	return &InmemoryPlaylistStorage{
 		mutex: sync.RWMutex{},
@@ -22,22 +22,24 @@ func NewInmemoryGuildPlayerState() *InmemoryPlaylistStorage {
 	}
 }
 
-// GetCurrentSong obtiene la cancion actualmente en reproduccion.
+// GetCurrentSong devuelve la canción actual que se está reproduciendo.
 func (s *InmemoryPlaylistStorage) GetCurrentSong() (*bot.PlayedSong, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-	return &s.currentSong, nil
+
+	return s.currentSong, nil
 }
 
-// SetCurrentSong establece la cancion actualmente en reproduccion.
+// SetCurrentSong establece la canción actual que se está reproduciendo.
 func (s *InmemoryPlaylistStorage) SetCurrentSong(song *bot.PlayedSong) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	s.currentSong = *song
+
+	s.currentSong = song
 	return nil
 }
 
-// GetVoiceChannel obtiene el ID del canal de voz asociado.
+// GetVoiceChannel devuelve el ID del canal de voz.
 func (s *InmemoryPlaylistStorage) GetVoiceChannel() (string, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -45,7 +47,7 @@ func (s *InmemoryPlaylistStorage) GetVoiceChannel() (string, error) {
 	return s.voiceChannel, nil
 }
 
-// SetVoiceChannel establece el ID del canal de voz asociado.
+// SetVoiceChannel establece el ID del canal de voz.
 func (s *InmemoryPlaylistStorage) SetVoiceChannel(channelID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -54,7 +56,7 @@ func (s *InmemoryPlaylistStorage) SetVoiceChannel(channelID string) error {
 	return nil
 }
 
-// GetTextChannel obtiene el ID del canal de texto asociado.
+// GetTextChannel devuelve el ID del canal de texto.
 func (s *InmemoryPlaylistStorage) GetTextChannel() (string, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
@@ -62,7 +64,7 @@ func (s *InmemoryPlaylistStorage) GetTextChannel() (string, error) {
 	return s.textChannel, nil
 }
 
-// SetTextChannel establece el ID del canal de texto asociado.
+// SetTextChannel establece el ID del canal de texto.
 func (s *InmemoryPlaylistStorage) SetTextChannel(channelID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -71,23 +73,25 @@ func (s *InmemoryPlaylistStorage) SetTextChannel(channelID string) error {
 	return nil
 }
 
-// PrependSong agrega una cancion al principio de la lista de reproduccion.
+// PrependSong agrega una canción al principio de la lista de reproducción.
 func (s *InmemoryPlaylistStorage) PrependSong(song *bot.Song) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
 	s.songs = append([]*bot.Song{song}, s.songs...)
 	return nil
 }
 
-// AppendSong agrega una cancion al final de la lista de reproduccion.
+// AppendSong agrega una canción al final de la lista de reproducción.
 func (s *InmemoryPlaylistStorage) AppendSong(song *bot.Song) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
 	s.songs = append(s.songs, song)
 	return nil
 }
 
-// RemoveSong elimina una cancion de la lista de reproduccion en la posicion especificada.
+// RemoveSong elimina una canción de la lista de reproducción por posición.
 func (s *InmemoryPlaylistStorage) RemoveSong(position int) (*bot.Song, error) {
 	index := position - 1
 
@@ -106,7 +110,7 @@ func (s *InmemoryPlaylistStorage) RemoveSong(position int) (*bot.Song, error) {
 	return song, nil
 }
 
-// ClearPlaylist elimina todas las canciones de la lista de reproduccion.
+// ClearPlaylist elimina todas las canciones de la lista de reproducción.
 func (s *InmemoryPlaylistStorage) ClearPlaylist() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -115,18 +119,19 @@ func (s *InmemoryPlaylistStorage) ClearPlaylist() error {
 	return nil
 }
 
-// GetSongs obtiene todas las canciones en la lista de reproduccion.
+// GetSongs devuelve todas las canciones de la lista de reproducción.
 func (s *InmemoryPlaylistStorage) GetSongs() ([]*bot.Song, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
+	// Se copian las canciones para evitar modificaciones inadvertidas.
 	songs := make([]*bot.Song, len(s.songs))
 	copy(songs, s.songs)
 
-	return s.songs, nil
+	return songs, nil
 }
 
-// PopFirstSong elimina y devuelve la primera cancion de la lista de reproduccion.
+// PopFirstSong elimina y devuelve la primera canción de la lista de reproducción.
 func (s *InmemoryPlaylistStorage) PopFirstSong() (*bot.Song, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()

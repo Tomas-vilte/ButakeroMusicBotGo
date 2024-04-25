@@ -8,175 +8,170 @@ import (
 	"sync"
 )
 
-// fileState que representa el estado de la lista de reproduccion
+// fileState representa el estado almacenado en el archivo.
 type fileState struct {
-	Songs        []*bot.Song     `json:"songs"`         // Lista de canciones
-	CurrentSong  *bot.PlayedSong `json:"current_song"`  // Canción actual que se está reproduciendo
-	VoiceChannel string          `json:"voice_channel"` // ID del canal de voz donde está conectado el bot
-	TextChannel  string          `json:"text_channel"`  // ID del canal de texto donde los usuarios interactúan con el bot
+	Songs        []*bot.Song     `json:"songs"`         // Canciones en la lista de reproducción.
+	CurrentSong  *bot.PlayedSong `json:"current_song"`  // Canción actual que se está reproduciendo.
+	VoiceChannel string          `json:"voice_channel"` // ID del canal de voz.
+	TextChannel  string          `json:"text_channel"`  // ID del canal de texto.
 }
 
-// FilePlaylistStorage para el almacenamiento de listas de reproducción en archivos
+// FilePlaylistStorage es una implementación de GuildPlayerState que almacena la lista de reproducción en un archivo.
 type FilePlaylistStorage struct {
-	mutex    sync.RWMutex // Mutex para acceso seguro a los datos
-	filepath string       // Ruta del archivo donde se almacena la lista de reproducción
+	mutex    sync.RWMutex
+	filepath string
 }
 
-// NewFilePlaylistStorage Crea una nueva instancia de FilePlaylistStorage
-func NewFilePlaylistStorage(filePath string) (*FilePlaylistStorage, error) {
-	// Verifica si el archivo de la lista de reproducción existe
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		// Si no existe, crea un archivo vacío
-		if err := os.WriteFile(filePath, []byte("{}"), 0644); err != nil {
-			return nil, fmt.Errorf("error en crear el archivo: %w", err)
+// NewFilePlaylistStorage crea una nueva instancia de FilePlaylistStorage con la ruta de archivo proporcionada.
+func NewFilePlaylistStorage(filepath string) (*FilePlaylistStorage, error) {
+	// Si el archivo no existe, se crea con un objeto JSON vacío.
+	if _, err := os.Stat(filepath); os.IsNotExist(err) {
+		if err := os.WriteFile(filepath, []byte("{}"), 0644); err != nil {
+			return nil, fmt.Errorf("error al crear el archivo: %w", err)
 		}
 	}
-	// Crea la instancia de FilePlaylistStorage
+
 	return &FilePlaylistStorage{
 		mutex:    sync.RWMutex{},
-		filepath: filePath,
+		filepath: filepath,
 	}, nil
 }
 
-// GetCurrentSong Obtiene la canción actual que se está reproduciendo
+// GetCurrentSong devuelve la canción actual que se está reproduciendo.
 func (s *FilePlaylistStorage) GetCurrentSong() (*bot.PlayedSong, error) {
-	// Bloquea el mutex para lectura
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	// Lee el estado de la lista de reproducción
 	state, err := s.readState()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read state: %w", err)
+		return nil, fmt.Errorf("error al leer el estado: %w", err)
 	}
 
-	// Retorna la canción actual
 	return state.CurrentSong, nil
 }
 
-// SetCurrentSong Establece la canción actual que se está reproduciendo
+// SetCurrentSong establece la canción actual que se está reproduciendo.
 func (s *FilePlaylistStorage) SetCurrentSong(song *bot.PlayedSong) error {
-	// Bloquea el mutex para escritura
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	// Lee el estado de la lista de reproducción
 	state, err := s.readState()
 	if err != nil {
-		return fmt.Errorf("failed to read state: %w", err)
+		return fmt.Errorf("error al leer el estado: %w", err)
 	}
 
-	// Actualiza la canción actual
 	state.CurrentSong = song
 
-	// Escribe el estado actualizado de la lista de reproducción
 	if err := s.writeState(state); err != nil {
-		return fmt.Errorf("failed to write state: %w", err)
+		return fmt.Errorf("error al escribir el estado: %w", err)
 	}
 
 	return nil
 }
 
-// GetVoiceChannel Obtiene el ID del canal de voz donde está conectado el bot
+// GetVoiceChannel devuelve el ID del canal de voz.
 func (s *FilePlaylistStorage) GetVoiceChannel() (string, error) {
-	// Bloquea el mutex para lectura
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	// Lee el estado de la lista de reproducción
 	state, err := s.readState()
 	if err != nil {
-		return "", fmt.Errorf("failed to read state: %w", err)
+		return "", fmt.Errorf("error al leer el estado: %w", err)
 	}
 
-	// Retorna el ID del canal de voz
 	return state.VoiceChannel, nil
 }
 
+// SetVoiceChannel establece el ID del canal de voz.
 func (s *FilePlaylistStorage) SetVoiceChannel(channelID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	state, err := s.readState()
 	if err != nil {
-		return fmt.Errorf("failed to read state: %w", err)
+		return fmt.Errorf("error al leer el estado: %w", err)
 	}
 
 	state.VoiceChannel = channelID
 
 	if err := s.writeState(state); err != nil {
-		return fmt.Errorf("failed to write state: %w", err)
+		return fmt.Errorf("error al escribir el estado: %w", err)
 	}
 
 	return nil
 }
 
+// GetTextChannel devuelve el ID del canal de texto.
 func (s *FilePlaylistStorage) GetTextChannel() (string, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
 	state, err := s.readState()
 	if err != nil {
-		return "", fmt.Errorf("failed to read state: %w", err)
+		return "", fmt.Errorf("error al leer el estado: %w", err)
 	}
 
 	return state.TextChannel, nil
 }
 
+// SetTextChannel establece el ID del canal de texto.
 func (s *FilePlaylistStorage) SetTextChannel(channelID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	state, err := s.readState()
 	if err != nil {
-		return fmt.Errorf("failed to read state: %w", err)
+		return fmt.Errorf("error al leer el estado: %w", err)
 	}
 
 	state.TextChannel = channelID
 
 	if err := s.writeState(state); err != nil {
-		return fmt.Errorf("failed to write state: %w", err)
+		return fmt.Errorf("error al escribir el estado: %w", err)
 	}
 
 	return nil
 }
 
+// PrependSong agrega una canción al principio de la lista de reproducción.
 func (s *FilePlaylistStorage) PrependSong(song *bot.Song) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	state, err := s.readState()
 	if err != nil {
-		return fmt.Errorf("failed to read state: %w", err)
+		return fmt.Errorf("error al leer el estado: %w", err)
 	}
 
 	state.Songs = append([]*bot.Song{song}, state.Songs...)
 
 	if err := s.writeState(state); err != nil {
-		return fmt.Errorf("failed to write state: %w", err)
+		return fmt.Errorf("error al escribir el estado: %w", err)
 	}
 
 	return nil
 }
 
+// AppendSong agrega una canción al final de la lista de reproducción.
 func (s *FilePlaylistStorage) AppendSong(song *bot.Song) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	state, err := s.readState()
 	if err != nil {
-		return fmt.Errorf("failed to read state: %w", err)
+		return fmt.Errorf("error al leer el estado: %w", err)
 	}
 
 	state.Songs = append(state.Songs, song)
 
 	if err := s.writeState(state); err != nil {
-		return fmt.Errorf("failed to write state: %w", err)
+		return fmt.Errorf("error al escribir el estado: %w", err)
 	}
 
 	return nil
 }
 
+// RemoveSong elimina una canción de la lista de reproducción por posición.
 func (s *FilePlaylistStorage) RemoveSong(position int) (*bot.Song, error) {
 	index := position - 1
 
@@ -185,7 +180,7 @@ func (s *FilePlaylistStorage) RemoveSong(position int) (*bot.Song, error) {
 
 	state, err := s.readState()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read state: %w", err)
+		return nil, fmt.Errorf("error al leer el estado: %w", err)
 	}
 
 	if index >= len(state.Songs) || index < 0 {
@@ -199,49 +194,52 @@ func (s *FilePlaylistStorage) RemoveSong(position int) (*bot.Song, error) {
 	state.Songs = state.Songs[:len(state.Songs)-1]
 
 	if err := s.writeState(state); err != nil {
-		return nil, fmt.Errorf("failed to write state: %w", err)
+		return nil, fmt.Errorf("error al escribir el estado: %w", err)
 	}
 
 	return song, nil
 }
 
+// ClearPlaylist elimina todas las canciones de la lista de reproducción.
 func (s *FilePlaylistStorage) ClearPlaylist() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	state, err := s.readState()
 	if err != nil {
-		return fmt.Errorf("failed to read state: %w", err)
+		return fmt.Errorf("error al leer el estado: %w", err)
 	}
 
 	state.Songs = make([]*bot.Song, 0)
 
 	if err := s.writeState(state); err != nil {
-		return fmt.Errorf("failed to write state: %w", err)
+		return fmt.Errorf("error al escribir el estado: %w", err)
 	}
 
 	return nil
 }
 
+// GetSongs devuelve todas las canciones de la lista de reproducción.
 func (s *FilePlaylistStorage) GetSongs() ([]*bot.Song, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
 	state, err := s.readState()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read state: %w", err)
+		return nil, fmt.Errorf("error al leer el estado: %w", err)
 	}
 
 	return state.Songs, nil
 }
 
+// PopFirstSong elimina y devuelve la primera canción de la lista de reproducción.
 func (s *FilePlaylistStorage) PopFirstSong() (*bot.Song, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	state, err := s.readState()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read songs: %w", err)
+		return nil, fmt.Errorf("error al leer las canciones: %w", err)
 	}
 
 	if len(state.Songs) == 0 {
@@ -252,34 +250,36 @@ func (s *FilePlaylistStorage) PopFirstSong() (*bot.Song, error) {
 	state.Songs = state.Songs[1:]
 
 	if err := s.writeState(state); err != nil {
-		return nil, fmt.Errorf("failed to write songs: %w", err)
+		return nil, fmt.Errorf("error al escribir las canciones: %w", err)
 	}
 
 	return song, nil
 }
 
+// readState lee el estado del archivo.
 func (s *FilePlaylistStorage) readState() (*fileState, error) {
 	data, err := os.ReadFile(s.filepath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %w", err)
+		return nil, fmt.Errorf("error al leer el archivo: %w", err)
 	}
 
 	var state fileState
 	if err := json.Unmarshal(data, &state); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal songs: %w", err)
+		return nil, fmt.Errorf("error al deserializar las canciones: %w", err)
 	}
 
 	return &state, nil
 }
 
+// writeState escribe el estado en el archivo.
 func (s *FilePlaylistStorage) writeState(state *fileState) error {
 	data, err := json.Marshal(state)
 	if err != nil {
-		return fmt.Errorf("failed to marshal state: %w", err)
+		return fmt.Errorf("error al serializar el estado: %w", err)
 	}
 
 	if err := os.WriteFile(s.filepath, data, 0644); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
+		return fmt.Errorf("error al escribir el archivo: %w", err)
 	}
 	return nil
 }
