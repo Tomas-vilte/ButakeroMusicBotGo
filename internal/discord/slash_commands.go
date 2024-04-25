@@ -11,7 +11,6 @@ type SlashCommandRouter struct {
 	skipHandler       func(*discordgo.Session, *discordgo.InteractionCreate, *discordgo.ApplicationCommandInteractionDataOption)
 	removeHandler     func(*discordgo.Session, *discordgo.InteractionCreate, *discordgo.ApplicationCommandInteractionDataOption)
 	playingNowHandler func(*discordgo.Session, *discordgo.InteractionCreate, *discordgo.ApplicationCommandInteractionDataOption)
-	djHandler         func(*discordgo.Session, *discordgo.InteractionCreate, *discordgo.ApplicationCommandInteractionDataOption)
 
 	addSongOrPlaylistHandler func(*discordgo.Session, *discordgo.InteractionCreate)
 }
@@ -52,11 +51,6 @@ func (ch *SlashCommandRouter) PlayingNowHandler(h func(*discordgo.Session, *disc
 	return ch
 }
 
-func (ch *SlashCommandRouter) DJHandler(h func(*discordgo.Session, *discordgo.InteractionCreate, *discordgo.ApplicationCommandInteractionDataOption)) *SlashCommandRouter {
-	ch.djHandler = h
-	return ch
-}
-
 func (ch *SlashCommandRouter) AddSongOrPlaylistHandler(h func(*discordgo.Session, *discordgo.InteractionCreate)) *SlashCommandRouter {
 	ch.addSongOrPlaylistHandler = h
 	return ch
@@ -81,8 +75,6 @@ func (ch *SlashCommandRouter) GetCommandHandlers() map[string]func(*discordgo.Se
 				ch.removeHandler(s, ic, option)
 			case "playing":
 				ch.playingNowHandler(s, ic, option)
-			case "dj":
-				ch.djHandler(s, ic, option)
 			}
 		},
 	}
@@ -145,25 +137,6 @@ func (ch *SlashCommandRouter) GetSlashCommands() []*discordgo.ApplicationCommand
 					Type:        discordgo.ApplicationCommandOptionSubCommand,
 					Name:        "playing",
 					Description: "Get currently playing song",
-				},
-				{
-					Type:        discordgo.ApplicationCommandOptionSubCommand,
-					Name:        "dj",
-					Description: "Create a playlist of songs",
-					Options: []*discordgo.ApplicationCommandOption{
-						{
-							Type:        discordgo.ApplicationCommandOptionString,
-							Name:        "description",
-							Description: "Description of the playlist",
-							Required:    true,
-						},
-						{
-							Type:        discordgo.ApplicationCommandOptionInteger,
-							Name:        "length",
-							Description: "Number of songs",
-							Required:    false,
-						},
-					},
 				},
 			},
 		},
