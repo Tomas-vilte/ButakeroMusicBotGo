@@ -50,7 +50,6 @@ func NewInteractionHandler(ctx context.Context, discordToken string, songLookupe
 		cfg:           cfg,
 		logger:        zap.NewNop(),
 	}
-
 	return handler
 }
 
@@ -62,7 +61,7 @@ func (handler *InteractionHandler) WithLogger(l *zap.Logger) *InteractionHandler
 
 // Ready se llama cuando el bot está listo para recibir interacciones.
 func (handler *InteractionHandler) Ready(s *discordgo.Session, event *discordgo.Ready) {
-	if err := s.UpdateGameStatus(0, fmt.Sprintf("🕺💃 /%s", handler.cfg.CommandPrefix)); err != nil {
+	if err := s.UpdateGameStatus(0, fmt.Sprintf("con tu vieja /%s", handler.cfg.CommandPrefix)); err != nil {
 		handler.logger.Error("falló al actualizar el estado del juego", zap.Error(err))
 	}
 }
@@ -75,9 +74,39 @@ func (handler *InteractionHandler) GuildCreate(s *discordgo.Session, event *disc
 
 	player := handler.setupGuildPlayer(GuildID(event.Guild.ID))
 	handler.guildsPlayers[GuildID(event.Guild.ID)] = player
-
 	handler.logger.Info("conectado al servidor", zap.String("guildID", event.Guild.ID))
 
+	//// Iniciar goroutine para monitorear la actividad en los canales de voz
+	//go func(guildID string) {
+	//	ticker := time.NewTicker(1 * time.Second) // Verificar cada minuto
+	//
+	//	for {
+	//		<-ticker.C // Esperar la señal del ticker
+	//		fmt.Println("seso")
+	//		// Obtener el reproductor del servidor
+	//		player := handler.getGuildPlayer(GuildID(guildID))
+	//
+	//		// Verificar si hay algún usuario en algún canal de voz que no sea el bot
+	//		anyUserInVoice := false
+	//		for _, vs := range event.Guild.VoiceStates {
+	//			// Verificar si el usuario es un miembro y no el bot
+	//			if vs.UserID != "" && vs.UserID != s.State.User.ID {
+	//				anyUserInVoice = true
+	//				break
+	//			}
+	//		}
+	//
+	//		// Si no hay usuarios en ningún canal de voz, detener la reproducción
+	//		if !anyUserInVoice {
+	//			err := player.Stop()
+	//			player.LeaveVoiceChannel()
+	//			if err != nil {
+	//				handler.logger.Error("falló al detener la reproducción por inactividad", zap.Error(err))
+	//			}
+	//			break // Salir del bucle una vez que se detiene la reproducción
+	//		}
+	//	}
+	//}(event.Guild.ID)
 	go func() {
 		if err := player.Run(handler.ctx); err != nil {
 			handler.logger.Error("ocurrió un error al ejecutar el reproductor", zap.Error(err))
@@ -91,7 +120,6 @@ func (handler *InteractionHandler) GuildDelete(s *discordgo.Session, event *disc
 
 	player := handler.getGuildPlayer(guildID)
 	player.Close()
-
 	delete(handler.guildsPlayers, guildID)
 }
 
@@ -431,7 +459,6 @@ func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID) *bot.GuildP
 		discordSession: dg,
 		guildID:        string(guildID),
 	}
-
 	playlistStore := config.GetPlaylistStore(handler.cfg, string(guildID))
 
 	player := bot.NewGuildPlayer(handler.ctx, voiceChat, string(guildID), playlistStore, fetcher.GetDCAData).WithLogger(handler.logger.With(zap.String("guildID", string(guildID))))

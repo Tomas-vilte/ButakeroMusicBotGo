@@ -55,7 +55,6 @@ func main() {
 	dg.AddHandler(handler.Ready)
 	dg.AddHandler(handler.GuildCreate)
 	dg.AddHandler(handler.GuildDelete)
-
 	dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		switch i.Type {
 		case discordgo.InteractionMessageComponent:
