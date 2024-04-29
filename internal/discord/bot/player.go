@@ -215,10 +215,13 @@ func (p *GuildPlayer) JoinVoiceChannel(channelID, textChannelID string) {
 }
 
 // LeaveVoiceChannel abandona el canal de voz actual.
-func (p *GuildPlayer) LeaveVoiceChannel() {
-	p.triggerCh <- Trigger{
-		Command: "leave",
+func (p *GuildPlayer) LeaveVoiceChannel() error {
+	err := p.session.LeaveVoiceChannel()
+	if err != nil {
+		p.logger.Error("Hubo un error al salir del canal de voz")
+		return err
 	}
+	return nil
 }
 
 // Run inicia el bucle principal del reproductor de música.

@@ -52,9 +52,7 @@ func main() {
 		logger.Fatal("error al crear la session de discord", zap.Error(err))
 		return
 	}
-	dg.AddHandler(handler.Ready)
-	dg.AddHandler(handler.GuildCreate)
-	dg.AddHandler(handler.GuildDelete)
+	handler.RegisterEventHandlers(dg)
 	dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		switch i.Type {
 		case discordgo.InteractionMessageComponent:

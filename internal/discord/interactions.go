@@ -11,6 +11,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 	"strings"
+	"time"
 )
 
 // GuildID representa el ID de un servidor de Discord.
@@ -76,37 +77,6 @@ func (handler *InteractionHandler) GuildCreate(s *discordgo.Session, event *disc
 	handler.guildsPlayers[GuildID(event.Guild.ID)] = player
 	handler.logger.Info("conectado al servidor", zap.String("guildID", event.Guild.ID))
 
-	//// Iniciar goroutine para monitorear la actividad en los canales de voz
-	//go func(guildID string) {
-	//	ticker := time.NewTicker(1 * time.Second) // Verificar cada minuto
-	//
-	//	for {
-	//		<-ticker.C // Esperar la señal del ticker
-	//		fmt.Println("seso")
-	//		// Obtener el reproductor del servidor
-	//		player := handler.getGuildPlayer(GuildID(guildID))
-	//
-	//		// Verificar si hay algún usuario en algún canal de voz que no sea el bot
-	//		anyUserInVoice := false
-	//		for _, vs := range event.Guild.VoiceStates {
-	//			// Verificar si el usuario es un miembro y no el bot
-	//			if vs.UserID != "" && vs.UserID != s.State.User.ID {
-	//				anyUserInVoice = true
-	//				break
-	//			}
-	//		}
-	//
-	//		// Si no hay usuarios en ningún canal de voz, detener la reproducción
-	//		if !anyUserInVoice {
-	//			err := player.Stop()
-	//			player.LeaveVoiceChannel()
-	//			if err != nil {
-	//				handler.logger.Error("falló al detener la reproducción por inactividad", zap.Error(err))
-	//			}
-	//			break // Salir del bucle una vez que se detiene la reproducción
-	//		}
-	//	}
-	//}(event.Guild.ID)
 	go func() {
 		if err := player.Run(handler.ctx); err != nil {
 			handler.logger.Error("ocurrió un error al ejecutar el reproductor", zap.Error(err))
@@ -135,7 +105,6 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 	}
 
 	player := handler.getGuildPlayer(GuildID(g.ID))
-
 	optionMap := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, len(opt.Options))
 	for _, opt := range opt.Options {
 		optionMap[opt.Name] = opt
@@ -143,9 +112,13 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 
 	input := optionMap["input"].StringValue()
 
+	channelID := ic.ChannelID
+	handler.getVoiceChannelMembers(s, channelID)
+
 	vs := getUsersVoiceState(g, ic.Member.User)
 	if vs == nil {
 		InteractionRespondMessage(handler.logger, s, ic.Interaction, ErrorMessageNotInVoiceChannel)
+		return
 	}
 
 	InteractionRespond(handler.logger, s, ic.Interaction, &discordgo.InteractionResponse{
@@ -485,4 +458,103 @@ func getUsersVoiceState(guild *discordgo.Guild, user *discordgo.User) *discordgo
 	}
 
 	return nil
+}
+
+// getVoiceChannelMembers obtiene los miembros presentes en un canal de voz específico.
+func (handler *InteractionHandler) getVoiceChannelMembers(s *discordgo.Session, channelID string) {
+	channel, err := s.Channel(channelID)
+	if err != nil {
+		handler.logger.Error("Error al obtener el canal:", zap.Error(err))
+		return
+	}
+	guild, err := s.State.Guild(channel.GuildID)
+	if err != nil {
+		handler.logger.Error("Error al obtener el guild:", zap.Error(err))
+		return
+	}
+	handler.logger.Info("Miembros en el canal de voz '" + channel.Name + "':")
+	for _, voiceState := range guild.VoiceStates {
+		userID := voiceState.UserID
+		user, err := s.User(userID)
+		if err != nil {
+			handler.logger.Error("Error al obtener el usuario:", zap.Error(err))
+		} else {
+			handler.logger.Info("- " + user.Username)
+		}
+	}
+
+}
+
+// PeriodicallyCheckVoiceState ejecuta la función VoiceStateUpdate periódicamente para verificar el estado de voz.
+func (handler *InteractionHandler) PeriodicallyCheckVoiceState(s *discordgo.Session) {
+	// Definir el intervalo de tiempo entre cada verificación
+	interval := 10 * time.Second
+
+	for {
+		// Esperar el intervalo de tiempo
+		time.Sleep(interval)
+
+		// Obtener los servidores donde el bot está conectado
+		for guildID := range handler.guildsPlayers {
+			// Obtener la lista de estados de voz del servidor
+			guild, err := s.State.Guild(string(guildID))
+			if err != nil {
+				handler.logger.Error("Error al obtener el guild:", zap.Error(err))
+				continue
+			}
+
+			// Verificar si el bot está solo en el canal de voz
+			handler.checkBotVoiceState(s, guild)
+		}
+	}
+}
+
+// checkBotVoiceState verifica si el bot está solo en el canal de voz en un servidor dado.
+func (handler *InteractionHandler) checkBotVoiceState(s *discordgo.Session, guild *discordgo.Guild) {
+	// Obtener el canal de voz actual del bot en el servidor
+	botChannelID := ""
+	for _, vs := range guild.VoiceStates {
+		if vs.UserID == s.State.User.ID {
+			botChannelID = vs.ChannelID
+			break
+		}
+	}
+
+	// Verificar si el bot está en un canal de voz
+	if botChannelID != "" {
+		// Verificar si el bot está solo en el canal de voz
+		botIsAlone := true
+		for _, vs := range guild.VoiceStates {
+			if vs.ChannelID == botChannelID && vs.UserID != s.State.User.ID {
+				botIsAlone = false
+				break
+			}
+		}
+
+		// Si el bot está solo en el canal de voz, detener la reproducción
+		if botIsAlone {
+			// Obtener el jugador del servidor
+			guildID := GuildID(guild.ID)
+			player := handler.getGuildPlayer(guildID)
+
+			// Detener la reproducción y limpiar la lista de reproducción
+			player.LeaveVoiceChannel()
+			delete(handler.guildsPlayers, guildID)
+			handler.logger.Info("Bot desconectado debido a que está solo en el canal de voz", zap.String("guildID", string(guildID)))
+		}
+	}
+}
+
+// RegisterEventHandlers registra los manejadores de eventos en la sesión de Discord.
+func (handler *InteractionHandler) RegisterEventHandlers(s *discordgo.Session) {
+	// Registrar el manejador de eventos Ready
+	s.AddHandler(handler.Ready)
+
+	// Registrar el manejador de eventos GuildCreate
+	s.AddHandler(handler.GuildCreate)
+
+	// Registrar el manejador de eventos GuildDelete
+	s.AddHandler(handler.GuildDelete)
+
+	go handler.PeriodicallyCheckVoiceState(s)
 }
