@@ -140,8 +140,9 @@ func (p *GuildPlayer) Close() error {
 
 // PrintVoiceChannelInfo imprime la información sobre los servidores y los canales de voz donde se está usando el bot.
 func (p *GuildPlayer) PrintVoiceChannelInfo() {
+	fmt.Println("Información de los canales de voz:")
 	for _, info := range p.voiceChannelMap {
-		fmt.Printf("Servidor: %s (%s)\n", info.GuildName, info.GuildID)
+		fmt.Printf("\nServidor: %s (%s)\n", info.GuildName, info.GuildID)
 		fmt.Printf("ID Canal de voz: %s\n", info.VoiceChannel)
 		fmt.Printf("Nombre del canal de texto: %s\n", info.TextChannelName)
 		fmt.Println("Miembros:")
@@ -156,8 +157,8 @@ func (p *GuildPlayer) PrintVoiceChannelInfo() {
 		} else {
 			fmt.Println("- No hay canción reproduciéndose")
 		}
-		fmt.Println()
 	}
+	fmt.Println()
 }
 
 // UpdateVoiceState actualiza el mapa de información sobre los canales de voz.
