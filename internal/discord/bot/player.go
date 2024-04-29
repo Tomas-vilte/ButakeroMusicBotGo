@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 	"io"
 	"time"
@@ -96,10 +97,23 @@ type GuildPlayer struct {
 	dCADataGetter   DCADataGetter
 	audioBufferSize int
 	logger          *zap.Logger
+	voiceChannelMap map[string]VoiceChannelInfo
+}
+
+// VoiceChannelInfo contiene información sobre un canal de voz y su estado.
+type VoiceChannelInfo struct {
+	GuildID         string
+	GuildName       string
+	VoiceChannel    string
+	TextChannel     string
+	TextChannelName string
+	Members         []*discordgo.Member
+	PlayingSong     *PlayMessage
+	LastUpdated     time.Time
 }
 
 // NewGuildPlayer crea una nueva instancia de GuildPlayer con los parámetros proporcionados.
-func NewGuildPlayer(ctx context.Context, session VoiceChatSession, guildID string, state GuildPlayerState, dCADataGetter DCADataGetter) *GuildPlayer {
+func NewGuildPlayer(ctx context.Context, session VoiceChatSession, state GuildPlayerState, dCADataGetter DCADataGetter) *GuildPlayer {
 	return &GuildPlayer{
 		ctx:             ctx,
 		state:           state,
@@ -108,6 +122,7 @@ func NewGuildPlayer(ctx context.Context, session VoiceChatSession, guildID strin
 		logger:          zap.NewNop(),
 		dCADataGetter:   dCADataGetter,
 		audioBufferSize: 1024 * 1024, // 1 MiB
+		voiceChannelMap: make(map[string]VoiceChannelInfo),
 	}
 }
 
@@ -121,6 +136,103 @@ func (p *GuildPlayer) WithLogger(l *zap.Logger) *GuildPlayer {
 func (p *GuildPlayer) Close() error {
 	p.songCtxCancel()
 	return p.session.Close()
+}
+
+// PrintVoiceChannelInfo imprime la información sobre los servidores y los canales de voz donde se está usando el bot.
+func (p *GuildPlayer) PrintVoiceChannelInfo() {
+	for _, info := range p.voiceChannelMap {
+		fmt.Printf("Servidor: %s (%s)\n", info.GuildName, info.GuildID)
+		fmt.Printf("ID Canal de voz: %s\n", info.VoiceChannel)
+		fmt.Printf("Nombre del canal de texto: %s\n", info.TextChannelName)
+		fmt.Println("Miembros:")
+		for _, member := range info.Members {
+			fmt.Printf("- %s (%s)\n", member.User.Username, member.User.ID)
+		}
+		fmt.Println("Canción reproduciéndose:")
+		if currentSong, err := p.state.GetCurrentSong(); err != nil {
+			fmt.Println("Error al obtener la canción actual:", err)
+		} else if currentSong != nil {
+			fmt.Printf("- %s\n", currentSong.Song.Title)
+		} else {
+			fmt.Println("- No hay canción reproduciéndose")
+		}
+		fmt.Println()
+	}
+}
+
+// UpdateVoiceState actualiza el mapa de información sobre los canales de voz.
+func (p *GuildPlayer) UpdateVoiceState(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
+	// Obtener información sobre el servidor
+	guild, err := s.State.Guild(vs.GuildID)
+	if err != nil {
+		p.logger.Error("Error al obtener información del servidor", zap.Error(err))
+		return
+	}
+
+	// Verificar si el bot está en el canal de voz
+	var voiceChannelID string
+	for _, vs := range guild.VoiceStates {
+		if vs.UserID == s.State.User.ID {
+			voiceChannelID = vs.ChannelID
+			break
+		}
+	}
+
+	if voiceChannelID == "" {
+		p.logger.Info("El bot no está en ningún canal de voz en este servidor")
+		return
+	}
+
+	// Obtener información sobre el canal de voz
+	channel, err := s.State.Channel(voiceChannelID)
+	if err != nil {
+		p.logger.Error("Error al obtener información del canal de voz", zap.Error(err))
+		return
+	}
+
+	// Obtener los miembros presentes en el canal de voz
+	var members []*discordgo.Member
+	for _, vs := range guild.VoiceStates {
+		if vs.ChannelID == voiceChannelID {
+			member, err := s.State.Member(guild.ID, vs.UserID)
+			if err != nil {
+				p.logger.Error("Error al obtener información del miembro", zap.Error(err))
+			} else {
+				members = append(members, member)
+			}
+		}
+	}
+
+	// Actualizar el mapa de canales de voz solo si es una nueva entrada
+	if _, ok := p.voiceChannelMap[vs.GuildID]; !ok {
+		p.voiceChannelMap[vs.GuildID] = VoiceChannelInfo{
+			GuildID:         vs.GuildID,
+			GuildName:       guild.Name,
+			VoiceChannel:    voiceChannelID,
+			TextChannelName: channel.Name,
+			Members:         members,
+			LastUpdated:     time.Now(),
+		}
+	}
+}
+
+func (p *GuildPlayer) StartListeningEvents(s *discordgo.Session) {
+	s.AddHandler(func(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
+		p.UpdateVoiceState(s, vs)
+	})
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				p.PrintVoiceChannelInfo()
+			case <-p.ctx.Done():
+				return
+			}
+		}
+	}()
 }
 
 // SendMessage envía un mensaje al canal de texto del servidor.
@@ -262,6 +374,7 @@ func (p *GuildPlayer) Run(ctx context.Context) error {
 	}
 
 	for {
+		p.logger.Debug("Esperando triggers")
 		select {
 		case <-ctx.Done():
 			return nil
@@ -299,6 +412,7 @@ func (p *GuildPlayer) Run(ctx context.Context) error {
 
 // playPlaylist reproduce la lista de reproducción de canciones.
 func (p *GuildPlayer) playPlaylist(ctx context.Context) error {
+	p.logger.Debug("playPlaylist iniciado")
 	voiceChannel, err := p.state.GetVoiceChannel()
 	if err != nil {
 		return fmt.Errorf("al obtener el canal de voz: %w", err)
@@ -323,7 +437,7 @@ func (p *GuildPlayer) playPlaylist(ctx context.Context) error {
 
 	for {
 		song, err := p.state.PopFirstSong()
-		if err == ErrNoSongs {
+		if errors.Is(err, ErrNoSongs) {
 			p.logger.Debug("la lista de reproducción está vacía")
 			break
 		}
@@ -377,6 +491,6 @@ func (p *GuildPlayer) playPlaylist(ctx context.Context) error {
 
 		time.Sleep(250 * time.Millisecond)
 	}
-
+	p.logger.Debug("playPlaylist finalizado")
 	return nil
 }
