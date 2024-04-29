@@ -11,7 +11,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 	"strings"
-	"time"
 )
 
 // GuildID representa el ID de un servidor de Discord.
@@ -73,10 +72,10 @@ func (handler *InteractionHandler) GuildCreate(s *discordgo.Session, event *disc
 		return
 	}
 
-	player := handler.setupGuildPlayer(GuildID(event.Guild.ID))
+	player := handler.setupGuildPlayer(GuildID(event.Guild.ID), s)
 	handler.guildsPlayers[GuildID(event.Guild.ID)] = player
 	handler.logger.Info("conectado al servidor", zap.String("guildID", event.Guild.ID))
-
+	player.StartListeningEvents(s)
 	go func() {
 		if err := player.Run(handler.ctx); err != nil {
 			handler.logger.Error("ocurrió un error al ejecutar el reproductor", zap.Error(err))
@@ -88,7 +87,7 @@ func (handler *InteractionHandler) GuildCreate(s *discordgo.Session, event *disc
 func (handler *InteractionHandler) GuildDelete(s *discordgo.Session, event *discordgo.GuildDelete) {
 	guildID := GuildID(event.Guild.ID)
 
-	player := handler.getGuildPlayer(guildID)
+	player := handler.getGuildPlayer(guildID, s)
 	player.Close()
 	delete(handler.guildsPlayers, guildID)
 }
@@ -104,7 +103,7 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 		return
 	}
 
-	player := handler.getGuildPlayer(GuildID(g.ID))
+	player := handler.getGuildPlayer(GuildID(g.ID), s)
 	optionMap := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, len(opt.Options))
 	for _, opt := range opt.Options {
 		optionMap[opt.Name] = opt
@@ -211,7 +210,7 @@ func (handler *InteractionHandler) AddSongOrPlaylist(s *discordgo.Session, ic *d
 		return
 	}
 
-	player := handler.getGuildPlayer(GuildID(g.ID))
+	player := handler.getGuildPlayer(GuildID(g.ID), s)
 
 	var voiceChannelID *string = nil
 
@@ -285,7 +284,7 @@ func (handler *InteractionHandler) StopPlaying(s *discordgo.Session, ic *discord
 		return
 	}
 
-	player := handler.getGuildPlayer(GuildID(g.ID))
+	player := handler.getGuildPlayer(GuildID(g.ID), s)
 	if err := player.Stop(); err != nil {
 		handler.logger.Info("falló al detener la reproducción", zap.Error(err))
 		InteractionRespondServerError(handler.logger, s, ic.Interaction)
@@ -304,7 +303,7 @@ func (handler *InteractionHandler) SkipSong(s *discordgo.Session, ic *discordgo.
 		return
 	}
 
-	player := handler.getGuildPlayer(GuildID(g.ID))
+	player := handler.getGuildPlayer(GuildID(g.ID), s)
 	player.SkipSong()
 
 	InteractionRespondMessage(handler.logger, s, ic.Interaction, "⏭️ Canción omitida")
@@ -319,7 +318,7 @@ func (handler *InteractionHandler) ListPlaylist(s *discordgo.Session, ic *discor
 		return
 	}
 
-	player := handler.getGuildPlayer(GuildID(g.ID))
+	player := handler.getGuildPlayer(GuildID(g.ID), s)
 	playlist, err := player.GetPlaylist()
 	if err != nil {
 		handler.logger.Error("falló al obtener la lista de reproducción", zap.Error(err))
@@ -364,7 +363,7 @@ func (handler *InteractionHandler) RemoveSong(s *discordgo.Session, ic *discordg
 		return
 	}
 
-	player := handler.getGuildPlayer(GuildID(g.ID))
+	player := handler.getGuildPlayer(GuildID(g.ID), s)
 
 	optionMap := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, len(opt.Options))
 	for _, opt := range opt.Options {
@@ -397,7 +396,7 @@ func (handler *InteractionHandler) GetPlayingSong(s *discordgo.Session, ic *disc
 		return
 	}
 
-	player := handler.getGuildPlayer(GuildID(g.ID))
+	player := handler.getGuildPlayer(GuildID(g.ID), s)
 
 	song, err := player.GetPlayedSong()
 	if err != nil {
@@ -415,34 +414,21 @@ func (handler *InteractionHandler) GetPlayingSong(s *discordgo.Session, ic *disc
 }
 
 // setupGuildPlayer configura un reproductor para un servidor dado.
-func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID) *bot.GuildPlayer {
-	dg, err := discordgo.New("Bot " + handler.discordToken)
-	if err != nil {
-		handler.logger.Error("falló al crear la sesión de Discord", zap.Error(err))
-		return nil
-	}
-
-	err = dg.Open()
-	if err != nil {
-		handler.logger.Error("falló al abrir la sesión de Discord", zap.Error(err))
-		return nil
-	}
-
+func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discordgo.Session) *bot.GuildPlayer {
 	voiceChat := &DiscordVoiceChatSession{
 		discordSession: dg,
 		guildID:        string(guildID),
 	}
 	playlistStore := config.GetPlaylistStore(handler.cfg, string(guildID))
-
-	player := bot.NewGuildPlayer(handler.ctx, voiceChat, string(guildID), playlistStore, fetcher.GetDCAData).WithLogger(handler.logger.With(zap.String("guildID", string(guildID))))
+	player := bot.NewGuildPlayer(handler.ctx, voiceChat, playlistStore, fetcher.GetDCAData).WithLogger(handler.logger.With(zap.String("guildID", string(guildID))))
 	return player
 }
 
 // getGuildPlayer obtiene un reproductor para un servidor dado.
-func (handler *InteractionHandler) getGuildPlayer(guildID GuildID) *bot.GuildPlayer {
+func (handler *InteractionHandler) getGuildPlayer(guildID GuildID, dg *discordgo.Session) *bot.GuildPlayer {
 	player, ok := handler.guildsPlayers[guildID]
 	if !ok {
-		player = handler.setupGuildPlayer(guildID)
+		player = handler.setupGuildPlayer(guildID, dg)
 		handler.guildsPlayers[guildID] = player
 	}
 
@@ -485,66 +471,6 @@ func (handler *InteractionHandler) getVoiceChannelMembers(s *discordgo.Session, 
 
 }
 
-// PeriodicallyCheckVoiceState ejecuta la función VoiceStateUpdate periódicamente para verificar el estado de voz.
-func (handler *InteractionHandler) PeriodicallyCheckVoiceState(s *discordgo.Session) {
-	// Definir el intervalo de tiempo entre cada verificación
-	interval := 10 * time.Second
-
-	for {
-		// Esperar el intervalo de tiempo
-		time.Sleep(interval)
-
-		// Obtener los servidores donde el bot está conectado
-		for guildID := range handler.guildsPlayers {
-			// Obtener la lista de estados de voz del servidor
-			guild, err := s.State.Guild(string(guildID))
-			if err != nil {
-				handler.logger.Error("Error al obtener el guild:", zap.Error(err))
-				continue
-			}
-
-			// Verificar si el bot está solo en el canal de voz
-			handler.checkBotVoiceState(s, guild)
-		}
-	}
-}
-
-// checkBotVoiceState verifica si el bot está solo en el canal de voz en un servidor dado.
-func (handler *InteractionHandler) checkBotVoiceState(s *discordgo.Session, guild *discordgo.Guild) {
-	// Obtener el canal de voz actual del bot en el servidor
-	botChannelID := ""
-	for _, vs := range guild.VoiceStates {
-		if vs.UserID == s.State.User.ID {
-			botChannelID = vs.ChannelID
-			break
-		}
-	}
-
-	// Verificar si el bot está en un canal de voz
-	if botChannelID != "" {
-		// Verificar si el bot está solo en el canal de voz
-		botIsAlone := true
-		for _, vs := range guild.VoiceStates {
-			if vs.ChannelID == botChannelID && vs.UserID != s.State.User.ID {
-				botIsAlone = false
-				break
-			}
-		}
-
-		// Si el bot está solo en el canal de voz, detener la reproducción
-		if botIsAlone {
-			// Obtener el jugador del servidor
-			guildID := GuildID(guild.ID)
-			player := handler.getGuildPlayer(guildID)
-
-			// Detener la reproducción y limpiar la lista de reproducción
-			player.LeaveVoiceChannel()
-			delete(handler.guildsPlayers, guildID)
-			handler.logger.Info("Bot desconectado debido a que está solo en el canal de voz", zap.String("guildID", string(guildID)))
-		}
-	}
-}
-
 // RegisterEventHandlers registra los manejadores de eventos en la sesión de Discord.
 func (handler *InteractionHandler) RegisterEventHandlers(s *discordgo.Session) {
 	// Registrar el manejador de eventos Ready
@@ -555,6 +481,4 @@ func (handler *InteractionHandler) RegisterEventHandlers(s *discordgo.Session) {
 
 	// Registrar el manejador de eventos GuildDelete
 	s.AddHandler(handler.GuildDelete)
-
-	go handler.PeriodicallyCheckVoiceState(s)
 }
