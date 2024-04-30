@@ -103,9 +103,10 @@ type GuildPlayer struct {
 // VoiceChannelInfo contiene información sobre un canal de voz y su estado.
 type VoiceChannelInfo struct {
 	GuildID         string
+	BotID           string
 	GuildName       string
-	VoiceChannel    string
-	TextChannel     string
+	VoiceChannelID  string
+	TextChannelID   string
 	TextChannelName string
 	Members         []*discordgo.Member
 	PlayingSong     *PlayMessage
@@ -140,11 +141,12 @@ func (p *GuildPlayer) Close() error {
 
 // PrintVoiceChannelInfo imprime la información sobre los servidores y los canales de voz donde se está usando el bot.
 func (p *GuildPlayer) PrintVoiceChannelInfo() {
-	fmt.Println("Información de los canales de voz:")
 	for _, info := range p.voiceChannelMap {
-		fmt.Printf("\nServidor: %s (%s)\n", info.GuildName, info.GuildID)
-		fmt.Printf("ID Canal de voz: %s\n", info.VoiceChannel)
+		fmt.Printf("Servidor: %s (%s)\n", info.GuildName, info.GuildID)
+		fmt.Printf("ID Canal de voz: %s\n", info.VoiceChannelID)
 		fmt.Printf("Nombre del canal de texto: %s\n", info.TextChannelName)
+		fmt.Printf("ID del bot: %s\n", info.BotID)
+		fmt.Printf("Actualizacion: %v\n", info.LastUpdated)
 		fmt.Println("Miembros:")
 		for _, member := range info.Members {
 			fmt.Printf("- %s (%s)\n", member.User.Username, member.User.ID)
@@ -157,8 +159,8 @@ func (p *GuildPlayer) PrintVoiceChannelInfo() {
 		} else {
 			fmt.Println("- No hay canción reproduciéndose")
 		}
+		fmt.Println()
 	}
-	fmt.Println()
 }
 
 // UpdateVoiceState actualiza el mapa de información sobre los canales de voz.
@@ -209,14 +211,16 @@ func (p *GuildPlayer) UpdateVoiceState(s *discordgo.Session, vs *discordgo.Voice
 		p.voiceChannelMap[vs.GuildID] = VoiceChannelInfo{
 			GuildID:         vs.GuildID,
 			GuildName:       guild.Name,
-			VoiceChannel:    voiceChannelID,
+			VoiceChannelID:  voiceChannelID,
 			TextChannelName: channel.Name,
 			Members:         members,
 			LastUpdated:     time.Now(),
+			BotID:           vs.Member.User.ID,
 		}
 	}
 }
 
+// StartListeningEvents inicia la escucha de eventos relevantes.
 func (p *GuildPlayer) StartListeningEvents(s *discordgo.Session) {
 	s.AddHandler(func(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
 		p.UpdateVoiceState(s, vs)
@@ -234,25 +238,28 @@ func (p *GuildPlayer) StartListeningEvents(s *discordgo.Session) {
 			}
 		}
 	}()
+	p.logger.Debug("Comenzando a escuchar eventos relevantes")
 }
 
 // SendMessage envía un mensaje al canal de texto del servidor.
 func (p *GuildPlayer) SendMessage(message string) {
 	channel, err := p.state.GetTextChannel()
 	if err != nil {
-		p.logger.Error("falló al obtener el canal de texto", zap.Error(err))
+		p.logger.Error("Error al obtener el canal de texto para enviar mensaje", zap.Error(err))
 		return
 	}
 
 	if err := p.session.SendMessage(channel, message); err != nil {
-		p.logger.Error("falló al enviar el mensaje", zap.Error(err))
+		p.logger.Error("Error al enviar mensaje al canal de texto", zap.Error(err))
 	}
+	p.logger.Debug("Mensaje enviado al canal de texto")
 }
 
 // AddSong agrega una o más canciones a la lista de reproducción.
 func (p *GuildPlayer) AddSong(textChannelID, voiceChannelID *string, songs ...*Song) error {
 	for _, song := range songs {
 		if err := p.state.AppendSong(song); err != nil {
+			p.logger.Error("Error al agregar canción a la lista de reproducción", zap.Error(err))
 			return fmt.Errorf("al agregar canción: %w", err)
 		}
 	}
@@ -265,6 +272,7 @@ func (p *GuildPlayer) AddSong(textChannelID, voiceChannelID *string, songs ...*S
 		}
 	}()
 
+	p.logger.Debug("Canciones agregadas a la lista de reproducción", zap.Int("cantidad", len(songs)))
 	return nil
 }
 
@@ -272,17 +280,20 @@ func (p *GuildPlayer) AddSong(textChannelID, voiceChannelID *string, songs ...*S
 func (p *GuildPlayer) SkipSong() {
 	if p.songCtxCancel != nil {
 		p.songCtxCancel()
+		p.logger.Debug("Canción actual saltada")
 	}
 }
 
 // Stop detiene la reproducción y limpia la lista de reproducción.
 func (p *GuildPlayer) Stop() error {
 	if err := p.state.ClearPlaylist(); err != nil {
+		p.logger.Error("Error al limpiar la lista de reproducción", zap.Error(err))
 		return fmt.Errorf("al limpiar la lista de reproducción: %w", err)
 	}
 
 	if p.songCtxCancel != nil {
 		p.songCtxCancel()
+		p.logger.Debug("Reproducción detenida y lista de reproducción limpia")
 	}
 
 	return nil
@@ -292,9 +303,11 @@ func (p *GuildPlayer) Stop() error {
 func (p *GuildPlayer) RemoveSong(position int) (*Song, error) {
 	song, err := p.state.RemoveSong(position)
 	if err != nil {
+		p.logger.Error("Error al eliminar canción de la lista de reproducción", zap.Error(err))
 		return nil, fmt.Errorf("al eliminar canción: %w", err)
 	}
 
+	p.logger.Debug("Canción eliminada de la lista de reproducción", zap.String("título", song.Title))
 	return song, nil
 }
 
@@ -302,6 +315,7 @@ func (p *GuildPlayer) RemoveSong(position int) (*Song, error) {
 func (p *GuildPlayer) GetPlaylist() ([]string, error) {
 	songs, err := p.state.GetSongs()
 	if err != nil {
+		p.logger.Error("Error al obtener la lista de reproducción", zap.Error(err))
 		return nil, fmt.Errorf("al obtener canciones: %w", err)
 	}
 
@@ -310,12 +324,19 @@ func (p *GuildPlayer) GetPlaylist() ([]string, error) {
 		playlist[i] = song.GetHumanName()
 	}
 
+	p.logger.Debug("Lista de reproducción obtenida", zap.Int("cantidad", len(playlist)))
 	return playlist, nil
 }
 
 // GetPlayedSong obtiene la canción que se está reproduciendo actualmente.
 func (p *GuildPlayer) GetPlayedSong() (*PlayedSong, error) {
-	return p.state.GetCurrentSong()
+	currentSong, err := p.state.GetCurrentSong()
+	if err != nil {
+		p.logger.Error("Error al obtener la canción que se está reproduciendo actualmente", zap.Error(err))
+		return nil, fmt.Errorf("al obtener la canción que se está reproduciendo actualmente: %w", err)
+	}
+	p.logger.Debug("Canción que se está reproduciendo actualmente obtenida")
+	return currentSong, nil
 }
 
 // JoinVoiceChannel se une al canal de voz especificado.
@@ -325,15 +346,17 @@ func (p *GuildPlayer) JoinVoiceChannel(channelID, textChannelID string) {
 		VoiceChannelID: &channelID,
 		TextChannelID:  &textChannelID,
 	}
+	p.logger.Debug("Intentando unirse al canal de voz", zap.String("canal", channelID))
 }
 
 // LeaveVoiceChannel abandona el canal de voz actual.
 func (p *GuildPlayer) LeaveVoiceChannel() error {
 	err := p.session.LeaveVoiceChannel()
 	if err != nil {
-		p.logger.Error("Hubo un error al salir del canal de voz")
+		p.logger.Error("Error al salir del canal de voz", zap.Error(err))
 		return err
 	}
+	p.logger.Debug("Saliendo del canal de voz")
 	return nil
 }
 

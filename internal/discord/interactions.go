@@ -415,7 +415,7 @@ func (handler *InteractionHandler) GetPlayingSong(s *discordgo.Session, ic *disc
 
 // setupGuildPlayer configura un reproductor para un servidor dado.
 func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discordgo.Session) *bot.GuildPlayer {
-	voiceChat := &DiscordVoiceChatSession{
+	voiceChat := &VoiceChatSession{
 		discordSession: dg,
 		guildID:        string(guildID),
 	}
