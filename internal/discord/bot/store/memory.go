@@ -2,6 +2,7 @@ package store
 
 import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
+	"go.uber.org/zap"
 	"sync"
 )
 
@@ -12,13 +13,15 @@ type InmemoryPlaylistStorage struct {
 	currentSong  *bot.PlayedSong // Canción actual que se está reproduciendo.
 	textChannel  string          // ID del canal de texto.
 	voiceChannel string          // ID del canal de voz.
+	logger       *zap.Logger
 }
 
 // NewInmemoryGuildPlayerState crea una nueva instancia de InmemoryPlaylistStorage.
-func NewInmemoryGuildPlayerState() *InmemoryPlaylistStorage {
+func NewInmemoryGuildPlayerState(logger *zap.Logger) *InmemoryPlaylistStorage {
 	return &InmemoryPlaylistStorage{
-		mutex: sync.RWMutex{},
-		songs: make([]*bot.Song, 0),
+		mutex:  sync.RWMutex{},
+		songs:  make([]*bot.Song, 0),
+		logger: logger,
 	}
 }
 
@@ -27,6 +30,7 @@ func (s *InmemoryPlaylistStorage) GetCurrentSong() (*bot.PlayedSong, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
+	s.logger.Debug("Obteniendo la canción actual")
 	return s.currentSong, nil
 }
 
@@ -36,6 +40,7 @@ func (s *InmemoryPlaylistStorage) SetCurrentSong(song *bot.PlayedSong) error {
 	defer s.mutex.Unlock()
 
 	s.currentSong = song
+	s.logger.Debug("Canción actual establecida")
 	return nil
 }
 
@@ -44,6 +49,7 @@ func (s *InmemoryPlaylistStorage) GetVoiceChannel() (string, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
+	s.logger.Debug("Obteniendo el canal de voz")
 	return s.voiceChannel, nil
 }
 
@@ -53,6 +59,7 @@ func (s *InmemoryPlaylistStorage) SetVoiceChannel(channelID string) error {
 	defer s.mutex.Unlock()
 
 	s.voiceChannel = channelID
+	s.logger.Debug("Canal de voz establecido")
 	return nil
 }
 
@@ -61,6 +68,7 @@ func (s *InmemoryPlaylistStorage) GetTextChannel() (string, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
+	s.logger.Debug("Obteniendo el canal de texto")
 	return s.textChannel, nil
 }
 
@@ -70,6 +78,7 @@ func (s *InmemoryPlaylistStorage) SetTextChannel(channelID string) error {
 	defer s.mutex.Unlock()
 
 	s.textChannel = channelID
+	s.logger.Debug("Canal de texto establecido")
 	return nil
 }
 
@@ -79,6 +88,7 @@ func (s *InmemoryPlaylistStorage) PrependSong(song *bot.Song) error {
 	defer s.mutex.Unlock()
 
 	s.songs = append([]*bot.Song{song}, s.songs...)
+	s.logger.Debug("Canción agregada al principio de la lista de reproducción")
 	return nil
 }
 
@@ -88,6 +98,7 @@ func (s *InmemoryPlaylistStorage) AppendSong(song *bot.Song) error {
 	defer s.mutex.Unlock()
 
 	s.songs = append(s.songs, song)
+	s.logger.Debug("Canción agregada al final de la lista de reproducción")
 	return nil
 }
 
@@ -99,6 +110,7 @@ func (s *InmemoryPlaylistStorage) RemoveSong(position int) (*bot.Song, error) {
 	defer s.mutex.Unlock()
 
 	if index >= len(s.songs) || index < 0 {
+		s.logger.Error("Posición de eliminación de canción inválida")
 		return nil, bot.ErrRemoveInvalidPosition
 	}
 
@@ -107,6 +119,7 @@ func (s *InmemoryPlaylistStorage) RemoveSong(position int) (*bot.Song, error) {
 	copy(s.songs[index:], s.songs[index+1:])
 	s.songs[len(s.songs)-1] = nil
 	s.songs = s.songs[:len(s.songs)-1]
+	s.logger.Debug("Canción eliminada de la lista de reproducción")
 	return song, nil
 }
 
@@ -116,6 +129,7 @@ func (s *InmemoryPlaylistStorage) ClearPlaylist() error {
 	defer s.mutex.Unlock()
 
 	s.songs = make([]*bot.Song, 0)
+	s.logger.Debug("Lista de reproducción borrada")
 	return nil
 }
 
@@ -128,6 +142,7 @@ func (s *InmemoryPlaylistStorage) GetSongs() ([]*bot.Song, error) {
 	songs := make([]*bot.Song, len(s.songs))
 	copy(songs, s.songs)
 
+	s.logger.Debug("Obteniendo todas las canciones de la lista de reproducción")
 	return songs, nil
 }
 
@@ -137,11 +152,12 @@ func (s *InmemoryPlaylistStorage) PopFirstSong() (*bot.Song, error) {
 	defer s.mutex.Unlock()
 
 	if len(s.songs) == 0 {
+		s.logger.Error("No hay canciones para eliminar")
 		return nil, bot.ErrNoSongs
 	}
 
 	song := s.songs[0]
 	s.songs = s.songs[1:]
-
+	s.logger.Debug("Primera canción eliminada de la lista de reproducción")
 	return song, nil
 }

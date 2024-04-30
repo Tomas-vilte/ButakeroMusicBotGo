@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
+	"go.uber.org/zap"
 	"os"
 	"sync"
 )
@@ -20,6 +21,7 @@ type fileState struct {
 type FilePlaylistStorage struct {
 	mutex    sync.RWMutex
 	filepath string
+	logger   *zap.Logger
 }
 
 // NewFilePlaylistStorage crea una nueva instancia de FilePlaylistStorage con la ruta de archivo proporcionada.
@@ -44,6 +46,7 @@ func (s *FilePlaylistStorage) GetCurrentSong() (*bot.PlayedSong, error) {
 
 	state, err := s.readState()
 	if err != nil {
+		s.logger.Error("Error al leer el estado", zap.Error(err))
 		return nil, fmt.Errorf("error al leer el estado: %w", err)
 	}
 
@@ -57,12 +60,14 @@ func (s *FilePlaylistStorage) SetCurrentSong(song *bot.PlayedSong) error {
 
 	state, err := s.readState()
 	if err != nil {
+		s.logger.Error("Error al leer el estado", zap.Error(err))
 		return fmt.Errorf("error al leer el estado: %w", err)
 	}
 
 	state.CurrentSong = song
 
 	if err := s.writeState(state); err != nil {
+		s.logger.Error("Error al escribir el estado", zap.Error(err))
 		return fmt.Errorf("error al escribir el estado: %w", err)
 	}
 
@@ -76,6 +81,7 @@ func (s *FilePlaylistStorage) GetVoiceChannel() (string, error) {
 
 	state, err := s.readState()
 	if err != nil {
+		s.logger.Error("Error al leer el estado", zap.Error(err))
 		return "", fmt.Errorf("error al leer el estado: %w", err)
 	}
 
@@ -89,12 +95,14 @@ func (s *FilePlaylistStorage) SetVoiceChannel(channelID string) error {
 
 	state, err := s.readState()
 	if err != nil {
+		s.logger.Error("Error al leer el estado", zap.Error(err))
 		return fmt.Errorf("error al leer el estado: %w", err)
 	}
 
 	state.VoiceChannel = channelID
 
 	if err := s.writeState(state); err != nil {
+		s.logger.Error("Error al escribir el estado", zap.Error(err))
 		return fmt.Errorf("error al escribir el estado: %w", err)
 	}
 
@@ -108,6 +116,7 @@ func (s *FilePlaylistStorage) GetTextChannel() (string, error) {
 
 	state, err := s.readState()
 	if err != nil {
+		s.logger.Error("Error al leer el estado", zap.Error(err))
 		return "", fmt.Errorf("error al leer el estado: %w", err)
 	}
 
@@ -121,15 +130,16 @@ func (s *FilePlaylistStorage) SetTextChannel(channelID string) error {
 
 	state, err := s.readState()
 	if err != nil {
+		s.logger.Error("Error al leer el estado", zap.Error(err))
 		return fmt.Errorf("error al leer el estado: %w", err)
 	}
 
 	state.TextChannel = channelID
 
 	if err := s.writeState(state); err != nil {
+		s.logger.Error("Error al escribir el estado", zap.Error(err))
 		return fmt.Errorf("error al escribir el estado: %w", err)
 	}
-
 	return nil
 }
 
@@ -140,12 +150,14 @@ func (s *FilePlaylistStorage) PrependSong(song *bot.Song) error {
 
 	state, err := s.readState()
 	if err != nil {
+		s.logger.Error("Error al leer el estado", zap.Error(err))
 		return fmt.Errorf("error al leer el estado: %w", err)
 	}
 
 	state.Songs = append([]*bot.Song{song}, state.Songs...)
 
 	if err := s.writeState(state); err != nil {
+		s.logger.Error("Error al escribir el estado", zap.Error(err))
 		return fmt.Errorf("error al escribir el estado: %w", err)
 	}
 
@@ -159,12 +171,14 @@ func (s *FilePlaylistStorage) AppendSong(song *bot.Song) error {
 
 	state, err := s.readState()
 	if err != nil {
+		s.logger.Error("Error al leer el estado", zap.Error(err))
 		return fmt.Errorf("error al leer el estado: %w", err)
 	}
 
 	state.Songs = append(state.Songs, song)
 
 	if err := s.writeState(state); err != nil {
+		s.logger.Error("Error al escribir el estado", zap.Error(err))
 		return fmt.Errorf("error al escribir el estado: %w", err)
 	}
 
@@ -180,6 +194,7 @@ func (s *FilePlaylistStorage) RemoveSong(position int) (*bot.Song, error) {
 
 	state, err := s.readState()
 	if err != nil {
+		s.logger.Error("Error al leer el estado", zap.Error(err))
 		return nil, fmt.Errorf("error al leer el estado: %w", err)
 	}
 
@@ -194,6 +209,7 @@ func (s *FilePlaylistStorage) RemoveSong(position int) (*bot.Song, error) {
 	state.Songs = state.Songs[:len(state.Songs)-1]
 
 	if err := s.writeState(state); err != nil {
+		s.logger.Error("Error al escribir el estado", zap.Error(err))
 		return nil, fmt.Errorf("error al escribir el estado: %w", err)
 	}
 
@@ -207,12 +223,14 @@ func (s *FilePlaylistStorage) ClearPlaylist() error {
 
 	state, err := s.readState()
 	if err != nil {
+		s.logger.Error("Error al leer el estado", zap.Error(err))
 		return fmt.Errorf("error al leer el estado: %w", err)
 	}
 
 	state.Songs = make([]*bot.Song, 0)
 
 	if err := s.writeState(state); err != nil {
+		s.logger.Error("Error al escribir el estado", zap.Error(err))
 		return fmt.Errorf("error al escribir el estado: %w", err)
 	}
 
@@ -226,6 +244,7 @@ func (s *FilePlaylistStorage) GetSongs() ([]*bot.Song, error) {
 
 	state, err := s.readState()
 	if err != nil {
+		s.logger.Error("Error al leer el estado", zap.Error(err))
 		return nil, fmt.Errorf("error al leer el estado: %w", err)
 	}
 
@@ -239,6 +258,7 @@ func (s *FilePlaylistStorage) PopFirstSong() (*bot.Song, error) {
 
 	state, err := s.readState()
 	if err != nil {
+		s.logger.Error("Error al leer el estado", zap.Error(err))
 		return nil, fmt.Errorf("error al leer las canciones: %w", err)
 	}
 
@@ -250,6 +270,7 @@ func (s *FilePlaylistStorage) PopFirstSong() (*bot.Song, error) {
 	state.Songs = state.Songs[1:]
 
 	if err := s.writeState(state); err != nil {
+		s.logger.Error("Error al escribir las canciones", zap.Error(err))
 		return nil, fmt.Errorf("error al escribir las canciones: %w", err)
 	}
 

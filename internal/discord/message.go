@@ -27,7 +27,7 @@ func GenerateFailedToFindSong(input string, member *discordgo.Member) *discordgo
 }
 
 func GenerateAskAddPlaylistEmbed(songs []*bot.Song, requestor *discordgo.Member) *discordgo.MessageEmbed {
-	title := fmt.Sprintf("👀  La canción es parte de una lista de reproducción que contiene %d canciones. Qué queres que haga?", len(songs))
+	title := fmt.Sprintf("👀  La canción es parte de una lista de reproducción que contiene %d canciones. Que mierda hago?", len(songs))
 	return generateAddingSongEmbed(title, "", requestor)
 }
 
