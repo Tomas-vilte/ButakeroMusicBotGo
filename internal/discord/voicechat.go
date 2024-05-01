@@ -53,7 +53,6 @@ func (session *VoiceChatSession) SendPlayMessage(channelID string, message *bot.
 
 // EditPlayMessage edita un mensaje de reproducción previamente enviado para actualizar los detalles sobre la canción que se está reproduciendo.
 func (session *VoiceChatSession) EditPlayMessage(channelID string, messageID string, message *bot.PlayMessage) error {
-	log.Println("Editando mensaje de reproducción...")
 	// Editar el mensaje de reproducción con los nuevos detalles de la canción.
 	embeds := []*discordgo.MessageEmbed{GeneratePlayingSongEmbed(message)}
 	_, err := session.discordSession.ChannelMessageEditComplex(&discordgo.MessageEdit{
