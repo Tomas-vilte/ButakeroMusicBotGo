@@ -146,7 +146,7 @@ func (p *GuildPlayer) PrintVoiceChannelInfo() {
 		fmt.Printf("ID Canal de voz: %s\n", info.VoiceChannelID)
 		fmt.Printf("Nombre del canal de texto: %s\n", info.TextChannelName)
 		fmt.Printf("ID del bot: %s\n", info.BotID)
-		fmt.Printf("Actualizacion: %v\n", info.LastUpdated)
+		fmt.Printf("Actualizacion: %v\n", info.LastUpdated.Local())
 		fmt.Println("Miembros:")
 		for _, member := range info.Members {
 			fmt.Printf("- %s (%s)\n", member.User.Username, member.User.ID)
