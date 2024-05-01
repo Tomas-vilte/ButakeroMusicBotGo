@@ -17,11 +17,11 @@ type InmemoryPlaylistStorage struct {
 }
 
 // NewInmemoryGuildPlayerState crea una nueva instancia de InmemoryPlaylistStorage.
-func NewInmemoryGuildPlayerState(logger *zap.Logger) *InmemoryPlaylistStorage {
+func NewInmemoryGuildPlayerState() *InmemoryPlaylistStorage {
 	return &InmemoryPlaylistStorage{
 		mutex:  sync.RWMutex{},
 		songs:  make([]*bot.Song, 0),
-		logger: logger,
+		logger: zap.NewNop(),
 	}
 }
 

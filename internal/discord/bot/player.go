@@ -207,17 +207,20 @@ func (p *GuildPlayer) UpdateVoiceState(s *discordgo.Session, vs *discordgo.Voice
 	}
 
 	// Actualizar el mapa de canales de voz solo si es una nueva entrada
-	if _, ok := p.voiceChannelMap[vs.GuildID]; !ok {
-		p.voiceChannelMap[vs.GuildID] = VoiceChannelInfo{
-			GuildID:         vs.GuildID,
-			GuildName:       guild.Name,
-			VoiceChannelID:  voiceChannelID,
-			TextChannelName: channel.Name,
-			Members:         members,
-			LastUpdated:     time.Now(),
-			BotID:           vs.Member.User.ID,
-		}
+	p.voiceChannelMap[vs.GuildID] = VoiceChannelInfo{
+		GuildID:         vs.GuildID,
+		GuildName:       guild.Name,
+		VoiceChannelID:  voiceChannelID,
+		TextChannelName: channel.Name,
+		Members:         members,
+		LastUpdated:     time.Now(),
+		BotID:           vs.Member.User.ID,
 	}
+}
+
+// GetVoiceChannelInfo devuelve el mapa con toda la información de los canales de voz y su estado.
+func (p *GuildPlayer) GetVoiceChannelInfo() map[string]VoiceChannelInfo {
+	return p.voiceChannelMap
 }
 
 // StartListeningEvents inicia la escucha de eventos relevantes.
