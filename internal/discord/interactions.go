@@ -11,6 +11,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 	"strings"
+	"time"
 )
 
 // GuildID representa el ID de un servidor de Discord.
@@ -444,6 +445,37 @@ func getUsersVoiceState(guild *discordgo.Guild, user *discordgo.User) *discordgo
 	}
 
 	return nil
+}
+
+// CheckVoiceChannelsPresence verifica la presencia de usuarios en los canales de voz y desconecta al bot si no hay usuarios presentes.
+func (handler *InteractionHandler) CheckVoiceChannelsPresence() {
+	// Definir el intervalo de verificación
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			// Iterar sobre los servidores y verificar la presencia en los canales de voz
+			for guildID, player := range handler.guildsPlayers {
+				// Obtener el canal de voz asociado con el servidor actual
+				voiceChannelInfo, ok := player.GetVoiceChannelInfo()[string(guildID)]
+				if !ok {
+					continue
+				}
+
+				// Verificar si hay usuarios presentes solo en el canal de voz asociado al server
+				if len(voiceChannelInfo.Members) == 1 {
+					handler.logger.Info("Desconectando bot debido a la falta de presencia en el canal de voz", zap.String("guildID", string(guildID)))
+					if err := player.Stop(); err != nil {
+						handler.logger.Error("falló al detener la reproducción", zap.Error(err))
+					}
+				}
+			}
+		case <-handler.ctx.Done():
+			return
+		}
+	}
 }
 
 // getVoiceChannelMembers obtiene los miembros presentes en un canal de voz específico.

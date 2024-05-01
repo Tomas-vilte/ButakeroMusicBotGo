@@ -66,12 +66,13 @@ func main() {
 			}
 		}
 	})
-	dg.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildVoiceStates
+	dg.Identify.Intents = discordgo.IntentsAll
 	err = dg.Open()
 	if err != nil {
 		logger.Fatal("error al abrir la session de discord", zap.Error(err))
 	}
 	defer dg.Close()
+	handler.CheckVoiceChannelsPresence()
 	slashCommands := commandHandler.GetSlashCommands()
 	registeredCommands, err := dg.ApplicationCommandBulkOverwrite(dg.State.User.ID, cfg.GuildID, slashCommands)
 	if err != nil {
