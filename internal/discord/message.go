@@ -52,7 +52,7 @@ func GeneratePlayingSongEmbed(message *bot.PlayMessage) *discordgo.MessageEmbed 
 	progressBar := generateProgressBar(float64(message.Position)/float64(message.Song.Duration), 20)
 
 	embed := &discordgo.MessageEmbed{
-		Title:       fmt.Sprintf("%s", message.Song.GetHumanName()),
+		Title:       message.Song.GetHumanName(),
 		Description: fmt.Sprintf("%s\n%s / %s", progressBar, utils.FmtDuration(message.Position), utils.FmtDuration(message.Song.Duration)),
 	}
 	if message.Song.ThumbnailURL != nil {

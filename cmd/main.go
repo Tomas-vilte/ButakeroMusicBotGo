@@ -15,7 +15,6 @@ import (
 )
 
 var (
-	logger         *zap.Logger
 	ctx            context.Context
 	cancelCtx      context.CancelFunc
 	cfg            = &config.Config{}
@@ -25,9 +24,8 @@ var (
 
 func main() {
 	loggerCfg := zap.NewDevelopmentConfig()
-	loggerCfg = zap.NewDevelopmentConfig()
 	loggerCfg.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
-	logger, _ = loggerCfg.Build()
+	logger, _ := loggerCfg.Build()
 	defer func(logger *zap.Logger) {
 		err := logger.Sync()
 		if err != nil {
