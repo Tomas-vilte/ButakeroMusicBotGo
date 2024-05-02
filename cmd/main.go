@@ -28,7 +28,12 @@ func main() {
 	loggerCfg = zap.NewDevelopmentConfig()
 	loggerCfg.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
 	logger, _ = loggerCfg.Build()
-	defer logger.Sync()
+	defer func(logger *zap.Logger) {
+		err := logger.Sync()
+		if err != nil {
+			panic("hubo un error: " + err.Error())
+		}
+	}(logger)
 	ctx, cancelCtx = context.WithCancel(context.Background())
 	defer cancelCtx()
 	if err := envconfig.Process("", cfg); err != nil {
@@ -71,7 +76,12 @@ func main() {
 	if err != nil {
 		logger.Fatal("error al abrir la session de discord", zap.Error(err))
 	}
-	defer dg.Close()
+	defer func(dg *discordgo.Session) {
+		err := dg.Close()
+		if err != nil {
+			logger.Error("Hubo un error al cerrar session", zap.Error(err))
+		}
+	}(dg)
 	handler.CheckVoiceChannelsPresence()
 	slashCommands := commandHandler.GetSlashCommands()
 	registeredCommands, err := dg.ApplicationCommandBulkOverwrite(dg.State.User.ID, cfg.GuildID, slashCommands)

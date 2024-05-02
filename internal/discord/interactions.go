@@ -89,7 +89,9 @@ func (handler *InteractionHandler) GuildDelete(s *discordgo.Session, event *disc
 	guildID := GuildID(event.Guild.ID)
 
 	player := handler.getGuildPlayer(guildID, s)
-	player.Close()
+	if err := player.Close(); err != nil {
+		handler.logger.Error("Hubo un error al cerrar el reproductor", zap.Error(err))
+	}
 	delete(handler.guildsPlayers, guildID)
 }
 
