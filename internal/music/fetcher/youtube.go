@@ -106,7 +106,12 @@ func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *bot.Song) (io.Rea
 	reader, writer := io.Pipe()
 
 	go func(w io.WriteCloser) {
-		defer w.Close()
+		defer func(w io.WriteCloser) {
+			err := w.Close()
+			if err != nil {
+
+			}
+		}(w)
 
 		ytArgs := []string{"-U", "-x", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", "'" + song.URL + "'"}
 		ffmpegArgs := []string{"-i", "pipe:0"}

@@ -5,8 +5,6 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
 	"github.com/Tomas-vilte/GoMusicBot/internal/utils"
 	"github.com/bwmarrin/discordgo"
-	"strings"
-	"time"
 )
 
 const (
@@ -67,24 +65,6 @@ func GeneratePlayingSongEmbed(message *bot.PlayMessage) *discordgo.MessageEmbed 
 		embed.Footer = &discordgo.MessageEmbedFooter{
 			Text: fmt.Sprintf("Solicitado por: %v", *message.Song.RequestedBy),
 		}
-	}
-	return embed
-}
-
-func GeneratePlaylistAdded(intro string, songs []*bot.Song, member *discordgo.Member) *discordgo.MessageEmbed {
-	descriptionBuilder := strings.Builder{}
-	duration := time.Duration(0)
-
-	for _, song := range songs {
-		duration += song.Duration
-		descriptionBuilder.WriteString(fmt.Sprintf("1. %s (%s)\n", song.GetHumanName(), utils.FmtDuration(song.Duration)))
-	}
-
-	title := fmt.Sprintf("%s", intro)
-	embed := generateAddingSongEmbed(title, descriptionBuilder.String(), member)
-	embed.Fields = []*discordgo.MessageEmbedField{
-		{Name: "Duracion"},
-		{Value: utils.FmtDuration(duration)},
 	}
 	return embed
 }
