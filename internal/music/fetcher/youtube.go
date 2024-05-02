@@ -109,7 +109,7 @@ func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *bot.Song) (io.Rea
 		defer func(w io.WriteCloser) {
 			err := w.Close()
 			if err != nil {
-
+				s.Logger.Error(err.Error())
 			}
 		}(w)
 
