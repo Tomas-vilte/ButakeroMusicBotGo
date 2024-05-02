@@ -1,12 +1,16 @@
-name: CI
+name: Go Development Pipeline
 
 on:
   push:
     branches:
       - master
+    paths:
+      - "**.go"
   pull_request:
     branches:
       - master
+    paths:
+      - "**.go"
 
 jobs:
   build:
