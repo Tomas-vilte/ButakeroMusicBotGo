@@ -1,0 +1,26 @@
+# name: Go Continuous Delivery Pipeline
+
+# on:
+#   workflow_run:
+#     workflows: ["Go Development Pipeline"]
+#     types:
+#       - completed
+#     branches:
+#       - master
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Deploy to AWS Lambda
+#         uses: appleboy/lambda-action@v0.2.0
+#         with:
+#           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+#           aws_region: ${{ secrets.AWS_REGION }}
+#           function_name: ButakeroBotDiscord
+#           zip_file: build/lambda.zip
