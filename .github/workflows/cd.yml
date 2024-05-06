@@ -1,26 +1,51 @@
-# name: Go Continuous Delivery Pipeline
+name: Go Continuous Delivery Pipeline
 
-# on:
-#   workflow_run:
-#     workflows: ["Go Development Pipeline"]
-#     types:
-#       - completed
-#     branches:
-#       - master
+on:
+  workflow_run:
+    workflows: ["Go Development Pipeline"]
+    types:
+      - completed
+    branches:
+      - master
 
-# jobs:
-#   deploy:
-#     runs-on: ubuntu-latest
+jobs:
+  deploy:
+    name: Deploy a EC2
+    runs-on: ubuntu-latest
 
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v4
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
 
-#       - name: Deploy to AWS Lambda
-#         uses: appleboy/lambda-action@v0.2.0
-#         with:
-#           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#           aws_region: ${{ secrets.AWS_REGION }}
-#           function_name: ButakeroBotDiscord
-#           zip_file: build/lambda.zip
+      - name: Configurar credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Logearse a Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Buildear y pushear la imagen
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG .
+          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
+
+      - name: Deploy a EC2
+        env:
+            HOST_IP: ${{ secrets.EC2_HOST_IP }}
+            USER: ${{ secrets.EC2_USER }}
+            IMAGE_TAG: ${{ github.sha }}
+        run: |
+            ssh -o StrictHostKeyChecking=no $USER@$HOST_IP '
+            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
+            docker stop butakero-bot || true
+            docker rm butakero-bot || true
+            docker run -d --name butakero-bot -p 80:8080 ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
+            '
