@@ -38,19 +38,24 @@ jobs:
           docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG --build-arg DISCORDTOKEN=$DISCORDTOKEN .
           docker push ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
 
+      - name: Instalar Docker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker.io
+
       - name: Deploy a EC2
         env:
-            HOST_IP: ${{ secrets.EC2_HOST_IP }}
-            USER: ${{ secrets.EC2_USER }}
-            IMAGE_TAG: ${{ github.sha }}
-            DISCORDTOKEN: ${{ secrets.DISCORDTOKEN }}
-            SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          HOST_IP: ${{ secrets.EC2_HOST_IP }}
+          USER: ${{ secrets.EC2_USER }}
+          IMAGE_TAG: ${{ github.sha }}
+          DISCORDTOKEN: ${{ secrets.DISCORDTOKEN }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
-            echo "$SSH_PRIVATE_KEY" > seso.pem
-            chmod 400 seso.pem
-            ssh -o StrictHostKeyChecking=no -i seso.pem $USER@$HOST_IP '
-            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
-            docker stop butakero-bot || true
-            docker rm butakero-bot || true
-            docker run -d --name butakero-bot -e DISCORDTOKEN=$DISCORDTOKEN -p 80:8080 ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
-            '
+          echo "$SSH_PRIVATE_KEY" > seso.pem
+          chmod 400 seso.pem
+          ssh -o StrictHostKeyChecking=no -i seso.pem $USER@$HOST_IP '
+          docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
+          docker stop butakero-bot || true
+          docker rm butakero-bot || true
+          docker run -d --name butakero-bot -e DISCORDTOKEN=$DISCORDTOKEN -p 80:8080 ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
+          '
