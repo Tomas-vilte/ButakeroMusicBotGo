@@ -45,7 +45,9 @@ jobs:
             IMAGE_TAG: ${{ github.sha }}
             DISCORDTOKEN: ${{ secrets.DISCORDTOKEN }}
         run: |
-            ssh -o StrictHostKeyChecking=no $USER@$HOST_IP '
+            echo "$SSH_PRIVATE_KEY" > seso.pem
+            chmod 400 seso.pem
+            ssh -o StrictHostKeyChecking=no -i seso.pem $USER@$HOST_IP '
             docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
             docker stop butakero-bot || true
             docker rm butakero-bot || true
