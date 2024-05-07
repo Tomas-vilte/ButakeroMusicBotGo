@@ -44,8 +44,8 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            sudo docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} -p ${{ secrets.DOCKER_HUB_PASSWORD }}
             sudo docker stop butakero-bot || true
             sudo docker rm butakero-bot || true
-            sudo docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} -p ${{ secrets.DOCKER_HUB_PASSWORD }}
             sudo docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:latest
-            sudo docker run -d --name butakero-bot -e DISCORDTOKEN=$DISCORDTOKEN -p 80:8080 ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:latest
+            sudo docker run -d --name butakero-bot -e DISCORDTOKEN=${{ secrets.DISCORDTOKEN  }} -p 80:8080 ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:latest
