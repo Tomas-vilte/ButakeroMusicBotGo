@@ -35,7 +35,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: tomasvilte/butakero-bot:${{ github.sha }}
+          tags: butakero-bot:latest
 
       - name: Deploy a EC2
         uses: appleboy/ssh-action@master
@@ -46,5 +46,5 @@ jobs:
           script: |
             sudo docker stop butakero-bot || true
             sudo docker rm butakero-bot || true
-            sudo docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:${{ github.sha }}
-            sudo docker run -d --name butakero-bot -e DISCORDTOKEN=$DISCORDTOKEN -p 80:8080 ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:${{ github.sha }}
+            sudo docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:latest
+            sudo docker run -d --name butakero-bot -e DISCORDTOKEN=$DISCORDTOKEN -p 80:8080 ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:latest
