@@ -31,12 +31,11 @@ jobs:
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
       - name: Buildear y pushear la imagen
-        env:
-          IMAGE_TAG: ${{ github.sha }}
-          DISCORDTOKEN: ${{ secrets.DISCORDTOKEN }}
-        run: |
-          docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG --build-arg DISCORDTOKEN=$DISCORDTOKEN .
-          docker push ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: true
+          tags: tomasvilte/butakero-bot:${{ github.sha }}
 
       - name: Deploy a EC2
         uses: appleboy/ssh-action@master
@@ -47,5 +46,5 @@ jobs:
           script: |
             docker stop butakero-bot || true
             docker rm butakero-bot || true
-            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
-            docker run -d --name butakero-bot -e DISCORDTOKEN=$DISCORDTOKEN -p 80:8080 ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
+            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:${{ github.sha }}
+            docker run -d --name butakero-bot -e DISCORDTOKEN=$DISCORDTOKEN -p 80:8080 ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:${{ github.sha }}
