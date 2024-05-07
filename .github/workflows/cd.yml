@@ -38,28 +38,14 @@ jobs:
           docker build -t ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG --build-arg DISCORDTOKEN=$DISCORDTOKEN .
           docker push ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
 
-      - name: Instalar Docker
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-          sudo apt-get update
-          sudo apt-get install -y docker-ce docker-ce-cli containerd.io
-
       - name: Deploy a EC2
-        env:
-          HOST_IP: ${{ secrets.EC2_HOST_IP }}
-          USER: ${{ secrets.EC2_USER }}
-          IMAGE_TAG: ${{ github.sha }}
-          DISCORDTOKEN: ${{ secrets.DISCORDTOKEN }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          echo "$SSH_PRIVATE_KEY" > seso.pem
-          chmod 400 seso.pem
-          ssh -o StrictHostKeyChecking=no -i seso.pem $USER@$HOST_IP '
-          docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
-          docker stop butakero-bot || true
-          docker rm butakero-bot || true
-          docker run -d --name butakero-bot -e DISCORDTOKEN=$DISCORDTOKEN -p 80:8080 ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
-          '
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST_IP }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            docker stop butakero-bot || true
+            docker rm butakero-bot || true
+            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
+            docker run -d --name butakero-bot -e DISCORDTOKEN=$DISCORDTOKEN -p 80:8080 ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot:$IMAGE_TAG
