@@ -44,6 +44,7 @@ jobs:
             USER: ${{ secrets.EC2_USER }}
             IMAGE_TAG: ${{ github.sha }}
             DISCORDTOKEN: ${{ secrets.DISCORDTOKEN }}
+            SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
             echo "$SSH_PRIVATE_KEY" > seso.pem
             chmod 400 seso.pem
