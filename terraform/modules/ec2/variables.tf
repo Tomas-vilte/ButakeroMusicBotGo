@@ -1,13 +1,13 @@
 variable "ami_id" {
   description = "ID de la AMI de Amazon Linux 2"
   type        = string
-  default     = "ami-0889a44b331db0194"
+  default     = "ami-0e001c9271cf7f3b9"
 }
 
 variable "instance_type" {
   description = "Tipo de instancia EC2"
   type        = string
-  default     = "t2.micro"
+  default     = "t3.micro"
 }
 
 variable "key_name" {
