@@ -100,7 +100,7 @@ func (ch *SlashCommandRouter) GetSlashCommands() []*discordgo.ApplicationCommand
 	return []*discordgo.ApplicationCommand{
 		{
 			Name:        ch.commandPrefix,
-			Description: "Comando de aire",
+			Description: "Comando de butakero",
 			Options: []*discordgo.ApplicationCommandOption{
 				{
 					Type:        discordgo.ApplicationCommandOptionSubCommand,
