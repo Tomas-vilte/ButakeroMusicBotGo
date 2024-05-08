@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -25,7 +24,6 @@ var (
 )
 
 func main() {
-	fmt.Println("Test Pipeline 8")
 	loggerCfg := zap.NewDevelopmentConfig()
 	loggerCfg.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
 	logger, _ := loggerCfg.Build()
@@ -71,6 +69,7 @@ func main() {
 				h(s, i)
 			}
 		}
+		handler.CheckVoiceChannelsPresence()
 	})
 	dg.Identify.Intents = discordgo.IntentsAll
 	err = dg.Open()
@@ -83,7 +82,6 @@ func main() {
 			logger.Error("Hubo un error al cerrar session", zap.Error(err))
 		}
 	}(dg)
-	handler.CheckVoiceChannelsPresence()
 	slashCommands := commandHandler.GetSlashCommands()
 	registeredCommands, err := dg.ApplicationCommandBulkOverwrite(dg.State.User.ID, cfg.GuildID, slashCommands)
 	if err != nil {
