@@ -1,10 +1,11 @@
-package bot
+package config
 
 import (
 	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 	"io"
@@ -91,6 +92,8 @@ type GuildPlayerState interface {
 type GuildPlayer struct {
 	session         VoiceChatSession
 	state           GuildPlayerState
+	voiceConnection discord.VoiceConnection
+	messageService  discord.MessageService
 	ctx             context.Context
 	triggerCh       chan Trigger
 	songCtxCancel   context.CancelFunc
@@ -114,11 +117,12 @@ type VoiceChannelInfo struct {
 }
 
 // NewGuildPlayer crea una nueva instancia de GuildPlayer con los parámetros proporcionados.
-func NewGuildPlayer(ctx context.Context, session VoiceChatSession, state GuildPlayerState, dCADataGetter DCADataGetter) *GuildPlayer {
+func NewGuildPlayer(ctx context.Context, voiceConnection discord.VoiceConnection, messageService discord.MessageService, state GuildPlayerState, dCADataGetter DCADataGetter) *GuildPlayer {
 	return &GuildPlayer{
 		ctx:             ctx,
 		state:           state,
-		session:         session,
+		voiceConnection: voiceConnection,
+		messageService:  messageService,
 		triggerCh:       make(chan Trigger),
 		logger:          zap.NewNop(),
 		dCADataGetter:   dCADataGetter,

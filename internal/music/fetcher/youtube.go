@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"go.uber.org/zap"
 	"io"
 	"os/exec"
@@ -33,7 +33,7 @@ func NewYoutubeFetcher() *YoutubeFetcher {
 
 // LookupSongs busca canciones en YouTube según el término de búsqueda proporcionado en input.
 // Retorna una lista de objetos bot.Song que contienen metadatos de las canciones encontradas.
-func (s *YoutubeFetcher) LookupSongs(ctx context.Context, input string) ([]*bot.Song, error) {
+func (s *YoutubeFetcher) LookupSongs(ctx context.Context, input string) ([]*voice.Song, error) {
 	// Define las columnas a imprimir por yt-dlp.
 	ytDlpPrintColumns := []string{"title", "original_url", "is_live", "duration", "thumbnail", "thumbnails"}
 	printColumns := strings.Join(ytDlpPrintColumns, ",")
@@ -65,7 +65,7 @@ func (s *YoutubeFetcher) LookupSongs(ctx context.Context, input string) ([]*bot.
 	ytOutLines := strings.Split(ytOutBuf.String(), "\n")
 	songCount := len(ytOutLines) / linesPerSong
 
-	songs := make([]*bot.Song, 0, songCount)
+	songs := make([]*voice.Song, 0, songCount)
 	for i := 0; i < songCount; i++ {
 		duration, _ := strconv.ParseFloat(ytOutLines[linesPerSong*i+3], 32)
 
@@ -83,7 +83,7 @@ func (s *YoutubeFetcher) LookupSongs(ctx context.Context, input string) ([]*bot.
 		}
 
 		// Crea un objeto Song con los metadatos obtenidos.
-		song := &bot.Song{
+		song := &voice.Song{
 			Type:         "yt-dlp",
 			Title:        ytOutLines[linesPerSong*i],
 			URL:          ytOutLines[linesPerSong*i+1],
@@ -104,7 +104,7 @@ func (s *YoutubeFetcher) LookupSongs(ctx context.Context, input string) ([]*bot.
 // GetDCAData obtiene los datos de audio de una canción en formato DCA.
 // Utiliza yt-dlp y ffmpeg para descargar el audio de YouTube y convertirlo al formato DCA esperado por Discord.
 // Retorna un io.Reader que permite leer los datos de audio y un posible error.
-func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *bot.Song) (io.Reader, error) {
+func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *voice.Song) (io.Reader, error) {
 	reader, writer := io.Pipe()
 
 	go func(w io.WriteCloser) {
