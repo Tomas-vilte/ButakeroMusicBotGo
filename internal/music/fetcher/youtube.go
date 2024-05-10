@@ -7,9 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
+	"go.uber.org/zap"
 	"io"
-	"log"
-	"log/slog"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -17,18 +16,18 @@ import (
 )
 
 const (
-	downloadBuffer = 100 * 1024 // 100 KiB
+	downloadBuffer = 1 * 1024 * 1024 // 1MB
 )
 
 // YoutubeFetcher es un tipo que interactúa con YouTube para obtener metadatos y datos de audio.
 type YoutubeFetcher struct {
-	Logger *slog.Logger
+	Logger *zap.Logger
 }
 
 // NewYoutubeFetcher crea una nueva instancia de YoutubeFetcher con un logger predeterminado.
 func NewYoutubeFetcher() *YoutubeFetcher {
 	return &YoutubeFetcher{
-		Logger: slog.Default(),
+		Logger: zap.NewNop(),
 	}
 }
 
@@ -52,11 +51,14 @@ func (s *YoutubeFetcher) LookupSongs(ctx context.Context, input string) ([]*bot.
 	ytCmd := exec.CommandContext(ctx, "yt-dlp", args...)
 
 	ytOutBuf := &bytes.Buffer{}
+	ytErrBuf := &bytes.Buffer{}
 	ytCmd.Stdout = ytOutBuf
+	ytCmd.Stderr = ytErrBuf
 
 	// Ejecuta el comando yt-dlp y captura la salida.
 	if err := ytCmd.Run(); err != nil {
-		return nil, fmt.Errorf("al ejecutar el comando yt-dlp para obtener metadatos: %w", err)
+		// Si hay un error, devuelve el mensaje de error capturado de yt-dlp
+		return nil, fmt.Errorf("error al ejecutar el comando yt-dlp: %w, error_output: %s", err, ytErrBuf.String())
 	}
 
 	linesPerSong := len(ytDlpPrintColumns)
@@ -73,7 +75,7 @@ func (s *YoutubeFetcher) LookupSongs(ctx context.Context, input string) ([]*bot.
 		} else if ytOutLines[linesPerSong*i+5] != "NA" {
 			thumbnail, err := getThumbnail(ytOutLines[linesPerSong*i+5])
 			if err != nil {
-				s.Logger.Error("error al obtener miniatura", "error", err)
+				s.Logger.Error("error al obtener miniatura", zap.Error(err))
 			}
 			if thumbnail != nil {
 				thumbnailURL = &thumbnail.URL
@@ -109,17 +111,12 @@ func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *bot.Song) (io.Rea
 		defer func(w io.WriteCloser) {
 			err := w.Close()
 			if err != nil {
-				s.Logger.Error(err.Error())
+				s.Logger.Error("Error al cerrar el escritor: %v", zap.Error(err))
 			}
 		}(w)
 
-		ytArgs := []string{"-U", "-x", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", "'" + song.URL + "'"}
-		ffmpegArgs := []string{"-i", "pipe:0"}
-
-		if song.StartPosition > 0 {
-			ffmpegArgs = append(ffmpegArgs, "-ss", song.StartPosition.String())
-		}
-		ffmpegArgs = append(ffmpegArgs, "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1")
+		ytArgs := []string{"-f", "bestaudio[ext=m4a]", "--audio-quality", "0", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", "'" + song.URL + "'"}
+		ffmpegArgs := []string{"-i", "pipe:0", "-b:a", "192k", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1"}
 
 		// Ejecuta una cadena de comandos para descargar el audio de YouTube y convertirlo a formato DCA.
 		downloadCmd := exec.CommandContext(ctx,
@@ -132,11 +129,7 @@ func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *bot.Song) (io.Rea
 
 		// Ejecuta el comando y captura cualquier error.
 		if err := downloadCmd.Run(); err != nil {
-			log.Printf("al ejecutar el tubo para obtener los datos DCA: %v", err)
-		}
-
-		if err := bw.Flush(); err != nil {
-			log.Printf("al vaciar el tubo de datos DCA: %v", err)
+			s.Logger.Error("Error al ejecutar el comando: %v", zap.Error(err))
 		}
 	}(writer)
 
