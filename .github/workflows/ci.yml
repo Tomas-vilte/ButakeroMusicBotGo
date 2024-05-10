@@ -33,6 +33,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Install dependencies
+        run: |
+          apt-get update \
+          && apt-get install -y build-essential libopus-dev libopusfile-dev \
+          && go install github.com/bwmarrin/dca/cmd/dca@latest \
+          && apt-get install -y ffmpeg wget libopusfile0 \
+          && export YT_DLP_VERSION="2023.10.13" \
+          && wget "https://github.com/yt-dlp/yt-dlp/releases/download/${YT_DLP_VERSION}/yt-dlp_linux" -O /usr/local/bin/yt-dlp \
+          && chmod +x /usr/local/bin/yt-dlp
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v5
         with:

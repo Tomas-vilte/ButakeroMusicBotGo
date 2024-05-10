@@ -1,16 +1,17 @@
 package config
 
 import (
-	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
-	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store"
 	"os"
 	"path/filepath"
+
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store"
 )
 
 type Config struct {
 	DiscordToken  string `required:"true"`
 	GuildID       string
-	CommandPrefix string `default:"seso"`
+	CommandPrefix string `required:"true"`
 	Store         StoreConfig
 }
 
