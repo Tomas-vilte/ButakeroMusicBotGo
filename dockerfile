@@ -18,6 +18,7 @@ FROM ubuntu
 ARG YT_DLP_VERSION="2023.10.13"
 
 ENV DISCORDTOKEN=
+ENV COMMANDPREFIX=
 
 RUN apt-get update \
   && apt-get install -y ffmpeg wget libopusfile0 \
