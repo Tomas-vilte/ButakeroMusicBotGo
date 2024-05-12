@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log"
 	"time"
 )
 
@@ -17,10 +18,10 @@ func StreamDCAData(ctx context.Context, dca io.Reader, opusChan chan<- []byte, p
 	framesSent := 0
 
 	for {
-
 		err := binary.Read(dca, binary.LittleEndian, &opuslen)
 
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
+			log.Printf("Error EOF o inesperado EOF encontrado en la transmisión de datos DCA: %v\n", err)
 			return nil
 		}
 
@@ -39,13 +40,12 @@ func StreamDCAData(ctx context.Context, dca io.Reader, opusChan chan<- []byte, p
 		case <-ctx.Done():
 			return nil
 		case opusChan <- inBuf:
-			framesSent += 1
-			go func() {
-				if positionCallback != nil && framesSent%50 == 0 {
+			framesSent++
+			if positionCallback != nil && framesSent%50 == 0 {
+				go func() {
 					positionCallback(time.Duration(framesSent) * frameLength)
-				}
-			}()
-			continue
+				}()
+			}
 		}
 	}
 }

@@ -1,11 +1,11 @@
-package config
+package bot
 
 import (
 	"bufio"
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tomas-vilte/GoMusicBot/internal/discord"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 	"io"
@@ -26,62 +26,19 @@ type Trigger struct {
 	TextChannelID  *string
 }
 
-// PlayMessage es el mensaje que se enviará al canal de texto para mostrar la canción que se está reproduciendo actualmente.
-type PlayMessage struct {
-	Song     *Song
-	Position time.Duration
-}
-
-// Song representa una canción que se puede reproducir.
-type Song struct {
-	Type          string
-	Title         string
-	URL           string
-	Playable      bool
-	ThumbnailURL  *string
-	Duration      time.Duration
-	StartPosition time.Duration
-	RequestedBy   *string
-}
-
-// GetHumanName devuelve el nombre humano legible de la canción.
-func (s *Song) GetHumanName() string {
-	if s.Title != "" {
-		return s.Title
-	}
-	return s.URL
-}
-
-// VoiceChatSession define métodos para interactuar con la sesión de voz del bot de Discord.
-type VoiceChatSession interface {
-	Close() error
-	SendMessage(channelID, message string) error
-	SendPlayMessage(channelID string, message *PlayMessage) (string, error)
-	EditPlayMessage(channelID, messageID string, message *PlayMessage) error
-	JoinVoiceChannel(channelID string) error
-	LeaveVoiceChannel() error
-	SendAudio(ctx context.Context, r io.Reader, positionCallback func(time.Duration)) error
-}
-
 // DCADataGetter es una función para obtener datos de audio codificados en DCA para una canción específica.
-type DCADataGetter func(ctx context.Context, song *Song) (io.Reader, error)
-
-// PlayedSong representa una canción que ha sido reproducida.
-type PlayedSong struct {
-	Song
-	Position time.Duration
-}
+type DCADataGetter func(ctx context.Context, song *voice.Song) (io.Reader, error)
 
 // GuildPlayerState define métodos para gestionar la lista de reproducción de música.
 type GuildPlayerState interface {
-	PrependSong(*Song) error
-	AppendSong(*Song) error
-	RemoveSong(int) (*Song, error)
+	PrependSong(*voice.Song) error
+	AppendSong(*voice.Song) error
+	RemoveSong(int) (*voice.Song, error)
 	ClearPlaylist() error
-	GetSongs() ([]*Song, error)
-	PopFirstSong() (*Song, error)
-	SetCurrentSong(*PlayedSong) error
-	GetCurrentSong() (*PlayedSong, error)
+	GetSongs() ([]*voice.Song, error)
+	PopFirstSong() (*voice.Song, error)
+	SetCurrentSong(*voice.PlayedSong) error
+	GetCurrentSong() (*voice.PlayedSong, error)
 	SetVoiceChannel(string) error
 	GetVoiceChannel() (string, error)
 	SetTextChannel(string) error
@@ -90,17 +47,16 @@ type GuildPlayerState interface {
 
 // GuildPlayer es el reproductor de música para un servidor específico en Discord.
 type GuildPlayer struct {
-	session         VoiceChatSession
 	state           GuildPlayerState
-	voiceConnection discord.VoiceConnection
-	messageService  discord.MessageService
 	ctx             context.Context
 	triggerCh       chan Trigger
+	session         voice.VoiceChatSession
 	songCtxCancel   context.CancelFunc
 	dCADataGetter   DCADataGetter
 	audioBufferSize int
 	logger          *zap.Logger
 	voiceChannelMap map[string]VoiceChannelInfo
+	message         voice.ChatMessageSender
 }
 
 // VoiceChannelInfo contiene información sobre un canal de voz y su estado.
@@ -112,22 +68,22 @@ type VoiceChannelInfo struct {
 	TextChannelID   string
 	TextChannelName string
 	Members         []*discordgo.Member
-	PlayingSong     *PlayMessage
+	PlayingSong     *voice.PlayMessage
 	LastUpdated     time.Time
 }
 
 // NewGuildPlayer crea una nueva instancia de GuildPlayer con los parámetros proporcionados.
-func NewGuildPlayer(ctx context.Context, voiceConnection discord.VoiceConnection, messageService discord.MessageService, state GuildPlayerState, dCADataGetter DCADataGetter) *GuildPlayer {
+func NewGuildPlayer(ctx context.Context, session voice.VoiceChatSession, state GuildPlayerState, dCADataGetter DCADataGetter, message voice.ChatMessageSender) *GuildPlayer {
 	return &GuildPlayer{
 		ctx:             ctx,
 		state:           state,
-		voiceConnection: voiceConnection,
-		messageService:  messageService,
 		triggerCh:       make(chan Trigger),
+		session:         session,
 		logger:          zap.NewNop(),
 		dCADataGetter:   dCADataGetter,
 		audioBufferSize: 1024 * 1024, // 1 MiB
 		voiceChannelMap: make(map[string]VoiceChannelInfo),
+		message:         message,
 	}
 }
 
@@ -135,12 +91,6 @@ func NewGuildPlayer(ctx context.Context, voiceConnection discord.VoiceConnection
 func (p *GuildPlayer) WithLogger(l *zap.Logger) *GuildPlayer {
 	p.logger = l
 	return p
-}
-
-// Close cierra el reproductor de música.
-func (p *GuildPlayer) Close() error {
-	p.songCtxCancel()
-	return p.session.Close()
 }
 
 // PrintVoiceChannelInfo imprime la información sobre los servidores y los canales de voz donde se está usando el bot.
@@ -222,6 +172,12 @@ func (p *GuildPlayer) UpdateVoiceState(s *discordgo.Session, vs *discordgo.Voice
 	}
 }
 
+// Close cierra el reproductor de música.
+func (p *GuildPlayer) Close() error {
+	p.songCtxCancel()
+	return p.session.Close()
+}
+
 // GetVoiceChannelInfo devuelve el mapa con toda la información de los canales de voz y su estado.
 func (p *GuildPlayer) GetVoiceChannelInfo() map[string]VoiceChannelInfo {
 	return p.voiceChannelMap
@@ -256,14 +212,14 @@ func (p *GuildPlayer) SendMessage(message string) {
 		return
 	}
 
-	if err := p.session.SendMessage(channel, message); err != nil {
+	if err := p.message.SendMessage(channel, message); err != nil {
 		p.logger.Error("Error al enviar mensaje al canal de texto", zap.Error(err))
 	}
 	p.logger.Debug("Mensaje enviado al canal de texto")
 }
 
 // AddSong agrega una o más canciones a la lista de reproducción.
-func (p *GuildPlayer) AddSong(textChannelID, voiceChannelID *string, songs ...*Song) error {
+func (p *GuildPlayer) AddSong(textChannelID, voiceChannelID *string, songs ...*voice.Song) error {
 	for _, song := range songs {
 		if err := p.state.AppendSong(song); err != nil {
 			p.logger.Error("Error al agregar canción a la lista de reproducción", zap.Error(err))
@@ -307,7 +263,7 @@ func (p *GuildPlayer) Stop() error {
 }
 
 // RemoveSong elimina una canción de la lista de reproducción por posición.
-func (p *GuildPlayer) RemoveSong(position int) (*Song, error) {
+func (p *GuildPlayer) RemoveSong(position int) (*voice.Song, error) {
 	song, err := p.state.RemoveSong(position)
 	if err != nil {
 		p.logger.Error("Error al eliminar canción de la lista de reproducción", zap.Error(err))
@@ -336,7 +292,7 @@ func (p *GuildPlayer) GetPlaylist() ([]string, error) {
 }
 
 // GetPlayedSong obtiene la canción que se está reproduciendo actualmente.
-func (p *GuildPlayer) GetPlayedSong() (*PlayedSong, error) {
+func (p *GuildPlayer) GetPlayedSong() (*voice.PlayedSong, error) {
 	currentSong, err := p.state.GetCurrentSong()
 	if err != nil {
 		p.logger.Error("Error al obtener la canción que se está reproduciendo actualmente", zap.Error(err))
@@ -476,7 +432,7 @@ func (p *GuildPlayer) playPlaylist(ctx context.Context) error {
 			return fmt.Errorf("al obtener la primera canción: %w", err)
 		}
 
-		if err := p.state.SetCurrentSong(&PlayedSong{Song: *song}); err != nil {
+		if err := p.state.SetCurrentSong(&voice.PlayedSong{Song: *song}); err != nil {
 			return fmt.Errorf("al establecer la canción actual: %w", err)
 		}
 
@@ -485,7 +441,7 @@ func (p *GuildPlayer) playPlaylist(ctx context.Context) error {
 
 		logger := p.logger.With(zap.String("título", song.Title), zap.String("URL", song.URL))
 
-		playMsgID, err := p.session.SendPlayMessage(textChannel, &PlayMessage{
+		playMsgID, err := p.message.SendPlayMessage(textChannel, &voice.PlayMessage{
 			Song: song,
 		})
 		if err != nil {
@@ -500,10 +456,10 @@ func (p *GuildPlayer) playPlaylist(ctx context.Context) error {
 		audioReader := bufio.NewReaderSize(dcaData, p.audioBufferSize)
 		logger.Debug("enviando flujo de audio")
 		if err := p.session.SendAudio(songCtx, audioReader, func(d time.Duration) {
-			if err := p.state.SetCurrentSong(&PlayedSong{Song: *song, Position: d}); err != nil {
+			if err := p.state.SetCurrentSong(&voice.PlayedSong{Song: *song, Position: d}); err != nil {
 				logger.Error("falló al establecer la posición actual de la canción", zap.Error(err))
 			}
-			if err := p.session.EditPlayMessage(textChannel, playMsgID, &PlayMessage{Song: song, Position: d}); err != nil {
+			if err := p.message.EditPlayMessage(textChannel, playMsgID, &voice.PlayMessage{Song: song, Position: d}); err != nil {
 				logger.Error("falló al editar el mensaje", zap.Error(err))
 			}
 
@@ -511,7 +467,7 @@ func (p *GuildPlayer) playPlaylist(ctx context.Context) error {
 			return fmt.Errorf("al enviar datos de audio: %w", err)
 		}
 
-		if err := p.session.EditPlayMessage(textChannel, playMsgID, &PlayMessage{Song: song, Position: song.Duration}); err != nil {
+		if err := p.message.EditPlayMessage(textChannel, playMsgID, &voice.PlayMessage{Song: song, Position: song.Duration}); err != nil {
 			logger.Error("falló al editar el mensaje", zap.Error(err))
 		}
 
