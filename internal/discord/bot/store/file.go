@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"go.uber.org/zap"
 	"os"
 	"sync"
@@ -11,10 +12,10 @@ import (
 
 // fileState representa el estado almacenado en el archivo.
 type fileState struct {
-	Songs        []*bot.Song     `json:"songs"`         // Canciones en la lista de reproducción.
-	CurrentSong  *bot.PlayedSong `json:"current_song"`  // Canción actual que se está reproduciendo.
-	VoiceChannel string          `json:"voice_channel"` // ID del canal de voz.
-	TextChannel  string          `json:"text_channel"`  // ID del canal de texto.
+	Songs        []*voice.Song     `json:"songs"`         // Canciones en la lista de reproducción.
+	CurrentSong  *voice.PlayedSong `json:"current_song"`  // Canción actual que se está reproduciendo.
+	VoiceChannel string            `json:"voice_channel"` // ID del canal de voz.
+	TextChannel  string            `json:"text_channel"`  // ID del canal de texto.
 }
 
 // FilePlaylistStorage es una implementación de GuildPlayerState que almacena la lista de reproducción en un archivo.
@@ -40,7 +41,7 @@ func NewFilePlaylistStorage(filepath string) (*FilePlaylistStorage, error) {
 }
 
 // GetCurrentSong devuelve la canción actual que se está reproduciendo.
-func (s *FilePlaylistStorage) GetCurrentSong() (*bot.PlayedSong, error) {
+func (s *FilePlaylistStorage) GetCurrentSong() (*voice.PlayedSong, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
@@ -54,7 +55,7 @@ func (s *FilePlaylistStorage) GetCurrentSong() (*bot.PlayedSong, error) {
 }
 
 // SetCurrentSong establece la canción actual que se está reproduciendo.
-func (s *FilePlaylistStorage) SetCurrentSong(song *bot.PlayedSong) error {
+func (s *FilePlaylistStorage) SetCurrentSong(song *voice.PlayedSong) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -144,7 +145,7 @@ func (s *FilePlaylistStorage) SetTextChannel(channelID string) error {
 }
 
 // PrependSong agrega una canción al principio de la lista de reproducción.
-func (s *FilePlaylistStorage) PrependSong(song *bot.Song) error {
+func (s *FilePlaylistStorage) PrependSong(song *voice.Song) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -154,7 +155,7 @@ func (s *FilePlaylistStorage) PrependSong(song *bot.Song) error {
 		return fmt.Errorf("error al leer el estado: %w", err)
 	}
 
-	state.Songs = append([]*bot.Song{song}, state.Songs...)
+	state.Songs = append([]*voice.Song{song}, state.Songs...)
 
 	if err := s.writeState(state); err != nil {
 		s.logger.Error("Error al escribir el estado", zap.Error(err))
@@ -165,7 +166,7 @@ func (s *FilePlaylistStorage) PrependSong(song *bot.Song) error {
 }
 
 // AppendSong agrega una canción al final de la lista de reproducción.
-func (s *FilePlaylistStorage) AppendSong(song *bot.Song) error {
+func (s *FilePlaylistStorage) AppendSong(song *voice.Song) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -186,7 +187,7 @@ func (s *FilePlaylistStorage) AppendSong(song *bot.Song) error {
 }
 
 // RemoveSong elimina una canción de la lista de reproducción por posición.
-func (s *FilePlaylistStorage) RemoveSong(position int) (*bot.Song, error) {
+func (s *FilePlaylistStorage) RemoveSong(position int) (*voice.Song, error) {
 	index := position - 1
 
 	s.mutex.Lock()
@@ -227,7 +228,7 @@ func (s *FilePlaylistStorage) ClearPlaylist() error {
 		return fmt.Errorf("error al leer el estado: %w", err)
 	}
 
-	state.Songs = make([]*bot.Song, 0)
+	state.Songs = make([]*voice.Song, 0)
 
 	if err := s.writeState(state); err != nil {
 		s.logger.Error("Error al escribir el estado", zap.Error(err))
@@ -238,7 +239,7 @@ func (s *FilePlaylistStorage) ClearPlaylist() error {
 }
 
 // GetSongs devuelve todas las canciones de la lista de reproducción.
-func (s *FilePlaylistStorage) GetSongs() ([]*bot.Song, error) {
+func (s *FilePlaylistStorage) GetSongs() ([]*voice.Song, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
@@ -252,7 +253,7 @@ func (s *FilePlaylistStorage) GetSongs() ([]*bot.Song, error) {
 }
 
 // PopFirstSong elimina y devuelve la primera canción de la lista de reproducción.
-func (s *FilePlaylistStorage) PopFirstSong() (*bot.Song, error) {
+func (s *FilePlaylistStorage) PopFirstSong() (*voice.Song, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 

@@ -126,7 +126,6 @@ func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *voice.Song) (io.R
 
 		bw := bufio.NewWriterSize(writer, downloadBuffer)
 		downloadCmd.Stdout = bw
-
 		// Ejecuta el comando y captura cualquier error.
 		if err := downloadCmd.Run(); err != nil {
 			s.Logger.Error("Error al ejecutar el comando: %v", zap.Error(err))

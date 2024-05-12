@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"github.com/Tomas-vilte/GoMusicBot/internal/music/fetcher"
 	"github.com/Tomas-vilte/GoMusicBot/internal/utils"
 	"github.com/bwmarrin/discordgo"
@@ -19,13 +20,13 @@ type GuildID string
 
 // SongLookuper define la interfaz para buscar canciones.
 type SongLookuper interface {
-	LookupSongs(ctx context.Context, input string) ([]*bot.Song, error)
+	LookupSongs(ctx context.Context, input string) ([]*voice.Song, error)
 }
 
 // InteractionStorage define la interfaz para el almacenamiento de interacciones.
 type InteractionStorage interface {
-	SaveSongList(channelID string, list []*bot.Song)
-	GetSongList(channelID string) []*bot.Song
+	SaveSongList(channelID string, list []*voice.Song)
+	GetSongList(channelID string) []*voice.Song
 	DeleteSongList(channelID string)
 }
 
@@ -418,12 +419,17 @@ func (handler *InteractionHandler) GetPlayingSong(s *discordgo.Session, ic *disc
 
 // setupGuildPlayer configura un reproductor para un servidor dado.
 func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discordgo.Session) *bot.GuildPlayer {
-	voiceChat := &VoiceChatSession{
-		discordSession: dg,
-		guildID:        string(guildID),
+	voiceChat := &voice.ChatSessionImpl{
+		DiscordSession: dg,
+		GuildID:        string(guildID),
 	}
+
+	messageSender := &voice.MessageSenderImpl{
+		DiscordSession: dg,
+	}
+
 	playlistStore := config.GetPlaylistStore(handler.cfg, string(guildID))
-	player := bot.NewGuildPlayer(handler.ctx, voiceChat, playlistStore, fetcher.GetDCAData).WithLogger(handler.logger.With(zap.String("guildID", string(guildID))))
+	player := bot.NewGuildPlayer(handler.ctx, voiceChat, playlistStore, fetcher.GetDCAData, messageSender).WithLogger(handler.logger.With(zap.String("guildID", string(guildID))))
 	return player
 }
 

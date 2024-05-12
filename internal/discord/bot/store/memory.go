@@ -2,6 +2,7 @@ package store
 
 import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"go.uber.org/zap"
 	"sync"
 )
@@ -9,10 +10,10 @@ import (
 // InmemoryPlaylistStorage es una implementación de GuildPlayerState que almacena la lista de reproducción en memoria.
 type InmemoryPlaylistStorage struct {
 	mutex        sync.RWMutex
-	songs        []*bot.Song     // Lista de canciones.
-	currentSong  *bot.PlayedSong // Canción actual que se está reproduciendo.
-	textChannel  string          // ID del canal de texto.
-	voiceChannel string          // ID del canal de voz.
+	songs        []*voice.Song     // Lista de canciones.
+	currentSong  *voice.PlayedSong // Canción actual que se está reproduciendo.
+	textChannel  string            // ID del canal de texto.
+	voiceChannel string            // ID del canal de voz.
 	logger       *zap.Logger
 }
 
@@ -20,13 +21,13 @@ type InmemoryPlaylistStorage struct {
 func NewInmemoryGuildPlayerState() *InmemoryPlaylistStorage {
 	return &InmemoryPlaylistStorage{
 		mutex:  sync.RWMutex{},
-		songs:  make([]*bot.Song, 0),
+		songs:  make([]*voice.Song, 0),
 		logger: zap.NewNop(),
 	}
 }
 
 // GetCurrentSong devuelve la canción actual que se está reproduciendo.
-func (s *InmemoryPlaylistStorage) GetCurrentSong() (*bot.PlayedSong, error) {
+func (s *InmemoryPlaylistStorage) GetCurrentSong() (*voice.PlayedSong, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
@@ -35,7 +36,7 @@ func (s *InmemoryPlaylistStorage) GetCurrentSong() (*bot.PlayedSong, error) {
 }
 
 // SetCurrentSong establece la canción actual que se está reproduciendo.
-func (s *InmemoryPlaylistStorage) SetCurrentSong(song *bot.PlayedSong) error {
+func (s *InmemoryPlaylistStorage) SetCurrentSong(song *voice.PlayedSong) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -83,17 +84,17 @@ func (s *InmemoryPlaylistStorage) SetTextChannel(channelID string) error {
 }
 
 // PrependSong agrega una canción al principio de la lista de reproducción.
-func (s *InmemoryPlaylistStorage) PrependSong(song *bot.Song) error {
+func (s *InmemoryPlaylistStorage) PrependSong(song *voice.Song) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.songs = append([]*bot.Song{song}, s.songs...)
+	s.songs = append([]*voice.Song{song}, s.songs...)
 	s.logger.Debug("Canción agregada al principio de la lista de reproducción")
 	return nil
 }
 
 // AppendSong agrega una canción al final de la lista de reproducción.
-func (s *InmemoryPlaylistStorage) AppendSong(song *bot.Song) error {
+func (s *InmemoryPlaylistStorage) AppendSong(song *voice.Song) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -103,7 +104,7 @@ func (s *InmemoryPlaylistStorage) AppendSong(song *bot.Song) error {
 }
 
 // RemoveSong elimina una canción de la lista de reproducción por posición.
-func (s *InmemoryPlaylistStorage) RemoveSong(position int) (*bot.Song, error) {
+func (s *InmemoryPlaylistStorage) RemoveSong(position int) (*voice.Song, error) {
 	index := position - 1
 
 	s.mutex.Lock()
@@ -128,18 +129,18 @@ func (s *InmemoryPlaylistStorage) ClearPlaylist() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.songs = make([]*bot.Song, 0)
+	s.songs = make([]*voice.Song, 0)
 	s.logger.Debug("Lista de reproducción borrada")
 	return nil
 }
 
 // GetSongs devuelve todas las canciones de la lista de reproducción.
-func (s *InmemoryPlaylistStorage) GetSongs() ([]*bot.Song, error) {
+func (s *InmemoryPlaylistStorage) GetSongs() ([]*voice.Song, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
 	// Se copian las canciones para evitar modificaciones inadvertidas.
-	songs := make([]*bot.Song, len(s.songs))
+	songs := make([]*voice.Song, len(s.songs))
 	copy(songs, s.songs)
 
 	s.logger.Debug("Obteniendo todas las canciones de la lista de reproducción")
@@ -147,7 +148,7 @@ func (s *InmemoryPlaylistStorage) GetSongs() ([]*bot.Song, error) {
 }
 
 // PopFirstSong elimina y devuelve la primera canción de la lista de reproducción.
-func (s *InmemoryPlaylistStorage) PopFirstSong() (*bot.Song, error) {
+func (s *InmemoryPlaylistStorage) PopFirstSong() (*voice.Song, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
