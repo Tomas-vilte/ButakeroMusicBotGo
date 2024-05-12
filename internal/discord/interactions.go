@@ -7,6 +7,7 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice/codec"
 	"github.com/Tomas-vilte/GoMusicBot/internal/music/fetcher"
 	"github.com/Tomas-vilte/GoMusicBot/internal/utils"
 	"github.com/bwmarrin/discordgo"
@@ -422,6 +423,7 @@ func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discord
 	voiceChat := &voice.ChatSessionImpl{
 		DiscordSession: dg,
 		GuildID:        string(guildID),
+		DCAStreamer:    &codec.DCAStreamerImpl{},
 	}
 
 	messageSender := &voice.MessageSenderImpl{

@@ -16,8 +16,8 @@ type DiscordSessionWrapper interface {
 	Close() error
 }
 
-// VoiceConnectionWrapper es una interfaz que envuelve los métodos de discordgo.VoiceConnection que necesitamos mockear.
-type VoiceConnectionWrapper interface {
+// ConnectionWrapper es una interfaz que envuelve los métodos de discordgo.VoiceConnection que necesitamos mockear.
+type ConnectionWrapper interface {
 	Disconnect() error
 	Speaking(flag bool) error
 	OpusSend(data []byte, mode int) (ok bool, err error)
@@ -37,38 +37,39 @@ func (w *DiscordSessionWrapperImpl) Close() error {
 	return w.session.Close()
 }
 
-// VoiceConnectionWrapperImpl es una implementación concreta de VoiceConnectionWrapper que envuelve una instancia de discordgo.VoiceConnection.
-type VoiceConnectionWrapperImpl struct {
+// ConnectionWrapperImpl es una implementación concreta de ConnectionWrapper que envuelve una instancia de discordgo.VoiceConnection.
+type ConnectionWrapperImpl struct {
 	voiceConnection *discordgo.VoiceConnection
 	opusSendChan    chan []byte
 }
 
-func (w *VoiceConnectionWrapperImpl) Disconnect() error {
+func (w *ConnectionWrapperImpl) Disconnect() error {
 	if w.voiceConnection == nil {
 		return nil
 	}
 	return w.voiceConnection.Disconnect()
 }
 
-func (w *VoiceConnectionWrapperImpl) Speaking(flag bool) error {
+func (w *ConnectionWrapperImpl) Speaking(flag bool) error {
 	return w.voiceConnection.Speaking(flag)
 }
 
-func (w *VoiceConnectionWrapperImpl) OpusSend(data []byte, mode int) (bool, error) {
+func (w *ConnectionWrapperImpl) OpusSend(data []byte, mode int) (bool, error) {
 	w.opusSendChan <- data
 	return true, nil
 }
 
-func (w *VoiceConnectionWrapperImpl) OpusSendChan() chan<- []byte {
+func (w *ConnectionWrapperImpl) OpusSendChan() chan<- []byte {
 	w.opusSendChan = w.voiceConnection.OpusSend
 	return w.opusSendChan
 }
 
 // ChatSessionImpl representa una sesión de chat de voz en Discord.
 type ChatSessionImpl struct {
-	DiscordSession  DiscordSessionWrapper  // Sesión de Discord para enviar mensajes de texto y manejar la voz.
-	GuildID         string                 // ID del servidor de Discord al que pertenece la sesión.
-	voiceConnection VoiceConnectionWrapper // Conexión de voz en Discord.
+	DiscordSession  DiscordSessionWrapper // Sesión de Discord para enviar mensajes de texto y manejar la voz.
+	GuildID         string                // ID del servidor de Discord al que pertenece la sesión.
+	voiceConnection ConnectionWrapper     // Conexión de voz en Discord.
+	DCAStreamer     codec.DCAStreamer
 }
 
 // Close cierra la sesión de Discord.
@@ -86,10 +87,9 @@ func (session *ChatSessionImpl) JoinVoiceChannel(channelID string) error {
 		log.Printf("Error al unirse al canal de voz: %v\n", err)
 		return fmt.Errorf("mientras se unía al canal de voz: %w", err)
 	}
-	session.voiceConnection = &VoiceConnectionWrapperImpl{
+	session.voiceConnection = &ConnectionWrapperImpl{
 		voiceConnection: vc,
 	}
-	//session.voiceConnection = vc
 	return nil
 }
 
@@ -101,31 +101,32 @@ func (session *ChatSessionImpl) LeaveVoiceChannel() error {
 	}
 
 	// Dejar el canal de voz en Discord.
-	if err := session.voiceConnection.Disconnect(); err != nil {
+	err := session.voiceConnection.Disconnect()
+	session.voiceConnection = nil
+
+	if err != nil {
 		log.Printf("Error al dejar el canal de voz: %v\n", err)
 		return err
 	}
 
-	session.voiceConnection = nil
 	return nil
 }
 
 // SendAudio envía datos de audio a través de la conexión de voz en Discord utilizando el códec DCA.
 func (session *ChatSessionImpl) SendAudio(ctx context.Context, reader io.Reader, positionCallback func(time.Duration)) error {
 	log.Println("Enviando audio al canal de voz...")
-	// Indicar que el bot está hablando en el canal de voz.
+
 	if err := session.voiceConnection.Speaking(true); err != nil {
 		log.Printf("Error al comenzar a hablar: %v\n", err)
 		return fmt.Errorf("mientras se comenzaba a hablar: %w", err)
 	}
 
-	// Transmitir los datos de audio utilizando el códec DCA.
-	if err := codec.StreamDCAData(ctx, reader, session.voiceConnection.OpusSendChan(), positionCallback); err != nil {
+	if err := session.DCAStreamer.StreamDCAData(ctx, reader, session.voiceConnection.OpusSendChan(), positionCallback); err != nil {
 		log.Printf("Error al transmitir datos DCA: %v\n", err)
+		session.voiceConnection.Speaking(false)
 		return fmt.Errorf("mientras se transmitían datos DCA: %w", err)
 	}
 
-	// Indicar que el bot ha dejado de hablar en el canal de voz.
 	if err := session.voiceConnection.Speaking(false); err != nil {
 		log.Printf("Error al dejar de hablar: %v\n", err)
 		return fmt.Errorf("mientras se dejaba de hablar: %w", err)
