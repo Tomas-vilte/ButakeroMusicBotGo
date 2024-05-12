@@ -2,7 +2,7 @@ package fetcher
 
 import (
 	"context"
-	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"io"
 	"reflect"
 	"testing"
@@ -38,7 +38,7 @@ func TestYoutubeFetcher_GetDCAData(t *testing.T) {
 	// Arrange
 	ctx := context.Background()
 	f := NewYoutubeFetcher()
-	song := &bot.Song{
+	song := &voice.Song{
 		Type: "yt-dlp",
 		URL:  "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 	}

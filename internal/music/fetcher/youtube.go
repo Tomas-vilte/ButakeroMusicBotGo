@@ -130,6 +130,10 @@ func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *voice.Song) (io.R
 		if err := downloadCmd.Run(); err != nil {
 			s.Logger.Error("Error al ejecutar el comando: %v", zap.Error(err))
 		}
+
+		if err := bw.Flush(); err != nil {
+			s.Logger.Error("mientras se limpia la tubería de datos DCA: %v", zap.Error(err))
+		}
 	}(writer)
 
 	return reader, nil
