@@ -3,12 +3,12 @@ package fetcher
 import (
 	"context"
 	"fmt"
-	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"io"
 )
 
 // GetDCAData obtiene datos de audio DCA para una canción.
-func GetDCAData(ctx context.Context, song *bot.Song) (io.Reader, error) {
+func GetDCAData(ctx context.Context, song *voice.Song) (io.Reader, error) {
 	switch song.Type {
 	case "yt-dlp":
 		return NewYoutubeFetcher().GetDCAData(ctx, song)
