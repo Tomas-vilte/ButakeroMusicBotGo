@@ -120,14 +120,16 @@ func TestChatSessionImpl_SendAudio(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		// Arrange
 		mockVoiceConnection := &MockVoiceConnectionWrapper{}
-		defer mockVoiceConnection.Mock.AssertExpectations(t)
+		defer mockVoiceConnection.AssertExpectations(t)
 		mockDCAStreamer := &MockDCAStreamer{}
-		defer mockDCAStreamer.Mock.AssertExpectations(t)
+		defer mockDCAStreamer.AssertExpectations(t)
+
 		opusSendChan := make(chan<- []byte, 1)
 		mockVoiceConnection.On("Speaking", true).Return(nil).Once()
-		mockVoiceConnection.On("OpusSendChan").Return(opusSendChan)
+		mockVoiceConnection.On("OpusSendChan").Return(opusSendChan).Once()
 		mockDCAStreamer.On("StreamDCAData", mock.Anything, mock.Anything, opusSendChan, mock.Anything).Return(nil)
 		mockVoiceConnection.On("Speaking", false).Return(nil).Once()
+
 		session := &ChatSessionImpl{
 			voiceConnection: mockVoiceConnection,
 			DCAStreamer:     mockDCAStreamer,
@@ -146,10 +148,11 @@ func TestChatSessionImpl_SendAudio(t *testing.T) {
 	t.Run("SpeakingTrueError", func(t *testing.T) {
 		// Arrange
 		mockVoiceConnection := &MockVoiceConnectionWrapper{}
-		defer mockVoiceConnection.Mock.AssertExpectations(t)
+		defer mockVoiceConnection.AssertExpectations(t)
 		mockDCAStreamer := &MockDCAStreamer{}
-		defer mockDCAStreamer.Mock.AssertExpectations(t)
+
 		mockVoiceConnection.On("Speaking", true).Return(fmt.Errorf("error al hablar")).Once()
+
 		session := &ChatSessionImpl{
 			voiceConnection: mockVoiceConnection,
 			DCAStreamer:     mockDCAStreamer,
@@ -162,20 +165,23 @@ func TestChatSessionImpl_SendAudio(t *testing.T) {
 		err := session.SendAudio(context.Background(), reader, positionCallback)
 
 		// Assert
-		assert.Error(t, err)
+		assert.EqualError(t, err, "mientras se comenzaba a hablar: error al hablar")
 	})
 
 	t.Run("SpeakingFalseError", func(t *testing.T) {
 		// Arrange
 		mockVoiceConnection := &MockVoiceConnectionWrapper{}
-		defer mockVoiceConnection.Mock.AssertExpectations(t)
+		defer mockVoiceConnection.AssertExpectations(t)
 		mockDCAStreamer := &MockDCAStreamer{}
-		defer mockDCAStreamer.Mock.AssertExpectations(t)
+		defer mockDCAStreamer.AssertExpectations(t)
+
 		opusSendChan := make(chan<- []byte, 1)
+		expectedErr := errors.New("error al dejar de hablar")
 		mockVoiceConnection.On("Speaking", true).Return(nil).Once()
-		mockVoiceConnection.On("OpusSendChan").Return(opusSendChan)
+		mockVoiceConnection.On("OpusSendChan").Return(opusSendChan).Once()
 		mockDCAStreamer.On("StreamDCAData", mock.Anything, mock.Anything, opusSendChan, mock.Anything).Return(nil)
-		mockVoiceConnection.On("Speaking", false).Return(fmt.Errorf("error al dejar de hablar")).Once()
+		mockVoiceConnection.On("Speaking", false).Return(expectedErr).Once()
+
 		session := &ChatSessionImpl{
 			voiceConnection: mockVoiceConnection,
 			DCAStreamer:     mockDCAStreamer,
@@ -188,29 +194,55 @@ func TestChatSessionImpl_SendAudio(t *testing.T) {
 		err := session.SendAudio(context.Background(), reader, positionCallback)
 
 		// Assert
-		assert.Error(t, err)
+		assert.EqualError(t, err, "error al dejar de hablar")
 	})
 
 	t.Run("StreamError", func(t *testing.T) {
 		// Arrange
-		mockVoiceConnection := new(MockVoiceConnectionWrapper)
-		mockDCAStreamer := new(MockDCAStreamer)
+		mockVoiceConnection := &MockVoiceConnectionWrapper{}
+		defer mockVoiceConnection.AssertExpectations(t)
+		mockDCAStreamer := &MockDCAStreamer{}
+		defer mockDCAStreamer.AssertExpectations(t)
+
+		expectedErr := errors.New("error de transmisión DCA")
+		opusSendChan := make(chan<- []byte, 1)
+		mockVoiceConnection.On("Speaking", true).Return(nil).Once()
+		mockVoiceConnection.On("OpusSendChan").Return(opusSendChan).Once()
+		mockDCAStreamer.On("StreamDCAData", mock.Anything, mock.Anything, opusSendChan, mock.Anything).Return(expectedErr)
+		mockVoiceConnection.On("Speaking", false).Return(nil).Once() // Ajuste aquí
+
 		session := &ChatSessionImpl{
 			voiceConnection: mockVoiceConnection,
 			DCAStreamer:     mockDCAStreamer,
 		}
-		expectedErr := errors.New("error de transmisión DCA")
-		mockVoiceConnection.On("Speaking", true).Return(nil)
-		mockDCAStreamer.On("StreamDCAData", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(expectedErr)
-		mockVoiceConnection.On("Speaking", false).Return(nil)
-		opusSendChan := make(chan<- []byte) // Canal de solo escritura
-		mockVoiceConnection.On("OpusSendChan").Return(opusSendChan)
 
 		// Act
 		err := session.SendAudio(context.Background(), nil, nil)
 
 		// Assert
-		assert.Error(t, err)
 		assert.EqualError(t, err, "mientras se transmitían datos DCA: error de transmisión DCA")
+	})
+
+	t.Run("OpusSendChanNil", func(t *testing.T) {
+		// Arrange
+		mockVoiceConnection := &MockVoiceConnectionWrapper{}
+		defer mockVoiceConnection.AssertExpectations(t)
+		mockDCAStreamer := &MockDCAStreamer{}
+		defer mockDCAStreamer.AssertExpectations(t)
+
+		var opusSendChan chan<- []byte = nil
+		mockVoiceConnection.On("Speaking", true).Return(nil).Once()
+		mockVoiceConnection.On("OpusSendChan").Return(opusSendChan).Once()
+
+		session := &ChatSessionImpl{
+			voiceConnection: mockVoiceConnection,
+			DCAStreamer:     mockDCAStreamer,
+		}
+
+		// Act
+		err := session.SendAudio(context.Background(), nil, nil)
+
+		// Assert
+		assert.EqualError(t, err, "canal de envío de Opus no está disponible")
 	})
 }

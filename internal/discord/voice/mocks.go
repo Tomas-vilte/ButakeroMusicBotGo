@@ -24,7 +24,6 @@ func (m *MockDiscordSessionWrapper) Close() error {
 
 type MockVoiceConnectionWrapper struct {
 	mock.Mock
-	opusSendChan chan<- []byte
 }
 
 func (m *MockVoiceConnectionWrapper) Disconnect() error {
