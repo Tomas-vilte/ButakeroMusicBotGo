@@ -5,6 +5,25 @@ import (
 	"log"
 )
 
+// MessageSenderWrapper es una interfaz que envuelve los métodos necesarios de discordgo.Session para enviar mensajes.
+type MessageSenderWrapper interface {
+	ChannelMessageSendComplex(channelID string, data *discordgo.MessageSend, options ...discordgo.RequestOption) (*discordgo.Message, error)
+	ChannelMessageEditComplex(m *discordgo.MessageEdit, options ...discordgo.RequestOption) (*discordgo.Message, error)
+}
+
+// MessageSenderWrapperImpl es una implementación concreta de MessageSenderWrapper que envuelve una instancia de discordgo.Session.
+type MessageSenderWrapperImpl struct {
+	session *discordgo.Session
+}
+
+func (w *MessageSenderWrapperImpl) ChannelMessageSendComplex(channelID string, data *discordgo.MessageSend, options ...discordgo.RequestOption) (*discordgo.Message, error) {
+	return w.session.ChannelMessageSendComplex(channelID, data, options...)
+}
+
+func (w *MessageSenderWrapperImpl) ChannelMessageEditComplex(m *discordgo.MessageEdit, options ...discordgo.RequestOption) (*discordgo.Message, error) {
+	return w.session.ChannelMessageEditComplex(m, options...)
+}
+
 // ChatMessageSender envía mensajes de chat a Discord.
 type ChatMessageSender interface {
 	SendMessage(channelID, message string) error
@@ -14,7 +33,7 @@ type ChatMessageSender interface {
 
 // MessageSenderImpl implementa la interfaz ChatMessageSender para enviar mensajes en Discord.
 type MessageSenderImpl struct {
-	DiscordSession *discordgo.Session
+	DiscordSession MessageSenderWrapper
 }
 
 // SendMessage envía un mensaje de texto a un canal específico en Discord.

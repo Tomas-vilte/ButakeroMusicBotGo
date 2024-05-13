@@ -60,9 +60,6 @@ func (w *ConnectionWrapperImpl) OpusSend(data []byte, mode int) (bool, error) {
 }
 
 func (w *ConnectionWrapperImpl) OpusSendChan() chan<- []byte {
-	if w.opusSendChan == nil {
-		return nil
-	}
 	w.opusSendChan = w.voiceConnection.OpusSend
 	return w.opusSendChan
 }
