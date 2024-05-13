@@ -8,6 +8,10 @@ import (
 
 // GeneratePlayingSongEmbed un mensaje embed para mostrar que se está agregando una canción a la cola de reproducción.
 func GeneratePlayingSongEmbed(message *PlayMessage) *discordgo.MessageEmbed {
+	if message == nil || message.Song == nil {
+		return nil // Retornamos nil si message o message.Song es nil
+	}
+
 	progressBar := generateProgressBar(float64(message.Position)/float64(message.Song.Duration), 20)
 
 	embed := &discordgo.MessageEmbed{
