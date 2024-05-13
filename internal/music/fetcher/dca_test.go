@@ -3,7 +3,7 @@ package fetcher
 import (
 	"context"
 	"fmt"
-	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"io"
 	"testing"
 )
@@ -13,7 +13,7 @@ func TestGetDCAData(t *testing.T) {
 
 	// Caso 1: Tipo de canción compatible (yt-dlp)
 	t.Run("SupportedSongType", func(t *testing.T) {
-		song := &bot.Song{
+		song := &voice.Song{
 			Type: "yt-dlp",
 			URL:  "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 		}
@@ -36,7 +36,7 @@ func TestGetDCAData(t *testing.T) {
 
 	// Caso 2: Tipo de canción no compatible
 	t.Run("UnsupportedSongType", func(t *testing.T) {
-		song := &bot.Song{
+		song := &voice.Song{
 			Type: "unsupported-type",
 			URL:  "https://example.com/unsupported-song",
 		}
