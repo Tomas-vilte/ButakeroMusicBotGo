@@ -60,6 +60,9 @@ func (w *ConnectionWrapperImpl) OpusSend(data []byte, mode int) (bool, error) {
 }
 
 func (w *ConnectionWrapperImpl) OpusSendChan() chan<- []byte {
+	if w.opusSendChan == nil {
+		return nil
+	}
 	w.opusSendChan = w.voiceConnection.OpusSend
 	return w.opusSendChan
 }
@@ -121,15 +124,23 @@ func (session *ChatSessionImpl) SendAudio(ctx context.Context, reader io.Reader,
 		return fmt.Errorf("mientras se comenzaba a hablar: %w", err)
 	}
 
-	if err := session.DCAStreamer.StreamDCAData(ctx, reader, session.voiceConnection.OpusSendChan(), positionCallback); err != nil {
+	opusSendChan := session.voiceConnection.OpusSendChan()
+	if opusSendChan == nil {
+		log.Println("Canal de envío de Opus no está disponible")
+		return fmt.Errorf("canal de envío de Opus no está disponible")
+	}
+
+	if err := session.DCAStreamer.StreamDCAData(ctx, reader, opusSendChan, positionCallback); err != nil {
 		log.Printf("Error al transmitir datos DCA: %v\n", err)
-		session.voiceConnection.Speaking(false)
-		return fmt.Errorf("mientras se transmitían datos DCA: %w", err)
+		err = fmt.Errorf("mientras se transmitían datos DCA: %w", err)
+		_ = session.voiceConnection.Speaking(false)
+		return err
 	}
 
 	if err := session.voiceConnection.Speaking(false); err != nil {
 		log.Printf("Error al dejar de hablar: %v\n", err)
-		return fmt.Errorf("mientras se dejaba de hablar: %w", err)
+		return err
 	}
+
 	return nil
 }
