@@ -28,19 +28,19 @@ func (d *DCAStreamerImpl) StreamDCAData(ctx context.Context, dca io.Reader, opus
 		err := binary.Read(dca, binary.LittleEndian, &opuslen)
 
 		if err == io.EOF || errors.Is(err, io.ErrUnexpectedEOF) {
-			log.Printf("Error EOF o inesperado EOF encontrado en la transmisión de datos DCA: %v\n", err)
+			log.Printf("Error: EOF o EOF inesperado encontrado durante la transmisión de datos DCA: %v\n", err)
 			return nil
 		}
 
 		if err != nil {
-			return fmt.Errorf("while reading length from DCA: %w", err)
+			return fmt.Errorf("mientras se leía la longitud de DCA: %w", err)
 		}
 
 		inBuf := make([]byte, opuslen)
 		err = binary.Read(dca, binary.LittleEndian, &inBuf)
 
 		if err != nil {
-			return fmt.Errorf("while reading PCM from DCA: %w", err)
+			return fmt.Errorf("mientras se leía PCM de DCA: %w", err)
 		}
 
 		select {
