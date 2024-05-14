@@ -24,13 +24,6 @@ type SongLookuper interface {
 	LookupSongs(ctx context.Context, input string) ([]*voice.Song, error)
 }
 
-// InteractionStorage define la interfaz para el almacenamiento de interacciones.
-type InteractionStorage interface {
-	SaveSongList(channelID string, list []*voice.Song)
-	GetSongList(channelID string) []*voice.Song
-	DeleteSongList(channelID string)
-}
-
 // InteractionHandler maneja las interacciones de Discord.
 type InteractionHandler struct {
 	ctx           context.Context
