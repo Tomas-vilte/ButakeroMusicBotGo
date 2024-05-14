@@ -38,10 +38,17 @@ func main() {
 	if err := envconfig.Process("", cfg); err != nil {
 		logger.Fatal("error al cargar las variables de entorno", zap.Error(err))
 	}
+	dg, err := discordgo.New("Bot " + cfg.DiscordToken)
+	if err != nil {
+		logger.Fatal("error al crear la session de discord", zap.Error(err))
+		return
+	}
 	storage = discord.NewInMemoryStorage()
 	youtubeFetcher = fetcher.NewYoutubeFetcher()
+	responseHandler := discord.NewDiscordResponseHandler(logger)
+	sessionService := discord.NewSessionService(dg)
 
-	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, youtubeFetcher, storage, cfg).WithLogger(logger.Named("interactionHandler"))
+	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg).WithLogger(logger.Named("interactionHandler"))
 	commandHandler := discord.NewSlashCommandRouter(cfg.CommandPrefix).
 		PlayHandler(handler.PlaySong).
 		SkipHandler(handler.SkipSong).
@@ -51,11 +58,6 @@ func main() {
 		PlayingNowHandler(handler.GetPlayingSong).
 		AddSongOrPlaylistHandler(handler.AddSongOrPlaylist)
 
-	dg, err := discordgo.New("Bot " + cfg.DiscordToken)
-	if err != nil {
-		logger.Fatal("error al crear la session de discord", zap.Error(err))
-		return
-	}
 	handler.RegisterEventHandlers(dg)
 	dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		switch i.Type {
