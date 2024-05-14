@@ -4,6 +4,13 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 )
 
+// InteractionStorage define la interfaz para el almacenamiento de interacciones.
+type InteractionStorage interface {
+	SaveSongList(channelID string, list []*voice.Song)
+	GetSongList(channelID string) []*voice.Song
+	DeleteSongList(channelID string)
+}
+
 // InMemoryInteractionStorage es una estructura de almacenamiento en memoria para interacciones.
 type InMemoryInteractionStorage struct {
 	songsToAdd map[string][]*voice.Song
