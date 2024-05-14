@@ -61,31 +61,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: coverage.out
-
-      - name: Post coverage comment (using destructuring assignment)
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const { core, github } = require('@actions/github');
-
-            const owner = core.getInput('repo.owner');
-            const repo = core.getInput('repo.repo');
-            const pull_number = core.getInput('pull_number');
-            const coverage_path = core.artifactPath('coverage-report');
-
-            const fs = require('fs');
-            const coverage = fs.readFileSync(coverage_path, 'utf8');
-            const match = coverage.match(/coverage: ([0-9]+)\%/)
-            const coverage_percentage = parseInt(match[1]);
-
-            const commit_id = core.getInput('head_sha');
-
-            const client = github.getOctokit(core.secrets.GITHUB_TOKEN);
-            client.issues.createComment({
-              owner,
-              repo,
-              issue_number: pull_number,
-              body: `The test coverage for this pull request is **${coverage_percentage}%**.`
-            });
+          path: coverage.html
