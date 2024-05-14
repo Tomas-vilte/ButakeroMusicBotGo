@@ -1,0 +1,39 @@
+name: Create Release after CD
+on:
+  workflow_run:
+    workflows: ["Go Continuous Delivery Pipeline"]
+    types:
+      - completed
+
+jobs:
+  create_release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get previous tag
+        id: previous_tag
+        run: echo ::set-output name=tag::$(git describe --tags $(git rev-list --tags --max-count=1))
+
+      - name: Get changelog
+        id: changelog
+        run: |
+          git log --pretty=format:"- %s" ${PREVIOUS_TAG}..HEAD > changelog.txt
+          cat changelog.txt
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release ${{ github.run_number }}
+          body: |
+            Changes in this release:
+            $(cat changelog.txt)
+          draft: false
+          prerelease: false
