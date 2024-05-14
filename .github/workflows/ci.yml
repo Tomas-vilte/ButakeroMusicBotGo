@@ -52,23 +52,22 @@ jobs:
           make build
           make test
 
-      - name: Generate coverage report
-        run: |
-          go test -coverprofile=coverage.out ./...
-          go tool cover -html=coverage.out -o coverage.html
+          - name: Generate coverage report
+          run: |
+            go test -coverprofile=coverage.out ./...
+            go tool cover -html=coverage.out -o coverage.html
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage.out
-      - name: Post coverage comment
+      - name: Post coverage comment (using destructuring assignment)
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const core = require('@actions/core');
-            const github = require('@actions/github');
+            const { core, github } = require('@actions/github');
 
             const owner = core.getInput('repo.owner');
             const repo = core.getInput('repo.repo');
@@ -82,5 +81,10 @@ jobs:
 
             const commit_id = core.getInput('head_sha');
 
-            const client = new github.getOctokit(core.secrets.GITHUB_TOKEN);
-            client.issues
+            const client = github.getOctokit(core.secrets.GITHUB_TOKEN);
+            client.issues.createComment({
+              owner,
+              repo,
+              issue_number: pull_number,
+              body: `The test coverage for this pull request is **${coverage_percentage}%**.`
+            });
