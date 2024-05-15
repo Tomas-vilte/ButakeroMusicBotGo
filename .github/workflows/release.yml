@@ -1,4 +1,4 @@
-name: Create Release after CD
+name: Increment Version and Create Release
 on:
   workflow_run:
     workflows: ["Go Continuous Delivery Pipeline"]
@@ -14,27 +14,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get previous tag
-        id: previous_tag
-        run: echo ::set-output name=tag::$(git describe --tags $(git rev-list --tags --max-count=1))
-
-      - name: Get changelog
-        id: changelog
-        run: |
-          git log --pretty=format:"- %s" ${PREVIOUS_TAG}..HEAD > changelog.txt
-          cat changelog.txt
+      - name: Changelog
+        uses: scottbrenner/generate-changelog-action@master
+        id: Changelog
+        env:
+          REPO: ${{ github.repository }}
 
       - name: Create Release
         id: create_release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            changelog.txt
-          tag_name: v${{ github.run_number }}
-          name: Release ${{ github.run_number }}
-          token: ${{ secrets.RELEASE_TOKEN }}
-          body: |
-            Changes in this release:
-            $(cat changelog.txt)
+        uses: actions/create-release@latest
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            ${{ steps.Changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
