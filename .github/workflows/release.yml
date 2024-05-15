@@ -17,15 +17,16 @@ jobs:
 
       - name: Read current version
         id: read_version
-        run: echo "::set-output name=version::$(cat VERSION)"
-        
+        run: echo "::set-output name=version::$(cat version.yaml | yq r - version)"
+
       - name: Increment version
         id: increment_version
         run: echo "::set-output name=version::$(echo ${{ steps.read_version.outputs.version }} | awk -F. '{$NF+=1; OFS="."; print}' )"
-        
+
       - name: Save incremented version
-        run: echo "${{ steps.increment_version.outputs.version }}" > VERSION
-        
+        run: |
+          echo "version: ${{ steps.increment_version.outputs.version }}" > version.yaml
+
       - name: Changelog
         uses: scottbrenner/generate-changelog-action@master
         id: Changelog
