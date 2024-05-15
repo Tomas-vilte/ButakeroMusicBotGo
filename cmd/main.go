@@ -25,7 +25,7 @@ var (
 )
 
 func main() {
-	fmt.Println("test drafter 1")
+	fmt.Println("test drafter 12")
 	loggerCfg := zap.NewDevelopmentConfig()
 	loggerCfg.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
 	logger, _ := loggerCfg.Build()
