@@ -8,7 +8,8 @@ on:
     types: [opened, reopened, synchronize]
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: read
 
 jobs:
   update_release_draft:
@@ -19,4 +20,4 @@ jobs:
     steps:
       - uses: release-drafter/release-drafter@v6
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
