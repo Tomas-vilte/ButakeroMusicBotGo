@@ -35,5 +35,3 @@ jobs:
           body: |
             Changes in this release:
             $(cat changelog.txt)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
