@@ -32,9 +32,9 @@ jobs:
             changelog.txt
           tag_name: v${{ github.run_number }}
           name: Release ${{ github.run_number }}
-          token:  ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_TOKEN }}
           body: |
             Changes in this release:
             $(cat changelog.txt)
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
