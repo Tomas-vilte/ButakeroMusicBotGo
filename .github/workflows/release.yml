@@ -1,4 +1,5 @@
 name: Increment Version and Create Release
+
 on:
   workflow_run:
     workflows: ["Go Continuous Delivery Pipeline"]
@@ -14,6 +15,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Read current version
+        id: read_version
+        run: echo "::set-output name=version::$(cat VERSION)"
+        
+      - name: Increment version
+        id: increment_version
+        run: echo "::set-output name=version::$(echo ${{ steps.read_version.outputs.version }} | awk -F. '{$NF+=1; OFS="."; print}' )"
+        
+      - name: Save incremented version
+        run: echo "${{ steps.increment_version.outputs.version }}" > VERSION
+        
       - name: Changelog
         uses: scottbrenner/generate-changelog-action@master
         id: Changelog
@@ -26,8 +38,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: v${{ steps.increment_version.outputs.version }}
+          release_name: Release v${{ steps.increment_version.outputs.version }}
           body: |
             ${{ steps.Changelog.outputs.changelog }}
           draft: false

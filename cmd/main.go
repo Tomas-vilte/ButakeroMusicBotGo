@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -25,7 +24,6 @@ var (
 )
 
 func main() {
-	fmt.Println("test 8")
 	loggerCfg := zap.NewDevelopmentConfig()
 	loggerCfg.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
 	logger, _ := loggerCfg.Build()
