@@ -15,33 +15,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Read current version
-        id: read_version
-        run: echo "::set-output name=version::$(cat version.yaml | yq r - version)"
-
-      - name: Increment version
-        id: increment_version
-        run: echo "::set-output name=version::$(echo ${{ steps.read_version.outputs.version }} | awk -F. '{$NF+=1; OFS="."; print}' )"
-
-      - name: Save incremented version
-        run: |
-          echo "version: ${{ steps.increment_version.outputs.version }}" > version.yaml
-
-      - name: Changelog
-        uses: scottbrenner/generate-changelog-action@master
-        id: Changelog
-        env:
-          REPO: ${{ github.repository }}
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+      - uses: google-github-actions/release-please-action@v3
         with:
-          tag_name: v${{ steps.increment_version.outputs.version }}
-          release_name: Release v${{ steps.increment_version.outputs.version }}
-          body: |
-            ${{ steps.Changelog.outputs.changelog }}
-          draft: false
-          prerelease: false
+          release-type: go
+          default-branch: master
