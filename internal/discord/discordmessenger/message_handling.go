@@ -1,6 +1,7 @@
-package voice
+package discordmessenger
 
 import (
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"github.com/bwmarrin/discordgo"
 	"log"
 )
@@ -27,8 +28,8 @@ func (w *MessageSenderWrapperImpl) ChannelMessageEditComplex(m *discordgo.Messag
 // ChatMessageSender envía mensajes de chat a Discord.
 type ChatMessageSender interface {
 	SendMessage(channelID, message string) error
-	SendPlayMessage(channelID string, message *PlayMessage) (string, error)
-	EditPlayMessage(channelID, messageID string, message *PlayMessage) error
+	SendPlayMessage(channelID string, message *voice.PlayMessage) (string, error)
+	EditPlayMessage(channelID, messageID string, message *voice.PlayMessage) error
 }
 
 // MessageSenderImpl implementa la interfaz ChatMessageSender para enviar mensajes en Discord.
@@ -50,11 +51,11 @@ func (session *MessageSenderImpl) SendMessage(channelID, message string) error {
 }
 
 // SendPlayMessage envía un mensaje de reproducción con detalles sobre la canción que se está reproduciendo en el canal de Discord.
-func (session *MessageSenderImpl) SendPlayMessage(channelID string, message *PlayMessage) (string, error) {
+func (session *MessageSenderImpl) SendPlayMessage(channelID string, message *voice.PlayMessage) (string, error) {
 	log.Println("Enviando mensaje de reproducción...")
 	// Enviar el mensaje de reproducción al canal especificado.
 	msg, err := session.DiscordSession.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
-		Embed: GeneratePlayingSongEmbed(message),
+		Embed: voice.GeneratePlayingSongEmbed(message),
 	})
 	if err != nil {
 		log.Printf("Error al enviar mensaje de reproducción: %v\n", err)
@@ -64,9 +65,9 @@ func (session *MessageSenderImpl) SendPlayMessage(channelID string, message *Pla
 }
 
 // EditPlayMessage edita un mensaje de reproducción previamente enviado para actualizar los detalles sobre la canción que se está reproduciendo.
-func (session *MessageSenderImpl) EditPlayMessage(channelID string, messageID string, message *PlayMessage) error {
+func (session *MessageSenderImpl) EditPlayMessage(channelID string, messageID string, message *voice.PlayMessage) error {
 	// Editar el mensaje de reproducción con los nuevos detalles de la canción.
-	embeds := []*discordgo.MessageEmbed{GeneratePlayingSongEmbed(message)}
+	embeds := []*discordgo.MessageEmbed{voice.GeneratePlayingSongEmbed(message)}
 	_, err := session.DiscordSession.ChannelMessageEditComplex(&discordgo.MessageEdit{
 		ID:      messageID,
 		Channel: channelID,
