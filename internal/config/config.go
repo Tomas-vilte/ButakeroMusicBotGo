@@ -1,10 +1,12 @@
 package config
 
 import (
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store/file_storage"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store/inmemory_storage"
+	"go.uber.org/zap"
 	"os"
 	"path/filepath"
 
-	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store"
 )
 
@@ -24,22 +26,22 @@ type FileStoreConfig struct {
 	Dir string `default:"./playlist"`
 }
 
-func GetPlaylistStore(cfg *Config, guildID string) bot.GuildPlayerState {
+func GetPlaylistStore(cfg *Config, guildID string, logger *zap.Logger, persistent file_storage.StatePersistent) (store.SongStorage, store.StateStorage) {
 	switch cfg.Store.Type {
 	case "memory":
-		return store.NewInmemoryGuildPlayerState()
+		return inmemory_storage.NewInmemorySongStorage(logger), inmemory_storage.NewInmemoryStateStorage(logger)
 	case "file":
 		if err := os.MkdirAll(cfg.Store.File.Dir, 0755); err != nil {
 			panic(err)
 		}
 		path := filepath.Join(cfg.Store.File.Dir, guildID+".json")
-		s, err := store.NewFilePlaylistStorage(path)
+		songStore, err := file_storage.NewFileSongStorage(path, logger, persistent)
 		if err != nil {
 			panic(err)
 		}
-		return s
+		stateStore := inmemory_storage.NewInmemoryStateStorage(logger)
+		return songStore, stateStore
 	default:
 		panic("tipo de store invalido")
 	}
-
 }
