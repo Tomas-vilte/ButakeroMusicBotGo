@@ -1,7 +1,8 @@
-package voice
+package discordmessenger
 
 import (
 	"errors"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -67,7 +68,7 @@ func TestSendPlayMessage(t *testing.T) {
 		DiscordSession: mockSender,
 	}
 	channelID := "123"
-	mockMessage := &PlayMessage{}
+	mockMessage := &voice.PlayMessage{}
 	mockSender.On("ChannelMessageSendComplex", channelID, mock.Anything, mock.Anything).Return(&discordgo.Message{}, nil)
 
 	// Ejecución
@@ -85,7 +86,7 @@ func TestSendPlayMessage_Error(t *testing.T) {
 		DiscordSession: mockSender,
 	}
 	channelID := "123"
-	mockMessage := &PlayMessage{}
+	mockMessage := &voice.PlayMessage{}
 	expectedErr := errors.New("error al enviar mensaje de reproducción")
 
 	// Configura el mock para devolver un error al enviar el mensaje de reproducción
@@ -108,7 +109,7 @@ func TestEditPlayMessage(t *testing.T) {
 	}
 	channelID := "123"
 	messageID := "456"
-	mockMessage := &PlayMessage{}
+	mockMessage := &voice.PlayMessage{}
 	mockSender.On("ChannelMessageEditComplex", mock.Anything, mock.Anything).Return(&discordgo.Message{}, nil)
 
 	// Ejecución
@@ -127,7 +128,7 @@ func TestEditPlayMessage_Error(t *testing.T) {
 	}
 	channelID := "123"
 	messageID := "456"
-	mockMessage := &PlayMessage{}
+	mockMessage := &voice.PlayMessage{}
 	expectedErr := errors.New("error al editar mensaje de reproducción")
 
 	// Configura el mock para que devuelva un error al llamar a ChannelMessageEditComplex
