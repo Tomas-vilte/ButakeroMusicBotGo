@@ -25,7 +25,7 @@ func TestGeneratePlayingSongEmbed_ValidMessage(t *testing.T) {
 	// Verificación
 	assert.NotNil(t, embed)
 	assert.Equal(t, "Canción de prueba", embed.Title)
-	assert.Contains(t, embed.Description, "▬🔘")            // Verifica que haya una barra de progreso
+	assert.Contains(t, embed.Description, "⬛")             // Verifica que haya una barra de progreso
 	assert.Contains(t, embed.Description, "02:00 / 03:00") // Verifica la duración
 	assert.NotNil(t, embed.Thumbnail)
 	assert.Equal(t, "https://ejemplo.com/imagen.png", embed.Thumbnail.URL)
