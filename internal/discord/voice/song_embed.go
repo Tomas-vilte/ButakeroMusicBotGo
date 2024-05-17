@@ -37,11 +37,12 @@ func generateProgressBar(progress float64, length int) string {
 
 	progressBar := ""
 	for i := 0; i < played; i++ {
-		progressBar += "▬"
+		progressBar += "🟥"
 	}
-	progressBar += "🔘"
-	for i := 0; i < length; i++ {
-		progressBar += "▬"
+	progressBar += "🔴"
+	remaining := length - played - 1
+	for i := 0; i < remaining; i++ {
+		progressBar += "⬛"
 	}
 	return progressBar
 }
