@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store/file_storage"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/discordmessenger"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice/codec"
 	"github.com/Tomas-vilte/GoMusicBot/internal/music/fetcher"
@@ -480,12 +482,12 @@ func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discord
 		DCAStreamer:    &codec.DCAStreamerImpl{},
 	}
 
-	messageSender := &voice.MessageSenderImpl{
+	messageSender := &discordmessenger.MessageSenderImpl{
 		DiscordSession: dg,
 	}
-
-	playlistStore := config.GetPlaylistStore(handler.cfg, string(guildID))
-	player := bot.NewGuildPlayer(handler.ctx, voiceChat, playlistStore, fetcher.GetDCAData, messageSender).WithLogger(handler.logger.With(zap.String("guildID", string(guildID))))
+	persistent := file_storage.NewJSONStatePersistent()
+	songStorage, stateStorage := config.GetPlaylistStore(handler.cfg, string(guildID), handler.logger, persistent)
+	player := bot.NewGuildPlayer(handler.ctx, voiceChat, songStorage, stateStorage, fetcher.GetDCAData, messageSender).WithLogger(handler.logger.With(zap.String("guildID", string(guildID))))
 	return player
 }
 
