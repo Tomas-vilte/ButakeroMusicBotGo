@@ -11,7 +11,17 @@ categories:
       - "bugfix"
       - "bug"
   - title: "🧰 Mantenimiento"
-    label: "chore"
+    labels:
+      - "chore"
+  - title: "🛠️ Mejoras en la Funcionalidad"
+    labels:
+      - "improvement"
+  - title: "📚 Documentación"
+    labels:
+      - "documentation"
+  - title: "🧪 Pruebas Adicionales"
+    labels:
+      - "testing"
 change-template: "- $TITLE @$AUTHOR (#$NUMBER)"
 change-title-escapes: '\<*_&'
 version-resolver:
