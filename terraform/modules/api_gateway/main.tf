@@ -1,24 +1,24 @@
-# API Gateway REST API
+# Definición del API Gateway REST API
 resource "aws_api_gateway_rest_api" "github_webhook_api" {
-  name = "GithubWebhookAPI"
+  name        = "GithubWebhookAPI"
   description = "API Gateway para manejar webhooks de Github"
 }
 
-# API Gateway Resource for Event Processor
+# Recurso API Gateway para el procesador de eventos
 resource "aws_api_gateway_resource" "event_resource" {
   rest_api_id = aws_api_gateway_rest_api.github_webhook_api.id
   parent_id   = aws_api_gateway_rest_api.github_webhook_api.root_resource_id
   path_part   = "github-webhook"
 }
 
-# API Gateway Resource for Message Processor
+# Recurso API Gateway para el procesador de mensajes
 resource "aws_api_gateway_resource" "message_resource" {
   rest_api_id = aws_api_gateway_rest_api.github_webhook_api.id
   parent_id   = aws_api_gateway_rest_api.github_webhook_api.root_resource_id
   path_part   = "message"
 }
 
-# API Gateway Method for Event Processor (POST)
+# Método API Gateway para el procesador de eventos (POST)
 resource "aws_api_gateway_method" "event_method" {
   rest_api_id   = aws_api_gateway_rest_api.github_webhook_api.id
   resource_id   = aws_api_gateway_resource.event_resource.id
@@ -26,7 +26,7 @@ resource "aws_api_gateway_method" "event_method" {
   authorization = "NONE"
 }
 
-# API Gateway Method for Message Processor (POST)
+# Método API Gateway para el procesador de mensajes (POST)
 resource "aws_api_gateway_method" "message_method" {
   rest_api_id   = aws_api_gateway_rest_api.github_webhook_api.id
   resource_id   = aws_api_gateway_resource.message_resource.id
@@ -34,24 +34,24 @@ resource "aws_api_gateway_method" "message_method" {
   authorization = "NONE"
 }
 
-# Integration with Event Processor Lambda
+# Integración con la Lambda del procesador de eventos
 resource "aws_api_gateway_integration" "event_integration" {
-  rest_api_id = aws_api_gateway_rest_api.github_webhook_api.id
-  resource_id = aws_api_gateway_resource.event_resource.id
-  http_method = aws_api_gateway_method.event_method.http_method
+  rest_api_id             = aws_api_gateway_rest_api.github_webhook_api.id
+  resource_id             = aws_api_gateway_resource.event_resource.id
+  http_method             = aws_api_gateway_method.event_method.http_method
   integration_http_method = "POST"
-  type        = "AWS_PROXY"
-  uri         = var.lambda_execution_event_role_arn_invoke
+  type                    = "AWS_PROXY"
+  uri                     = var.lambda_execution_event_role_arn_invoke
 }
 
 # Integration with Message Processor Lambda
 resource "aws_api_gateway_integration" "message_integration" {
-  rest_api_id = aws_api_gateway_rest_api.github_webhook_api.id
-  resource_id = aws_api_gateway_resource.message_resource.id
-  http_method = aws_api_gateway_method.message_method.http_method
+  rest_api_id             = aws_api_gateway_rest_api.github_webhook_api.id
+  resource_id             = aws_api_gateway_resource.message_resource.id
+  http_method             = aws_api_gateway_method.message_method.http_method
   integration_http_method = "POST"
-  type        = "AWS_PROXY"
-  uri         = var.lambda_execution_message_role_arn_invoke
+  type                    = "AWS_PROXY"
+  uri                     = var.lambda_execution_message_role_arn_invoke
 }
 
 
@@ -62,4 +62,3 @@ resource "aws_api_gateway_deployment" "api_deployment" {
   rest_api_id = aws_api_gateway_rest_api.github_webhook_api.id
   stage_name  = "prod"
 }
-
