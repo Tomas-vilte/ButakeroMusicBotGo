@@ -25,3 +25,7 @@ variable "security_group_id" {
   description = "ID del grupo de seguridad para la instancia EC2"
   type        = string
 }
+variable "availability_zone" {
+  description = "Zona en donde se va crear la instancia"
+  type        = string
+}

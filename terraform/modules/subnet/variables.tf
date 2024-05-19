@@ -13,3 +13,8 @@ variable "internet_gateway_id" {
   description = "ID de la puerta de enlace de Internet"
   type        = string
 }
+
+variable "availability_zone" {
+  description = "Zona de disponibilidad"
+  type = string
+}
