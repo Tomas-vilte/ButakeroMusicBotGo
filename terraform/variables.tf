@@ -22,3 +22,8 @@ variable "key_name" {
   description = "Nombre de la llave SSH"
   type        = string
 }
+
+variable "availability_zone" {
+  description = "Zona en donde se va a crear la instancia"
+  type        = string
+}
