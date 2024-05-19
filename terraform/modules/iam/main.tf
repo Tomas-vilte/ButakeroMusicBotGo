@@ -35,9 +35,14 @@ EOF
         "logs:PutLogEvents"
       ],
       "Resource": "arn:aws:logs:*:*:*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "sqs:SendMessage",
+      "Resource": "arn:aws:sqs:us-east-1:637423229067:EventQueue"
     }
   ]
 }
 EOF
-  }
+}
 }
