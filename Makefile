@@ -1,6 +1,7 @@
 # Variables
 BUILD_DIR = build
 SRC_DIR = cmd
+SRC_DIR_LAMBDA = lambdas/process_event/cmd
 EXECUTABLE = main
 BINARY_NAME = bootstrap
 ZIP_NAME := deployment.zip
@@ -29,7 +30,7 @@ deps:
 
 package: clean
 	@echo "Compilando el código..."
-	go build -ldflags="-s -w" -o bootstrap main.go 
+	go build -ldflags="-s -w" -o bootstrap $(SRC_DIR_LAMBDA)/$(EXECUTABLE).go
 	@echo "Empaquetando el binario en un archivo ZIP..."
 	zip -q $(ZIP_NAME) $(BINARY_NAME)
 	@echo "Archivo ZIP generado con éxito: $(ZIP_NAME)"
