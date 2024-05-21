@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"github.com/Tomas-vilte/GoMusicBot/lambdas/process_event/internal/common"
 	"github.com/Tomas-vilte/GoMusicBot/lambdas/process_event/internal/logging"
 	"github.com/Tomas-vilte/GoMusicBot/lambdas/process_event/internal/message_queue"
 	"go.uber.org/zap"
@@ -24,8 +23,7 @@ func NewEventProcessor(publisher message_queue.Publisher, logger logging.Logger)
 
 // ProcessEvent procesa un evento dado y lo publica en la cola de mensajes.
 // Utiliza el contexto proporcionado y devuelve un error si ocurre algún problema durante el procesamiento.
-func (p *EventProcessor) ProcessEvent(ctx context.Context, event common.Event) error {
-	p.Logger.Info("Procesando evento", zap.String("Tag", event.Release.TagName))
+func (p *EventProcessor) ProcessEvent(ctx context.Context, event interface{}) error {
 
 	err := p.SQSPublisher.Publish(ctx, event)
 	if err != nil {

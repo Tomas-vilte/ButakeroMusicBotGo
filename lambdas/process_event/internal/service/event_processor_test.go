@@ -32,50 +32,57 @@ func (m *MockPublisher) Publish(ctx context.Context, event interface{}) error {
 }
 
 func TestProcessEvent_Success(t *testing.T) {
-	mockPublisher := &MockPublisher{}
-	mockLogger := &MockLogger{}
+	// Configurar mocks
+	mockPublisher := new(MockPublisher)
+	mockLogger := new(MockLogger)
 
+	// Datos de prueba
 	event := common.Event{
 		Release: common.Release{
 			TagName: "v1.0.0",
 		},
 	}
 
+	// Simular el comportamiento del publisher
 	mockPublisher.On("Publish", mock.Anything, event).Return(nil)
-	mockLogger.On("Info", "Procesando evento", []zap.Field{
-		zap.String("Tag", event.Release.TagName),
-	}).Return()
-	mockLogger.On("Info", "Evento publicado en SQS con exito", mock.Anything).Return()
 
+	// Simular el comportamiento del logger
+	mockLogger.On("Info", "Evento publicado en SQS con exito", mock.Anything).Once()
+
+	// Ejecutar la función bajo prueba
 	processor := NewEventProcessor(mockPublisher, mockLogger)
 	err := processor.ProcessEvent(context.Background(), event)
 
-	assert.Nil(t, err)
+	// Verificar resultados
+	assert.NoError(t, err)
 	mockPublisher.AssertExpectations(t)
 	mockLogger.AssertExpectations(t)
 }
 
 func TestProcessEvent_PublishError(t *testing.T) {
-	mockPublisher := &MockPublisher{}
-	mockLogger := &MockLogger{}
+	// Configurar mocks
+	mockPublisher := new(MockPublisher)
+	mockLogger := new(MockLogger)
 
+	// Datos de prueba
 	event := common.Event{
 		Release: common.Release{
 			TagName: "v1.0.0",
 		},
 	}
 
-	expectedError := errors.New("publish error")
-	mockLogger.On("Info", "Procesando evento", []zap.Field{
-		zap.String("Tag", event.Release.TagName),
-	}).Return()
+	// Simular el comportamiento del publisher
+	expectedError := errors.New("error al publicar")
 	mockPublisher.On("Publish", mock.Anything, event).Return(expectedError)
 
-	mockLogger.On("Error", "Error publicando el evento a SQS", mock.Anything).Return()
+	// Simular el comportamiento del logger
+	mockLogger.On("Error", "Error publicando el evento a SQS", mock.Anything).Once()
 
+	// Ejecutar la función bajo prueba
 	processor := NewEventProcessor(mockPublisher, mockLogger)
 	err := processor.ProcessEvent(context.Background(), event)
 
+	// Verificar resultados
 	assert.Equal(t, expectedError, err)
 	mockPublisher.AssertExpectations(t)
 	mockLogger.AssertExpectations(t)
