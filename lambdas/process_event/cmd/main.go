@@ -36,8 +36,12 @@ func main() {
 	// Crear el procesador de eventos
 	eventProcessor := service.NewEventProcessor(sqsPublisher, logger)
 
+	decoder := github_event.NewGitHubEventDecoder(logger)
+
+	jsonMarshall := github_event.NewDefaultJSONMarshaller()
+
 	// Crear el manejador de eventos de GitHub
-	eventHandler := github_event.NewEventHandler(eventProcessor, logger)
+	eventHandler := github_event.NewEventHandler(eventProcessor, logger, decoder, jsonMarshall)
 
 	lambda.Start(func(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 		return eventHandler.HandleGitHubEvent(ctx, request)
