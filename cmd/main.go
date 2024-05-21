@@ -40,7 +40,7 @@ func main() {
 	}
 	dg, err := discordgo.New("Bot " + cfg.DiscordToken)
 	if err != nil {
-		logger.Fatal("error al crear la session de discord", zap.Error(err))
+		logger.Fatal("error al crear la session de messaging", zap.Error(err))
 		return
 	}
 	storage = discord.NewInMemoryStorage()
@@ -76,7 +76,7 @@ func main() {
 	dg.Identify.Intents = discordgo.IntentsAll
 	err = dg.Open()
 	if err != nil {
-		logger.Fatal("error al abrir la session de discord", zap.Error(err))
+		logger.Fatal("error al abrir la session de messaging", zap.Error(err))
 	}
 	defer func(dg *discordgo.Session) {
 		err := dg.Close()
