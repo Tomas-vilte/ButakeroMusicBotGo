@@ -1,0 +1,1 @@
+package sqs_consumer
