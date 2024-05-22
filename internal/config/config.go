@@ -1,11 +1,12 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store/file_storage"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store/inmemory_storage"
 	"go.uber.org/zap"
-	"os"
-	"path/filepath"
 
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store"
 )
