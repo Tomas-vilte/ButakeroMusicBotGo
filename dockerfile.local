@@ -5,15 +5,13 @@ RUN apt-get update \
   && go install github.com/bwmarrin/dca/cmd/dca@latest
 
 WORKDIR /src/
-
 COPY go.mod go.sum ./
 RUN go mod download
-
-COPY . .
-
+COPY cmd/ cmd/
+COPY internal/ internal/
 RUN CGO_ENABLED=1 GOARCH=amd64 go build -o /bin/butakero cmd/main.go
 
-FROM ubuntu
+FROM ubuntu:22.04
 
 ARG YT_DLP_VERSION="2023.10.13"
 
