@@ -1,0 +1,26 @@
+FROM --platform=linux/arm64 golang:1.21 AS builder
+
+RUN apt-get update && apt-get install -y build-essential libopus-dev \
+    && go install github.com/bwmarrin/dca/cmd/dca@latest
+
+WORKDIR /src/
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=1 GOARCH=arm64 go build -o /bin/butakero cmd/main.go
+
+# Etapa final del contenedor
+FROM --platform=linux/arm64 ubuntu:latest
+
+ENV DISCORDTOKEN=
+ENV COMMANDPREFIX=
+
+RUN apt-get update && apt-get install -y ffmpeg wget libopusfile-dev \
+    && wget "https://github.com/yt-dlp/yt-dlp/releases/download/2023.10.13/yt-dlp_linux_aarch64" -O /usr/local/bin/yt-dlp \
+    && chmod +x /usr/local/bin/yt-dlp
+
+# Copiar los binarios compilados desde la etapa de construcción
+COPY --from=builder /bin/butakero /bin/butakero
+COPY --from=builder /go/bin/dca /usr/local/bin/dca
+
+CMD ["/bin/butakero"]
