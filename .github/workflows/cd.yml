@@ -37,6 +37,7 @@ jobs:
           file: dockerfile.aws
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot-aws:latest
+          platforms: linux/arm64
 
       - name: Deploy a EC2
         uses: appleboy/ssh-action@master
