@@ -55,8 +55,8 @@ func TestSQSPublisher_Publish_Success(t *testing.T) {
 		zap.String("QueueURL", "test_queue_url"),
 	}).Return()
 
-	publisher := NewSQSPublisher(mockClient, "test_queue_url", mockLogger)
-	err := publisher.Publish(context.Background(), event)
+	publisher := NewSQSPublisher(mockClient, map[string]string{"test_action": "test_queue_url"}, mockLogger)
+	err := publisher.Publish(context.Background(), event, "test_action")
 
 	assert.Nil(t, err)
 	mockClient.AssertExpectations(t)
@@ -77,8 +77,8 @@ func TestSQSPublisher_Publish_SendMessageError(t *testing.T) {
 	mockClient.On("SendMessageWithContext", mock.Anything, mock.Anything).Return(&sqs.SendMessageOutput{}, errors.New("hubo un error en enviar"))
 	mockLogger.On("Error", "Error enviando el mensaje a SQS", mock.Anything).Return()
 
-	publisher := NewSQSPublisher(mockClient, "test_queue_url", mockLogger)
-	err := publisher.Publish(context.Background(), event)
+	publisher := NewSQSPublisher(mockClient, map[string]string{"test_action": "test_queue_url"}, mockLogger)
+	err := publisher.Publish(context.Background(), event, "test_action")
 
 	assert.NotNil(t, err)
 	mockLogger.AssertExpectations(t)
@@ -94,10 +94,30 @@ func TestSQSPublisher_Publish_SerializationError(t *testing.T) {
 
 	mockLogger.On("Error", "Error serializando el evento", mock.Anything).Return()
 
-	publisher := NewSQSPublisher(mockClient, "test_queue_url", mockLogger)
-	err := publisher.Publish(context.Background(), eventFail)
+	publisher := NewSQSPublisher(mockClient, map[string]string{"test_action": "test_queue_url"}, mockLogger)
+	err := publisher.Publish(context.Background(), eventFail, "test_action")
 
 	assert.NotNil(t, err)
 	mockClient.AssertNotCalled(t, "SendMessageWithContext", mock.Anything, mock.Anything)
+	mockLogger.AssertExpectations(t)
+}
+
+func TestSQSPublisher_Publish_QueueURLNotFound(t *testing.T) {
+	mockClient := &MockSQSClient{}
+	mockLogger := &MockLogger{}
+
+	event := common.Event{
+		Action: "test_action",
+		Release: common.Release{
+			TagName: "v1.0.0",
+		},
+	}
+
+	publisher := NewSQSPublisher(mockClient, map[string]string{}, mockLogger)
+	mockLogger.On("Error", "No se encontró URL de cola para el tipo de evento", mock.Anything).Return()
+	err := publisher.Publish(context.Background(), event, "test_action")
+
+	assert.NotNil(t, err)
+	assert.Equal(t, "URL de cola no encontrada para el tipo de evento: test_action", err.Error())
 	mockLogger.AssertExpectations(t)
 }
