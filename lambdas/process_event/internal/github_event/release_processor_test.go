@@ -19,7 +19,7 @@ func TestProcessEvent_ValidReleaseEvent(t *testing.T) {
 		},
 	}
 
-	err := processor.ProcessEvent(context.Background(), releaseEvent)
+	err := processor.ProcessEvent(context.Background(), releaseEvent, "release")
 	assert.NoError(t, err)
 }
 
@@ -31,7 +31,7 @@ func TestProcessEvent_InvalidEvent(t *testing.T) {
 		Action string
 	}{Action: "invalid"}
 
-	err := processor.ProcessEvent(context.Background(), invalidEvent)
+	err := processor.ProcessEvent(context.Background(), invalidEvent, "release")
 	assert.Error(t, err)
 	assert.Equal(t, "evento no es de tipo ReleaseEvent", err.Error())
 }
