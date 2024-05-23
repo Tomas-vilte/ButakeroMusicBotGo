@@ -9,11 +9,11 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd/ cmd/
 COPY internal/ internal/
-RUN CGO_ENABLED=1 GOARCH=amd64 go build -o /bin/butakero cmd/main.go
+RUN CGO_ENABLED=1 GOARCH=amd64 GOMAXPROCS=4 go build -ldflags="-s -w" -o /bin/butakero cmd/main.go
 
 FROM ubuntu:22.04
 
-ARG YT_DLP_VERSION="2023.10.13"
+ARG YT_DLP_VERSION="2024.04.09"
 
 ENV DISCORDTOKEN=
 ENV COMMANDPREFIX=
