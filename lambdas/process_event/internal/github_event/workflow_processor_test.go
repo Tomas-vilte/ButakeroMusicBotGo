@@ -19,7 +19,7 @@ func TestProcessEvent_ValidWorkflowEvent(t *testing.T) {
 		},
 	}
 
-	err := processor.ProcessEvent(context.Background(), workflowEvent)
+	err := processor.ProcessEvent(context.Background(), workflowEvent, "workflow")
 	assert.NoError(t, err)
 }
 
@@ -31,7 +31,7 @@ func TestProcessEvent_InvalidWorkflowEvent(t *testing.T) {
 		Action string
 	}{Action: "invalid"}
 
-	err := processor.ProcessEvent(context.Background(), invalidEvent)
+	err := processor.ProcessEvent(context.Background(), invalidEvent, "workflow")
 	assert.Error(t, err)
 	assert.Equal(t, "evento no es de tipo WorkflowEvent", err.Error())
 }
