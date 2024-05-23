@@ -16,8 +16,8 @@ type MockEventProcessor struct {
 	mock.Mock
 }
 
-func (m *MockEventProcessor) ProcessEvent(ctx context.Context, event interface{}) error {
-	args := m.Called(ctx, event)
+func (m *MockEventProcessor) ProcessEvent(ctx context.Context, event interface{}, eventType string) error {
+	args := m.Called(ctx, event, eventType)
 	return args.Error(0)
 }
 
@@ -68,11 +68,17 @@ func TestHandleGitHubEvent(t *testing.T) {
 	}
 
 	// Simular el comportamiento del decoderMock
-	expectedEvent := struct{}{}
+	expectedEvent := common.ReleaseEvent{
+		Action: "published",
+		Release: common.Release{
+			TagName: "v1.0.0",
+			Name:    "Initial Release",
+		},
+	}
 	decoderMock.On("DecodeGitHubEvent", request.Body).Return(expectedEvent, nil)
 
 	// Simular el procesamiento del evento
-	eventProcessorMock.On("ProcessEvent", mock.Anything, expectedEvent).Return(nil)
+	eventProcessorMock.On("ProcessEvent", mock.Anything, expectedEvent, "release").Return(nil)
 
 	// Simular la codificación de la respuesta JSON
 	expectedJSON := []byte("{}")
@@ -85,10 +91,11 @@ func TestHandleGitHubEvent(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, response)
 	assert.Equal(t, http.StatusOK, response.StatusCode)
+	assert.JSONEq(t, string(expectedJSON), response.Body)
 
 	// Verificar que se hayan llamado a los métodos esperados en los mocks
 	decoderMock.AssertCalled(t, "DecodeGitHubEvent", request.Body)
-	eventProcessorMock.AssertCalled(t, "ProcessEvent", mock.Anything, expectedEvent)
+	eventProcessorMock.AssertCalled(t, "ProcessEvent", mock.Anything, expectedEvent, "release")
 	jsonMarshallerMock.AssertCalled(t, "Marshal", expectedEvent)
 }
 
@@ -118,7 +125,6 @@ func TestHandleGitHubEvent_ProcessError(t *testing.T) {
 	eventProcessorMock := new(MockEventProcessor)
 	decoderMock := new(MockGitHubEventDecoder)
 	loggerMock := new(MockLogger)
-
 	jsonMarshallerMock := new(MockJSONMarshaler)
 
 	handler := NewEventHandler(eventProcessorMock, loggerMock, decoderMock, jsonMarshallerMock)
@@ -127,12 +133,17 @@ func TestHandleGitHubEvent_ProcessError(t *testing.T) {
 		Body: "{\"action\": \"published\"}",
 	}
 
-	expectedEvent := struct{}{}
+	expectedEvent := common.ReleaseEvent{
+		Action: "published",
+		Release: common.Release{
+			TagName: "v1.0.0",
+			Name:    "Initial Release",
+		},
+	}
+
 	decoderMock.On("DecodeGitHubEvent", request.Body).Return(expectedEvent, nil)
-
 	expectedError := errors.New("error al procesar el evento")
-	eventProcessorMock.On("ProcessEvent", mock.Anything, expectedEvent).Return(expectedError)
-
+	eventProcessorMock.On("ProcessEvent", mock.Anything, expectedEvent, "release").Return(expectedError)
 	loggerMock.On("Error", "Error al procesar el evento", mock.Anything).Once()
 
 	response, err := handler.HandleGitHubEvent(context.Background(), request)
@@ -141,6 +152,10 @@ func TestHandleGitHubEvent_ProcessError(t *testing.T) {
 	assert.NotNil(t, response)
 	assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 	assert.Contains(t, response.Body, "Error al procesar el evento: error al procesar el evento")
+
+	decoderMock.AssertExpectations(t)
+	eventProcessorMock.AssertExpectations(t)
+	loggerMock.AssertExpectations(t)
 }
 
 func TestHandleGitHubEvent_JSONEncodeError(t *testing.T) {
@@ -159,13 +174,18 @@ func TestHandleGitHubEvent_JSONEncodeError(t *testing.T) {
 	}
 
 	// Simular el comportamiento del decoderMock
-	expectedEvent := struct{}{} // Puede ser cualquier estructura esperada
+	expectedEvent := common.ReleaseEvent{
+		Action: "published",
+		Release: common.Release{
+			TagName: "v1.0.0",
+		},
+	}
 	decoderMock.On("DecodeGitHubEvent", request.Body).Return(expectedEvent, nil)
 	expectedJSON := []byte{} // Definir un slice de bytes vacío o no vacío según sea necesario
 
 	// Simular el error al codificar la respuesta a JSON
 	expectedError := errors.New("error al codificar la respuesta a JSON")
-	eventProcessorMock.On("ProcessEvent", mock.Anything, expectedEvent).Return(nil)
+	eventProcessorMock.On("ProcessEvent", mock.Anything, expectedEvent, "release").Return(nil)
 	marshalerMock.On("Marshal", expectedEvent).Return(expectedJSON, expectedError)
 
 	// Simular el registro del error
@@ -202,7 +222,6 @@ func TestDecodeGitHubEvent_ReleaseEvent(t *testing.T) {
 	loggerMock.AssertNotCalled(t, "Error", mock.Anything, mock.Anything) // Verificar que no se llamó a Logger.Error
 }
 
-// Test para DecodeGitHubEvent cuando se decodifica correctamente un evento de trabajo de flujo de trabajo.
 func TestDecodeGitHubEvent_WorkflowJobEvent(t *testing.T) {
 	// Configurar mocks
 	loggerMock := new(MockLogger)

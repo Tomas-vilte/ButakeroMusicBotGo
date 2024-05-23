@@ -20,7 +20,7 @@ const (
 
 // EventProcessor define un método para procesar un evento común.
 type EventProcessor interface {
-	ProcessEvent(ctx context.Context, event interface{}) error
+	ProcessEvent(ctx context.Context, event interface{}, eventType string) error
 }
 
 // JSONMarshaller define un método para serializar datos a JSON.
@@ -60,7 +60,9 @@ func (h *EventHandler) HandleGitHubEvent(ctx context.Context, requests events.AP
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusBadRequest, Body: "Error al decodificar el evento"}, err
 	}
 
-	err = h.Processor.ProcessEvent(ctx, event)
+	eventType := h.getEventType(event)
+
+	err = h.Processor.ProcessEvent(ctx, event, eventType)
 	if err != nil {
 		h.Logger.Error("Error al procesar el evento", zap.Error(err))
 		return events.APIGatewayProxyResponse{StatusCode: http.StatusInternalServerError, Body: "Error al procesar el evento: " + err.Error()}, err
@@ -125,4 +127,20 @@ func (m *DefaultJSONMarshaller) Marshal(v interface{}) ([]byte, error) {
 // NewDefaultJSONMarshaller crea una nueva instancia de DefaultJSONMarshaller.
 func NewDefaultJSONMarshaller() *DefaultJSONMarshaller {
 	return &DefaultJSONMarshaller{}
+}
+
+func (h *EventHandler) getEventType(event interface{}) string {
+	// Verificar si el evento es del tipo common.WorkflowEvent
+	if _, ok := event.(common.WorkflowEvent); ok {
+		return "workflow"
+	}
+
+	// Verificar si el evento es del tipo common.ReleaseEvent
+	if _, ok := event.(common.ReleaseEvent); ok {
+		return "release"
+	}
+
+	// Si no es ninguno de los tipos conocidos, registrar un error
+	h.Logger.Error("Tipo de evento no reconocido")
+	return ""
 }
