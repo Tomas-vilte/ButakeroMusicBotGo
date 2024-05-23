@@ -28,10 +28,13 @@ func main() {
 	// Crear el cliente SQS
 	sqsClient := message_queue.NewSQSClient()
 
-	queueURL := os.Getenv("QUEUE_URL_SQS")
+	queueURLsByType := map[string]string{
+		"release":  os.Getenv("RELEASE_QUEUE_URL_SQS"),
+		"workflow": os.Getenv("WORKFLOW_QUEUE_URL_SQS"),
+	}
 
 	// Crear el publicador SQS
-	sqsPublisher := message_queue.NewSQSPublisher(sqsClient, queueURL, logger)
+	sqsPublisher := message_queue.NewSQSPublisher(sqsClient, queueURLsByType, logger)
 
 	// Crear el procesador de eventos
 	eventProcessor := service.NewEventProcessor(sqsPublisher, logger)
