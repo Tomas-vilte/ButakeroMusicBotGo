@@ -23,7 +23,11 @@ func NewZapLogger() (*ZapLogger, error) {
 }
 
 func (l *ZapLogger) Close() error {
-	return l.logger.Sync()
+	err := l.logger.Sync()
+	if err != nil && err.Error() != "sync /dev/stderr: invalid argument" {
+		return err
+	}
+	return nil
 }
 
 func (l *ZapLogger) Info(msg string, fields ...zapcore.Field) {
