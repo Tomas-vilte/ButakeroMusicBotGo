@@ -6,11 +6,13 @@ import (
 	"go.uber.org/zap"
 )
 
+// DiscordMessenger define la interfaz para enviar mensajes a Discord.
 type DiscordMessenger interface {
-	SendMessage(channelID string, embed *discordgo.MessageEmbed) error
-	SendMessageToServers(embed *discordgo.MessageEmbed) error
+	SendMessage(channelID string, embed *discordgo.MessageEmbed) error // SendMessage envía un mensaje con un embed al canal especificado.
+	SendMessageToServers(embed *discordgo.MessageEmbed) error          // SendMessageToServers envía un mensaje a todos los servidores conectados.
 }
 
+// DiscordGoClient es una implementación de la interfaz DiscordMessenger utilizando DiscordGo.
 type DiscordGoClient struct {
 	Session DiscordSession
 	Logger  logging.Logger
@@ -24,6 +26,7 @@ func NewDiscordGoClient(session DiscordSession, logger logging.Logger) *DiscordG
 	}
 }
 
+// SendMessage envía un mensaje con un embed al canal especificado.
 func (d *DiscordGoClient) SendMessage(channelID string, embed *discordgo.MessageEmbed) error {
 	_, err := d.Session.ChannelMessageSendEmbed(channelID, embed)
 	if err != nil {
