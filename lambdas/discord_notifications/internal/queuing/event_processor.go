@@ -8,15 +8,18 @@ import (
 	"go.uber.org/zap"
 )
 
+// EventProcessor define la interfaz para procesar eventos provenientes de una cola.
 type EventProcessor interface {
-	ProcessSQSEvent(body []byte) error
+	ProcessSQSEvent(body []byte) error // ProcessSQSEvent procesa un evento proveniente de una cola SQS.
 }
 
+// SQSConsumer es una implementación de EventProcessor que consume eventos desde una cola SQS.
 type SQSConsumer struct {
-	discordClient messaging.DiscordMessenger
-	logger        logging.Logger
+	discordClient messaging.DiscordMessenger // Cliente Discord para enviar mensajes.
+	logger        logging.Logger             // Logger para registrar eventos.
 }
 
+// NewSQSConsumer crea una nueva instancia de SQSConsumer.
 func NewSQSConsumer(discordClient messaging.DiscordMessenger, logger logging.Logger) *SQSConsumer {
 	return &SQSConsumer{
 		discordClient: discordClient,
@@ -24,6 +27,7 @@ func NewSQSConsumer(discordClient messaging.DiscordMessenger, logger logging.Log
 	}
 }
 
+// ProcessSQSEvent procesa un evento proveniente de una cola SQS.
 func (s *SQSConsumer) ProcessSQSEvent(body []byte) error {
 	var event map[string]interface{}
 	if err := json.Unmarshal(body, &event); err != nil {
