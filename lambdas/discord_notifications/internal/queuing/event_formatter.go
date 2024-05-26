@@ -6,12 +6,15 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
+// EventFormatter define la interfaz para formatear eventos en mensajes de Discord.
 type EventFormatter interface {
-	FormatEvent(event map[string]interface{}) (*discordgo.MessageEmbed, error)
+	FormatEvent(event map[string]interface{}) (*discordgo.MessageEmbed, error) // FormatEvent formatea un evento en un mensaje de Discord.
 }
 
+// ReleaseEventFormatter es una implementación de EventFormatter que formatea eventos de lanzamiento (release).
 type ReleaseEventFormatter struct{}
 
+// FormatEvent formatea un evento de lanzamiento en un mensaje de Discord.
 func (r *ReleaseEventFormatter) FormatEvent(event map[string]interface{}) (*discordgo.MessageEmbed, error) {
 	release, ok := event["release"].(map[string]interface{})
 	if !ok {
@@ -39,9 +42,10 @@ func (r *ReleaseEventFormatter) FormatEvent(event map[string]interface{}) (*disc
 	return embed, nil
 }
 
+// WorkflowActionEventFormatter es una implementación de EventFormatter que formatea eventos de acción de flujo de trabajo (workflow).
 type WorkflowActionEventFormatter struct{}
 
-// FormatEvent formatea el evento de acción de workflow en un mensaje de Discord.
+// FormatEvent formatea un evento de acción de flujo de trabajo en un mensaje de Discord.
 func (f *WorkflowActionEventFormatter) FormatEvent(event map[string]interface{}) (*discordgo.MessageEmbed, error) {
 	workflowJob := event["workflow_job"].(map[string]interface{})
 
