@@ -2,20 +2,20 @@ package inmemory_storage
 
 import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
-	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store/file_storage"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"sync"
 )
 
 // InmemorySongStorage implementa la interfaz SongStorage utilizando la memoria ram para almacenar la lista de reproducción de canciones.
 type InmemorySongStorage struct {
-	mutex  sync.RWMutex        // mutex se utiliza para garantizar la concurrencia segura al manipular la lista de reproducción.
-	songs  []*voice.Song       // songs es la lista de reproducción de canciones almacenada en memoria.
-	logger file_storage.Logger // logger es un registrador para registrar mensajes de depuración y errores.
+	mutex  sync.RWMutex   // mutex se utiliza para garantizar la concurrencia segura al manipular la lista de reproducción.
+	songs  []*voice.Song  // songs es la lista de reproducción de canciones almacenada en memoria.
+	logger logging.Logger // logger es un registrador para registrar mensajes de depuración y errores.
 }
 
 // NewInmemorySongStorage crea una nueva instancia de InmemorySongStorage.
-func NewInmemorySongStorage(logger file_storage.Logger) *InmemorySongStorage {
+func NewInmemorySongStorage(logger logging.Logger) *InmemorySongStorage {
 	return &InmemorySongStorage{
 		mutex:  sync.RWMutex{},         // Se inicializa un nuevo mutex para garantizar la concurrencia segura.
 		songs:  make([]*voice.Song, 0), // Se inicializa una nueva lista de reproducción de canciones vacía.
@@ -29,7 +29,7 @@ func (s *InmemorySongStorage) PrependSong(song *voice.Song) error {
 	defer s.mutex.Unlock()
 
 	s.songs = append([]*voice.Song{song}, s.songs...)
-	s.logger.Debug("Canción agregada al principio de la lista de reproducción")
+	s.logger.Info("Canción agregada al principio de la lista de reproducción")
 	return nil
 }
 
@@ -39,7 +39,7 @@ func (s *InmemorySongStorage) AppendSong(song *voice.Song) error {
 	defer s.mutex.Unlock()
 
 	s.songs = append(s.songs, song)
-	s.logger.Debug("Canción agregada al final de la lista de reproducción")
+	s.logger.Info("Canción agregada al final de la lista de reproducción")
 	return nil
 }
 
@@ -51,7 +51,7 @@ func (s *InmemorySongStorage) RemoveSong(position int) (*voice.Song, error) {
 	defer s.mutex.Unlock()
 
 	if index >= len(s.songs) || index < 0 {
-		s.logger.Debug("Posición de eliminación de canción inválida")
+		s.logger.Info("Posición de eliminación de canción inválida")
 		return nil, bot.ErrRemoveInvalidPosition
 	}
 
@@ -60,7 +60,7 @@ func (s *InmemorySongStorage) RemoveSong(position int) (*voice.Song, error) {
 	copy(s.songs[index:], s.songs[index+1:])
 	s.songs[len(s.songs)-1] = nil
 	s.songs = s.songs[:len(s.songs)-1]
-	s.logger.Debug("Canción eliminada de la lista de reproducción")
+	s.logger.Info("Canción eliminada de la lista de reproducción")
 	return song, nil
 }
 
@@ -70,7 +70,7 @@ func (s *InmemorySongStorage) ClearPlaylist() error {
 	defer s.mutex.Unlock()
 
 	s.songs = make([]*voice.Song, 0)
-	s.logger.Debug("Lista de reproducción borrada")
+	s.logger.Info("Lista de reproducción borrada")
 	return nil
 }
 
@@ -83,7 +83,7 @@ func (s *InmemorySongStorage) GetSongs() ([]*voice.Song, error) {
 	songs := make([]*voice.Song, len(s.songs))
 	copy(songs, s.songs)
 
-	s.logger.Debug("Obteniendo todas las canciones de la lista de reproducción")
+	s.logger.Info("Obteniendo todas las canciones de la lista de reproducción")
 	return songs, nil
 }
 
@@ -93,12 +93,12 @@ func (s *InmemorySongStorage) PopFirstSong() (*voice.Song, error) {
 	defer s.mutex.Unlock()
 
 	if len(s.songs) == 0 {
-		s.logger.Debug("No hay canciones para eliminar")
+		s.logger.Info("No hay canciones para eliminar")
 		return nil, bot.ErrNoSongs
 	}
 
 	song := s.songs[0]
 	s.songs = s.songs[1:]
-	s.logger.Debug("Primera canción eliminada de la lista de reproducción")
+	s.logger.Info("Primera canción eliminada de la lista de reproducción")
 	return song, nil
 }

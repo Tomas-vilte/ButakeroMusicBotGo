@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,7 +13,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/kelseyhightower/envconfig"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 var (
@@ -24,31 +24,34 @@ var (
 )
 
 func main() {
-	loggerCfg := zap.NewDevelopmentConfig()
-	loggerCfg.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
-	logger, _ := loggerCfg.Build()
-	defer func(logger *zap.Logger) {
-		err := logger.Sync()
+	// Crear un nuevo logger usando la librería zap.
+	logger, err := logging.NewZapLogger()
+	if err != nil {
+		panic("Error creando el logger: " + err.Error())
+	}
+	defer func() {
+		// Cerrar el logger cuando la función termine.
+		err := logger.Close()
 		if err != nil {
-			panic("hubo un error: " + err.Error())
+			logger.Error("Error cerrando el logger", zap.Error(err))
 		}
-	}(logger)
+	}()
 	ctx, cancelCtx = context.WithCancel(context.Background())
 	defer cancelCtx()
 	if err := envconfig.Process("", cfg); err != nil {
-		logger.Fatal("error al cargar las variables de entorno", zap.Error(err))
+		logger.Error("error al cargar las variables de entorno", zap.Error(err))
 	}
 	dg, err := discordgo.New("Bot " + cfg.DiscordToken)
 	if err != nil {
-		logger.Fatal("error al crear la session de messaging", zap.Error(err))
+		logger.Error("error al crear la session de messaging", zap.Error(err))
 		return
 	}
 	storage = discord.NewInMemoryStorage()
-	youtubeFetcher = fetcher.NewYoutubeFetcher()
+	youtubeFetcher = fetcher.NewYoutubeFetcher(logger)
 	responseHandler := discord.NewDiscordResponseHandler(logger)
 	sessionService := discord.NewSessionService(dg)
 
-	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg).WithLogger(logger.Named("interactionHandler"))
+	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger).WithLogger(logger)
 	commandHandler := discord.NewSlashCommandRouter(cfg.CommandPrefix).
 		PlayHandler(handler.PlaySong).
 		SkipHandler(handler.SkipSong).
@@ -76,7 +79,7 @@ func main() {
 	dg.Identify.Intents = discordgo.IntentsAll
 	err = dg.Open()
 	if err != nil {
-		logger.Fatal("error al abrir la session de messaging", zap.Error(err))
+		logger.Error("error al abrir la session de messaging", zap.Error(err))
 	}
 	defer func(dg *discordgo.Session) {
 		err := dg.Close()
@@ -87,7 +90,7 @@ func main() {
 	slashCommands := commandHandler.GetSlashCommands()
 	registeredCommands, err := dg.ApplicationCommandBulkOverwrite(dg.State.User.ID, cfg.GuildID, slashCommands)
 	if err != nil {
-		logger.Fatal("no se pudo realizar el comando de sobrescritura masiva", zap.Error(err))
+		logger.Error("no se pudo realizar el comando de sobrescritura masiva", zap.Error(err))
 	}
 	if cfg.GuildID != "" {
 		defer func() {

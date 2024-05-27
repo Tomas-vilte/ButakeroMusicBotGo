@@ -15,12 +15,12 @@ func TestInmemorySongStorage_PrependSong(t *testing.T) {
 	storage := NewInmemorySongStorage(mockLogger)
 	song := &voice.Song{Title: "Test Song"}
 
-	mockLogger.On("Debug", "Canción agregada al principio de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field")).Return()
+	mockLogger.On("Info", "Canción agregada al principio de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field")).Return()
 
 	err := storage.PrependSong(song)
 
 	assert.NoError(t, err)
-	mockLogger.AssertCalled(t, "Debug", "Canción agregada al principio de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field"))
+	mockLogger.AssertCalled(t, "Info", "Canción agregada al principio de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field"))
 }
 
 func TestInmemorySongStorage_AppendSong(t *testing.T) {
@@ -28,17 +28,17 @@ func TestInmemorySongStorage_AppendSong(t *testing.T) {
 	storage := NewInmemorySongStorage(mockLogger)
 	song := &voice.Song{Title: "Test Song"}
 
-	mockLogger.On("Debug", mock.AnythingOfType("string"), mock.AnythingOfType("[]zapcore.Field")).Return()
+	mockLogger.On("Info", mock.AnythingOfType("string"), mock.AnythingOfType("[]zapcore.Field")).Return()
 
 	err := storage.AppendSong(song)
 
 	assert.NoError(t, err)
-	mockLogger.AssertCalled(t, "Debug", "Canción agregada al final de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field"))
+	mockLogger.AssertCalled(t, "Info", "Canción agregada al final de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field"))
 }
 
 func TestInmemorySongStorage_RemoveSong(t *testing.T) {
 	mockLogger := &MockLogger{}
-	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
 	storage := NewInmemorySongStorage(mockLogger)
 
@@ -85,8 +85,8 @@ func TestInmemorySongStorage_RemoveSong(t *testing.T) {
 
 func TestInmemorySongStorage_GetSongs(t *testing.T) {
 	mockLogger := &MockLogger{}
-	mockLogger.On("Debug", "Canción agregada al final de la lista de reproducción", mock.Anything).Return()
-	mockLogger.On("Debug", "Obteniendo todas las canciones de la lista de reproducción", mock.Anything).Return()
+	mockLogger.On("Info", "Canción agregada al final de la lista de reproducción", mock.Anything).Return()
+	mockLogger.On("Info", "Obteniendo todas las canciones de la lista de reproducción", mock.Anything).Return()
 
 	storage := NewInmemorySongStorage(mockLogger)
 
@@ -123,9 +123,9 @@ func TestInmemorySongStorage_GetSongs(t *testing.T) {
 
 func TestInmemorySongStorage_PopFirstSong(t *testing.T) {
 	mockLogger := &MockLogger{}
-	mockLogger.On("Debug", "Canción agregada al final de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field")).Return()
-	mockLogger.On("Debug", "No hay canciones para eliminar", mock.AnythingOfType("[]zapcore.Field")).Return()
-	mockLogger.On("Debug", "Primera canción eliminada de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field")).Return()
+	mockLogger.On("Info", "Canción agregada al final de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field")).Return()
+	mockLogger.On("Info", "No hay canciones para eliminar", mock.AnythingOfType("[]zapcore.Field")).Return()
+	mockLogger.On("Info", "Primera canción eliminada de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field")).Return()
 
 	storage := NewInmemorySongStorage(mockLogger)
 
@@ -156,9 +156,9 @@ func TestInmemorySongStorage_PopFirstSong(t *testing.T) {
 
 func TestInmemorySongStorage_ClearPlaylist(t *testing.T) {
 	mockLogger := &MockLogger{}
-	mockLogger.On("Debug", "Lista de reproducción borrada", mock.AnythingOfType("[]zapcore.Field")).Return()
-	mockLogger.On("Debug", "Obteniendo todas las canciones de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field")).Return()
-	mockLogger.On("Debug", "Canción agregada al final de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field")).Return()
+	mockLogger.On("Info", "Lista de reproducción borrada", mock.AnythingOfType("[]zapcore.Field")).Return()
+	mockLogger.On("Info", "Obteniendo todas las canciones de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field")).Return()
+	mockLogger.On("Info", "Canción agregada al final de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field")).Return()
 
 	storage := NewInmemorySongStorage(mockLogger)
 
