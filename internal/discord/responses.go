@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 )
@@ -39,11 +40,11 @@ type ResponseHandler interface {
 
 // DiscordResponseHandler implementa la interfaz ResponseHandler para manejar respuestas a interacciones de Discord.
 type DiscordResponseHandler struct {
-	logger *zap.Logger
+	logger logging.Logger
 }
 
 // NewDiscordResponseHandler crea una nueva instancia de DiscordResponseHandler.
-func NewDiscordResponseHandler(logger *zap.Logger) *DiscordResponseHandler {
+func NewDiscordResponseHandler(logger logging.Logger) *DiscordResponseHandler {
 	return &DiscordResponseHandler{logger: logger}
 }
 

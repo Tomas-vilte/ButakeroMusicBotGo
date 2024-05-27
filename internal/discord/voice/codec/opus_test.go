@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/stretchr/testify/mock"
+	"go.uber.org/zap"
 	"testing"
 	"time"
 )
@@ -16,15 +18,34 @@ func (r *errorReader) Read(p []byte) (int, error) {
 	return 0, r.err
 }
 
+type MockLogger struct {
+	mock.Mock
+}
+
+func (m *MockLogger) Error(msg string, fields ...zap.Field) {
+	m.Called(msg, fields)
+}
+
+func (m *MockLogger) Info(msg string, fields ...zap.Field) {
+	m.Called(msg, fields)
+}
+
+func (m *MockLogger) With(fields ...zap.Field) {
+	m.Called(fields)
+}
+
 func TestStreamDCAData_ReadsDataCorrectly(t *testing.T) {
+	mockLogger := new(MockLogger)
+	clientDCA := NewDCAStreamerImpl(mockLogger)
+
 	dca := bytes.NewReader([]byte{0x10, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10})
 	opusChan := make(chan []byte, 1)
-	streamer := &DCAStreamerImpl{}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	mockLogger.On("Error", "Error EOF o EOF inesperado encontrado durante la transmisión de datos DCA:", mock.AnythingOfType("[]zapcore.Field")).Return()
 
-	err := streamer.StreamDCAData(ctx, dca, opusChan, nil)
+	err := clientDCA.StreamDCAData(ctx, dca, opusChan, nil)
 	if err != nil {
 		t.Errorf("StreamDCAData returned an unexpected error: %v", err)
 	}
@@ -38,20 +59,24 @@ func TestStreamDCAData_ReadsDataCorrectly(t *testing.T) {
 }
 
 func TestStreamDCAData_HandlesEOF(t *testing.T) {
+	mockLogger := new(MockLogger)
+	clientDCA := NewDCAStreamerImpl(mockLogger)
 	dca := bytes.NewReader([]byte{})
 	opusChan := make(chan []byte, 1)
-	streamer := &DCAStreamerImpl{}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	mockLogger.On("Error", "Error EOF o EOF inesperado encontrado durante la transmisión de datos DCA:", mock.AnythingOfType("[]zapcore.Field")).Return()
 	defer cancel()
 
-	err := streamer.StreamDCAData(ctx, dca, opusChan, nil)
+	err := clientDCA.StreamDCAData(ctx, dca, opusChan, nil)
 	if err != nil {
 		t.Errorf("StreamDCAData returned an unexpected error: %v", err)
 	}
 }
 
 func TestStreamDCAData_CallsPositionCallback(t *testing.T) {
+	mockLogger := new(MockLogger)
+	clientDCA := NewDCAStreamerImpl(mockLogger)
 	data := make([]byte, 0)
 	for i := 0; i < 100; i++ {
 		frame := []byte{0x10, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10}
@@ -59,7 +84,7 @@ func TestStreamDCAData_CallsPositionCallback(t *testing.T) {
 	}
 	dca := bytes.NewReader(data)
 	opusChan := make(chan []byte, 100)
-	streamer := &DCAStreamerImpl{}
+	mockLogger.On("Error", "Error EOF o EOF inesperado encontrado durante la transmisión de datos DCA:", mock.AnythingOfType("[]zapcore.Field")).Return()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -70,7 +95,7 @@ func TestStreamDCAData_CallsPositionCallback(t *testing.T) {
 	}
 
 	go func() {
-		err := streamer.StreamDCAData(ctx, dca, opusChan, callback)
+		err := clientDCA.StreamDCAData(ctx, dca, opusChan, callback)
 		if err != nil {
 			t.Errorf("StreamDCAData returned an unexpected error: %v", err)
 		}
@@ -90,43 +115,49 @@ func TestStreamDCAData_CallsPositionCallback(t *testing.T) {
 	}
 }
 func TestStreamDCAData_HandlesErrorFromReader(t *testing.T) {
+	mockLogger := new(MockLogger)
+	clientDCA := NewDCAStreamerImpl(mockLogger)
 	dca := &errorReader{errors.New("test error")}
 	opusChan := make(chan []byte, 1)
-	streamer := &DCAStreamerImpl{}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	mockLogger.On("Error", "Error mientras se leia la longitud de DCA", mock.AnythingOfType("[]zapcore.Field")).Return()
 
-	err := streamer.StreamDCAData(ctx, dca, opusChan, nil)
+	err := clientDCA.StreamDCAData(ctx, dca, opusChan, nil)
 	if err == nil {
 		t.Error("StreamDCAData should have returned an error")
 	}
 }
 
 func TestStreamDCAData_HandlesErrorWhileReadingPCM(t *testing.T) {
+	mockLogger := new(MockLogger)
+	clientDCA := NewDCAStreamerImpl(mockLogger)
 	dca := bytes.NewReader([]byte{0x04, 0x00, 0x01, 0x02})
 	opusChan := make(chan []byte, 1)
-	streamer := &DCAStreamerImpl{}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	mockLogger.On("Error", "Error mientras se leia PCM de DCA:", mock.AnythingOfType("[]zapcore.Field")).Return()
 	defer cancel()
 
-	err := streamer.StreamDCAData(ctx, dca, opusChan, nil)
+	err := clientDCA.StreamDCAData(ctx, dca, opusChan, nil)
 	if err == nil {
 		t.Error("StreamDCAData should have returned an error")
 	}
 }
 
 func TestStreamDCAData_ReturnsNilOnContextCancellation(t *testing.T) {
+	mockLogger := new(MockLogger)
+	clientDCA := NewDCAStreamerImpl(mockLogger)
 	dca := bytes.NewReader([]byte{0x10, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10})
 	opusChan := make(chan []byte, 1)
-	streamer := &DCAStreamerImpl{}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	mockLogger.On("Error", "Error EOF o EOF inesperado encontrado durante la transmisión de datos DCA:", mock.AnythingOfType("[]zapcore.Field")).Return()
 	cancel() // Cancelar inmediatamente
 	defer cancel()
 
-	err := streamer.StreamDCAData(ctx, dca, opusChan, nil)
+	err := clientDCA.StreamDCAData(ctx, dca, opusChan, nil)
 	if err != nil {
 		t.Errorf("StreamDCAData returned an unexpected error: %v", err)
 	}

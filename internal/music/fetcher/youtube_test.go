@@ -10,8 +10,9 @@ import (
 
 func TestYoutubeFetcher_LookupSongs(t *testing.T) {
 	// Arrange
+	mockLogger := new(MockLogger)
 	ctx := context.Background()
-	f := NewYoutubeFetcher()
+	f := NewYoutubeFetcher(mockLogger)
 	query := "hello"
 
 	// Act
@@ -36,8 +37,9 @@ func TestYoutubeFetcher_LookupSongs(t *testing.T) {
 
 func TestYoutubeFetcher_GetDCAData(t *testing.T) {
 	// Arrange
+	mockLogger := new(MockLogger)
 	ctx := context.Background()
-	f := NewYoutubeFetcher()
+	f := NewYoutubeFetcher(mockLogger)
 	song := &voice.Song{
 		Type: "yt-dlp",
 		URL:  "https://www.youtube.com/watch?v=dQw4w9WgXcQ",

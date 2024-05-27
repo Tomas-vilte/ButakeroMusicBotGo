@@ -13,12 +13,12 @@ func (m *MockLogger) Error(msg string, fields ...zap.Field) {
 	m.Called(msg, fields)
 }
 
-func (m *MockLogger) Debug(msg string, fields ...zap.Field) {
+func (m *MockLogger) Info(msg string, fields ...zap.Field) {
 	m.Called(msg, fields)
 }
 
-func (m *MockLogger) Info(msg string, fields ...zap.Field) {
-	m.Called(msg, fields)
+func (m *MockLogger) With(fields ...zap.Field) {
+	m.Called(fields)
 }
 
 type MockStatePersistent struct {

@@ -1,4 +1,4 @@
-package inmemory_storage
+package discord
 
 import (
 	"github.com/stretchr/testify/mock"
