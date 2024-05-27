@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice/codec"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/bwmarrin/discordgo"
+	"go.uber.org/zap"
 	"io"
-	"log"
 	"time"
 )
 
@@ -70,22 +71,32 @@ type ChatSessionImpl struct {
 	GuildID         string                // ID del servidor de Discord al que pertenece la sesión.
 	voiceConnection ConnectionWrapper     // Conexión de voz en Discord.
 	DCAStreamer     codec.DCAStreamer
+	logger          logging.Logger
+}
+
+func NewChatSessionImpl(discordSessionWrapper DiscordSessionWrapper, guildID string, DCAStreamer codec.DCAStreamer, logger logging.Logger) *ChatSessionImpl {
+	return &ChatSessionImpl{
+		DiscordSession: discordSessionWrapper,
+		GuildID:        guildID,
+		DCAStreamer:    DCAStreamer,
+		logger:         logger,
+	}
 }
 
 // Close cierra la sesión de Discord.
 func (session *ChatSessionImpl) Close() error {
-	log.Println("Cerrando sesión de Discord...")
+	session.logger.Info("Cerrando sesión de Discord...")
 	return session.DiscordSession.Close()
 }
 
 // JoinVoiceChannel se une a un canal de voz en Discord.
 func (session *ChatSessionImpl) JoinVoiceChannel(channelID string) error {
-	log.Printf("Uniéndose al canal de voz %s...\n", channelID)
+	session.logger.Info("Uniéndose al canal de voz ...", zap.String("channelID", channelID))
 	// Unirse al canal de voz en Discord.
 	vc, err := session.DiscordSession.ChannelVoiceJoin(session.GuildID, channelID, false, true)
 	if err != nil {
-		log.Printf("Error al unirse al canal de voz: %v\n", err)
-		return fmt.Errorf("mientras se unía al canal de voz: %w", err)
+		session.logger.Error("Error al unirse al canal de voz", zap.Error(err))
+		return err
 	}
 	session.voiceConnection = &ConnectionWrapperImpl{
 		voiceConnection: vc,
@@ -95,7 +106,6 @@ func (session *ChatSessionImpl) JoinVoiceChannel(channelID string) error {
 
 // LeaveVoiceChannel abandona el canal de voz en Discord.
 func (session *ChatSessionImpl) LeaveVoiceChannel() error {
-	log.Println("Dejando el canal de voz...")
 	if session.voiceConnection == nil {
 		return nil
 	}
@@ -105,7 +115,7 @@ func (session *ChatSessionImpl) LeaveVoiceChannel() error {
 	session.voiceConnection = nil
 
 	if err != nil {
-		log.Printf("Error al dejar el canal de voz: %v\n", err)
+		session.logger.Error("Error al dejar el canal de voz", zap.Error(err))
 		return err
 	}
 
@@ -114,28 +124,27 @@ func (session *ChatSessionImpl) LeaveVoiceChannel() error {
 
 // SendAudio envía datos de audio a través de la conexión de voz en Discord utilizando el códec DCA.
 func (session *ChatSessionImpl) SendAudio(ctx context.Context, reader io.Reader, positionCallback func(time.Duration)) error {
-	log.Println("Enviando audio al canal de voz...")
+	session.logger.Info("Enviando audio al canal de voz...")
 
 	if err := session.voiceConnection.Speaking(true); err != nil {
-		log.Printf("Error al comenzar a hablar: %v\n", err)
-		return fmt.Errorf("mientras se comenzaba a hablar: %w", err)
+		session.logger.Error("Error al comenzar a hablar: ", zap.Error(err))
+		return err
 	}
 
 	opusSendChan := session.voiceConnection.OpusSendChan()
 	if opusSendChan == nil {
-		log.Println("Canal de envío de Opus no está disponible")
+		session.logger.Error("Error canal de envío de Opus no está disponible")
 		return fmt.Errorf("canal de envío de Opus no está disponible")
 	}
 
 	if err := session.DCAStreamer.StreamDCAData(ctx, reader, opusSendChan, positionCallback); err != nil {
-		log.Printf("Error al transmitir datos DCA: %v\n", err)
-		err = fmt.Errorf("mientras se transmitían datos DCA: %w", err)
+		session.logger.Error("Error al transmitir datos DCA: ", zap.Error(err))
 		_ = session.voiceConnection.Speaking(false)
 		return err
 	}
 
 	if err := session.voiceConnection.Speaking(false); err != nil {
-		log.Printf("Error al dejar de hablar: %v\n", err)
+		session.logger.Error("Error al dejar de hablar: ", zap.Error(err))
 		return err
 	}
 

@@ -3,6 +3,7 @@ package file_storage
 import (
 	"fmt"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"go.uber.org/zap"
 	"os"
 	"sync"
@@ -10,15 +11,15 @@ import (
 
 // FileStateStorage implementa la interfaz StateStorage utilizando un archivo para almacenar el estado del reproductor.
 type FileStateStorage struct {
-	mutex      sync.RWMutex // mutex se utiliza para garantizar la concurrencia segura al manipular el estado del reproductor.
-	filepath   string       // filepath es la ruta al archivo donde se guarda el estado.
-	logger     Logger       // logger es un registrador para registrar mensajes de depuración y errores.
+	mutex      sync.RWMutex   // mutex se utiliza para garantizar la concurrencia segura al manipular el estado del reproductor.
+	filepath   string         // filepath es la ruta al archivo donde se guarda el estado.
+	logger     logging.Logger // logger es un registrador para registrar mensajes de depuración y errores.
 	persistent StatePersistent
 }
 
 // NewFileStateStorage crea una nueva instancia de FileStateStorage utilizando el archivo especificado.
 // Si el archivo no existe, se creará uno nuevo.
-func NewFileStateStorage(filepath string, logger Logger, persistent StatePersistent) (*FileStateStorage, error) {
+func NewFileStateStorage(filepath string, logger logging.Logger, persistent StatePersistent) (*FileStateStorage, error) {
 	// Verificar si el archivo existe, si no existe, crear uno nuevo.
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		if err := os.WriteFile(filepath, []byte("{}"), 0644); err != nil {

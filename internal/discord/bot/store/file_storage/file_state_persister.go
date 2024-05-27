@@ -3,7 +3,6 @@ package file_storage
 import (
 	"encoding/json"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
-	"go.uber.org/zap"
 	"os"
 )
 
@@ -12,12 +11,6 @@ type FileState struct {
 	CurrentSong  *voice.PlayedSong `json:"current_song"`  // Canción actual que se está reproduciendo.
 	VoiceChannel string            `json:"voice_channel"` // ID del canal de voz.
 	TextChannel  string            `json:"text_channel"`  // ID del canal de texto.
-}
-
-type Logger interface {
-	Error(msg string, fields ...zap.Field)
-	Debug(msg string, fields ...zap.Field)
-	Info(msg string, fields ...zap.Field)
 }
 
 type StatePersistent interface {

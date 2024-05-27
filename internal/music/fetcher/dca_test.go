@@ -10,6 +10,7 @@ import (
 
 func TestGetDCAData(t *testing.T) {
 	ctx := context.Background()
+	mockLogger := new(MockLogger)
 
 	// Caso 1: Tipo de canción compatible (yt-dlp)
 	t.Run("SupportedSongType", func(t *testing.T) {
@@ -18,7 +19,7 @@ func TestGetDCAData(t *testing.T) {
 			URL:  "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 		}
 
-		reader, err := GetDCAData(ctx, song)
+		reader, err := GetDCAData(ctx, song, mockLogger)
 
 		if err != nil {
 			t.Errorf("GetDCAData devolvió un error inesperado para el tipo de canción compatible: %v", err)
@@ -41,7 +42,7 @@ func TestGetDCAData(t *testing.T) {
 			URL:  "https://example.com/unsupported-song",
 		}
 
-		_, err := GetDCAData(ctx, song)
+		_, err := GetDCAData(ctx, song, mockLogger)
 
 		if err == nil {
 			t.Error("GetDCAData no devolvió un error para el tipo de canción no compatible")

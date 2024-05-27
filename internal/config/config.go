@@ -1,14 +1,13 @@
 package config
 
 import (
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"os"
 	"path/filepath"
 
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store/file_storage"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store/inmemory_storage"
-	"go.uber.org/zap"
-
-	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store"
 )
 
 type Config struct {
@@ -27,7 +26,7 @@ type FileStoreConfig struct {
 	Dir string `default:"./playlist"`
 }
 
-func GetPlaylistStore(cfg *Config, guildID string, logger *zap.Logger, persistent file_storage.StatePersistent) (store.SongStorage, store.StateStorage) {
+func GetPlaylistStore(cfg *Config, guildID string, logger logging.Logger, persistent file_storage.StatePersistent) (store.SongStorage, store.StateStorage) {
 	switch cfg.Store.Type {
 	case "memory":
 		return inmemory_storage.NewInmemorySongStorage(logger), inmemory_storage.NewInmemoryStateStorage(logger)
