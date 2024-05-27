@@ -10,6 +10,7 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/discordmessenger"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice/codec"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/Tomas-vilte/GoMusicBot/internal/music/fetcher"
 	"github.com/Tomas-vilte/GoMusicBot/internal/utils"
 	"github.com/bwmarrin/discordgo"
@@ -34,13 +35,13 @@ type InteractionHandler struct {
 	songLookuper    SongLookuper
 	storage         InteractionStorage
 	cfg             *config.Config
-	logger          *zap.Logger
+	logger          logging.Logger
 	responseHandler ResponseHandler
 	session         SessionService
 }
 
 // NewInteractionHandler crea una nueva instancia de InteractionHandler.
-func NewInteractionHandler(ctx context.Context, discordToken string, responseHandler ResponseHandler, session SessionService, songLookuper SongLookuper, storage InteractionStorage, cfg *config.Config) *InteractionHandler {
+func NewInteractionHandler(ctx context.Context, discordToken string, responseHandler ResponseHandler, session SessionService, songLookuper SongLookuper, storage InteractionStorage, cfg *config.Config, logger logging.Logger) *InteractionHandler {
 	handler := &InteractionHandler{
 		ctx:             ctx,
 		discordToken:    discordToken,
@@ -48,7 +49,7 @@ func NewInteractionHandler(ctx context.Context, discordToken string, responseHan
 		songLookuper:    songLookuper,
 		storage:         storage,
 		cfg:             cfg,
-		logger:          zap.NewNop(),
+		logger:          logger,
 		responseHandler: responseHandler,
 		session:         session,
 	}
@@ -56,7 +57,7 @@ func NewInteractionHandler(ctx context.Context, discordToken string, responseHan
 }
 
 // WithLogger establece el logger para InteractionHandler.
-func (handler *InteractionHandler) WithLogger(l *zap.Logger) *InteractionHandler {
+func (handler *InteractionHandler) WithLogger(l logging.Logger) *InteractionHandler {
 	handler.logger = l
 	return handler
 }
@@ -98,13 +99,12 @@ func (handler *InteractionHandler) GuildDelete(s *discordgo.Session, event *disc
 
 // PlaySong maneja el comando de reproducción de una canción.
 func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.InteractionCreate, opt *discordgo.ApplicationCommandInteractionDataOption) {
-	logger := handler.logger.With(zap.String("guildID", ic.GuildID))
-
+	handler.logger.With(zap.String("guildID", ic.GuildID))
 	g, err := s.State.Guild(ic.GuildID)
 	if err != nil {
-		logger.Info("falló al obtener el servidor", zap.Error(err))
+		handler.logger.Info("falló al obtener el servidor", zap.Error(err))
 		if err := handler.responseHandler.RespondWithMessage(handler.session, ic.Interaction, "Ocurrió un error al obtener la información del servidor"); err != nil {
-			logger.Error("falló al responder con el error del servidor", zap.Error(err))
+			handler.logger.Error("falló al responder con el error del servidor", zap.Error(err))
 		}
 		return
 	}
@@ -123,7 +123,7 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 	vs := getUsersVoiceState(g, ic.Member.User)
 	if vs == nil {
 		if err := handler.responseHandler.RespondWithMessage(handler.session, ic.Interaction, ErrorMessageNotInVoiceChannel); err != nil {
-			logger.Error("falló al responder con el error de no estar en un canal de voz", zap.Error(err))
+			handler.logger.Error("falló al responder con el error de no estar en un canal de voz", zap.Error(err))
 		}
 		return
 	}
@@ -134,17 +134,17 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 			Embeds: []*discordgo.MessageEmbed{GenerateAddingSongEmbed(input, ic.Member)},
 		},
 	}); err != nil {
-		logger.Error("fallo al enviar la respuesta diferida", zap.Error(err))
+		handler.logger.Error("fallo al enviar la respuesta diferida", zap.Error(err))
 	}
 
 	go func(ic *discordgo.InteractionCreate, vs *discordgo.VoiceState) {
 		songs, err := handler.songLookuper.LookupSongs(handler.ctx, input)
 		if err != nil {
-			logger.Info("falló al buscar la metadata de la canción", zap.Error(err), zap.String("input", input))
+			handler.logger.Info("falló al buscar la metadata de la canción", zap.Error(err), zap.String("input", input))
 			if err := handler.responseHandler.CreateFollowupMessage(handler.session, ic.Interaction, discordgo.WebhookParams{
 				Embeds: []*discordgo.MessageEmbed{GenerateFailedToAddSongEmbed(input, ic.Member)},
 			}); err != nil {
-				logger.Error("falló al enviar el mensaje de seguimiento de error al reproducir la cancion", zap.Error(err))
+				handler.logger.Error("falló al enviar el mensaje de seguimiento de error al reproducir la cancion", zap.Error(err))
 			}
 			return
 		}
@@ -158,7 +158,7 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 			if err := handler.responseHandler.CreateFollowupMessage(handler.session, ic.Interaction, discordgo.WebhookParams{
 				Embeds: []*discordgo.MessageEmbed{GenerateFailedToAddSongEmbed(input, ic.Member)},
 			}); err != nil {
-				logger.Error("falló al enviar el mensaje de seguimiento de error al agregar la canción", zap.Error(err))
+				handler.logger.Error("falló al enviar el mensaje de seguimiento de error al agregar la canción", zap.Error(err))
 			}
 			return
 		}
@@ -166,18 +166,18 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 		if len(songs) == 1 {
 			song := songs[0]
 			if err := player.AddSong(&ic.ChannelID, &vs.ChannelID, song); err != nil {
-				logger.Info("falló al agregar la canción", zap.Error(err), zap.String("input", input))
+				handler.logger.Info("falló al agregar la canción", zap.Error(err), zap.String("input", input))
 				if err := handler.responseHandler.CreateFollowupMessage(handler.session, ic.Interaction, discordgo.WebhookParams{
 					Embeds: []*discordgo.MessageEmbed{GenerateFailedToAddSongEmbed(input, ic.Member)},
 				}); err != nil {
-					logger.Error("falló al enviar el mensaje de seguimiento de error al agregar la canción", zap.Error(err))
+					handler.logger.Error("falló al enviar el mensaje de seguimiento de error al agregar la canción", zap.Error(err))
 				}
 				return
 			}
 			if err := handler.responseHandler.CreateFollowupMessage(handler.session, ic.Interaction, discordgo.WebhookParams{
 				Embeds: []*discordgo.MessageEmbed{GenerateAddedSongEmbed(song, ic.Member)},
 			}); err != nil {
-				logger.Error("falló al enviar el mensaje de seguimiento de canción agregada", zap.Error(err))
+				handler.logger.Error("falló al enviar el mensaje de seguimiento de canción agregada", zap.Error(err))
 			}
 			return
 		}
@@ -200,7 +200,7 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 				},
 			},
 		}); err != nil {
-			logger.Error("falló al enviar el mensaje de seguimiento de selección de agregar canción o lista de reproducción", zap.Error(err))
+			handler.logger.Error("falló al enviar el mensaje de seguimiento de selección de agregar canción o lista de reproducción", zap.Error(err))
 		}
 	}(ic, vs)
 }
@@ -476,18 +476,13 @@ func (handler *InteractionHandler) GetPlayingSong(s *discordgo.Session, ic *disc
 
 // setupGuildPlayer configura un reproductor para un servidor dado.
 func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discordgo.Session) *bot.GuildPlayer {
-	voiceChat := &voice.ChatSessionImpl{
-		DiscordSession: dg,
-		GuildID:        string(guildID),
-		DCAStreamer:    &codec.DCAStreamerImpl{},
-	}
-
-	messageSender := &discordmessenger.MessageSenderImpl{
-		DiscordSession: dg,
-	}
+	dca := codec.NewDCAStreamerImpl(handler.logger)
+	voiceChat := voice.NewChatSessionImpl(dg, string(guildID), dca, handler.logger)
+	messageSender := discordmessenger.NewMessageSenderImpl(dg, handler.logger)
+	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger)
 	persistent := file_storage.NewJSONStatePersistent()
 	songStorage, stateStorage := config.GetPlaylistStore(handler.cfg, string(guildID), handler.logger, persistent)
-	player := bot.NewGuildPlayer(handler.ctx, voiceChat, songStorage, stateStorage, fetcher.GetDCAData, messageSender).WithLogger(handler.logger.With(zap.String("guildID", string(guildID))))
+	player := bot.NewGuildPlayer(handler.ctx, voiceChat, songStorage, stateStorage, fetcherGetDCA.GetDCAData, messageSender, handler.logger).WithLogger(handler.logger)
 	return player
 }
 

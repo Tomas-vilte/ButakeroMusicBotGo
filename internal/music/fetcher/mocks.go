@@ -1,4 +1,4 @@
-package inmemory_storage
+package fetcher
 
 import (
 	"github.com/stretchr/testify/mock"

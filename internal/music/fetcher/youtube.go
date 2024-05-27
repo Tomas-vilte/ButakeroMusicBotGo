@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"go.uber.org/zap"
 	"io"
 	"os/exec"
@@ -21,13 +22,13 @@ const (
 
 // YoutubeFetcher es un tipo que interactúa con YouTube para obtener metadatos y datos de audio.
 type YoutubeFetcher struct {
-	Logger *zap.Logger
+	Logger logging.Logger
 }
 
 // NewYoutubeFetcher crea una nueva instancia de YoutubeFetcher con un logger predeterminado.
-func NewYoutubeFetcher() *YoutubeFetcher {
+func NewYoutubeFetcher(logger logging.Logger) *YoutubeFetcher {
 	return &YoutubeFetcher{
-		Logger: zap.NewNop(),
+		Logger: logger,
 	}
 }
 

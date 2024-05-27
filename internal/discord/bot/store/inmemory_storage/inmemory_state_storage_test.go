@@ -9,8 +9,7 @@ import (
 // TestInmemoryStateStorage_GetCurrentSong verifica que el método GetCurrentSong devuelva la canción actual correctamente.
 func TestInmemoryStateStorage_GetCurrentSong(t *testing.T) {
 	mockLogger := &MockLogger{}
-	mockLogger.On("Debug", "Obteniendo la canción actual", mock.AnythingOfType("[]zapcore.Field")).Return()
-	mockLogger.On("Debug", "Canción actual establecida", mock.AnythingOfType("[]zapcore.Field")).Return()
+	mockLogger.On("Info", "Obteniendo la canción actual", mock.AnythingOfType("[]zapcore.Field")).Return()
 
 	storage := NewInmemoryStateStorage(mockLogger)
 
@@ -35,8 +34,8 @@ func TestInmemoryStateStorage_GetCurrentSong(t *testing.T) {
 // TestInmemoryStateStorage_GetVoiceChannel verifica que el método GetVoiceChannel devuelva el canal de voz correctamente.
 func TestInmemoryStateStorage_GetVoiceChannel(t *testing.T) {
 	mockLogger := &MockLogger{}
-	mockLogger.On("Debug", "Obteniendo el canal de voz", mock.AnythingOfType("[]zapcore.Field")).Return()
-	mockLogger.On("Debug", "Canal de voz establecido", mock.AnythingOfType("[]zapcore.Field")).Return()
+	mockLogger.On("Info", "Obteniendo el canal de voz", mock.AnythingOfType("[]zapcore.Field")).Return()
+	mockLogger.On("Info", "Canal de voz establecido", mock.AnythingOfType("[]zapcore.Field")).Return()
 
 	storage := NewInmemoryStateStorage(mockLogger)
 
@@ -64,8 +63,8 @@ func TestInmemoryStateStorage_GetVoiceChannel(t *testing.T) {
 // TestInmemoryStateStorage_GetTextChannel verifica que el método GetTextChannel devuelva el canal de texto correctamente.
 func TestInmemoryStateStorage_GetTextChannel(t *testing.T) {
 	mockLogger := &MockLogger{}
-	mockLogger.On("Debug", "Obteniendo el canal de texto", mock.AnythingOfType("[]zapcore.Field")).Return()
-	mockLogger.On("Debug", "Canal de texto establecido", mock.AnythingOfType("[]zapcore.Field")).Return()
+	mockLogger.On("Info", "Obteniendo el canal de texto", mock.AnythingOfType("[]zapcore.Field")).Return()
+	mockLogger.On("Info", "Canal de texto establecido", mock.AnythingOfType("[]zapcore.Field")).Return()
 
 	storage := NewInmemoryStateStorage(mockLogger)
 

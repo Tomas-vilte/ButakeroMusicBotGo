@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"go.uber.org/zap"
 	"os"
 	"sync"
@@ -11,15 +12,15 @@ import (
 
 // FileSongStorage implementa la interfaz SongStorage utilizando un archivo para almacenar la lista de reproducción.
 type FileSongStorage struct {
-	mutex      sync.RWMutex // mutex se utiliza para garantizar la concurrencia segura al manipular la lista de reproducción.
-	filepath   string       // filepath es la ruta al archivo donde se guarda la lista de reproducción.
-	logger     Logger       // logger es un registrador para registrar mensajes de depuración y errores.
+	mutex      sync.RWMutex   // mutex se utiliza para garantizar la concurrencia segura al manipular la lista de reproducción.
+	filepath   string         // filepath es la ruta al archivo donde se guarda la lista de reproducción.
+	logger     logging.Logger // logger es un registrador para registrar mensajes de depuración y errores.
 	persistent StatePersistent
 }
 
 // NewFileSongStorage crea una nueva instancia de FileSongStorage utilizando el archivo especificado.
 // Si el archivo no existe, se creará uno nuevo.
-func NewFileSongStorage(filepath string, logger Logger, persistent StatePersistent) (*FileSongStorage, error) {
+func NewFileSongStorage(filepath string, logger logging.Logger, persistent StatePersistent) (*FileSongStorage, error) {
 	// Verificar si el archivo existe, si no existe, crear uno nuevo.
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
 		if err := os.WriteFile(filepath, []byte("{}"), 0644); err != nil {

@@ -2,8 +2,9 @@ package discordmessenger
 
 import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/bwmarrin/discordgo"
-	"log"
+	"go.uber.org/zap"
 )
 
 // MessageSenderWrapper es una interfaz que envuelve los métodos necesarios de discordgo.Session para enviar mensajes.
@@ -35,16 +36,24 @@ type ChatMessageSender interface {
 // MessageSenderImpl implementa la interfaz ChatMessageSender para enviar mensajes en Discord.
 type MessageSenderImpl struct {
 	DiscordSession MessageSenderWrapper
+	logger         logging.Logger
+}
+
+func NewMessageSenderImpl(discordSession MessageSenderWrapper, logger logging.Logger) *MessageSenderImpl {
+	return &MessageSenderImpl{
+		DiscordSession: discordSession,
+		logger:         logger,
+	}
 }
 
 // SendMessage envía un mensaje de texto a un canal específico en Discord.
 func (session *MessageSenderImpl) SendMessage(channelID, message string) error {
-	log.Printf("Enviando mensaje '%s' al canal %s...\n", message, channelID)
+	session.logger.Info("Enviando mensaje al canal", zap.String("mensaje", message), zap.String("channel", channelID))
 	_, err := session.DiscordSession.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
 		Content: message,
 	})
 	if err != nil {
-		log.Printf("Error al enviar mensaje: %v\n", err)
+		session.logger.Error("Error al enviar el mensaje: ", zap.Error(err))
 		return err
 	}
 	return nil
@@ -52,13 +61,13 @@ func (session *MessageSenderImpl) SendMessage(channelID, message string) error {
 
 // SendPlayMessage envía un mensaje de reproducción con detalles sobre la canción que se está reproduciendo en el canal de Discord.
 func (session *MessageSenderImpl) SendPlayMessage(channelID string, message *voice.PlayMessage) (string, error) {
-	log.Println("Enviando mensaje de reproducción...")
+	session.logger.Info("Enviando mensaje de reproducción...")
 	// Enviar el mensaje de reproducción al canal especificado.
 	msg, err := session.DiscordSession.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
 		Embed: voice.GeneratePlayingSongEmbed(message),
 	})
 	if err != nil {
-		log.Printf("Error al enviar mensaje de reproducción: %v\n", err)
+		session.logger.Error("Error al enviar mensaje de reproducción: ", zap.Error(err))
 		return "", err
 	}
 	return msg.ID, nil
@@ -74,7 +83,8 @@ func (session *MessageSenderImpl) EditPlayMessage(channelID string, messageID st
 		Embeds:  &embeds,
 	})
 	if err != nil {
-		log.Printf("Error al editar mensaje de reproducción: %v\n", err)
+		session.logger.Error("Error al editar el mensaje de reproducción: ", zap.Error(err))
+		return err
 	}
 
 	return err

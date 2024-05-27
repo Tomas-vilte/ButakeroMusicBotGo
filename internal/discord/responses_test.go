@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/mock"
-	"go.uber.org/zap"
 	"testing"
 )
 
@@ -24,8 +23,8 @@ func (m *MockSessionService) FollowupMessageCreate(i *discordgo.Interaction, wai
 }
 
 func TestDiscordResponseHandler_Respond(t *testing.T) {
-	logger := zap.NewNop()
-	responseHandler := NewDiscordResponseHandler(logger)
+	mockLogger := new(MockLogger)
+	responseHandler := NewDiscordResponseHandler(mockLogger)
 	mockSession := new(MockSessionService)
 
 	interaction := &discordgo.Interaction{}
@@ -42,14 +41,15 @@ func TestDiscordResponseHandler_Respond(t *testing.T) {
 }
 
 func TestDiscordResponseHandler_Respond_Error(t *testing.T) {
-	logger := zap.NewNop()
-	responseHandler := NewDiscordResponseHandler(logger)
+	mockLogger := new(MockLogger)
+	responseHandler := NewDiscordResponseHandler(mockLogger)
 	mockSession := new(MockSessionService)
 
 	interaction := &discordgo.Interaction{}
 	response := discordgo.InteractionResponse{}
 
 	mockSession.On("InteractionRespond", interaction, &response).Return(errors.New("error al responder"))
+	mockLogger.On("Error", "No se pudo responder a la interacción", mock.AnythingOfType("[]zapcore.Field")).Return()
 
 	err := responseHandler.Respond(mockSession, interaction, response)
 	if err == nil {
@@ -69,8 +69,8 @@ func TestDiscordResponseHandler_Respond_Error(t *testing.T) {
 }
 
 func TestDiscordResponseHandler_RespondWithMessage(t *testing.T) {
-	logger := zap.NewNop()
-	responseHandler := NewDiscordResponseHandler(logger)
+	mockLogger := new(MockLogger)
+	responseHandler := NewDiscordResponseHandler(mockLogger)
 	mockSession := new(MockSessionService)
 
 	interaction := &discordgo.Interaction{}
@@ -96,8 +96,8 @@ func TestDiscordResponseHandler_RespondWithMessage(t *testing.T) {
 }
 
 func TestDiscordResponseHandler_CreateFollowupMessage(t *testing.T) {
-	logger := zap.NewNop()
-	responseHandler := NewDiscordResponseHandler(logger)
+	mockLogger := new(MockLogger)
+	responseHandler := NewDiscordResponseHandler(mockLogger)
 	mockSession := new(MockSessionService)
 
 	interaction := &discordgo.Interaction{}
@@ -115,14 +115,15 @@ func TestDiscordResponseHandler_CreateFollowupMessage(t *testing.T) {
 }
 
 func TestDiscordResponseHandler_CreateFollowupMessage_Error(t *testing.T) {
-	logger := zap.NewNop()
-	responseHandler := NewDiscordResponseHandler(logger)
+	mockLogger := new(MockLogger)
+	responseHandler := NewDiscordResponseHandler(mockLogger)
 	mockSession := new(MockSessionService)
 
 	interaction := &discordgo.Interaction{}
 	params := discordgo.WebhookParams{}
 
 	mockSession.On("FollowupMessageCreate", interaction, true, &params).Return(&discordgo.Message{}, errors.New("error al crear mensaje de seguimiento"))
+	mockLogger.On("Error", "No se pudo crear el mensaje de seguimiento", mock.AnythingOfType("[]zapcore.Field")).Return()
 
 	err := responseHandler.CreateFollowupMessage(mockSession, interaction, params)
 	if err == nil {
