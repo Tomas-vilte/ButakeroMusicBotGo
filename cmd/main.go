@@ -2,17 +2,19 @@ package main
 
 import (
 	"context"
-	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
-	"os"
-	"os/signal"
-	"syscall"
-
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/Tomas-vilte/GoMusicBot/internal/music/fetcher"
 	"github.com/bwmarrin/discordgo"
 	"github.com/kelseyhightower/envconfig"
 	"go.uber.org/zap"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 var (
@@ -46,6 +48,9 @@ func main() {
 		logger.Error("error al crear la session de messaging", zap.Error(err))
 		return
 	}
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 	storage = discord.NewInMemoryStorage()
 	youtubeFetcher = fetcher.NewYoutubeFetcher(logger)
 	responseHandler := discord.NewDiscordResponseHandler(logger)
