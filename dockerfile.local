@@ -18,6 +18,34 @@ ARG YT_DLP_VERSION="2024.04.09"
 ENV DISCORDTOKEN=
 ENV COMMANDPREFIX=
 
+# Instalación de Prometheus
+RUN apt-get update \
+  && apt-get install -y wget \
+  && wget https://github.com/prometheus/prometheus/releases/download/v2.35.0/prometheus-2.35.0.linux-amd64.tar.gz \
+  && tar xvfz prometheus-*.tar.gz \
+  && mkdir /prometheus \
+  && mv prometheus-*/* /prometheus \
+  && rm -rf prometheus-* prometheus-*.tar.gz
+
+
+# Instalacion de Grafana
+RUN apt-get update \
+  && apt-get install -y software-properties-common \
+  && add-apt-repository "deb https://packages.grafana.com/oss/deb stable main" \
+  && wget -q -O - https://packages.grafana.com/gpg.key | apt-key add - \
+  && apt-get update \
+  && apt-get install -y grafana
+
+# Configuración de Prometheus
+COPY prometheus.yml /prometheus/prometheus.yml
+
+# Configuración de Grafana
+COPY grafana.ini /etc/grafana/grafana.ini
+
+# Configuración del origen de datos de Grafana
+COPY datasource.yml /etc/grafana/provisioning/datasources/datasource.yml
+
+
 RUN apt-get update \
   && apt-get install -y ffmpeg wget libopusfile0 \
   && wget "https://github.com/yt-dlp/yt-dlp/releases/download/${YT_DLP_VERSION}/yt-dlp_linux" -O /usr/local/bin/yt-dlp \
@@ -25,5 +53,11 @@ RUN apt-get update \
 
 COPY --from=builder /bin/butakero /bin/butakero
 COPY --from=builder /go/bin/dca /usr/local/bin/dca
+
+# Puerto de Prometheus
+EXPOSE 9090
+
+# Puerto de Grafana
+EXPOSE 3000
 
 CMD ["/bin/butakero"]
