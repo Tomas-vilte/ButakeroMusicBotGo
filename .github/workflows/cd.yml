@@ -23,12 +23,30 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
+    
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Logearse a Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+      
+      - name: Buildear y pushear la imagen
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: dockerfile.aws
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/butakero-bot-aws:latest
+          platforms: linux/arm64
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
       - name: Setear variable de entorno
         run: |
           echo "DISCORDTOKEN=${{ secrets.DISCORDTOKEN }}" >> .env
@@ -47,6 +65,5 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-            sudo docker compose -f production-docker-compose.yml pull
             sudo docker compose -f production-docker-compose.yml down
             sudo docker compose -f production-docker-compose.yml up -d
