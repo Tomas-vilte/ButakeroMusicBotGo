@@ -11,6 +11,7 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice/codec"
 	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
+	"github.com/Tomas-vilte/GoMusicBot/internal/metrics"
 	"github.com/Tomas-vilte/GoMusicBot/internal/music/fetcher"
 	"github.com/Tomas-vilte/GoMusicBot/internal/utils"
 	"github.com/bwmarrin/discordgo"
@@ -29,29 +30,31 @@ type SongLookuper interface {
 
 // InteractionHandler maneja las interacciones de Discord.
 type InteractionHandler struct {
-	ctx             context.Context
-	discordToken    string
-	guildsPlayers   map[GuildID]*bot.GuildPlayer
-	songLookuper    SongLookuper
-	storage         InteractionStorage
-	cfg             *config.Config
-	logger          logging.Logger
-	responseHandler ResponseHandler
-	session         SessionService
+	ctx                 context.Context
+	discordToken        string
+	guildsPlayers       map[GuildID]*bot.GuildPlayer
+	songLookuper        SongLookuper
+	storage             InteractionStorage
+	cfg                 *config.Config
+	logger              logging.Logger
+	responseHandler     ResponseHandler
+	session             SessionService
+	commandUsageCounter metrics.CustomMetric
 }
 
 // NewInteractionHandler crea una nueva instancia de InteractionHandler.
-func NewInteractionHandler(ctx context.Context, discordToken string, responseHandler ResponseHandler, session SessionService, songLookuper SongLookuper, storage InteractionStorage, cfg *config.Config, logger logging.Logger) *InteractionHandler {
+func NewInteractionHandler(ctx context.Context, discordToken string, responseHandler ResponseHandler, session SessionService, songLooker SongLookuper, storage InteractionStorage, cfg *config.Config, logger logging.Logger, metricsPrometheus metrics.CustomMetric) *InteractionHandler {
 	handler := &InteractionHandler{
-		ctx:             ctx,
-		discordToken:    discordToken,
-		guildsPlayers:   make(map[GuildID]*bot.GuildPlayer),
-		songLookuper:    songLookuper,
-		storage:         storage,
-		cfg:             cfg,
-		logger:          logger,
-		responseHandler: responseHandler,
-		session:         session,
+		ctx:                 ctx,
+		discordToken:        discordToken,
+		guildsPlayers:       make(map[GuildID]*bot.GuildPlayer),
+		songLookuper:        songLooker,
+		storage:             storage,
+		cfg:                 cfg,
+		logger:              logger,
+		responseHandler:     responseHandler,
+		session:             session,
+		commandUsageCounter: metricsPrometheus,
 	}
 	return handler
 }
@@ -108,7 +111,7 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 		}
 		return
 	}
-
+	handler.commandUsageCounter.Inc("PlaySong")
 	player := handler.getGuildPlayer(GuildID(g.ID), s)
 	optionMap := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, len(opt.Options))
 	for _, opt := range opt.Options {
@@ -317,6 +320,7 @@ func (handler *InteractionHandler) StopPlaying(s *discordgo.Session, ic *discord
 	}
 
 	player := handler.getGuildPlayer(GuildID(g.ID), s)
+	handler.commandUsageCounter.Inc("StopPlaying")
 	if err := player.Stop(); err != nil {
 		handler.logger.Info("falló al detener la reproducción", zap.Error(err))
 		if err := handler.responseHandler.RespondWithMessage(handler.session, ic.Interaction, "Ocurrió un error al obtener la información del servidor"); err != nil {
@@ -342,7 +346,7 @@ func (handler *InteractionHandler) SkipSong(s *discordgo.Session, ic *discordgo.
 
 	player := handler.getGuildPlayer(GuildID(g.ID), s)
 	player.SkipSong()
-
+	handler.commandUsageCounter.Inc("SkipSong")
 	if err := handler.responseHandler.RespondWithMessage(handler.session, ic.Interaction, "⏭️ Canción omitida"); err != nil {
 		handler.logger.Error("falló al responder con el error del servidor", zap.Error(err))
 	}
@@ -360,6 +364,7 @@ func (handler *InteractionHandler) ListPlaylist(s *discordgo.Session, ic *discor
 	}
 
 	player := handler.getGuildPlayer(GuildID(g.ID), s)
+	handler.commandUsageCounter.Inc("ListPlaylist")
 	playlist, err := player.GetPlaylist()
 	if err != nil {
 		handler.logger.Error("falló al obtener la lista de reproducción", zap.Error(err))
@@ -411,7 +416,7 @@ func (handler *InteractionHandler) RemoveSong(s *discordgo.Session, ic *discordg
 	}
 
 	player := handler.getGuildPlayer(GuildID(g.ID), s)
-
+	handler.commandUsageCounter.Inc("RemoveSong")
 	optionMap := make(map[string]*discordgo.ApplicationCommandInteractionDataOption, len(opt.Options))
 	for _, opt := range opt.Options {
 		optionMap[opt.Name] = opt
@@ -452,7 +457,7 @@ func (handler *InteractionHandler) GetPlayingSong(s *discordgo.Session, ic *disc
 	}
 
 	player := handler.getGuildPlayer(GuildID(g.ID), s)
-
+	handler.commandUsageCounter.Inc("GetPlayingSong")
 	song, err := player.GetPlayedSong()
 	if err != nil {
 		handler.logger.Info("falló al obtener la canción en reproducción", zap.Error(err))
