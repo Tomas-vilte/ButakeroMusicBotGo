@@ -5,12 +5,11 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord"
 	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
+	"github.com/Tomas-vilte/GoMusicBot/internal/metrics"
 	"github.com/Tomas-vilte/GoMusicBot/internal/music/fetcher"
 	"github.com/bwmarrin/discordgo"
 	"github.com/kelseyhightower/envconfig"
 	"go.uber.org/zap"
-	"log"
-	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -31,6 +30,17 @@ func main() {
 	if err != nil {
 		panic("Error creando el logger: " + err.Error())
 	}
+	promRegistry := metrics.NewPrometheusRegistry()
+	commandUsageCounter := metrics.NewCommandUsageCounter()
+	promRegistry.Register(commandUsageCounter)
+
+	promHTTPServer := metrics.NewPrometheusHTTPServer(":8080", promRegistry)
+
+	go func() {
+		if err := promHTTPServer.Start(); err != nil {
+			logger.Error("Error al iniciar el servidor HTTP de métricas Prometheus: ", zap.Error(err))
+		}
+	}()
 	defer func() {
 		// Cerrar el logger cuando la función termine.
 		err := logger.Close()
@@ -48,15 +58,12 @@ func main() {
 		logger.Error("error al crear la session de messaging", zap.Error(err))
 		return
 	}
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
 	storage = discord.NewInMemoryStorage()
 	youtubeFetcher = fetcher.NewYoutubeFetcher(logger)
 	responseHandler := discord.NewDiscordResponseHandler(logger)
 	sessionService := discord.NewSessionService(dg)
 
-	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger).WithLogger(logger)
+	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter).WithLogger(logger)
 	commandHandler := discord.NewSlashCommandRouter(cfg.CommandPrefix).
 		PlayHandler(handler.PlaySong).
 		SkipHandler(handler.SkipSong).
