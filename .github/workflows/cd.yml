@@ -46,5 +46,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            set -e
             sudo docker compose -f production-docker-compose.yml pull
+            sudo docker compose -f production-docker-compose.yml down
             sudo docker compose -f production-docker-compose.yml up -d
