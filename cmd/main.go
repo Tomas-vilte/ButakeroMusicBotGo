@@ -31,7 +31,7 @@ func main() {
 	if err != nil {
 		panic("Error creando el logger: " + err.Error())
 	}
-	fmt.Println("Testtt")
+	fmt.Println("Test")
 	promRegistry := metrics.NewPrometheusRegistry()
 	commandUsageCounter := metrics.NewCommandUsageCounter()
 	promRegistry.Register(commandUsageCounter)

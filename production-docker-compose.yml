@@ -1,8 +1,6 @@
 services:
   discord-bot:
-    build:
-      context: .
-      dockerfile: ./dockerfile.aws
+    image: tomasvilte/butakero-bot-aws:latest
     container_name: bot
     environment:
       - DISCORDTOKEN=${DISCORDTOKEN}
@@ -13,6 +11,7 @@ services:
       - monitoring-net
 
     restart: always
+
   prometheus:
     image: prom/prometheus:v2.35.0
     container_name: prometheus
@@ -23,7 +22,6 @@ services:
     networks:
       - monitoring-net
     restart: always
-
 
   grafana:
     image: grafana/grafana:8.0.6
@@ -40,7 +38,6 @@ services:
     networks:
       - monitoring-net
     restart: always
-
 
   node-exporter:
     image: prom/node-exporter:v1.2.2
