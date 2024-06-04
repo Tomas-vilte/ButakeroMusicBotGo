@@ -56,8 +56,17 @@ jobs:
         run: |
           docker compose -f production-docker-compose.yml build
           docker compose -f production-docker-compose.yml push
+    
+      - name: Copie production-docker-compose.yml a EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST_IP }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: ./production-docker-compose.yml
+          target: /opt/app/config/production-docker-compose.yml  
 
-      - name: Deploy a EC2
+      - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST_IP }}
@@ -65,5 +74,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-            sudo docker compose -f production-docker-compose.yml down
-            sudo docker compose -f production-docker-compose.yml up -d
+            cd /opt/app/config 
+            sudo docker-compose -f production-docker-compose.yml down
+            sudo docker-compose -f production-docker-compose.yml up -d
