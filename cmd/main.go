@@ -93,7 +93,7 @@ func main() {
 	dg.Identify.Intents = discordgo.IntentsAll
 	err = dg.Open()
 	if err != nil {
-		logger.Error("error al abrir la session de messaging", zap.Error(err))
+		logger.Error("error al abrir la session de discord", zap.Error(err))
 	}
 	defer func(dg *discordgo.Session) {
 		err := dg.Close()
