@@ -1,63 +1,23 @@
 FROM golang:1.21 AS builder
-
 RUN apt-get update \
   && apt-get install -y build-essential libopus-dev libopusfile-dev \
   && go install github.com/bwmarrin/dca/cmd/dca@latest
-
 WORKDIR /src/
 COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd/ cmd/
 COPY internal/ internal/
 RUN CGO_ENABLED=1 GOARCH=amd64 GOMAXPROCS=4 go build -ldflags="-s -w" -o /bin/butakero cmd/main.go
-
 FROM ubuntu:22.04
-
 ARG YT_DLP_VERSION="2024.04.09"
-
 ENV DISCORDTOKEN=
 ENV COMMANDPREFIX=
-
-# Instalación de Prometheus
-RUN apt-get update \
-  && apt-get install -y wget \
-  && wget https://github.com/prometheus/prometheus/releases/download/v2.35.0/prometheus-2.35.0.linux-amd64.tar.gz \
-  && tar xvfz prometheus-*.tar.gz \
-  && mkdir /prometheus \
-  && mv prometheus-*/* /prometheus \
-  && rm -rf prometheus-* prometheus-*.tar.gz
-
-
-# Instalacion de Grafana
-RUN apt-get update \
-  && apt-get install -y software-properties-common \
-  && add-apt-repository "deb https://packages.grafana.com/oss/deb stable main" \
-  && wget -q -O - https://packages.grafana.com/gpg.key | apt-key add - \
-  && apt-get update \
-  && apt-get install -y grafana
-
-# Configuración de Prometheus
-COPY prometheus.yml /prometheus/prometheus.yml
-
-# Configuración de Grafana
-COPY grafana.ini /etc/grafana/grafana.ini
-
-# Configuración del origen de datos de Grafana
-COPY datasource.yml /etc/grafana/provisioning/datasources/datasource.yml
-
 
 RUN apt-get update \
   && apt-get install -y ffmpeg wget libopusfile0 \
   && wget "https://github.com/yt-dlp/yt-dlp/releases/download/${YT_DLP_VERSION}/yt-dlp_linux" -O /usr/local/bin/yt-dlp \
   && chmod +x /usr/local/bin/yt-dlp
-
 COPY --from=builder /bin/butakero /bin/butakero
 COPY --from=builder /go/bin/dca /usr/local/bin/dca
-
-# Puerto de Prometheus
-EXPOSE 9090
-
-# Puerto de Grafana
-EXPOSE 3000
 
 CMD ["/bin/butakero"]

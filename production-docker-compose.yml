@@ -1,4 +1,18 @@
 services:
+  discord-bot:
+    build:
+      context: .
+      dockerfile: ./dockerfile.aws
+    container_name: bot
+    environment:
+      - DISCORDTOKEN=${DISCORDTOKEN}
+      - COMMANDPREFIX=${COMMANDPREFIX}
+    ports:
+      - "8080:8080"
+    networks:
+      - monitoring-net
+
+    restart: always
   prometheus:
     image: prom/prometheus:v2.35.0
     container_name: prometheus
@@ -17,9 +31,10 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./grafana.ini:/etc/grafana/grafana.ini
-      - ./provisioning/datasources:/etc/grafana/provisioning/datasources
-      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/config:/etc/grafana-config
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/dashboards-provisioning:/etc/grafana/provisioning/dashboards
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     networks:
