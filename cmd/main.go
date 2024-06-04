@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord"
 	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
@@ -31,7 +30,6 @@ func main() {
 	if err != nil {
 		panic("Error creando el logger: " + err.Error())
 	}
-	fmt.Println("Test1")
 	promRegistry := metrics.NewPrometheusRegistry()
 	commandUsageCounter := metrics.NewCommandUsageCounter()
 	promRegistry.Register(commandUsageCounter)
