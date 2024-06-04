@@ -10,6 +10,6 @@ scrape_configs:
     static_configs:
       - targets: ['node-exporter:9100']
 
-  - job_name: 'myapp'
+  - job_name: 'butakero-bot'
     static_configs:
-      - targets: ['172.17.0.1:8080']
+      - targets: ['bot:8080']
