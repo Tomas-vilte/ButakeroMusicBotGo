@@ -19,7 +19,9 @@ ENV COMMANDPREFIX=
 
 # Instalar dependencias necesarias para la ejecución
 RUN apk add --no-cache ffmpeg wget opusfile yt-dlp \
-    && apk add --no-cache gcompat libstdc++
+    && apk add --no-cache gcompat libstdc++ \
+    # Actualizar yt-dlp
+    && apk -U upgrade yt-dlp
 
 # Copiar los binarios compilados desde la etapa de construcción
 COPY --from=builder /bin/butakero /bin/butakero
