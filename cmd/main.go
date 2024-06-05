@@ -7,10 +7,10 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/Tomas-vilte/GoMusicBot/internal/metrics"
 	"github.com/Tomas-vilte/GoMusicBot/internal/music/fetcher"
+	"github.com/Tomas-vilte/GoMusicBot/internal/profiler"
 	"github.com/bwmarrin/discordgo"
 	"github.com/kelseyhightower/envconfig"
 	"go.uber.org/zap"
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -41,6 +41,7 @@ func main() {
 			logger.Error("Error al iniciar el servidor HTTP de métricas Prometheus: ", zap.Error(err))
 		}
 	}()
+	profiler.StartProfiler()
 	defer func() {
 		// Cerrar el logger cuando la función termine.
 		err := logger.Close()
