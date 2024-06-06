@@ -13,7 +13,8 @@ services:
     restart: always
 
   prometheus:
-    image: prom/prometheus:v2.35.0
+    image: prom/prometheus:v2.51.2
+    platform: linux/arm64/v8
     container_name: prometheus
     ports:
       - "9090:9090"
@@ -23,8 +24,21 @@ services:
       - monitoring-net
     restart: always
 
+  pyroscope:
+    image: grafana/pyroscope:1.6.0
+    platform: linux/arm64
+    container_name: pyroscope
+    ports:
+      - "4040:4040"
+    environment:
+      - PYROSCOPE_SCRAPE_ENDPOINT_ENABLED=true
+    networks:
+      - monitoring-net
+    restart: always
+
   grafana:
-    image: grafana/grafana:8.0.6
+    image: grafana/grafana:11.0.0
+    platform: linux/arm64
     container_name: grafana
     ports:
       - "3000:3000"
@@ -40,7 +54,8 @@ services:
     restart: always
 
   node-exporter:
-    image: prom/node-exporter:v1.2.2
+    image: prom/node-exporter:v1.8.1
+    platform: linux/arm64/v8
     container_name: node-exporter
     ports:
       - "9100:9100"
