@@ -6,6 +6,11 @@
 
 ¿Querés chusmear la arquitectura del bot en producción? Hacé clic [aca](/docs/ARQUITECTURA.MD) para ver todos los detalles sobre cómo está construido y desplegado ButakeroMusicBotGo.
 
+## 🤖 Invitación al Bot
+
+Aca tenes la invitacion para probar ButakeroMusicBotGo en tu servidor de Discord, usa este enlance para invitarlo:
+[Invitacion del bot a tu server](https://discord.com/oauth2/authorize?client_id=987850036866084974)
+
 ## 🚀 Instalación
 
 ### ⚙️ Configuración del bot en el portal de desarrolladores de Discord
@@ -55,7 +60,7 @@ Para ejecutar **ButakeroMusicBotGo** utilizando Docker Compose, seguí estos pas
     docker-compose --env-file .env -f local-docker-compose.yml build
     ```
 
-6. Una vez que se haya completado la construcción, podés levantar todos los servicios necesarios (bot de Discord, base de datos, etc.) con el siguiente comando:
+6. Una vez que se haya completado la construcción, podés levantar todos los servicios necesarios (bot de Discord, servicios de monitoreo etc) con el siguiente comando:
 
     ```
     docker-compose --env-file .env -f local-docker-compose.yml up
@@ -63,31 +68,60 @@ Para ejecutar **ButakeroMusicBotGo** utilizando Docker Compose, seguí estos pas
 
 ### 💻 Ejecución manual
 
-Si preferís ejecutar el bot manualmente, podés hacerlo ejecutando el `cmd/main.go`. Asegurate de tener las dependencias necesarias instaladas:
+Si preferís ejecutar el bot manualmente, primero necesitas instalar algunas dependencias en tu sistema:
 
-1. Cloná este repositorio a tu máquina local:
+1. **Instala las dependencias del sistema**:
 
+    ```sh
+    sudo apt-get update
+    sudo apt-get install -y build-essential libopus-dev libopusfile-dev ffmpeg wget libopusfile0
     ```
-    git clone git@github.com:Tomas-vilte/ButakeroMusicBotGo.git
+
+2. **Instala `dca`**:
+
+    ```sh
+    go install github.com/bwmarrin/dca/cmd/dca@latest
     ```
 
-2. Navegá hasta el directorio del repositorio clonado:
+3. **Instala `yt-dlp`**:
+
+    ```sh
+    sudo wget https://github.com/yt-dlp/yt-dlp/releases/download/2024.04.09/yt-dlp_linux -O /usr/local/bin/yt-dlp
+    sudo chmod +x /usr/local/bin/yt-dlp
+    ```
+
+4. Navegá hasta el directorio del repositorio clonado:
 
     ```
     cd ButakeroMusicBotGo
     ```
 
-3. Instalá las dependencias necesarias:
+5. Instalá las dependencias necesarias:
 
     ```
     go mod tidy
     ```
 
-4. Ejecutá el bot:
+6. Ejecutá el bot:
 
     ```
     go run cmd/main.go
     ```
+---
+
+### 🐳 Uso de la imagen Docker preconstruida
+
+Si no queres instalar todas las dependencias manualmente, puedes usar la imagen Docker preconstruida:
+
+1. Descargate y ejecuta la imagen docker:
+    ```sh
+    docker pull tomasvilte/butakero-bot-local:latest
+    docker run --env-file .env tomasvilte/butakero-bot-local:latest
+    ```
+
+### 📊 Servicios adicionales en Docker Compose
+
+El archivo [local-docker-compose.yml](/local-docker-compose.yml) incluye servicios adicionales como Grafana y Prometheus para monitorear el bot. Si quieres aprovechar estos servicios, simplemente segui las instrucciones de la sección [Ejecución con Docker Compose](#-ejecución-con-docker-compose).
 
 ## 🎧 Uso
 
