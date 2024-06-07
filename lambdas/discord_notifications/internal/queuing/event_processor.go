@@ -44,8 +44,8 @@ func (s *SQSConsumer) ProcessSQSEvent(body []byte) error {
 	switch action {
 	case "published":
 		formatter = &ReleaseEventFormatter{}
-	case "completed":
-		formatter = &WorkflowActionEventFormatter{}
+	//case "completed":
+	//	formatter = &WorkflowActionEventFormatter{}
 	default:
 		s.logger.Error("Error acción desconocida", zap.String("action", action))
 		return errors.New("acción desconocida: " + action)
