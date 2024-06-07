@@ -17,16 +17,6 @@ type ZapLogger struct {
 	logger *zap.Logger
 }
 
-type FileLoggerConfig struct {
-	LogsDir string
-}
-
-func NewFileLoggerConfig(logsDir string) *FileLoggerConfig {
-	return &FileLoggerConfig{
-		LogsDir: logsDir,
-	}
-}
-
 // NewZapLogger crea una nueva instancia de ZapLogger.
 func NewZapLogger() (*ZapLogger, error) {
 	config := zap.NewProductionConfig()
