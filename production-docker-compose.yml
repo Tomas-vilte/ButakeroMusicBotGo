@@ -7,9 +7,10 @@ services:
       - COMMANDPREFIX=${COMMANDPREFIX}
     ports:
       - "8080:8080"
+    volumes:
+      - ./logs:/logs
     networks:
       - monitoring-net
-
     restart: always
 
   prometheus:
