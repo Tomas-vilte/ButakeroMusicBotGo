@@ -1,6 +1,8 @@
 services:
   discord-bot:
-    image: tomasvilte/butakero-bot-aws:latest
+    build:
+      context: .
+      dockerfile: ./dockerfile.aws
     container_name: bot
     environment:
       - DISCORDTOKEN=${DISCORDTOKEN}
