@@ -18,13 +18,13 @@
     "editable": true,
     "fiscalYearStartMonth": 0,
     "graphTooltip": 0,
-    "id": 2,
+    "id": 1,
     "links": [],
     "panels": [
       {
         "datasource": {
           "type": "loki",
-          "uid": "fdo3gnvrtr94wa"
+          "uid": "P8E80F9AEF21F6940"
         },
         "gridPos": {
           "h": 24,
@@ -47,10 +47,9 @@
           {
             "datasource": {
               "type": "loki",
-              "uid": "fdo3gnvrtr94wa"
+              "uid": "P8E80F9AEF21F6940"
             },
-            "editorMode": "code",
-            "expr": "{job=\"discord_bot\"} ",
+            "expr": "{job=\"discord_bot\"}",
             "queryType": "range",
             "refId": "A"
           }
@@ -61,7 +60,7 @@
       {
         "datasource": {
           "type": "loki",
-          "uid": "fdo3gnvrtr94wa"
+          "uid": "P8E80F9AEF21F6940"
         },
         "fieldConfig": {
           "defaults": {
@@ -106,7 +105,8 @@
               "mode": "absolute",
               "steps": [
                 {
-                  "color": "green"
+                  "color": "green",
+                  "value": null
                 },
                 {
                   "color": "red",
@@ -141,7 +141,7 @@
           {
             "datasource": {
               "type": "loki",
-              "uid": "fdo3gnvrtr94wa"
+              "uid": "P8E80F9AEF21F6940"
             },
             "editorMode": "code",
             "expr": "count_over_time(\n    {job=\"discord_bot\"} |= \"error\"[1m]\n)",
@@ -169,6 +169,6 @@
     "timezone": "America/Argentina/Buenos_Aires",
     "title": "Panel de Logs de Aplicación",
     "uid": "bdo3wj5l16n7kd",
-    "version": 2,
+    "version": 1,
     "weekStart": ""
   }
