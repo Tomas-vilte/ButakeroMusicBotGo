@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tomas-vilte/GoMusicBot/internal/cache"
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store/file_storage"
@@ -40,10 +41,11 @@ type InteractionHandler struct {
 	responseHandler     ResponseHandler
 	session             SessionService
 	commandUsageCounter metrics.CustomMetric
+	caching             cache.CacheManager
 }
 
 // NewInteractionHandler crea una nueva instancia de InteractionHandler.
-func NewInteractionHandler(ctx context.Context, discordToken string, responseHandler ResponseHandler, session SessionService, songLooker SongLookuper, storage InteractionStorage, cfg *config.Config, logger logging.Logger, metricsPrometheus metrics.CustomMetric) *InteractionHandler {
+func NewInteractionHandler(ctx context.Context, discordToken string, responseHandler ResponseHandler, session SessionService, songLooker SongLookuper, storage InteractionStorage, cfg *config.Config, logger logging.Logger, metricsPrometheus metrics.CustomMetric, manager cache.CacheManager) *InteractionHandler {
 	handler := &InteractionHandler{
 		ctx:                 ctx,
 		discordToken:        discordToken,
@@ -55,6 +57,7 @@ func NewInteractionHandler(ctx context.Context, discordToken string, responseHan
 		responseHandler:     responseHandler,
 		session:             session,
 		commandUsageCounter: metricsPrometheus,
+		caching:             manager,
 	}
 	return handler
 }
@@ -484,7 +487,7 @@ func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discord
 	dca := codec.NewDCAStreamerImpl(handler.logger)
 	voiceChat := voice.NewChatSessionImpl(dg, string(guildID), dca, handler.logger)
 	messageSender := discordmessenger.NewMessageSenderImpl(dg, handler.logger)
-	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger)
+	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger, handler.caching)
 	persistent := file_storage.NewJSONStatePersistent()
 	songStorage, stateStorage := config.GetPlaylistStore(handler.cfg, string(guildID), handler.logger, persistent)
 	player := bot.NewGuildPlayer(handler.ctx, voiceChat, songStorage, stateStorage, fetcherGetDCA.GetDCAData, messageSender, handler.logger).WithLogger(handler.logger)
@@ -531,7 +534,7 @@ func (handler *InteractionHandler) CheckVoiceChannelsPresence() {
 				}
 
 				// Verificar si hay usuarios presentes solo en el canal de voz asociado al server
-				if len(voiceChannelInfo.Members) == 1 {
+				if len(voiceChannelInfo.Members) == 1 || voiceChannelInfo.BotID == voiceChannelInfo.Members[0].User.ID {
 					handler.logger.Info("Desconectando bot debido a la falta de presencia en el canal de voz", zap.String("guildID", string(guildID)))
 					if err := player.Stop(); err != nil {
 						handler.logger.Error("falló al detener la reproducción", zap.Error(err))
