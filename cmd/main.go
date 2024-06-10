@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/Tomas-vilte/GoMusicBot/internal/cache"
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord"
 	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
@@ -60,11 +61,12 @@ func main() {
 		return
 	}
 	storage = discord.NewInMemoryStorage()
-	youtubeFetcher = fetcher.NewYoutubeFetcher(logger)
+	cacheStorage := cache.NewCache(logger)
+	youtubeFetcher = fetcher.NewYoutubeFetcher(logger, cacheStorage)
 	responseHandler := discord.NewDiscordResponseHandler(logger)
 	sessionService := discord.NewSessionService(dg)
 
-	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter).WithLogger(logger)
+	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter, cacheStorage).WithLogger(logger)
 	commandHandler := discord.NewSlashCommandRouter(cfg.CommandPrefix).
 		PlayHandler(handler.PlaySong).
 		SkipHandler(handler.SkipSong).
