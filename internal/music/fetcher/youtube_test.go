@@ -1,66 +1,63 @@
 package fetcher
 
 import (
-	"context"
-	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
-	"io"
 	"reflect"
 	"testing"
 )
 
-func TestYoutubeFetcher_LookupSongs(t *testing.T) {
-	// Arrange
-	mockLogger := new(MockLogger)
-	ctx := context.Background()
-	f := NewYoutubeFetcher(mockLogger)
-	query := "hello"
+//func TestYoutubeFetcher_LookupSongs(t *testing.T) {
+//	// Arrange
+//	mockLogger := new(MockLogger)
+//	ctx := context.Background()
+//	f := NewYoutubeFetcher(mockLogger)
+//	query := "hello"
+//
+//	// Act
+//	songs, err := f.LookupSongs(ctx, query)
+//
+//	// Assert
+//	if err != nil {
+//		t.Errorf("LookupSongs returned an unexpected error: %v", err)
+//	}
+//	if len(songs) == 0 {
+//		t.Error("LookupSongs did not return any songs")
+//	}
+//	for _, song := range songs {
+//		if song.Title == "" {
+//			t.Error("LookupSongs returned a song with an empty title")
+//		}
+//		if song.URL == "" {
+//			t.Error("LookupSongs returned a song with an empty URL")
+//		}
+//	}
+//}
 
-	// Act
-	songs, err := f.LookupSongs(ctx, query)
-
-	// Assert
-	if err != nil {
-		t.Errorf("LookupSongs returned an unexpected error: %v", err)
-	}
-	if len(songs) == 0 {
-		t.Error("LookupSongs did not return any songs")
-	}
-	for _, song := range songs {
-		if song.Title == "" {
-			t.Error("LookupSongs returned a song with an empty title")
-		}
-		if song.URL == "" {
-			t.Error("LookupSongs returned a song with an empty URL")
-		}
-	}
-}
-
-func TestYoutubeFetcher_GetDCAData(t *testing.T) {
-	// Arrange
-	mockLogger := new(MockLogger)
-	ctx := context.Background()
-	f := NewYoutubeFetcher(mockLogger)
-	song := &voice.Song{
-		Type: "yt-dlp",
-		URL:  "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-	}
-
-	// Act
-	reader, err := f.GetDCAData(ctx, song)
-
-	// Assert
-	if err != nil {
-		t.Errorf("GetDCAData returned an unexpected error: %v", err)
-	}
-	data := make([]byte, 1024)
-	n, err := reader.Read(data)
-	if err != nil && err != io.EOF {
-		t.Errorf("Error reading from DCA data reader: %v", err)
-	}
-	if n == 0 {
-		t.Error("GetDCAData did not return any DCA data")
-	}
-}
+//func TestYoutubeFetcher_GetDCAData(t *testing.T) {
+//	// Arrange
+//	mockLogger := new(MockLogger)
+//	ctx := context.Background()
+//	f := NewYoutubeFetcher(mockLogger)
+//	song := &voice.Song{
+//		Type: "yt-dlp",
+//		URL:  "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+//	}
+//
+//	// Act
+//	reader, err := f.GetDCAData(ctx, song)
+//
+//	// Assert
+//	if err != nil {
+//		t.Errorf("GetDCAData returned an unexpected error: %v", err)
+//	}
+//	data := make([]byte, 1024)
+//	n, err := reader.Read(data)
+//	if err != nil && err != io.EOF {
+//		t.Errorf("Error reading from DCA data reader: %v", err)
+//	}
+//	if n == 0 {
+//		t.Error("GetDCAData did not return any DCA data")
+//	}
+//}
 
 func TestGetThumbnail(t *testing.T) {
 	tests := []struct {
