@@ -9,8 +9,6 @@ import (
 // TestInmemoryStateStorage_GetCurrentSong verifica que el método GetCurrentSong devuelva la canción actual correctamente.
 func TestInmemoryStateStorage_GetCurrentSong(t *testing.T) {
 	mockLogger := &MockLogger{}
-	mockLogger.On("Info", "Obteniendo la canción actual", mock.AnythingOfType("[]zapcore.Field")).Return()
-
 	storage := NewInmemoryStateStorage(mockLogger)
 
 	currentSong := &voice.PlayedSong{Song: voice.Song{Title: "Test Song"}}
