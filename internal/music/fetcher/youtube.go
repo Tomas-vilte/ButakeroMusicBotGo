@@ -9,6 +9,7 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/cache"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
+	"github.com/Tomas-vilte/GoMusicBot/internal/metrics"
 	"go.uber.org/zap"
 	"io"
 	"os/exec"
@@ -23,15 +24,17 @@ const (
 
 // YoutubeFetcher es un tipo que interactúa con YouTube para obtener metadatos y datos de audio.
 type YoutubeFetcher struct {
-	Logger logging.Logger
-	Cache  cache.CacheManager
+	Logger       logging.Logger
+	Cache        cache.CacheManager
+	CacheMetrics metrics.CacheMetrics
 }
 
 // NewYoutubeFetcher crea una nueva instancia de YoutubeFetcher con un logger predeterminado.
-func NewYoutubeFetcher(logger logging.Logger, cache cache.CacheManager) *YoutubeFetcher {
+func NewYoutubeFetcher(logger logging.Logger, cache cache.CacheManager, cacheMetrics metrics.CacheMetrics) *YoutubeFetcher {
 	return &YoutubeFetcher{
-		Logger: logger,
-		Cache:  cache,
+		Logger:       logger,
+		Cache:        cache,
+		CacheMetrics: cacheMetrics,
 	}
 }
 
@@ -40,7 +43,7 @@ func NewYoutubeFetcher(logger logging.Logger, cache cache.CacheManager) *Youtube
 func (s *YoutubeFetcher) LookupSongs(ctx context.Context, input string) ([]*voice.Song, error) {
 	cachedResult := s.Cache.Get(input)
 	if cachedResult != nil {
-		s.Logger.Info("Datos encontrados en caché para la entrada", zap.String("input", input))
+		s.CacheMetrics.IncHits()
 		return cachedResult, nil
 	}
 	// Define las columnas a imprimir por yt-dlp.
@@ -107,7 +110,8 @@ func (s *YoutubeFetcher) LookupSongs(ctx context.Context, input string) ([]*voic
 		songs = append(songs, song)
 	}
 	s.Cache.Set(input, songs)
-	s.Logger.Info("Datos almacenados en caché para la entrada", zap.String("input", input))
+	s.CacheMetrics.IncMisses()
+	s.CacheMetrics.SetCacheSize(float64(s.Cache.Size()))
 	return songs, nil
 }
 
