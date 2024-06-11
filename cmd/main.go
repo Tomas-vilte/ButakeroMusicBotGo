@@ -33,7 +33,9 @@ func main() {
 	}
 	promRegistry := metrics.NewPrometheusRegistry()
 	commandUsageCounter := metrics.NewCommandUsageCounter()
+	cacheMetrics := metrics.NewCacheMetrics()
 	promRegistry.Register(commandUsageCounter)
+	promRegistry.RegisterCacheMetrics(cacheMetrics)
 
 	promHTTPServer := metrics.NewPrometheusHTTPServer(":8080", promRegistry)
 
@@ -61,8 +63,8 @@ func main() {
 		return
 	}
 	storage = discord.NewInMemoryStorage()
-	cacheStorage := cache.NewCache(logger)
-	youtubeFetcher = fetcher.NewYoutubeFetcher(logger, cacheStorage)
+	cacheStorage := cache.NewCache(logger, cacheMetrics)
+	youtubeFetcher = fetcher.NewYoutubeFetcher(logger, cacheStorage, cacheMetrics)
 	responseHandler := discord.NewDiscordResponseHandler(logger)
 	sessionService := discord.NewSessionService(dg)
 
