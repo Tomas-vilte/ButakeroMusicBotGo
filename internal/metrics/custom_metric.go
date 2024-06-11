@@ -8,3 +8,15 @@ type CustomMetric interface {
 	Collect(chan<- prometheus.Metric)
 	Inc(labels ...string)
 }
+
+type CacheMetrics interface {
+	Describe(chan<- *prometheus.Desc)
+	Collect(chan<- prometheus.Metric)
+	IncHits()
+	IncMisses()
+	SetCacheSize(size float64)
+	IncEvictions()
+	IncRequests()
+	IncSetOperations()
+	IncGetOperations()
+}
