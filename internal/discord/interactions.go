@@ -41,6 +41,7 @@ type InteractionHandler struct {
 	responseHandler     ResponseHandler
 	session             SessionService
 	commandUsageCounter metrics.CustomMetric
+	CacheMetrics        metrics.CacheMetrics
 	caching             cache.CacheManager
 }
 
@@ -487,7 +488,7 @@ func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discord
 	dca := codec.NewDCAStreamerImpl(handler.logger)
 	voiceChat := voice.NewChatSessionImpl(dg, string(guildID), dca, handler.logger)
 	messageSender := discordmessenger.NewMessageSenderImpl(dg, handler.logger)
-	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger, handler.caching)
+	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger, handler.caching, handler.CacheMetrics)
 	persistent := file_storage.NewJSONStatePersistent()
 	songStorage, stateStorage := config.GetPlaylistStore(handler.cfg, string(guildID), handler.logger, persistent)
 	player := bot.NewGuildPlayer(handler.ctx, voiceChat, songStorage, stateStorage, fetcherGetDCA.GetDCAData, messageSender, handler.logger).WithLogger(handler.logger)
