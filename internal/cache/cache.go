@@ -95,7 +95,7 @@ func (c *Cache) DeleteExpiredEntries() {
 func (c *Cache) cleanupExpiredEntries() {
 	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
-
+	defer close(c.stopChan)
 	for {
 		select {
 		case <-ticker.C:
