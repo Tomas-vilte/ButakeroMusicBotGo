@@ -20,7 +20,7 @@ type ZapLogger struct {
 // NewZapLogger crea una nueva instancia de ZapLogger.
 func NewZapLogger(outputLogsBool bool) (*ZapLogger, error) {
 	config := zap.NewProductionConfig()
-	if outputLogsBool == true {
+	if outputLogsBool {
 		config.OutputPaths = []string{"../logs/myapp.log"}
 	}
 
