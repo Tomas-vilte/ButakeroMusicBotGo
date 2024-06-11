@@ -29,8 +29,6 @@ func NewInmemoryStateStorage(logger logging.Logger) *InmemoryStateStorage {
 func (s *InmemoryStateStorage) GetCurrentSong() (*voice.PlayedSong, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
-
-	s.logger.Info("Obteniendo la canción actual")
 	return s.currentSong, nil
 }
 
