@@ -12,6 +12,7 @@ import (
 
 type RegistryMetric interface {
 	Register(metric CustomMetric)
+	RegisterCacheMetrics(cacheMetrics CacheMetrics)
 	RegisterStandardMetrics()
 	GetRegistry() *prometheus.Registry
 }
@@ -24,6 +25,10 @@ func NewPrometheusRegistry() *PrometheusRegistry {
 	return &PrometheusRegistry{
 		registry: prometheus.NewRegistry(),
 	}
+}
+
+func (pr *PrometheusRegistry) RegisterCacheMetrics(cacheMetrics CacheMetrics) {
+	pr.registry.MustRegister(cacheMetrics)
 }
 
 func (pr *PrometheusRegistry) Register(metric CustomMetric) {
