@@ -84,30 +84,6 @@ func (p *GuildPlayer) WithLogger(l logging.Logger) *GuildPlayer {
 	return p
 }
 
-// PrintVoiceChannelInfo imprime la información sobre los servidores y los canales de voz donde se está usando el bot.
-func (p *GuildPlayer) PrintVoiceChannelInfo() {
-	for _, info := range p.voiceChannelMap {
-		fmt.Printf("Servidor: %s (%s)\n", info.GuildName, info.GuildID)
-		fmt.Printf("ID Canal de voz: %s\n", info.VoiceChannelID)
-		fmt.Printf("Nombre del canal de texto: %s\n", info.TextChannelName)
-		fmt.Printf("ID del bot: %s\n", info.BotID)
-		fmt.Printf("Actualizacion: %v\n", info.LastUpdated.Local())
-		fmt.Println("Miembros:")
-		for _, member := range info.Members {
-			fmt.Printf("- %s (%s)\n", member.User.Username, member.User.ID)
-		}
-		fmt.Println("Canción reproduciéndose:")
-		if currentSong, err := p.stateStorage.GetCurrentSong(); err != nil {
-			fmt.Println("Error al obtener la canción actual:", err)
-		} else if currentSong != nil {
-			fmt.Printf("- %s\n", currentSong.Song.Title)
-		} else {
-			fmt.Println("- No hay canción reproduciéndose")
-		}
-		fmt.Println()
-	}
-}
-
 // UpdateVoiceState actualiza el mapa de información sobre los canales de voz.
 func (p *GuildPlayer) UpdateVoiceState(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
 	p.mu.Lock()
@@ -191,19 +167,6 @@ func (p *GuildPlayer) StartListeningEvents(s *discordgo.Session) {
 	s.AddHandler(func(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
 		p.UpdateVoiceState(s, vs)
 	})
-	go func() {
-		ticker := time.NewTicker(1 * time.Minute)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				p.PrintVoiceChannelInfo()
-			case <-p.ctx.Done():
-				return
-			}
-		}
-	}()
 	p.logger.Info("Comenzando a escuchar eventos relevantes")
 }
 
@@ -433,7 +396,6 @@ func (p *GuildPlayer) playPlaylist(ctx context.Context) error {
 			p.logger.Error("Error al obtener datos DCA de la cancion", zap.Any("Cancion", song), zap.Error(err))
 			return err
 		}
-
 		audioReader := bufio.NewReaderSize(dcaData, p.audioBufferSize)
 		p.logger.Info("enviando flujo de audio")
 		if err := p.session.SendAudio(songCtx, audioReader, func(d time.Duration) {
