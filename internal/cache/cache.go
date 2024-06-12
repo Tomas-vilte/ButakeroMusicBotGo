@@ -55,12 +55,12 @@ func (c *Cache) Get(key string) []*voice.Song {
 
 	c.metrics.IncRequests()
 	c.metrics.IncGetOperations()
-
 	entry, ok := c.Lookup[key]
 	if !ok || time.Since(entry.LastUpdated) > cacheTTL {
 		c.logger.Info("Datos en caché expirados o no encontrados para la entrada", zap.String("input", key))
 		return nil
 	}
+	c.logger.Info("Dato recuperado desde la cache: ", zap.String("Cancion", key))
 	return entry.Results
 }
 
