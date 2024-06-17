@@ -14,6 +14,7 @@ type Config struct {
 	DiscordToken  string `required:"true"`
 	GuildID       string
 	CommandPrefix string `required:"true"`
+	YoutubeApiKey string `required:"true"`
 	Store         StoreConfig
 }
 

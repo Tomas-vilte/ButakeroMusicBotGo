@@ -12,6 +12,7 @@ FROM ubuntu:22.04
 ARG YT_DLP_VERSION="2024.04.09"
 ENV DISCORDTOKEN=
 ENV COMMANDPREFIX=
+ENV YOUTUBEAPIKEY=
 
 RUN apt-get update \
   && apt-get install -y ffmpeg wget libopusfile0 \
