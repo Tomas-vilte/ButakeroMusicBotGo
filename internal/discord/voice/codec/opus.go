@@ -19,7 +19,8 @@ type DCAStreamerImpl struct {
 }
 
 const (
-	frameLength = time.Duration(20) * time.Millisecond
+	frameLength      = time.Duration(20) * time.Millisecond
+	maxOpusBlockSize = 16384 // Tamaño máximo del bloque de datos Opus
 )
 
 func NewDCAStreamerImpl(logger logging.Logger) *DCAStreamerImpl {
@@ -27,8 +28,6 @@ func NewDCAStreamerImpl(logger logging.Logger) *DCAStreamerImpl {
 		logger: logger,
 	}
 }
-
-const maxOpusBlockSize = 4096 // Tamaño máximo del bloque de datos Opus
 
 func (d *DCAStreamerImpl) StreamDCAData(ctx context.Context, dca io.Reader, opusChan chan<- []byte, positionCallback func(position time.Duration)) error {
 	// Declaración de variables
