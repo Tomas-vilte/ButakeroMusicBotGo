@@ -24,17 +24,12 @@ import (
 // GuildID representa el ID de un servidor de Discord.
 type GuildID string
 
-// SongLookuper define la interfaz para buscar canciones.
-type SongLookuper interface {
-	LookupSongs(ctx context.Context, input string) ([]*voice.Song, error)
-}
-
 // InteractionHandler maneja las interacciones de Discord.
 type InteractionHandler struct {
 	ctx                 context.Context
 	discordToken        string
 	guildsPlayers       map[GuildID]*bot.GuildPlayer
-	songLookuper        SongLookuper
+	songLookup          fetcher.SongLooker
 	storage             InteractionStorage
 	cfg                 *config.Config
 	logger              logging.Logger
@@ -42,16 +37,25 @@ type InteractionHandler struct {
 	session             SessionService
 	commandUsageCounter metrics.CustomMetric
 	CacheMetrics        metrics.CacheMetrics
-	caching             cache.CacheManager
+	caching             cache.Manager
+	audioCaching        cache.AudioCaching
+	youtubeApiKey       string
 }
 
 // NewInteractionHandler crea una nueva instancia de InteractionHandler.
-func NewInteractionHandler(ctx context.Context, discordToken string, responseHandler ResponseHandler, session SessionService, songLooker SongLookuper, storage InteractionStorage, cfg *config.Config, logger logging.Logger, metricsPrometheus metrics.CustomMetric, manager cache.CacheManager) *InteractionHandler {
+func NewInteractionHandler(ctx context.Context, discordToken string, responseHandler ResponseHandler, session SessionService,
+	songLooker fetcher.SongLooker,
+	storage InteractionStorage,
+	cfg *config.Config, logger logging.Logger,
+	metricsPrometheus metrics.CustomMetric,
+	manager cache.Manager, youtubeApiKey string, audioCaching cache.AudioCaching,
+	cacheMetrics metrics.CacheMetrics) *InteractionHandler {
+
 	handler := &InteractionHandler{
 		ctx:                 ctx,
 		discordToken:        discordToken,
 		guildsPlayers:       make(map[GuildID]*bot.GuildPlayer),
-		songLookuper:        songLooker,
+		songLookup:          songLooker,
 		storage:             storage,
 		cfg:                 cfg,
 		logger:              logger,
@@ -59,6 +63,9 @@ func NewInteractionHandler(ctx context.Context, discordToken string, responseHan
 		session:             session,
 		commandUsageCounter: metricsPrometheus,
 		caching:             manager,
+		youtubeApiKey:       youtubeApiKey,
+		audioCaching:        audioCaching,
+		CacheMetrics:        cacheMetrics,
 	}
 	return handler
 }
@@ -123,7 +130,6 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 	}
 
 	input := optionMap["input"].StringValue()
-
 	channelID := ic.ChannelID
 	handler.getVoiceChannelMembers(s, channelID)
 
@@ -134,7 +140,6 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 		}
 		return
 	}
-
 	if err := handler.responseHandler.Respond(handler.session, ic.Interaction, discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
@@ -145,7 +150,18 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 	}
 
 	go func(ic *discordgo.InteractionCreate, vs *discordgo.VoiceState) {
-		songs, err := handler.songLookuper.LookupSongs(handler.ctx, input)
+		videoID, err := handler.songLookup.SearchYouTubeVideoID(handler.ctx, input)
+		if err != nil {
+			handler.logger.Error("Error al buscar el ID del video en YouTube", zap.Error(err), zap.String("input", input))
+			if err := handler.responseHandler.CreateFollowupMessage(handler.session, ic.Interaction, discordgo.WebhookParams{
+				Embeds: []*discordgo.MessageEmbed{GenerateFailedToAddSongEmbed(input, ic.Member)},
+			}); err != nil {
+				handler.logger.Error("falló al enviar el mensaje de seguimiento de error al buscar el ID del video", zap.Error(err))
+			}
+			return
+		}
+
+		songs, err := handler.songLookup.LookupSongs(handler.ctx, videoID)
 		if err != nil {
 			handler.logger.Info("falló al buscar la metadata de la canción", zap.Error(err), zap.String("input", input))
 			if err := handler.responseHandler.CreateFollowupMessage(handler.session, ic.Interaction, discordgo.WebhookParams{
@@ -488,7 +504,7 @@ func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discord
 	dca := codec.NewDCAStreamerImpl(handler.logger)
 	voiceChat := voice.NewChatSessionImpl(dg, string(guildID), dca, handler.logger)
 	messageSender := discordmessenger.NewMessageSenderImpl(dg, handler.logger)
-	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger, handler.caching, handler.CacheMetrics)
+	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger, handler.caching, handler.CacheMetrics, handler.youtubeApiKey, handler.audioCaching)
 	persistent := file_storage.NewJSONStatePersistent()
 	songStorage, stateStorage := config.GetPlaylistStore(handler.cfg, string(guildID), handler.logger, persistent)
 	player := bot.NewGuildPlayer(handler.ctx, voiceChat, songStorage, stateStorage, fetcherGetDCA.GetDCAData, messageSender, handler.logger).WithLogger(handler.logger)
