@@ -1,16 +1,16 @@
 package fetcher
 
 import (
-	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/Tomas-vilte/GoMusicBot/internal/cache"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/Tomas-vilte/GoMusicBot/internal/metrics"
 	"go.uber.org/zap"
+	"google.golang.org/api/option"
+	"google.golang.org/api/youtube/v3"
 	"io"
 	"os/exec"
 	"strconv"
@@ -18,169 +18,200 @@ import (
 	"time"
 )
 
-const (
-	downloadBuffer = 1 * 1024 * 1024 // 1MB
-)
+// SongLooker define la interfaz para buscar canciones.
+type SongLooker interface {
+	LookupSongs(ctx context.Context, input string) ([]*voice.Song, error)
+	SearchYouTubeVideoID(ctx context.Context, searchTerm string) (string, error)
+}
 
 // YoutubeFetcher es un tipo que interactúa con YouTube para obtener metadatos y datos de audio.
 type YoutubeFetcher struct {
-	Logger       logging.Logger
-	Cache        cache.CacheManager
-	CacheMetrics metrics.CacheMetrics
+	Logger        logging.Logger
+	Cache         cache.Manager
+	CacheMetrics  metrics.CacheMetrics
+	youtubeAPIKey string
+	audioCache    cache.AudioCaching
 }
 
 // NewYoutubeFetcher crea una nueva instancia de YoutubeFetcher con un logger predeterminado.
-func NewYoutubeFetcher(logger logging.Logger, cache cache.CacheManager, cacheMetrics metrics.CacheMetrics) *YoutubeFetcher {
+func NewYoutubeFetcher(logger logging.Logger, cache cache.Manager, cacheMetrics metrics.CacheMetrics, youtubeAPIKey string, audioCache cache.AudioCaching) *YoutubeFetcher {
 	return &YoutubeFetcher{
-		Logger:       logger,
-		Cache:        cache,
-		CacheMetrics: cacheMetrics,
+		Logger:        logger,
+		Cache:         cache,
+		CacheMetrics:  cacheMetrics,
+		youtubeAPIKey: youtubeAPIKey,
+		audioCache:    audioCache,
 	}
 }
 
 // LookupSongs busca canciones en YouTube según el término de búsqueda proporcionado en input.
 // Retorna una lista de objetos bot.Song que contienen metadatos de las canciones encontradas.
 func (s *YoutubeFetcher) LookupSongs(ctx context.Context, input string) ([]*voice.Song, error) {
-	cachedResult := s.Cache.Get(input)
+	videoURL := fmt.Sprintf("https://www.youtube.com/watch?v=%s", input)
+
+	cachedResult := s.Cache.Get(videoURL)
 	if cachedResult != nil {
 		s.CacheMetrics.IncHits()
 		return cachedResult, nil
 	}
-	// Define las columnas a imprimir por yt-dlp.
-	ytDlpPrintColumns := []string{"title", "original_url", "is_live", "duration", "thumbnail", "thumbnails"}
-	printColumns := strings.Join(ytDlpPrintColumns, ",")
 
-	args := []string{"--print", printColumns, "--flat-playlist", "-U"}
-
-	// Verifica si el input es una URL de YouTube o un término de búsqueda.
-	if strings.HasPrefix(input, "https://") {
-		args = append(args, input)
-	} else {
-		args = append(args, fmt.Sprintf("ytsearch:%s", input))
+	video, err := s.getVideoDetails(ctx, input)
+	if err != nil {
+		s.Logger.Error("Error al obtener detalles del video", zap.Error(err))
+		return nil, fmt.Errorf("error al obtener detalles del video")
 	}
 
-	// Ejecuta yt-dlp con los argumentos especificados.
-	ytCmd := exec.CommandContext(ctx, "yt-dlp", args...)
-
-	ytOutBuf := &bytes.Buffer{}
-	ytErrBuf := &bytes.Buffer{}
-	ytCmd.Stdout = ytOutBuf
-	ytCmd.Stderr = ytErrBuf
-
-	// Ejecuta el comando yt-dlp y captura la salida.
-	if err := ytCmd.Run(); err != nil {
-		// Si hay un error, devuelve el mensaje de error capturado de yt-dlp
-		return nil, fmt.Errorf("error al ejecutar el comando yt-dlp: %w, error_output: %s", err, ytErrBuf.String())
+	duration, err := parseCustomDuration(video.ContentDetails.Duration)
+	if err != nil {
+		fmt.Println("Error al analizar la duración:", err)
 	}
+	thumbnailURL := video.Snippet.Thumbnails.Default.Url
 
-	linesPerSong := len(ytDlpPrintColumns)
-	ytOutLines := strings.Split(ytOutBuf.String(), "\n")
-	songCount := len(ytOutLines) / linesPerSong
-
-	songs := make([]*voice.Song, 0, songCount)
-	for i := 0; i < songCount; i++ {
-		duration, _ := strconv.ParseFloat(ytOutLines[linesPerSong*i+3], 32)
-
-		var thumbnailURL *string = nil
-		if ytOutLines[linesPerSong*i+4] != "NA" {
-			thumbnailURL = &ytOutLines[linesPerSong*i+4]
-		} else if ytOutLines[linesPerSong*i+5] != "NA" {
-			thumbnail, err := getThumbnail(ytOutLines[linesPerSong*i+5])
-			if err != nil {
-				s.Logger.Error("error al obtener miniatura", zap.Error(err))
-			}
-			if thumbnail != nil {
-				thumbnailURL = &thumbnail.URL
-			}
-		}
-
-		// Crea un objeto Song con los metadatos obtenidos.
-		song := &voice.Song{
-			Type:         "yt-dlp",
-			Title:        ytOutLines[linesPerSong*i],
-			URL:          ytOutLines[linesPerSong*i+1],
-			Playable:     ytOutLines[linesPerSong*i+2] == "False" || ytOutLines[3*i+2] == "NA",
-			ThumbnailURL: thumbnailURL,
-			Duration:     time.Second * time.Duration(duration),
-		}
-		if !song.Playable {
-			continue
-		}
-
-		songs = append(songs, song)
+	song := &voice.Song{
+		Type:         "youtube",
+		Title:        video.Snippet.Title,
+		URL:          videoURL,
+		Playable:     video.Snippet.LiveBroadcastContent != "live",
+		ThumbnailURL: &thumbnailURL,
+		Duration:     duration,
 	}
-	s.Cache.Set(input, songs)
+	songs := []*voice.Song{song}
+
+	s.Cache.Set(videoURL, songs)
 	s.CacheMetrics.IncMisses()
 	s.CacheMetrics.SetCacheSize(float64(s.Cache.Size()))
+
 	return songs, nil
+}
+
+func parseCustomDuration(durationStr string) (time.Duration, error) {
+	parts := strings.Split(durationStr, "T")
+	if len(parts) != 2 {
+		return 0, fmt.Errorf("formato de duración no válido: %s", durationStr)
+	}
+
+	durationPart := parts[1]
+	var duration time.Duration
+
+	for durationPart != "" {
+		var value int64
+		var unit string
+
+		// Obtener el número y la unidad
+		i := 0
+		for ; i < len(durationPart); i++ {
+			if durationPart[i] < '0' || durationPart[i] > '9' {
+				break
+			}
+		}
+
+		value, err := strconv.ParseInt(durationPart[:i], 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("formato de duración no válido: %s", durationStr)
+		}
+
+		unit = durationPart[i : i+1]
+
+		// Actualizar la duración
+		switch unit {
+		case "H":
+			duration += time.Duration(value) * time.Hour
+		case "M":
+			duration += time.Duration(value) * time.Minute
+		case "S":
+			duration += time.Duration(value) * time.Second
+		default:
+			return 0, fmt.Errorf("unidad de duración desconocida: %s", unit)
+		}
+
+		// Mover al siguiente componente de la duración
+		durationPart = durationPart[i+1:]
+	}
+
+	return duration, nil
+}
+
+func (s *YoutubeFetcher) SearchYouTubeVideoID(ctx context.Context, searchTerm string) (string, error) {
+	service, err := youtube.NewService(ctx, option.WithAPIKey(s.youtubeAPIKey))
+	if err != nil {
+		return "", fmt.Errorf("error al crear el cliente de la API de YouTube")
+	}
+
+	call := service.Search.List([]string{"id"}).Q(searchTerm).MaxResults(1).Type("video")
+	response, err := call.Do()
+	if err != nil {
+		return "", fmt.Errorf("error al buscar el video en YouTube: %w", err)
+	}
+
+	if len(response.Items) == 0 {
+		return "", fmt.Errorf("no se encontró ningún video para el término de búsqueda: %s", searchTerm)
+	}
+	return response.Items[0].Id.VideoId, nil
+}
+
+func (s *YoutubeFetcher) getVideoDetails(ctx context.Context, videoID string) (*youtube.Video, error) {
+	service, err := youtube.NewService(ctx, option.WithAPIKey(s.youtubeAPIKey))
+	if err != nil {
+		return nil, fmt.Errorf("error al crear el cliente de la API de YouTube")
+	}
+
+	call := service.Videos.List([]string{"snippet", "contentDetails", "liveStreamingDetails"}).Id(videoID)
+	response, err := call.Do()
+	if err != nil {
+		return nil, fmt.Errorf("error al obtener los detalles del video: %w", err)
+	}
+
+	if len(response.Items) == 0 {
+		return nil, fmt.Errorf("no se encontró el video con ID: %s", videoID)
+	}
+
+	return response.Items[0], nil
 }
 
 // GetDCAData obtiene los datos de audio de una canción en formato DCA.
 // Utiliza yt-dlp y ffmpeg para descargar el audio de YouTube y convertirlo al formato DCA esperado por Discord.
 // Retorna un io.Reader que permite leer los datos de audio y un posible error.
 func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *voice.Song) (io.Reader, error) {
-	reader, writer := io.Pipe()
+	startTime := time.Now()
 
-	go func(w io.WriteCloser) {
-		defer func(w io.WriteCloser) {
-			err := w.Close()
-			if err != nil {
-				s.Logger.Error("Error al cerrar el escritor: %v", zap.Error(err))
-			}
-		}(w)
+	// Verificar si los datos de audio están en caché
+	if cachedData, ok := s.audioCache.Get(song.URL); ok {
+		s.CacheMetrics.IncRequests()
+		return bytes.NewReader(cachedData), nil
+	}
 
-		ytArgs := []string{"-f", "bestaudio[ext=m4a]", "--audio-quality", "0", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", "'" + song.URL + "'"}
-		ffmpegArgs := []string{"-i", "pipe:0", "-b:a", "192k", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1"}
-
-		// Ejecuta una cadena de comandos para descargar el audio de YouTube y convertirlo a formato DCA.
-		downloadCmd := exec.CommandContext(ctx,
-			"sh", "-c", fmt.Sprintf("yt-dlp %s | ffmpeg %s | dca",
-				strings.Join(ytArgs, " "),
-				strings.Join(ffmpegArgs, " ")))
-
-		bw := bufio.NewWriterSize(writer, downloadBuffer)
-		downloadCmd.Stdout = bw
-		// Ejecuta el comando y captura cualquier error.
-		if err := downloadCmd.Run(); err != nil {
-			s.Logger.Error("Error al ejecutar el comando: %v", zap.Error(err))
-		}
-
-		if err := bw.Flush(); err != nil {
-			s.Logger.Error("mientras se limpia la tubería de datos DCA: %v", zap.Error(err))
-		}
-	}(writer)
-
-	return reader, nil
-}
-
-// thumnail es una estructura que representa una miniatura de video.
-type thumnail struct {
-	URL        string `json:"url"`
-	Preference int    `json:"preference"`
-}
-
-// getThumbnail analiza la cadena de entrada que representa información sobre miniaturas de video en formato JSON.
-// Retorna la miniatura preferida como un objeto thumnail y un posible error.
-func getThumbnail(thumnailsStr string) (*thumnail, error) {
-	thumnailsStr = strings.ReplaceAll(thumnailsStr, "'", "\"")
-
-	var thumbnails []thumnail
-	if err := json.Unmarshal([]byte(thumnailsStr), &thumbnails); err != nil {
+	// Descargar los datos de audio
+	data, err := s.downloadAndCacheAudio(ctx, song)
+	if err != nil {
+		s.CacheMetrics.IncRequests()
 		return nil, err
 	}
+	s.CacheMetrics.IncRequests()
+	s.CacheMetrics.IncLatencyGet(time.Since(startTime))
+	return bytes.NewReader(data), nil
+}
 
-	if len(thumbnails) == 0 {
-		return nil, nil
+func (s *YoutubeFetcher) downloadAndCacheAudio(ctx context.Context, song *voice.Song) ([]byte, error) {
+	startTime := time.Now()
+	ytArgs := []string{"-f", "bestaudio[ext=m4a]", "--audio-quality", "0", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", "'" + song.URL + "'"}
+	ffmpegArgs := []string{"-i", "pipe:0", "-b:a", "192k", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1"}
+
+	// Ejecuta una cadena de comandos para descargar el audio de YouTube y convertirlo a formato DCA.
+	downloadCmd := exec.CommandContext(ctx,
+		"sh", "-c", fmt.Sprintf("yt-dlp %s | ffmpeg %s | dca",
+			strings.Join(ytArgs, " "),
+			strings.Join(ffmpegArgs, " ")))
+
+	output, err := downloadCmd.Output()
+	if err != nil {
+		s.CacheMetrics.IncRequests()
+		return nil, fmt.Errorf("error al ejecutar el comando: %w", err)
 	}
 
-	// Encuentra la miniatura con mayor preferencia.
-	tn := &thumbnails[0]
-	for i := range thumbnails {
-		t := thumbnails[i]
-		if t.Preference > tn.Preference {
-			tn = &t
-		}
-	}
+	// Guardar los datos de audio en caché
+	s.audioCache.Set(song.URL, output)
+	s.CacheMetrics.IncRequests()
+	s.CacheMetrics.IncLatencySet(time.Since(startTime))
 
-	return tn, nil
+	return output, nil
 }
