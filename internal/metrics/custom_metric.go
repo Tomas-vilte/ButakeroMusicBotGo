@@ -1,6 +1,9 @@
 package metrics
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+	"time"
+)
 
 // CustomMetric define la interfaz que deben cumplir todas las métricas personalizadas.
 type CustomMetric interface {
@@ -19,4 +22,6 @@ type CacheMetrics interface {
 	IncRequests()
 	IncSetOperations()
 	IncGetOperations()
+	IncLatencyGet(duration time.Duration)
+	IncLatencySet(duration time.Duration)
 }

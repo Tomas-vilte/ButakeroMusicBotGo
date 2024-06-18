@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+	"time"
 )
 
 type (
@@ -14,6 +15,8 @@ type (
 		cacheRequests  prometheus.Counter
 		cacheSetOps    prometheus.Counter
 		cacheGetOps    prometheus.Counter
+		latencyGet     prometheus.Histogram
+		latencySet     prometheus.Histogram
 	}
 )
 
@@ -48,6 +51,16 @@ func NewCacheMetrics() CacheMetrics {
 			Name: "cache_get_operations_total",
 			Help: "Número total de operaciones de obtención en caché",
 		}),
+		latencyGet: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "custom_cache_get_latency_seconds",
+			Help:    "Latencia de las operaciones de obtención en caché",
+			Buckets: prometheus.DefBuckets,
+		}),
+		latencySet: prometheus.NewHistogram(prometheus.HistogramOpts{
+			Name:    "custom_cache_set_latency_seconds",
+			Help:    "Latencia de las operaciones de establecimiento en caché",
+			Buckets: prometheus.DefBuckets,
+		}),
 	}
 }
 
@@ -60,6 +73,8 @@ func (c *CachePrometheusMetrics) Describe(ch chan<- *prometheus.Desc) {
 	c.cacheRequests.Describe(ch)
 	c.cacheSetOps.Describe(ch)
 	c.cacheGetOps.Describe(ch)
+	c.latencyGet.Describe(ch)
+	c.latencySet.Describe(ch)
 }
 
 // Collect implementa el método Collect de la interfaz CacheMetrics.
@@ -71,6 +86,8 @@ func (c *CachePrometheusMetrics) Collect(ch chan<- prometheus.Metric) {
 	c.cacheRequests.Collect(ch)
 	c.cacheSetOps.Collect(ch)
 	c.cacheGetOps.Collect(ch)
+	c.latencyGet.Collect(ch)
+	c.latencySet.Collect(ch)
 }
 
 // IncHits implementa el método IncHits de la interfaz CacheMetrics.
@@ -106,4 +123,12 @@ func (c *CachePrometheusMetrics) IncSetOperations() {
 // IncGetOperations implementa el método IncGetOperations de la interfaz CacheMetrics.
 func (c *CachePrometheusMetrics) IncGetOperations() {
 	c.cacheGetOps.Inc()
+}
+
+func (c *CachePrometheusMetrics) IncLatencyGet(duration time.Duration) {
+	c.latencyGet.Observe(duration.Seconds())
+}
+
+func (c *CachePrometheusMetrics) IncLatencySet(duration time.Duration) {
+	c.latencySet.Observe(duration.Seconds())
 }
