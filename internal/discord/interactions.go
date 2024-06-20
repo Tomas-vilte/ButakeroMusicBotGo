@@ -41,6 +41,7 @@ type InteractionHandler struct {
 	realYoutubeClient   providers.YouTubeService
 	caching             cache.Manager
 	audioCaching        cache.AudioCaching
+	executorCommand     fetcher.CommandExecutor
 }
 
 // NewInteractionHandler crea una nueva instancia de InteractionHandler.
@@ -51,7 +52,8 @@ func NewInteractionHandler(ctx context.Context, discordToken string, responseHan
 	metricsPrometheus metrics.CustomMetric,
 	manager cache.Manager, audioCaching cache.AudioCaching,
 	cacheMetrics metrics.CacheMetrics,
-	youtubeClient providers.YouTubeService) *InteractionHandler {
+	youtubeClient providers.YouTubeService,
+	executorCommand fetcher.CommandExecutor) *InteractionHandler {
 
 	handler := &InteractionHandler{
 		ctx:                 ctx,
@@ -68,6 +70,7 @@ func NewInteractionHandler(ctx context.Context, discordToken string, responseHan
 		audioCaching:        audioCaching,
 		CacheMetrics:        cacheMetrics,
 		realYoutubeClient:   youtubeClient,
+		executorCommand:     executorCommand,
 	}
 	return handler
 }
@@ -506,7 +509,7 @@ func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discord
 	dca := codec.NewDCAStreamerImpl(handler.logger)
 	voiceChat := voice.NewChatSessionImpl(dg, string(guildID), dca, handler.logger)
 	messageSender := discordmessenger.NewMessageSenderImpl(dg, handler.logger)
-	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger, handler.caching, handler.CacheMetrics, handler.realYoutubeClient, handler.audioCaching)
+	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger, handler.caching, handler.CacheMetrics, handler.realYoutubeClient, handler.audioCaching, handler.executorCommand)
 	persistent := file_storage.NewJSONStatePersistent()
 	songStorage, stateStorage := config.GetPlaylistStore(handler.cfg, string(guildID), handler.logger, persistent)
 	player := bot.NewGuildPlayer(handler.ctx, voiceChat, songStorage, stateStorage, fetcherGetDCA.GetDCAData, messageSender, handler.logger).WithLogger(handler.logger)
