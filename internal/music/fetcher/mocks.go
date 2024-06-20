@@ -1,10 +1,12 @@
 package fetcher
 
 import (
+	"context"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
+	"google.golang.org/api/youtube/v3"
 	"time"
 )
 
@@ -117,4 +119,29 @@ func (m *MockCacheManager) Size() int {
 	args := m.Called()
 	size, _ := args.Get(0).(int)
 	return size
+}
+
+type MockYouTubeService struct {
+	mock.Mock
+}
+
+func (m *MockYouTubeService) SearchVideoID(ctx context.Context, searchTerm string) (string, error) {
+	args := m.Called(ctx, searchTerm)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockYouTubeService) GetVideoDetails(ctx context.Context, videoID string) (*youtube.Video, error) {
+	args := m.Called(ctx, videoID)
+	return args.Get(0).(*youtube.Video), args.Error(1)
+}
+
+type MockCommandExecutor struct {
+	mock.Mock
+}
+
+func (m *MockCommandExecutor) ExecuteCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
+	argsMock := m.Called(ctx, name, args)
+	data, _ := argsMock.Get(0).([]byte)
+	err := argsMock.Error(1)
+	return data, err
 }
