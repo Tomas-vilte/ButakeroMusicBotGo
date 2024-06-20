@@ -72,12 +72,13 @@ func main() {
 		return
 	}
 	youtubeService := youtube_provider.NewYouTubeProvider(cfg.YoutubeApiKey, logger, realYouTubeClient)
+	executorCommand := fetcher.NewCommandExecutor()
 
-	youtubeFetcher = fetcher.NewYoutubeFetcher(logger, cacheStorage, cacheMetrics, youtubeService, audioCache)
+	youtubeFetcher = fetcher.NewYoutubeFetcher(logger, cacheStorage, cacheMetrics, youtubeService, audioCache, executorCommand)
 	responseHandler := discord.NewDiscordResponseHandler(logger)
 	sessionService := discord.NewSessionService(dg)
 
-	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter, cacheStorage, audioCache, cacheMetrics, youtubeService).WithLogger(logger)
+	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter, cacheStorage, audioCache, cacheMetrics, youtubeService, executorCommand).WithLogger(logger)
 	commandHandler := discord.NewSlashCommandRouter(cfg.CommandPrefix).
 		PlayHandler(handler.PlaySong).
 		SkipHandler(handler.SkipSong).
