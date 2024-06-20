@@ -17,29 +17,49 @@ import (
 	"time"
 )
 
-// SongLooker define la interfaz para buscar canciones.
-type SongLooker interface {
-	LookupSongs(ctx context.Context, input string) ([]*voice.Song, error)
-	SearchYouTubeVideoID(ctx context.Context, searchTerm string) (string, error)
+type (
+	// SongLooker define la interfaz para buscar canciones.
+	SongLooker interface {
+		LookupSongs(ctx context.Context, input string) ([]*voice.Song, error)
+		SearchYouTubeVideoID(ctx context.Context, searchTerm string) (string, error)
+	}
+
+	// YoutubeFetcher es un tipo que interactúa con YouTube para obtener metadatos y datos de audio.
+	YoutubeFetcher struct {
+		Logger          logging.Logger
+		Cache           cache.Manager
+		CacheMetrics    metrics.CacheMetrics
+		audioCache      cache.AudioCaching
+		YoutubeService  providers.YouTubeService
+		CommandExecutor CommandExecutor
+	}
+
+	// CommandExecutor define una interfaz para ejecutar comandos del sistema.
+	CommandExecutor interface {
+		ExecuteCommand(ctx context.Context, name string, args ...string) ([]byte, error)
+	}
+
+	DefaultCommandExecutor struct{}
+)
+
+func (e *DefaultCommandExecutor) ExecuteCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, name, args...)
+	return cmd.Output()
 }
 
-// YoutubeFetcher es un tipo que interactúa con YouTube para obtener metadatos y datos de audio.
-type YoutubeFetcher struct {
-	Logger         logging.Logger
-	Cache          cache.Manager
-	CacheMetrics   metrics.CacheMetrics
-	audioCache     cache.AudioCaching
-	YoutubeService providers.YouTubeService
+func NewCommandExecutor() *DefaultCommandExecutor {
+	return &DefaultCommandExecutor{}
 }
 
 // NewYoutubeFetcher crea una nueva instancia de YoutubeFetcher con un logger predeterminado.
-func NewYoutubeFetcher(logger logging.Logger, cache cache.Manager, cacheMetrics metrics.CacheMetrics, youtubeService providers.YouTubeService, audioCache cache.AudioCaching) *YoutubeFetcher {
+func NewYoutubeFetcher(logger logging.Logger, cache cache.Manager, cacheMetrics metrics.CacheMetrics, youtubeService providers.YouTubeService, audioCache cache.AudioCaching, commandExecutor CommandExecutor) *YoutubeFetcher {
 	return &YoutubeFetcher{
-		Logger:         logger,
-		Cache:          cache,
-		CacheMetrics:   cacheMetrics,
-		YoutubeService: youtubeService,
-		audioCache:     audioCache,
+		Logger:          logger,
+		Cache:           cache,
+		CacheMetrics:    cacheMetrics,
+		YoutubeService:  youtubeService,
+		audioCache:      audioCache,
+		CommandExecutor: commandExecutor,
 	}
 }
 
@@ -63,7 +83,7 @@ func (s *YoutubeFetcher) LookupSongs(ctx context.Context, input string) ([]*voic
 
 	duration, err := parseCustomDuration(video.ContentDetails.Duration)
 	if err != nil {
-		fmt.Println("Error al analizar la duración:", err)
+		s.Logger.Error("Error al analizar la duracion: ", zap.Error(err))
 	}
 	thumbnailURL := video.Snippet.Thumbnails.Default.Url
 
@@ -160,12 +180,10 @@ func (s *YoutubeFetcher) downloadAndCacheAudio(ctx context.Context, song *voice.
 	ffmpegArgs := []string{"-i", "pipe:0", "-b:a", "192k", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1"}
 
 	// Ejecuta una cadena de comandos para descargar el audio de YouTube y convertirlo a formato DCA.
-	downloadCmd := exec.CommandContext(ctx,
-		"sh", "-c", fmt.Sprintf("yt-dlp %s | ffmpeg %s | dca",
-			strings.Join(ytArgs, " "),
-			strings.Join(ffmpegArgs, " ")))
+	output, err := s.CommandExecutor.ExecuteCommand(ctx, "sh", "-c", fmt.Sprintf("yt-dlp %s | ffmpeg %s | dca",
+		strings.Join(ytArgs, " "),
+		strings.Join(ffmpegArgs, " ")))
 
-	output, err := downloadCmd.Output()
 	if err != nil {
 		s.CacheMetrics.IncRequests()
 		return nil, fmt.Errorf("error al ejecutar el comando: %w", err)
