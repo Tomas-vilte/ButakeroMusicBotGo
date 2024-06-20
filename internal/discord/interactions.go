@@ -14,6 +14,7 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/Tomas-vilte/GoMusicBot/internal/metrics"
 	"github.com/Tomas-vilte/GoMusicBot/internal/music/fetcher"
+	"github.com/Tomas-vilte/GoMusicBot/internal/services/providers"
 	"github.com/Tomas-vilte/GoMusicBot/internal/utils"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
@@ -37,9 +38,9 @@ type InteractionHandler struct {
 	session             SessionService
 	commandUsageCounter metrics.CustomMetric
 	CacheMetrics        metrics.CacheMetrics
+	realYoutubeClient   providers.YouTubeService
 	caching             cache.Manager
 	audioCaching        cache.AudioCaching
-	youtubeApiKey       string
 }
 
 // NewInteractionHandler crea una nueva instancia de InteractionHandler.
@@ -48,8 +49,9 @@ func NewInteractionHandler(ctx context.Context, discordToken string, responseHan
 	storage InteractionStorage,
 	cfg *config.Config, logger logging.Logger,
 	metricsPrometheus metrics.CustomMetric,
-	manager cache.Manager, youtubeApiKey string, audioCaching cache.AudioCaching,
-	cacheMetrics metrics.CacheMetrics) *InteractionHandler {
+	manager cache.Manager, audioCaching cache.AudioCaching,
+	cacheMetrics metrics.CacheMetrics,
+	youtubeClient providers.YouTubeService) *InteractionHandler {
 
 	handler := &InteractionHandler{
 		ctx:                 ctx,
@@ -63,9 +65,9 @@ func NewInteractionHandler(ctx context.Context, discordToken string, responseHan
 		session:             session,
 		commandUsageCounter: metricsPrometheus,
 		caching:             manager,
-		youtubeApiKey:       youtubeApiKey,
 		audioCaching:        audioCaching,
 		CacheMetrics:        cacheMetrics,
+		realYoutubeClient:   youtubeClient,
 	}
 	return handler
 }
@@ -504,7 +506,7 @@ func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discord
 	dca := codec.NewDCAStreamerImpl(handler.logger)
 	voiceChat := voice.NewChatSessionImpl(dg, string(guildID), dca, handler.logger)
 	messageSender := discordmessenger.NewMessageSenderImpl(dg, handler.logger)
-	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger, handler.caching, handler.CacheMetrics, handler.youtubeApiKey, handler.audioCaching)
+	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger, handler.caching, handler.CacheMetrics, handler.realYoutubeClient, handler.audioCaching)
 	persistent := file_storage.NewJSONStatePersistent()
 	songStorage, stateStorage := config.GetPlaylistStore(handler.cfg, string(guildID), handler.logger, persistent)
 	player := bot.NewGuildPlayer(handler.ctx, voiceChat, songStorage, stateStorage, fetcherGetDCA.GetDCAData, messageSender, handler.logger).WithLogger(handler.logger)
