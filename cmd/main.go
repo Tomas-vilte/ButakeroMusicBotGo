@@ -9,6 +9,7 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/metrics"
 	"github.com/Tomas-vilte/GoMusicBot/internal/music/fetcher"
 	"github.com/Tomas-vilte/GoMusicBot/internal/profiler"
+	"github.com/Tomas-vilte/GoMusicBot/internal/services/providers/youtube_provider"
 	"github.com/bwmarrin/discordgo"
 	"github.com/kelseyhightower/envconfig"
 	"go.uber.org/zap"
@@ -65,11 +66,18 @@ func main() {
 	storage = discord.NewInMemoryStorage()
 	cacheStorage := cache.NewCache(logger, cacheMetrics, cache.DefaultCacheConfig)
 	audioCache := cache.NewAudioCache(logger, cache.DefaultCacheConfigAudio, cacheMetrics)
-	youtubeFetcher = fetcher.NewYoutubeFetcher(logger, cacheStorage, cacheMetrics, cfg.YoutubeApiKey, audioCache)
+	realYouTubeClient, err := youtube_provider.NewRealYouTubeClient(cfg.YoutubeApiKey)
+	if err != nil {
+		logger.Error("Error al crear el client de youtube_provider", zap.Error(err))
+		return
+	}
+	youtubeService := youtube_provider.NewYouTubeProvider(cfg.YoutubeApiKey, logger, realYouTubeClient)
+
+	youtubeFetcher = fetcher.NewYoutubeFetcher(logger, cacheStorage, cacheMetrics, youtubeService, audioCache)
 	responseHandler := discord.NewDiscordResponseHandler(logger)
 	sessionService := discord.NewSessionService(dg)
 
-	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter, cacheStorage, cfg.YoutubeApiKey, audioCache, cacheMetrics).WithLogger(logger)
+	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter, cacheStorage, audioCache, cacheMetrics, youtubeService).WithLogger(logger)
 	commandHandler := discord.NewSlashCommandRouter(cfg.CommandPrefix).
 		PlayHandler(handler.PlaySong).
 		SkipHandler(handler.SkipSong).
