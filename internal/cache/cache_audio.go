@@ -47,11 +47,12 @@ type (
 		logger        logging.Logger          // Interface logging.Logger
 		timer         TimerInterface          // Usamos time.Ticker para el temporizador
 		metrics       metrics.CacheMetrics
+		cacheType     string // Campo para el tipo de caché
 	}
 )
 
 // NewAudioCache crea una nueva instancia de AudioCache.
-func NewAudioCache(logger logging.Logger, config ConfigCachingAudio, metrics metrics.CacheMetrics) AudioCaching {
+func NewAudioCache(logger logging.Logger, config ConfigCachingAudio, metrics metrics.CacheMetrics, cacheType string) AudioCaching {
 	cache := &AudioCache{
 		cache:         make(map[string]*list.Element),
 		config:        config,
@@ -61,6 +62,7 @@ func NewAudioCache(logger logging.Logger, config ConfigCachingAudio, metrics met
 		logger:        logger,
 		timer:         newTimer(config.CleanupInterval),
 		metrics:       metrics,
+		cacheType:     cacheType,
 	}
 
 	go cache.startCleanupRoutine()
@@ -76,20 +78,21 @@ func (c *AudioCache) Get(url string) ([]byte, bool) {
 	element, ok := c.cache[url]
 	c.mu.RUnlock()
 
-	c.metrics.IncRequests()
-	c.metrics.IncGetOperations()
+	c.metrics.IncRequests(c.cacheType)
+	c.metrics.IncGetOperations(c.cacheType)
 
 	if !ok {
-		c.metrics.IncMisses()
-		c.metrics.IncLatencyGet(time.Since(startTime))
+		c.metrics.IncMisses(c.cacheType)
+		c.metrics.IncLatencyGet(c.cacheType, time.Since(startTime))
 		return nil, false
 	}
 
 	entry := element.Value.(*EntryAudioCaching)
 	if time.Now().After(entry.expireAt) {
 		c.deleteEntry(url)
-		c.metrics.IncMisses()
-		c.metrics.IncLatencyGet(time.Since(startTime))
+		c.metrics.IncMisses(c.cacheType)
+		c.metrics.IncEvictions(c.cacheType)
+		c.metrics.IncLatencyGet(c.cacheType, time.Since(startTime))
 		return nil, false
 	}
 
@@ -98,8 +101,8 @@ func (c *AudioCache) Get(url string) ([]byte, bool) {
 	c.accessList.MoveToFront(element)
 	c.mu.Unlock()
 
-	c.metrics.IncHits()
-	c.metrics.IncLatencyGet(time.Since(startTime))
+	c.metrics.IncHits(c.cacheType)
+	c.metrics.IncLatencyGet(c.cacheType, time.Since(startTime))
 	return entry.data, true
 }
 
@@ -116,10 +119,6 @@ func (c *AudioCache) Set(url string, data []byte) {
 		entry.data = data
 		entry.expireAt = expireAt
 		c.accessList.MoveToFront(element)
-		c.metrics.IncSetOperations()
-		c.metrics.SetCacheSize(float64(len(c.cache)))
-		c.metrics.IncLatencySet(time.Since(startTime))
-		c.logger.Info("Datos actualizados en caché de audio para la URL", zap.String("url", url))
 	} else {
 		entry := c.entryPool.Get()
 		entry.data = data
@@ -130,12 +129,12 @@ func (c *AudioCache) Set(url string, data []byte) {
 		if c.accessList.Len() > c.config.MaxCacheSize {
 			c.deleteLRUEntry()
 		}
-		c.metrics.IncSetOperations()
-		c.metrics.SetCacheSize(float64(len(c.cache)))
-		c.metrics.IncLatencySet(time.Since(startTime))
-		c.logger.Info("Datos almacenados en caché de audio para la URL", zap.String("url", url))
 	}
+
+	c.metrics.IncSetOperations(c.cacheType)
 	c.metrics.SetCacheSize(float64(len(c.cache)))
+	c.metrics.IncLatencySet(c.cacheType, time.Since(startTime))
+	c.logger.Info("Datos almacenados en caché de audio para la URL", zap.String("url", url))
 }
 
 // deleteEntry elimina la entrada de caché de audio para la URL dada.
@@ -152,7 +151,7 @@ func (c *AudioCache) deleteEntry(url string) {
 	delete(c.cache, url)
 	c.entryPool.Put(element.Value.(*EntryAudioCaching))
 
-	c.metrics.IncEvictions()
+	c.metrics.IncEvictions(c.cacheType)
 	c.metrics.SetCacheSize(float64(len(c.cache)))
 	c.logger.Info("Entrada de caché de audio eliminada", zap.String("url", url))
 }
@@ -174,7 +173,7 @@ func (c *AudioCache) deleteLRUEntry() {
 	}
 	c.entryPool.Put(entry)
 
-	c.metrics.IncEvictions()
+	c.metrics.IncEvictions(c.cacheType)
 	c.metrics.SetCacheSize(float64(len(c.cache)))
 	c.logger.Info("Entrada de caché de audio LRU eliminada")
 }
@@ -199,15 +198,19 @@ func (c *AudioCache) cleanupExpiredEntries() {
 	defer c.mu.Unlock()
 
 	now := time.Now()
+	evictionsCount := 0
 	for url, element := range c.cache {
 		entry := element.Value.(*EntryAudioCaching)
 		if now.After(entry.expireAt) {
 			c.accessList.Remove(element)
 			delete(c.cache, url)
 			c.entryPool.Put(entry)
-			c.metrics.IncEvictions()
+			evictionsCount++
 			c.logger.Info("Entrada de caché de audio expirada eliminada", zap.String("url", url))
 		}
+	}
+	if evictionsCount > 0 {
+		c.metrics.IncEvictions(c.cacheType)
 	}
 	c.metrics.SetCacheSize(float64(len(c.cache)))
 }

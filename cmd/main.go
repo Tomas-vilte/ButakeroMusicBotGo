@@ -28,7 +28,7 @@ var (
 
 func main() {
 	// Crear un nuevo logger usando la librería zap.
-	logger, err := logging.NewZapLogger(false)
+	logger, err := logging.NewZapLogger(true)
 	if err != nil {
 		panic("Error creando el logger: " + err.Error())
 	}
@@ -64,8 +64,8 @@ func main() {
 		return
 	}
 	storage = discord.NewInMemoryStorage()
-	cacheStorage := cache.NewCache(logger, cacheMetrics, cache.DefaultCacheConfig)
-	audioCache := cache.NewAudioCache(logger, cache.DefaultCacheConfigAudio, cacheMetrics)
+	cacheStorage := cache.NewCache(logger, cacheMetrics, cache.DefaultCacheConfig, "metadata_cache")
+	audioCache := cache.NewAudioCache(logger, cache.DefaultCacheConfigAudio, cacheMetrics, "audio_cache")
 	realYouTubeClient, err := youtube_provider.NewRealYouTubeClient(cfg.YoutubeApiKey)
 	if err != nil {
 		logger.Error("Error al crear el client de youtube_provider", zap.Error(err))
@@ -74,11 +74,11 @@ func main() {
 	youtubeService := youtube_provider.NewYouTubeProvider(cfg.YoutubeApiKey, logger, realYouTubeClient)
 	executorCommand := fetcher.NewCommandExecutor()
 
-	youtubeFetcher = fetcher.NewYoutubeFetcher(logger, cacheStorage, cacheMetrics, youtubeService, audioCache, executorCommand)
+	youtubeFetcher = fetcher.NewYoutubeFetcher(logger, cacheStorage, youtubeService, audioCache, executorCommand)
 	responseHandler := discord.NewDiscordResponseHandler(logger)
 	sessionService := discord.NewSessionService(dg)
 
-	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter, cacheStorage, audioCache, cacheMetrics, youtubeService, executorCommand).WithLogger(logger)
+	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter, cacheStorage, audioCache, youtubeService, executorCommand).WithLogger(logger)
 	commandHandler := discord.NewSlashCommandRouter(cfg.CommandPrefix).
 		PlayHandler(handler.PlaySong).
 		SkipHandler(handler.SkipSong).

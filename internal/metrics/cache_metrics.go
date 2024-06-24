@@ -8,59 +8,59 @@ import (
 type (
 	// CachePrometheusMetrics es una métrica para contabilizar el número de búsquedas en caché exitosas y fallidas.
 	CachePrometheusMetrics struct {
-		cacheHits      prometheus.Counter
-		cacheMisses    prometheus.Counter
+		cacheHits      *prometheus.CounterVec
+		cacheMisses    *prometheus.CounterVec
 		cacheSize      prometheus.Gauge
-		cacheEvictions prometheus.Counter
-		cacheRequests  prometheus.Counter
-		cacheSetOps    prometheus.Counter
-		cacheGetOps    prometheus.Counter
-		latencyGet     prometheus.Histogram
-		latencySet     prometheus.Histogram
+		cacheEvictions *prometheus.CounterVec
+		cacheRequests  *prometheus.CounterVec
+		cacheSetOps    *prometheus.CounterVec
+		cacheGetOps    *prometheus.CounterVec
+		latencyGet     *prometheus.HistogramVec
+		latencySet     *prometheus.HistogramVec
 	}
 )
 
 // NewCacheMetrics crea una nueva instancia de CacheMetrics.
 func NewCacheMetrics() CacheMetrics {
 	return &CachePrometheusMetrics{
-		cacheHits: prometheus.NewCounter(prometheus.CounterOpts{
+		cacheHits: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "cache_hits_total",
 			Help: "Número total de aciertos en caché",
-		}),
-		cacheMisses: prometheus.NewCounter(prometheus.CounterOpts{
+		}, []string{"cache_type"}),
+		cacheMisses: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "cache_misses_total",
 			Help: "Número total de fallos en caché",
-		}),
+		}, []string{"cache_type"}),
 		cacheSize: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "cache_size",
 			Help: "Tamaño actual del caché",
 		}),
-		cacheEvictions: prometheus.NewCounter(prometheus.CounterOpts{
+		cacheEvictions: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "cache_evictions_total",
 			Help: "Número total de eliminaciones de caché debido a la expiración",
-		}),
-		cacheRequests: prometheus.NewCounter(prometheus.CounterOpts{
+		}, []string{"cache_type"}),
+		cacheRequests: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "cache_requests_total",
 			Help: "Número total de solicitudes de caché",
-		}),
-		cacheSetOps: prometheus.NewCounter(prometheus.CounterOpts{
+		}, []string{"cache_type"}),
+		cacheSetOps: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "cache_set_operations_total",
 			Help: "Número total de operaciones de establecimiento en caché",
-		}),
-		cacheGetOps: prometheus.NewCounter(prometheus.CounterOpts{
+		}, []string{"cache_type"}),
+		cacheGetOps: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "cache_get_operations_total",
 			Help: "Número total de operaciones de obtención en caché",
-		}),
-		latencyGet: prometheus.NewHistogram(prometheus.HistogramOpts{
+		}, []string{"cache_type"}),
+		latencyGet: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "custom_cache_get_latency_seconds",
 			Help:    "Latencia de las operaciones de obtención en caché",
 			Buckets: prometheus.DefBuckets,
-		}),
-		latencySet: prometheus.NewHistogram(prometheus.HistogramOpts{
+		}, []string{"cache_type"}),
+		latencySet: prometheus.NewHistogramVec(prometheus.HistogramOpts{
 			Name:    "custom_cache_set_latency_seconds",
 			Help:    "Latencia de las operaciones de establecimiento en caché",
 			Buckets: prometheus.DefBuckets,
-		}),
+		}, []string{"cache_type"}),
 	}
 }
 
@@ -90,45 +90,38 @@ func (c *CachePrometheusMetrics) Collect(ch chan<- prometheus.Metric) {
 	c.latencySet.Collect(ch)
 }
 
-// IncHits implementa el método IncHits de la interfaz CacheMetrics.
-func (c *CachePrometheusMetrics) IncHits() {
-	c.cacheHits.Inc()
+func (c *CachePrometheusMetrics) IncHits(cacheType string) {
+	c.cacheHits.WithLabelValues(cacheType).Inc()
 }
 
-// IncMisses implementa el método IncMisses de la interfaz CacheMetrics.
-func (c *CachePrometheusMetrics) IncMisses() {
-	c.cacheMisses.Inc()
+func (c *CachePrometheusMetrics) IncMisses(cacheType string) {
+	c.cacheMisses.WithLabelValues(cacheType).Inc()
 }
 
-// SetCacheSize implementa el método SetCacheSize de la interfaz CacheMetrics.
 func (c *CachePrometheusMetrics) SetCacheSize(size float64) {
 	c.cacheSize.Set(size)
 }
 
-// IncEvictions implementa el método IncEvictions de la interfaz CacheMetrics.
-func (c *CachePrometheusMetrics) IncEvictions() {
-	c.cacheEvictions.Inc()
+func (c *CachePrometheusMetrics) IncEvictions(cacheType string) {
+	c.cacheEvictions.WithLabelValues(cacheType).Inc()
 }
 
-// IncRequests implementa el método IncRequests de la interfaz CacheMetrics.
-func (c *CachePrometheusMetrics) IncRequests() {
-	c.cacheRequests.Inc()
+func (c *CachePrometheusMetrics) IncRequests(cacheType string) {
+	c.cacheRequests.WithLabelValues(cacheType).Inc()
 }
 
-// IncSetOperations implementa el método IncSetOperations de la interfaz CacheMetrics.
-func (c *CachePrometheusMetrics) IncSetOperations() {
-	c.cacheSetOps.Inc()
+func (c *CachePrometheusMetrics) IncSetOperations(cacheType string) {
+	c.cacheSetOps.WithLabelValues(cacheType).Inc()
 }
 
-// IncGetOperations implementa el método IncGetOperations de la interfaz CacheMetrics.
-func (c *CachePrometheusMetrics) IncGetOperations() {
-	c.cacheGetOps.Inc()
+func (c *CachePrometheusMetrics) IncGetOperations(cacheType string) {
+	c.cacheGetOps.WithLabelValues(cacheType).Inc()
 }
 
-func (c *CachePrometheusMetrics) IncLatencyGet(duration time.Duration) {
-	c.latencyGet.Observe(duration.Seconds())
+func (c *CachePrometheusMetrics) IncLatencyGet(cacheType string, duration time.Duration) {
+	c.latencyGet.WithLabelValues(cacheType).Observe(duration.Seconds())
 }
 
-func (c *CachePrometheusMetrics) IncLatencySet(duration time.Duration) {
-	c.latencySet.Observe(duration.Seconds())
+func (c *CachePrometheusMetrics) IncLatencySet(cacheType string, duration time.Duration) {
+	c.latencySet.WithLabelValues(cacheType).Observe(duration.Seconds())
 }

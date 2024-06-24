@@ -7,7 +7,6 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/cache"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
-	"github.com/Tomas-vilte/GoMusicBot/internal/metrics"
 	"github.com/Tomas-vilte/GoMusicBot/internal/services/providers"
 	"go.uber.org/zap"
 	"io"
@@ -28,7 +27,6 @@ type (
 	YoutubeFetcher struct {
 		Logger          logging.Logger
 		Cache           cache.Manager
-		CacheMetrics    metrics.CacheMetrics
 		audioCache      cache.AudioCaching
 		YoutubeService  providers.YouTubeService
 		CommandExecutor CommandExecutor
@@ -52,11 +50,10 @@ func NewCommandExecutor() *DefaultCommandExecutor {
 }
 
 // NewYoutubeFetcher crea una nueva instancia de YoutubeFetcher con un logger predeterminado.
-func NewYoutubeFetcher(logger logging.Logger, cache cache.Manager, cacheMetrics metrics.CacheMetrics, youtubeService providers.YouTubeService, audioCache cache.AudioCaching, commandExecutor CommandExecutor) *YoutubeFetcher {
+func NewYoutubeFetcher(logger logging.Logger, cache cache.Manager, youtubeService providers.YouTubeService, audioCache cache.AudioCaching, commandExecutor CommandExecutor) *YoutubeFetcher {
 	return &YoutubeFetcher{
 		Logger:          logger,
 		Cache:           cache,
-		CacheMetrics:    cacheMetrics,
 		YoutubeService:  youtubeService,
 		audioCache:      audioCache,
 		CommandExecutor: commandExecutor,
@@ -71,7 +68,6 @@ func (s *YoutubeFetcher) LookupSongs(ctx context.Context, input string) ([]*voic
 	cachedResult := s.Cache.Get(videoURL)
 	if cachedResult != nil {
 		s.Logger.Info("Video encontrado en cache: ", zap.String("Video", videoURL))
-		s.CacheMetrics.IncHits()
 		return cachedResult, nil
 	}
 
@@ -98,9 +94,6 @@ func (s *YoutubeFetcher) LookupSongs(ctx context.Context, input string) ([]*voic
 	songs := []*voice.Song{song}
 
 	s.Cache.Set(videoURL, songs)
-	s.CacheMetrics.IncMisses()
-	s.CacheMetrics.SetCacheSize(float64(s.Cache.Size()))
-
 	return songs, nil
 }
 
@@ -155,27 +148,21 @@ func parseCustomDuration(durationStr string) (time.Duration, error) {
 // Utiliza yt-dlp y ffmpeg para descargar el audio de YouTube y convertirlo al formato DCA esperado por Discord.
 // Retorna un io.Reader que permite leer los datos de audio y un posible error.
 func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *voice.Song) (io.Reader, error) {
-	startTime := time.Now()
 
 	// Verificar si los datos de audio están en caché
 	if cachedData, ok := s.audioCache.Get(song.URL); ok {
-		s.CacheMetrics.IncRequests()
 		return bytes.NewReader(cachedData), nil
 	}
 
 	// Descargar los datos de audio
 	data, err := s.downloadAndCacheAudio(ctx, song)
 	if err != nil {
-		s.CacheMetrics.IncRequests()
 		return nil, err
 	}
-	s.CacheMetrics.IncRequests()
-	s.CacheMetrics.IncLatencyGet(time.Since(startTime))
 	return bytes.NewReader(data), nil
 }
 
 func (s *YoutubeFetcher) downloadAndCacheAudio(ctx context.Context, song *voice.Song) ([]byte, error) {
-	startTime := time.Now()
 	ytArgs := []string{"-f", "bestaudio[ext=m4a]", "--audio-quality", "0", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", "'" + song.URL + "'"}
 	ffmpegArgs := []string{"-i", "pipe:0", "-b:a", "192k", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1"}
 
@@ -185,14 +172,11 @@ func (s *YoutubeFetcher) downloadAndCacheAudio(ctx context.Context, song *voice.
 		strings.Join(ffmpegArgs, " ")))
 
 	if err != nil {
-		s.CacheMetrics.IncRequests()
 		return nil, fmt.Errorf("error al ejecutar el comando: %w", err)
 	}
 
 	// Guardar los datos de audio en caché
 	s.audioCache.Set(song.URL, output)
-	s.CacheMetrics.IncRequests()
-	s.CacheMetrics.IncLatencySet(time.Since(startTime))
 
 	return output, nil
 }
