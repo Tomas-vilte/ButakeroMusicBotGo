@@ -49,11 +49,12 @@ type (
 		metrics    metrics.CacheMetrics // Interface metrics.CacheMetrics
 		timer      TimerInterface       // Interface TimerInterface
 		config     ConfigCaching        // Configurcacion ConfigCaching
+		cacheType  string               // Campo para el tipo de caché
 	}
 )
 
 // NewCache crea una nueva instancia de Cache.
-func NewCache(logger logging.Logger, metricsCache metrics.CacheMetrics, config ConfigCaching) Manager {
+func NewCache(logger logging.Logger, metricsCache metrics.CacheMetrics, config ConfigCaching, cacheType string) Manager {
 	cache := &Cache{
 		Lookup:     make(map[string]*list.Element),
 		accessList: newList(),
@@ -63,19 +64,20 @@ func NewCache(logger logging.Logger, metricsCache metrics.CacheMetrics, config C
 		metrics:    metricsCache,
 		timer:      newTimer(config.CleanupInterval),
 		config:     config,
+		cacheType:  cacheType,
 	}
 	go cache.cleanupExpiredEntries()
 	return cache
 }
 
 func (c *Cache) Get(key string) []*voice.Song {
-	start := time.Now() // Inicio del temporizador para medir la latencia
+	start := time.Now()
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	c.metrics.IncRequests()
-	c.metrics.IncGetOperations()
+	c.metrics.IncRequests(c.cacheType)
+	c.metrics.IncGetOperations(c.cacheType)
 	if element, ok := c.Lookup[key]; ok {
 		entry := element.Value.(*Entry)
 
@@ -85,16 +87,19 @@ func (c *Cache) Get(key string) []*voice.Song {
 			c.accessList.Remove(element)
 			delete(c.Lookup, key)
 			c.entryPool.Put(entry)
-			c.metrics.IncEvictions()
+			c.metrics.IncEvictions(c.cacheType)
+			c.metrics.IncMisses(c.cacheType)
 			c.metrics.SetCacheSize(float64(len(c.Lookup)))
-			c.metrics.IncLatencyGet(time.Since(start)) // Latencia de GET cuando la entrada está expirada
+			c.metrics.IncLatencyGet(c.cacheType, time.Since(start))
 			return nil
 		}
-		c.metrics.IncLatencyGet(time.Since(start)) // Latencia de GET cuando la entrada es válida
+		c.metrics.IncHits(c.cacheType) // Añadimos esta métrica para contar los hits
+		c.metrics.IncLatencyGet(c.cacheType, time.Since(start))
 		return entry.Results
 	}
 	c.logger.Info("Datos en caché no encontrados para la entrada", zap.String("input", key))
-	c.metrics.IncLatencyGet(time.Since(start)) // Latencia de GET cuando la entrada no se encuentra
+	c.metrics.IncMisses(c.cacheType)
+	c.metrics.IncLatencyGet(c.cacheType, time.Since(start))
 	return nil
 }
 
@@ -109,9 +114,9 @@ func (c *Cache) Set(key string, results []*voice.Song) {
 		entry.Results = results
 		entry.LastUpdated = time.Now()
 		c.accessList.MoveToFront(element)
-		c.metrics.IncSetOperations()
+		c.metrics.IncSetOperations(c.cacheType)
 		c.metrics.SetCacheSize(float64(len(c.Lookup)))
-		c.metrics.IncLatencySet(time.Since(start)) // Latencia de SET cuando la entrada es actualizada
+		c.metrics.IncLatencySet(c.cacheType, time.Since(start)) // Latencia de SET cuando la entrada es actualizada
 		c.logger.Info("Datos actualizados en caché para la entrada", zap.String("input", key))
 		return
 	}
@@ -126,9 +131,9 @@ func (c *Cache) Set(key string, results []*voice.Song) {
 		c.DeleteLRUEntry()
 	}
 	c.logger.Info("Datos almacenados en caché para la entrada", zap.String("input", key))
-	c.metrics.IncSetOperations()
+	c.metrics.IncSetOperations(c.cacheType)
 	c.metrics.SetCacheSize(float64(len(c.Lookup)))
-	c.metrics.IncLatencySet(time.Since(start)) // Latencia de SET cuando la entrada es nueva
+	c.metrics.IncLatencySet(c.cacheType, time.Since(start)) // Latencia de SET cuando la entrada es nueva
 }
 
 func (c *Cache) DeleteLRUEntry() {
@@ -152,7 +157,7 @@ func (c *Cache) DeleteLRUEntry() {
 	delete(c.Lookup, deleteKey)
 	c.entryPool.Put(element.Value.(*Entry))
 	c.logger.Info("Entrada de caché LRU eliminada", zap.String("input", deleteKey))
-	c.metrics.IncEvictions()
+	c.metrics.IncEvictions(c.cacheType)
 	c.metrics.SetCacheSize(float64(len(c.Lookup)))
 }
 
@@ -162,6 +167,7 @@ func (c *Cache) DeleteExpiredEntries() {
 	defer c.mu.Unlock()
 
 	now := time.Now()
+	evictionsCount := 0
 	for key, element := range c.Lookup {
 		entry := element.Value.(*Entry)
 		if now.Sub(entry.LastUpdated) > c.config.CacheTTL {
@@ -169,8 +175,11 @@ func (c *Cache) DeleteExpiredEntries() {
 			delete(c.Lookup, key)
 			c.entryPool.Put(entry)
 			c.logger.Info("Entrada de caché expirada eliminada", zap.String("input", key))
-			c.metrics.IncEvictions()
+			evictionsCount++
 		}
+	}
+	if evictionsCount > 0 {
+		c.metrics.IncEvictions(c.cacheType)
 	}
 	c.metrics.SetCacheSize(float64(len(c.Lookup)))
 }

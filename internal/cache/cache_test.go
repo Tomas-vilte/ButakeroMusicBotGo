@@ -30,10 +30,11 @@ func TestCache_Get(t *testing.T) {
 		}
 
 		// Configurar expectativas de los mocks
-		metricsMock.On("IncRequests").Return()
-		metricsMock.On("IncGetOperations").Return()
-		metricsMock.On("IncLatencyGet", mock.Anything).Return()
+		metricsMock.On("IncRequests", mock.Anything).Return()
+		metricsMock.On("IncGetOperations", mock.Anything).Return()
+		metricsMock.On("IncLatencyGet", mock.Anything, mock.Anything).Return()
 		loggerMock.On("Info", "Datos en caché no encontrados para la entrada", mock.Anything).Return()
+		metricsMock.On("IncMisses", mock.Anything).Return()
 
 		key := "test_key"
 		results := cache.Get(key)
@@ -63,9 +64,10 @@ func TestCache_Get(t *testing.T) {
 		}
 
 		// Configurar expectativas de los mocks
-		metricsMock.On("IncRequests").Return()
-		metricsMock.On("IncGetOperations").Return()
-		metricsMock.On("IncLatencyGet", mock.Anything).Return()
+		metricsMock.On("IncRequests", mock.Anything).Return()
+		metricsMock.On("IncGetOperations", mock.Anything).Return()
+		metricsMock.On("IncLatencyGet", mock.Anything, mock.Anything).Return()
+		metricsMock.On("IncHits", mock.Anything).Return()
 
 		key := "test_key"
 		entry := &Entry{
@@ -99,11 +101,12 @@ func TestCache_Get(t *testing.T) {
 			timer:      timerMock,
 			config:     DefaultCacheConfig,
 		}
-		metricsMock.On("IncRequests").Return()
-		metricsMock.On("IncGetOperations").Return()
-		metricsMock.On("IncEvictions").Return()
-		metricsMock.On("SetCacheSize", mock.Anything).Return()
-		metricsMock.On("IncLatencyGet", mock.Anything).Return()
+		metricsMock.On("IncRequests", mock.Anything).Return()
+		metricsMock.On("IncGetOperations", mock.Anything).Return()
+		metricsMock.On("IncEvictions", mock.Anything).Return()
+		metricsMock.On("SetCacheSize", mock.Anything, mock.Anything).Return()
+		metricsMock.On("IncLatencyGet", mock.Anything, mock.Anything).Return()
+		metricsMock.On("IncMisses", mock.Anything).Return()
 
 		loggerMock.On("Info", "Datos en caché expirados para la entrada", mock.Anything).Return()
 
@@ -152,9 +155,9 @@ func TestCache_Set(t *testing.T) {
 		}
 
 		// Configurar expectativas de los mocks
-		metricsMock.On("IncSetOperations").Return()
+		metricsMock.On("IncSetOperations", mock.Anything).Return()
 		metricsMock.On("SetCacheSize", float64(1)).Return()
-		metricsMock.On("IncLatencySet", mock.Anything).Return()
+		metricsMock.On("IncLatencySet", mock.Anything, mock.Anything).Return()
 
 		entry := &Entry{
 			Results:     []*voice.Song{{Title: "old_song"}},
@@ -194,9 +197,9 @@ func TestCache_Set(t *testing.T) {
 		}
 
 		// Configurar expectativas de los mocks
-		metricsMock.On("IncSetOperations").Return()
+		metricsMock.On("IncSetOperations", mock.Anything).Return()
 		metricsMock.On("SetCacheSize", float64(1)).Return()
-		metricsMock.On("IncLatencySet", mock.Anything).Return()
+		metricsMock.On("IncLatencySet", mock.Anything, mock.Anything).Return()
 		entryPoolMock.On("Get").Return(&Entry{})
 
 		newResults := []*voice.Song{{Title: "new_song"}}
@@ -261,12 +264,12 @@ func TestCache_Set_DeleteLRUEntry(t *testing.T) {
 	listMock.On("Back").Return(element1)
 	listMock.On("Remove", element1).Return()
 	entryPoolMock.On("Put", entry1).Return()
-	metricsMock.On("IncEvictions").Return()
-	metricsMock.On("IncLatencySet", mock.Anything).Return()
+	metricsMock.On("IncEvictions", mock.Anything).Return()
+	metricsMock.On("IncLatencySet", mock.Anything, mock.Anything).Return()
 	metricsMock.On("SetCacheSize", mock.Anything).Return()
 	loggerMock.On("Info", "Entrada de caché LRU eliminada", mock.Anything).Return()
 	loggerMock.On("Info", "Datos almacenados en caché para la entrada", mock.Anything).Return()
-	metricsMock.On("IncSetOperations").Return()
+	metricsMock.On("IncSetOperations", mock.Anything).Return()
 
 	// Simular exceder el tamaño máximo de la caché al agregar una nueva entrada
 	newResults := []*voice.Song{{Title: "song3"}}
@@ -358,7 +361,7 @@ func TestCache_DeleteExpiredEntries(t *testing.T) {
 	listMock.On("Remove", element2).Return()
 	entryPoolMock.On("Put", entry1).Return()
 	entryPoolMock.On("Put", entry2).Return()
-	metricsMock.On("IncEvictions").Return().Times(2)
+	metricsMock.On("IncEvictions", mock.Anything).Return().Times(1)
 	metricsMock.On("SetCacheSize", mock.Anything).Return()
 	loggerMock.On("Info", "Entrada de caché expirada eliminada", mock.Anything).Return()
 	loggerMock.On("Info", "Entrada de caché expirada eliminada", mock.Anything).Return()

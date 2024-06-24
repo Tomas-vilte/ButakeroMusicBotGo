@@ -57,31 +57,31 @@ type MockCacheMetrics struct {
 	mock.Mock
 }
 
-func (m *MockCacheMetrics) IncHits() {
-	m.Called()
+func (m *MockCacheMetrics) IncHits(cacheType string) {
+	m.Called(cacheType)
 }
 
-func (m *MockCacheMetrics) IncMisses() {
-	m.Called()
+func (m *MockCacheMetrics) IncMisses(cacheType string) {
+	m.Called(cacheType)
 }
 
 func (m *MockCacheMetrics) SetCacheSize(size float64) {
 	m.Called(size)
 }
 
-func (m *MockCacheMetrics) IncEvictions() {
+func (m *MockCacheMetrics) IncEvictions(cacheType string) {
 	m.Called()
 }
 
-func (m *MockCacheMetrics) IncRequests() {
+func (m *MockCacheMetrics) IncRequests(cacheType string) {
 	m.Called()
 }
 
-func (m *MockCacheMetrics) IncSetOperations() {
+func (m *MockCacheMetrics) IncSetOperations(cacheType string) {
 	m.Called()
 }
 
-func (m *MockCacheMetrics) IncGetOperations() {
+func (m *MockCacheMetrics) IncGetOperations(cacheType string) {
 	m.Called()
 }
 
@@ -93,12 +93,12 @@ func (m *MockCacheMetrics) Collect(ch chan<- prometheus.Metric) {
 	m.Called(ch)
 }
 
-func (m *MockCacheMetrics) IncLatencyGet(duration time.Duration) {
-	m.Called(duration)
+func (m *MockCacheMetrics) IncLatencyGet(cacheType string, duration time.Duration) {
+	m.Called(cacheType, duration)
 }
 
-func (m *MockCacheMetrics) IncLatencySet(duration time.Duration) {
-	m.Called(duration)
+func (m *MockCacheMetrics) IncLatencySet(cacheType string, duration time.Duration) {
+	m.Called(cacheType, duration)
 }
 
 // MockEntryPoolInterface es un mock para EntryPoolInterface.
