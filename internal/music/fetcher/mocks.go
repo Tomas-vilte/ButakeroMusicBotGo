@@ -3,11 +3,9 @@ package fetcher
 import (
 	"context"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 	"google.golang.org/api/youtube/v3"
-	"time"
 )
 
 type MockLogger struct {
@@ -24,55 +22,6 @@ func (m *MockLogger) Info(msg string, fields ...zap.Field) {
 
 func (m *MockLogger) With(fields ...zap.Field) {
 	m.Called(fields)
-}
-
-// MockCacheMetrics es un mock para la interfaz metrics.CacheMetrics
-type MockCacheMetrics struct {
-	mock.Mock
-}
-
-func (m *MockCacheMetrics) IncHits() {
-	m.Called()
-}
-
-func (m *MockCacheMetrics) IncMisses() {
-	m.Called()
-}
-
-func (m *MockCacheMetrics) SetCacheSize(size float64) {
-	m.Called(size)
-}
-
-func (m *MockCacheMetrics) IncEvictions() {
-	m.Called()
-}
-
-func (m *MockCacheMetrics) IncRequests() {
-	m.Called()
-}
-
-func (m *MockCacheMetrics) IncSetOperations() {
-	m.Called()
-}
-
-func (m *MockCacheMetrics) IncGetOperations() {
-	m.Called()
-}
-
-func (m *MockCacheMetrics) Describe(ch chan<- *prometheus.Desc) {
-	m.Called(ch)
-}
-
-func (m *MockCacheMetrics) Collect(ch chan<- prometheus.Metric) {
-	m.Called(ch)
-}
-
-func (m *MockCacheMetrics) IncLatencyGet(duration time.Duration) {
-	m.Called(duration)
-}
-
-func (m *MockCacheMetrics) IncLatencySet(duration time.Duration) {
-	m.Called(duration)
 }
 
 type MockAudioCaching struct {
