@@ -16,12 +16,11 @@ func TestYoutubeFetcher_LookupSongs(t *testing.T) {
 		// Arrange
 		mockLogger := new(MockLogger)
 		mockCache := new(MockCacheManager)
-		mockCacheMetrics := new(MockCacheMetrics)
 		mockYoutubeService := new(MockYouTubeService)
 		mockAudioCache := new(MockAudioCaching)
 		mockCommandExecutor := new(MockCommandExecutor)
 
-		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockCacheMetrics, mockYoutubeService, mockAudioCache, mockCommandExecutor)
+		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockYoutubeService, mockAudioCache, mockCommandExecutor)
 
 		ctx := context.Background()
 		input := "dQw4w9WgXcQ"
@@ -53,9 +52,6 @@ func TestYoutubeFetcher_LookupSongs(t *testing.T) {
 			},
 		}, nil)
 		mockCache.On("Set", videoURL, []*voice.Song{expectedSong})
-		mockCache.On("Size").Return(1)
-		mockCacheMetrics.On("IncMisses")
-		mockCacheMetrics.On("SetCacheSize", mock.AnythingOfType("float64"))
 
 		// Act
 		songs, err := fetcher.LookupSongs(ctx, input)
@@ -71,7 +67,6 @@ func TestYoutubeFetcher_LookupSongs(t *testing.T) {
 
 		mockCache.AssertExpectations(t)
 		mockYoutubeService.AssertExpectations(t)
-		mockCacheMetrics.AssertExpectations(t)
 		mockLogger.AssertExpectations(t)
 	})
 
@@ -79,12 +74,11 @@ func TestYoutubeFetcher_LookupSongs(t *testing.T) {
 		// Arrange
 		mockLogger := new(MockLogger)
 		mockCache := new(MockCacheManager)
-		mockCacheMetrics := new(MockCacheMetrics)
 		mockYoutubeService := new(MockYouTubeService)
 		mockAudioCache := new(MockAudioCaching)
 		mockCommandExecutor := new(MockCommandExecutor)
 
-		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockCacheMetrics, mockYoutubeService, mockAudioCache, mockCommandExecutor)
+		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockYoutubeService, mockAudioCache, mockCommandExecutor)
 
 		ctx := context.Background()
 		input := "invalidVideoID"
@@ -113,12 +107,11 @@ func TestYoutubeFetcher_LookupSongs(t *testing.T) {
 		// Arrange
 		mockLogger := new(MockLogger)
 		mockCache := new(MockCacheManager)
-		mockCacheMetrics := new(MockCacheMetrics)
 		mockYoutubeService := new(MockYouTubeService)
 		mockAudioCache := new(MockAudioCaching)
 		mockCommandExecutor := new(MockCommandExecutor)
 
-		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockCacheMetrics, mockYoutubeService, mockAudioCache, mockCommandExecutor)
+		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockYoutubeService, mockAudioCache, mockCommandExecutor)
 
 		ctx := context.Background()
 		input := "dQw4w9WgXcQ"
@@ -136,7 +129,6 @@ func TestYoutubeFetcher_LookupSongs(t *testing.T) {
 
 		mockCache.On("Get", videoURL).Return(expectedCacheResult)
 		mockLogger.On("Info", "Video encontrado en cache: ", mock.AnythingOfType("[]zapcore.Field"))
-		mockCacheMetrics.On("IncHits")
 
 		// Act
 		songs, err := fetcher.LookupSongs(ctx, input)
@@ -152,7 +144,6 @@ func TestYoutubeFetcher_LookupSongs(t *testing.T) {
 
 		mockCache.AssertExpectations(t)
 		mockLogger.AssertExpectations(t)
-		mockCacheMetrics.AssertExpectations(t)
 		mockYoutubeService.AssertNotCalled(t, "GetVideoDetails", mock.Anything, mock.Anything)
 	})
 }
@@ -162,12 +153,11 @@ func TestYoutubeFetcher_GetDCAData(t *testing.T) {
 		// Arrange
 		mockLogger := new(MockLogger)
 		mockCache := new(MockCacheManager)
-		mockCacheMetrics := new(MockCacheMetrics)
 		mockYoutubeService := new(MockYouTubeService)
 		mockAudioCache := new(MockAudioCaching)
 		mockCommandExecutor := new(MockCommandExecutor)
 
-		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockCacheMetrics, mockYoutubeService, mockAudioCache, mockCommandExecutor)
+		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockYoutubeService, mockAudioCache, mockCommandExecutor)
 
 		ctx := context.Background()
 		song := &voice.Song{
@@ -179,10 +169,6 @@ func TestYoutubeFetcher_GetDCAData(t *testing.T) {
 		mockAudioCache.On("Get", song.URL).Return(nil, false)
 		mockAudioCache.On("Set", song.URL, expectedData)
 
-		mockCacheMetrics.On("IncRequests").Times(2)
-		mockCacheMetrics.On("IncLatencyGet", mock.Anything)
-		mockCacheMetrics.On("IncLatencySet", mock.Anything)
-
 		// Act
 		reader, err := fetcher.GetDCAData(ctx, song)
 
@@ -192,19 +178,17 @@ func TestYoutubeFetcher_GetDCAData(t *testing.T) {
 
 		mockCommandExecutor.AssertExpectations(t)
 		mockAudioCache.AssertExpectations(t)
-		mockCacheMetrics.AssertExpectations(t)
 	})
 
 	t.Run("Error executing command", func(t *testing.T) {
 		// Arrange
 		mockLogger := new(MockLogger)
 		mockCache := new(MockCacheManager)
-		mockCacheMetrics := new(MockCacheMetrics)
 		mockYoutubeService := new(MockYouTubeService)
 		mockAudioCache := new(MockAudioCaching)
 		mockCommandExecutor := new(MockCommandExecutor)
 
-		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockCacheMetrics, mockYoutubeService, mockAudioCache, mockCommandExecutor)
+		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockYoutubeService, mockAudioCache, mockCommandExecutor)
 
 		ctx := context.Background()
 		song := &voice.Song{
@@ -214,9 +198,6 @@ func TestYoutubeFetcher_GetDCAData(t *testing.T) {
 
 		mockCommandExecutor.On("ExecuteCommand", ctx, "sh", mock.Anything).Return(nil, expectedError)
 		mockAudioCache.On("Get", song.URL).Return(nil, false)
-
-		mockCacheMetrics.On("IncRequests")
-		mockCacheMetrics.On("IncLatencyGet", mock.Anything)
 
 		// Act
 		reader, err := fetcher.GetDCAData(ctx, song)
@@ -232,12 +213,11 @@ func TestYoutubeFetcher_GetDCAData(t *testing.T) {
 		// Arrange
 		mockLogger := new(MockLogger)
 		mockCache := new(MockCacheManager)
-		mockCacheMetrics := new(MockCacheMetrics)
 		mockYoutubeService := new(MockYouTubeService)
 		mockAudioCache := new(MockAudioCaching)
 		mockCommandExecutor := new(MockCommandExecutor)
 
-		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockCacheMetrics, mockYoutubeService, mockAudioCache, mockCommandExecutor)
+		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockYoutubeService, mockAudioCache, mockCommandExecutor)
 
 		ctx := context.Background()
 		song := &voice.Song{
@@ -246,7 +226,6 @@ func TestYoutubeFetcher_GetDCAData(t *testing.T) {
 		cachedData := []byte("fake cached audio data")
 
 		mockAudioCache.On("Get", song.URL).Return(cachedData, true)
-		mockCacheMetrics.On("IncRequests")
 
 		// Act
 		reader, err := fetcher.GetDCAData(ctx, song)
@@ -262,19 +241,17 @@ func TestYoutubeFetcher_GetDCAData(t *testing.T) {
 		assert.Equal(t, cachedData, buffer)
 
 		mockAudioCache.AssertExpectations(t)
-		mockCacheMetrics.AssertExpectations(t)
 	})
 
 	t.Run("CachedDataNotAvailable", func(t *testing.T) {
 		// Arrange
 		mockLogger := new(MockLogger)
 		mockCache := new(MockCacheManager)
-		mockCacheMetrics := new(MockCacheMetrics)
 		mockYoutubeService := new(MockYouTubeService)
 		mockAudioCache := new(MockAudioCaching)
 		mockCommandExecutor := new(MockCommandExecutor)
 
-		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockCacheMetrics, mockYoutubeService, mockAudioCache, mockCommandExecutor)
+		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockYoutubeService, mockAudioCache, mockCommandExecutor)
 
 		ctx := context.Background()
 		song := &voice.Song{
@@ -285,10 +262,6 @@ func TestYoutubeFetcher_GetDCAData(t *testing.T) {
 		mockCommandExecutor.On("ExecuteCommand", ctx, "sh", mock.Anything).Return([]byte("fake audio data"), nil)
 		mockAudioCache.On("Set", song.URL, mock.Anything)
 
-		mockCacheMetrics.On("IncRequests").Times(2)
-		mockCacheMetrics.On("IncLatencyGet", mock.Anything)
-		mockCacheMetrics.On("IncLatencySet", mock.Anything)
-
 		// Act
 		reader, err := fetcher.GetDCAData(ctx, song)
 
@@ -297,7 +270,6 @@ func TestYoutubeFetcher_GetDCAData(t *testing.T) {
 		assert.NotNil(t, reader)
 
 		mockAudioCache.AssertExpectations(t)
-		mockCacheMetrics.AssertExpectations(t)
 	})
 }
 
@@ -306,12 +278,11 @@ func TestYoutubeFetcher_SearchYouTubeVideoID(t *testing.T) {
 		// Arrange
 		mockLogger := new(MockLogger)
 		mockCache := new(MockCacheManager)
-		mockCacheMetrics := new(MockCacheMetrics)
 		mockYoutubeService := new(MockYouTubeService)
 		mockAudioCache := new(MockAudioCaching)
 		mockCommandExecutor := new(MockCommandExecutor)
 
-		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockCacheMetrics, mockYoutubeService, mockAudioCache, mockCommandExecutor)
+		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockYoutubeService, mockAudioCache, mockCommandExecutor)
 
 		ctx := context.Background()
 		searchTerm := "Rick Astley Never Gonna Give You Up"
@@ -333,12 +304,11 @@ func TestYoutubeFetcher_SearchYouTubeVideoID(t *testing.T) {
 		// Arrange
 		mockLogger := new(MockLogger)
 		mockCache := new(MockCacheManager)
-		mockCacheMetrics := new(MockCacheMetrics)
 		mockYoutubeService := new(MockYouTubeService)
 		mockAudioCache := new(MockAudioCaching)
 		mockCommandExecutor := new(MockCommandExecutor)
 
-		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockCacheMetrics, mockYoutubeService, mockAudioCache, mockCommandExecutor)
+		fetcher := NewYoutubeFetcher(mockLogger, mockCache, mockYoutubeService, mockAudioCache, mockCommandExecutor)
 
 		ctx := context.Background()
 		searchTerm := "Rick Astley Never Gonna Give You Up"
