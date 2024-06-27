@@ -34,15 +34,14 @@ type (
 
 	// CommandExecutor define una interfaz para ejecutar comandos del sistema.
 	CommandExecutor interface {
-		ExecuteCommand(ctx context.Context, name string, args ...string) ([]byte, error)
+		ExecuteCommand(ctx context.Context, name string, args ...string) *exec.Cmd
 	}
 
 	DefaultCommandExecutor struct{}
 )
 
-func (e *DefaultCommandExecutor) ExecuteCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, name, args...)
-	return cmd.Output()
+func (e *DefaultCommandExecutor) ExecuteCommand(ctx context.Context, name string, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, name, args...)
 }
 
 func NewCommandExecutor() *DefaultCommandExecutor {
@@ -148,37 +147,49 @@ func parseCustomDuration(durationStr string) (time.Duration, error) {
 // Utiliza yt-dlp y ffmpeg para descargar el audio de YouTube y convertirlo al formato DCA esperado por Discord.
 // Retorna un io.Reader que permite leer los datos de audio y un posible error.
 func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *voice.Song) (io.Reader, error) {
-
 	// Verificar si los datos de audio están en caché
 	if cachedData, ok := s.audioCache.Get(song.URL); ok {
 		return bytes.NewReader(cachedData), nil
 	}
 
-	// Descargar los datos de audio
-	data, err := s.downloadAndCacheAudio(ctx, song)
-	if err != nil {
-		return nil, err
-	}
-	return bytes.NewReader(data), nil
+	// Crear un pipe para la transmisión progresiva de datos
+	reader, writer := io.Pipe()
+
+	go func() {
+		defer writer.Close()
+
+		// Buffer para almacenar los datos descargados y convertir en cache
+		var buffer bytes.Buffer
+		multiWriter := io.MultiWriter(writer, &buffer)
+
+		if err := s.downloadAndStreamAudio(ctx, song, multiWriter); err != nil {
+			s.Logger.Error("Error al descargar y transmitir audio", zap.Error(err))
+			writer.CloseWithError(err)
+			return
+		}
+		// Almacenar en cache
+		s.audioCache.Set(song.URL, buffer.Bytes())
+	}()
+
+	return reader, nil
 }
 
-func (s *YoutubeFetcher) downloadAndCacheAudio(ctx context.Context, song *voice.Song) ([]byte, error) {
-	ytArgs := []string{"-f", "bestaudio[ext=m4a]", "--audio-quality", "0", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", "'" + song.URL + "'"}
+func (s *YoutubeFetcher) downloadAndStreamAudio(ctx context.Context, song *voice.Song, writer io.Writer) error {
+	ytArgs := []string{"-f", "bestaudio[ext=m4a]", "--audio-quality", "0", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", song.URL}
 	ffmpegArgs := []string{"-i", "pipe:0", "-b:a", "192k", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1"}
 
 	// Ejecuta una cadena de comandos para descargar el audio de YouTube y convertirlo a formato DCA.
-	output, err := s.CommandExecutor.ExecuteCommand(ctx, "sh", "-c", fmt.Sprintf("yt-dlp %s | ffmpeg %s | dca",
+	cmd := s.CommandExecutor.ExecuteCommand(ctx, "sh", "-c", fmt.Sprintf("yt-dlp %s | ffmpeg %s | dca",
 		strings.Join(ytArgs, " "),
 		strings.Join(ffmpegArgs, " ")))
 
-	if err != nil {
-		return nil, fmt.Errorf("error al ejecutar el comando: %w", err)
+	// Configurar la salida del comando para escribir en el pipe
+	cmd.Stdout = writer
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("error al iniciar el comando: %w", err)
 	}
 
-	// Guardar los datos de audio en caché
-	s.audioCache.Set(song.URL, output)
-
-	return output, nil
+	return cmd.Wait()
 }
 
 func (s *YoutubeFetcher) SearchYouTubeVideoID(ctx context.Context, searchTerm string) (string, error) {
