@@ -1,12 +1,16 @@
 package fetcher
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/api/youtube/v3"
+	"io"
+	"os/exec"
 	"testing"
 	"time"
 )
@@ -163,18 +167,27 @@ func TestYoutubeFetcher_GetDCAData(t *testing.T) {
 		song := &voice.Song{
 			URL: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 		}
-		expectedData := []byte("fake audio data")
 
-		mockCommandExecutor.On("ExecuteCommand", ctx, "sh", mock.Anything).Return(expectedData, nil)
+		// Crear un exec.Cmd mockeado para simular la ejecución de comandos
+		cmd := exec.CommandContext(ctx, "echo", "fake audio data")
+		mockCommandExecutor.On("ExecuteCommand", ctx, "sh", mock.Anything).Return(cmd)
 		mockAudioCache.On("Get", song.URL).Return(nil, false)
-		mockAudioCache.On("Set", song.URL, expectedData)
+		mockAudioCache.On("Set", song.URL, mock.Anything)
 
 		// Act
 		reader, err := fetcher.GetDCAData(ctx, song)
 
 		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, reader)
+		require.NoError(t, err)
+		require.NotNil(t, reader)
+
+		// Leer los datos del reader
+		buf := new(bytes.Buffer)
+		_, err = io.Copy(buf, reader)
+		require.NoError(t, err)
+
+		// Verificar que los datos leídos son correctos (simulación de datos de audio)
+		assert.Equal(t, "fake audio data\n", buf.String())
 
 		mockCommandExecutor.AssertExpectations(t)
 		mockAudioCache.AssertExpectations(t)
@@ -194,19 +207,29 @@ func TestYoutubeFetcher_GetDCAData(t *testing.T) {
 		song := &voice.Song{
 			URL: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
 		}
-		expectedError := fmt.Errorf("error downloading audio")
 
-		mockCommandExecutor.On("ExecuteCommand", ctx, "sh", mock.Anything).Return(nil, expectedError)
+		// Simular un comando que falla
+		failingCmd := exec.Command("false")
+		mockCommandExecutor.On("ExecuteCommand", ctx, "sh", mock.Anything).Return(failingCmd)
+
 		mockAudioCache.On("Get", song.URL).Return(nil, false)
+		mockLogger.On("Error", "Error al descargar y transmitir audio", mock.Anything)
 
 		// Act
 		reader, err := fetcher.GetDCAData(ctx, song)
 
 		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, reader)
-		assert.EqualError(t, err, "error al ejecutar el comando: "+expectedError.Error())
+		assert.NoError(t, err) // GetDCAData no devuelve error directamente
+		assert.NotNil(t, reader)
 
+		// Leer del reader para provocar el error
+		_, readErr := io.ReadAll(reader)
+		assert.Error(t, readErr)
+		assert.Contains(t, readErr.Error(), "exit status 1")
+
+		mockCommandExecutor.AssertExpectations(t)
+		mockAudioCache.AssertExpectations(t)
+		mockLogger.AssertExpectations(t)
 	})
 
 	t.Run("CachedDataAvailable", func(t *testing.T) {
@@ -259,8 +282,17 @@ func TestYoutubeFetcher_GetDCAData(t *testing.T) {
 		}
 
 		mockAudioCache.On("Get", song.URL).Return(nil, false)
-		mockCommandExecutor.On("ExecuteCommand", ctx, "sh", mock.Anything).Return([]byte("fake audio data"), nil)
-		mockAudioCache.On("Set", song.URL, mock.Anything)
+
+		// Simular un comando que produce datos de audio
+		fakeAudioData := []byte("fake audio data")
+		cmd := exec.Command("echo", "-n", string(fakeAudioData))
+		mockCommandExecutor.On("ExecuteCommand", ctx, "sh", mock.Anything).Return(cmd)
+
+		mockAudioCache.On("Set", song.URL, mock.Anything).Run(func(args mock.Arguments) {
+			// Verificar que los datos almacenados en caché son correctos
+			cachedData := args.Get(1).([]byte)
+			assert.Equal(t, fakeAudioData, cachedData)
+		})
 
 		// Act
 		reader, err := fetcher.GetDCAData(ctx, song)
@@ -269,7 +301,13 @@ func TestYoutubeFetcher_GetDCAData(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, reader)
 
+		// Leer los datos del reader y verificar que son correctos
+		data, readErr := io.ReadAll(reader)
+		assert.NoError(t, readErr)
+		assert.Equal(t, fakeAudioData, data)
+
 		mockAudioCache.AssertExpectations(t)
+		mockCommandExecutor.AssertExpectations(t)
 	})
 }
 
