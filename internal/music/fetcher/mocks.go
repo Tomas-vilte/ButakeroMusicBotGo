@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap"
 	"google.golang.org/api/youtube/v3"
+	"os/exec"
 )
 
 type MockLogger struct {
@@ -84,13 +85,12 @@ func (m *MockYouTubeService) GetVideoDetails(ctx context.Context, videoID string
 	return args.Get(0).(*youtube.Video), args.Error(1)
 }
 
+// MockCommandExecutor es un mock de CommandExecutor usando testify
 type MockCommandExecutor struct {
 	mock.Mock
 }
 
-func (m *MockCommandExecutor) ExecuteCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
-	argsMock := m.Called(ctx, name, args)
-	data, _ := argsMock.Get(0).([]byte)
-	err := argsMock.Error(1)
-	return data, err
+func (m *MockCommandExecutor) ExecuteCommand(ctx context.Context, name string, args ...string) *exec.Cmd {
+	argsForCall := m.Called(ctx, name, args)
+	return argsForCall.Get(0).(*exec.Cmd)
 }
