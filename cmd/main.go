@@ -19,11 +19,9 @@ import (
 )
 
 var (
-	ctx            context.Context
-	cancelCtx      context.CancelFunc
-	cfg            = &config.Config{}
-	youtubeFetcher *fetcher.YoutubeFetcher
-	storage        *discord.InMemoryInteractionStorage
+	ctx       context.Context
+	cancelCtx context.CancelFunc
+	cfg       = &config.Config{}
 )
 
 func main() {
@@ -63,7 +61,8 @@ func main() {
 		logger.Error("error al crear la session de messaging", zap.Error(err))
 		return
 	}
-	storage = discord.NewInMemoryStorage()
+
+	storage := discord.NewInMemoryStorage()
 	cacheStorage := cache.NewCache(logger, cacheMetrics, cache.DefaultCacheConfig, "metadata_cache")
 	audioCache := cache.NewAudioCache(logger, cache.DefaultCacheConfigAudio, cacheMetrics, "audio_cache")
 	realYouTubeClient, err := youtube_provider.NewRealYouTubeClient(cfg.YoutubeApiKey)
@@ -74,7 +73,7 @@ func main() {
 	youtubeService := youtube_provider.NewYouTubeProvider(cfg.YoutubeApiKey, logger, realYouTubeClient)
 	executorCommand := fetcher.NewCommandExecutor()
 
-	youtubeFetcher = fetcher.NewYoutubeFetcher(logger, cacheStorage, youtubeService, audioCache, executorCommand)
+	youtubeFetcher := fetcher.NewYoutubeFetcher(logger, cacheStorage, youtubeService, audioCache, executorCommand)
 	responseHandler := discord.NewDiscordResponseHandler(logger)
 	sessionService := discord.NewSessionService(dg)
 
