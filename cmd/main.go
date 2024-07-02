@@ -10,6 +10,7 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/music/fetcher"
 	"github.com/Tomas-vilte/GoMusicBot/internal/profiler"
 	"github.com/Tomas-vilte/GoMusicBot/internal/services/providers/youtube_provider"
+	"github.com/Tomas-vilte/GoMusicBot/internal/storage/s3_audio"
 	"github.com/bwmarrin/discordgo"
 	"github.com/kelseyhightower/envconfig"
 	"go.uber.org/zap"
@@ -26,7 +27,7 @@ var (
 
 func main() {
 	// Crear un nuevo logger usando la librería zap.
-	logger, err := logging.NewZapLogger(true)
+	logger, err := logging.NewZapLogger(false)
 	if err != nil {
 		panic("Error creando el logger: " + err.Error())
 	}
@@ -72,12 +73,16 @@ func main() {
 	}
 	youtubeService := youtube_provider.NewYouTubeProvider(cfg.YoutubeApiKey, logger, realYouTubeClient)
 	executorCommand := fetcher.NewCommandExecutor()
+	s3upload, err := s3_audio.NewS3Uploader(logger, *cfg)
+	if err != nil {
+		panic("error al crear s3_audio uploader")
+	}
 
-	youtubeFetcher := fetcher.NewYoutubeFetcher(logger, cacheStorage, youtubeService, audioCache, executorCommand)
+	youtubeFetcher := fetcher.NewYoutubeFetcher(logger, cacheStorage, youtubeService, audioCache, executorCommand, s3upload)
 	responseHandler := discord.NewDiscordResponseHandler(logger)
 	sessionService := discord.NewSessionService(dg)
 
-	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter, cacheStorage, audioCache, youtubeService, executorCommand).WithLogger(logger)
+	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter, cacheStorage, audioCache, youtubeService, executorCommand, s3upload).WithLogger(logger)
 	commandHandler := discord.NewSlashCommandRouter(cfg.CommandPrefix).
 		PlayHandler(handler.PlaySong).
 		SkipHandler(handler.SkipSong).
