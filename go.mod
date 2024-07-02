@@ -3,6 +3,7 @@ module github.com/Tomas-vilte/GoMusicBot
 go 1.21.2
 
 require (
+	github.com/aws/aws-sdk-go v1.54.11
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/grafana/pyroscope-go v1.1.1
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -30,6 +31,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.12.4 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.6 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.17.3 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect
