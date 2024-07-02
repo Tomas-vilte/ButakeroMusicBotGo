@@ -16,6 +16,10 @@ type Config struct {
 	CommandPrefix string `required:"true"`
 	YoutubeApiKey string `required:"true"`
 	Store         StoreConfig
+	BucketName    string `required:"true"`
+	Region        string `required:"true"`
+	AccessKey     string `required:"true"`
+	SecretKey     string `required:"true"`
 }
 
 type StoreConfig struct {

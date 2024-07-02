@@ -15,6 +15,7 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/metrics"
 	"github.com/Tomas-vilte/GoMusicBot/internal/music/fetcher"
 	"github.com/Tomas-vilte/GoMusicBot/internal/services/providers"
+	"github.com/Tomas-vilte/GoMusicBot/internal/storage/s3_audio"
 	"github.com/Tomas-vilte/GoMusicBot/internal/utils"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
@@ -41,6 +42,7 @@ type InteractionHandler struct {
 	caching             cache.Manager
 	audioCaching        cache.AudioCaching
 	executorCommand     fetcher.CommandExecutor
+	upload              s3_audio.Uploader
 }
 
 // NewInteractionHandler crea una nueva instancia de InteractionHandler.
@@ -51,7 +53,8 @@ func NewInteractionHandler(ctx context.Context, discordToken string, responseHan
 	metricsPrometheus metrics.CustomMetric,
 	manager cache.Manager, audioCaching cache.AudioCaching,
 	youtubeClient providers.YouTubeService,
-	executorCommand fetcher.CommandExecutor) *InteractionHandler {
+	executorCommand fetcher.CommandExecutor,
+	upload s3_audio.Uploader) *InteractionHandler {
 
 	handler := &InteractionHandler{
 		ctx:                 ctx,
@@ -68,6 +71,7 @@ func NewInteractionHandler(ctx context.Context, discordToken string, responseHan
 		audioCaching:        audioCaching,
 		realYoutubeClient:   youtubeClient,
 		executorCommand:     executorCommand,
+		upload:              upload,
 	}
 	return handler
 }
@@ -506,7 +510,7 @@ func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discord
 	dca := codec.NewDCAStreamerImpl(handler.logger)
 	voiceChat := voice.NewChatSessionImpl(dg, string(guildID), dca, handler.logger)
 	messageSender := discordmessenger.NewMessageSenderImpl(dg, handler.logger)
-	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger, handler.caching, handler.realYoutubeClient, handler.audioCaching, handler.executorCommand)
+	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger, handler.caching, handler.realYoutubeClient, handler.audioCaching, handler.executorCommand, handler.upload)
 	persistent := file_storage.NewJSONStatePersistent()
 	songStorage, stateStorage := config.GetPlaylistStore(handler.cfg, string(guildID), handler.logger, persistent)
 	player := bot.NewGuildPlayer(handler.ctx, voiceChat, songStorage, stateStorage, fetcherGetDCA.GetDCAData, messageSender, handler.logger).WithLogger(handler.logger)

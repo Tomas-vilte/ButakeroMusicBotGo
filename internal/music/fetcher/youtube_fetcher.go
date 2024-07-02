@@ -8,6 +8,7 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/Tomas-vilte/GoMusicBot/internal/services/providers"
+	"github.com/Tomas-vilte/GoMusicBot/internal/storage/s3_audio"
 	"go.uber.org/zap"
 	"io"
 	"os/exec"
@@ -30,6 +31,7 @@ type (
 		audioCache      cache.AudioCaching
 		YoutubeService  providers.YouTubeService
 		CommandExecutor CommandExecutor
+		S3Uploader      s3_audio.Uploader
 	}
 
 	// CommandExecutor define una interfaz para ejecutar comandos del sistema.
@@ -49,13 +51,14 @@ func NewCommandExecutor() *DefaultCommandExecutor {
 }
 
 // NewYoutubeFetcher crea una nueva instancia de YoutubeFetcher con un logger predeterminado.
-func NewYoutubeFetcher(logger logging.Logger, cache cache.Manager, youtubeService providers.YouTubeService, audioCache cache.AudioCaching, commandExecutor CommandExecutor) *YoutubeFetcher {
+func NewYoutubeFetcher(logger logging.Logger, cache cache.Manager, youtubeService providers.YouTubeService, audioCache cache.AudioCaching, commandExecutor CommandExecutor, s3Upload s3_audio.Uploader) *YoutubeFetcher {
 	return &YoutubeFetcher{
 		Logger:          logger,
 		Cache:           cache,
 		YoutubeService:  youtubeService,
 		audioCache:      audioCache,
 		CommandExecutor: commandExecutor,
+		S3Uploader:      s3Upload,
 	}
 }
 
@@ -152,26 +155,53 @@ func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *voice.Song) (io.R
 		return bytes.NewReader(cachedData), nil
 	}
 
-	// Crear un pipe para la transmisión progresiva de datos
-	reader, writer := io.Pipe()
+	// Verificar si el archivo está en S3
+	exists, err := s.S3Uploader.FileExists(ctx, song.URL)
+	if err != nil {
+		s.Logger.Error("Error al verificar la existencia del archivo en S3", zap.Error(err))
+		return nil, fmt.Errorf("error al verificar la existencia del archivo en S3: %w", err)
+	}
 
-	go func() {
-		defer writer.Close()
+	var audioReader io.Reader
 
-		// Buffer para almacenar los datos descargados y convertir en cache
-		var buffer bytes.Buffer
-		multiWriter := io.MultiWriter(writer, &buffer)
-
-		if err := s.downloadAndStreamAudio(ctx, song, multiWriter); err != nil {
-			s.Logger.Error("Error al descargar y transmitir audio", zap.Error(err))
-			writer.CloseWithError(err)
-			return
+	if exists {
+		// Descargar desde S3
+		s.Logger.Info("Recuperando datos DCA de S3", zap.String("key", song.URL))
+		audioReader, err = s.S3Uploader.DownloadDCA(ctx, song.URL)
+		if err != nil {
+			s.Logger.Error("Error al descargar datos DCA desde S3", zap.Error(err))
+			return nil, fmt.Errorf("error al descargar datos DCA desde S3: %w", err)
 		}
-		// Almacenar en cache
-		s.audioCache.Set(song.URL, buffer.Bytes())
-	}()
+	} else {
+		// Crear un pipe para la transmisión progresiva de datos
+		reader, writer := io.Pipe()
 
-	return reader, nil
+		go func() {
+			defer writer.Close()
+
+			// Buffer para almacenar los datos descargados y convertir en cache
+			var buffer bytes.Buffer
+			multiWriter := io.MultiWriter(writer, &buffer)
+
+			if err := s.downloadAndStreamAudio(ctx, song, multiWriter); err != nil {
+				s.Logger.Error("Error al descargar y transmitir audio", zap.Error(err))
+				writer.CloseWithError(err)
+				return
+			}
+			// Almacenar en cache
+			s.audioCache.Set(song.URL, buffer.Bytes())
+
+			// Subir a S3 si no existe
+			if err := s.S3Uploader.UploadDCA(ctx, &buffer, song.URL); err != nil {
+				s.Logger.Error("Error al subir datos DCA a S3", zap.Error(err))
+				// No devolvemos error aquí para no afectar la operación principal
+			}
+		}()
+
+		audioReader = reader
+	}
+
+	return audioReader, nil
 }
 
 func (s *YoutubeFetcher) downloadAndStreamAudio(ctx context.Context, song *voice.Song, writer io.Writer) error {
