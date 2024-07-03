@@ -85,7 +85,10 @@ func TestS3Uploader_DownloadDCA(t *testing.T) {
 	expectedData := []byte("downloaded data")
 	mockDownloader.On("DownloadWithContext", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(int64(len(expectedData)), nil).Run(func(args mock.Arguments) {
 		writer := args.Get(1).(io.WriterAt)
-		writer.WriteAt(expectedData, 0)
+		_, err := writer.WriteAt(expectedData, 0)
+		if err != nil {
+			return
+		}
 	})
 
 	// Act
