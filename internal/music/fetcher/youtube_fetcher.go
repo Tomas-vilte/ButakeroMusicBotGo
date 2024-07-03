@@ -150,13 +150,14 @@ func parseCustomDuration(durationStr string) (time.Duration, error) {
 // Utiliza yt-dlp y ffmpeg para descargar el audio de YouTube y convertirlo al formato DCA esperado por Discord.
 // Retorna un io.Reader que permite leer los datos de audio y un posible error.
 func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *voice.Song) (io.Reader, error) {
+	key := fmt.Sprintf("audio/%s.dca", song.Title)
 	// Verificar si los datos de audio están en caché
 	if cachedData, ok := s.audioCache.Get(song.URL); ok {
 		return bytes.NewReader(cachedData), nil
 	}
 
 	// Verificar si el archivo está en S3
-	exists, err := s.S3Uploader.FileExists(ctx, song.URL)
+	exists, err := s.S3Uploader.FileExists(ctx, key)
 	if err != nil {
 		s.Logger.Error("Error al verificar la existencia del archivo en S3", zap.Error(err))
 		return nil, fmt.Errorf("error al verificar la existencia del archivo en S3: %w", err)
@@ -166,8 +167,8 @@ func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *voice.Song) (io.R
 
 	if exists {
 		// Descargar desde S3
-		s.Logger.Info("Recuperando datos DCA de S3", zap.String("key", song.URL))
-		audioReader, err = s.S3Uploader.DownloadDCA(ctx, song.URL)
+		s.Logger.Info("Recuperando datos DCA de S3", zap.String("key", song.Title))
+		audioReader, err = s.S3Uploader.DownloadDCA(ctx, key)
 		if err != nil {
 			s.Logger.Error("Error al descargar datos DCA desde S3", zap.Error(err))
 			return nil, fmt.Errorf("error al descargar datos DCA desde S3: %w", err)
@@ -192,7 +193,7 @@ func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *voice.Song) (io.R
 			s.audioCache.Set(song.URL, buffer.Bytes())
 
 			// Subir a S3 si no existe
-			if err := s.S3Uploader.UploadDCA(ctx, &buffer, song.URL); err != nil {
+			if err := s.S3Uploader.UploadDCA(ctx, &buffer, key); err != nil {
 				s.Logger.Error("Error al subir datos DCA a S3", zap.Error(err))
 				// No devolvemos error aquí para no afectar la operación principal
 			}
