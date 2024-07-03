@@ -17,6 +17,10 @@ FROM --platform=linux/arm64 arm64v8/alpine:edge
 ENV DISCORDTOKEN=
 ENV COMMANDPREFIX=
 ENV YOUTUBEAPIKEY=
+ENV BUCKETNAME=
+ENV ACCESSKEY=
+ENV SECRETKEY=
+ENV REGION=
 
 # Instalar dependencias necesarias para la ejecución
 RUN apk add --no-cache ffmpeg wget opusfile yt-dlp \

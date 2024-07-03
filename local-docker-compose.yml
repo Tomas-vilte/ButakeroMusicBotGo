@@ -8,6 +8,10 @@ services:
       - DISCORDTOKEN=${DISCORDTOKEN}
       - COMMANDPREFIX=${COMMANDPREFIX}
       - YOUTUBEAPIKEY=${YOUTUBEAPIKEY}
+      - BUCKETNAME=${BUCKETNAME}
+      - ACCESSKEY=${ACCESSKEY}
+      - SECRETKEY=${SECRETKEY}
+      - REGION=${REGION}
     ports:
       - "8080:8080"
     volumes:
