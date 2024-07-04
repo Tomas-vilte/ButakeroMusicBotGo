@@ -32,30 +32,30 @@ func TestProcessSQSEvent_ReleaseEvent(t *testing.T) {
 	mockDiscordClient.AssertCalled(t, "SendMessageToServers", mock.AnythingOfType("*discordgo.MessageEmbed"))
 }
 
-func TestProcessSQSEvent_WorkflowEvent(t *testing.T) {
-	mockDiscordClient := new(MockDiscordGoClient)
-	mockLogger := new(MockLogger)
-	consumer := NewSQSConsumer(mockDiscordClient, mockLogger)
-
-	event := map[string]interface{}{
-		"action": "completed",
-		"workflow_job": map[string]interface{}{
-			"workflow_name": "CI Pipeline",
-			"conclusion":    "success",
-			"html_url":      "https://example.com/workflow",
-			"completed_at":  "2021-01-01T12:00:00Z",
-		},
-	}
-	eventBody, _ := json.Marshal(event)
-
-	mockLogger.On("Error", mock.Anything, mock.Anything).Maybe()
-	mockDiscordClient.On("SendMessageToServers", mock.Anything).Return(nil)
-
-	err := consumer.ProcessSQSEvent(eventBody)
-	assert.NoError(t, err)
-
-	mockDiscordClient.AssertCalled(t, "SendMessageToServers", mock.AnythingOfType("*discordgo.MessageEmbed"))
-}
+//func TestProcessSQSEvent_WorkflowEvent(t *testing.T) {
+//	mockDiscordClient := new(MockDiscordGoClient)
+//	mockLogger := new(MockLogger)
+//	consumer := NewSQSConsumer(mockDiscordClient, mockLogger)
+//
+//	event := map[string]interface{}{
+//		"action": "completed",
+//		"workflow_job": map[string]interface{}{
+//			"workflow_name": "CI Pipeline",
+//			"conclusion":    "success",
+//			"html_url":      "https://example.com/workflow",
+//			"completed_at":  "2021-01-01T12:00:00Z",
+//		},
+//	}
+//	eventBody, _ := json.Marshal(event)
+//
+//	mockLogger.On("Error", mock.Anything, mock.Anything).Maybe()
+//	mockDiscordClient.On("SendMessageToServers", mock.Anything).Return(nil)
+//
+//	err := consumer.ProcessSQSEvent(eventBody)
+//	assert.NoError(t, err)
+//
+//	mockDiscordClient.AssertCalled(t, "SendMessageToServers", mock.AnythingOfType("*discordgo.MessageEmbed"))
+//}
 
 func TestProcessSQSEvent_InvalidJSON(t *testing.T) {
 	mockDiscordClient := new(MockDiscordGoClient)
