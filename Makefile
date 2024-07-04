@@ -11,6 +11,15 @@ build:
 	GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME) $(SRC_DIR)/$(EXECUTABLE).go
 
 test:
-	@echo "Ejecutando pruebas..."
-	@go test ./...
+	@echo "Ejecutando pruebas en paquetes internos..."
+	@go test ./internal/...
+
+	@echo "Ejecutando pruebas en lambdas/discord_notifications..."
+	@cd lambdas/discord_notifications && go test ./...
+
+	@echo "Ejecutando pruebas en lambdas/music_download..."
+	@cd lambdas/music_download && go test ./...
+
+	@echo "Ejecutando pruebas en lambdas/process_event..."
+	@cd lambdas/process_event && go test ./...
 
