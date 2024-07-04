@@ -63,7 +63,7 @@ func NewYoutubeFetcher(logger logging.Logger, cache cache.Manager, youtubeServic
 }
 
 // LookupSongs busca canciones en YouTube según el término de búsqueda proporcionado en input.
-// Retorna una lista de objetos bot.Song que contienen metadatos de las canciones encontradas.
+// Retorna una lista de objetos voice.Song que contienen metadatos de las canciones encontradas.
 func (s *YoutubeFetcher) LookupSongs(ctx context.Context, input string) ([]*voice.Song, error) {
 	videoURL := fmt.Sprintf("https://www.youtube.com/watch?v=%s", input)
 
