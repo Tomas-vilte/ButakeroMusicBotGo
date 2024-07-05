@@ -53,6 +53,6 @@ func handler(sqsEvent events.SQSEvent) error {
 }
 
 func main() {
-	// Iniciar la función de lambda pasando la función handler como argumento.
+	// Iniciar la función de lambda pasando la función processor como argumento.
 	lambda.Start(handler)
 }
