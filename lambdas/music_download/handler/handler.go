@@ -53,7 +53,7 @@ func (h *Handler) HandleEvent(ctx context.Context, event events.APIGatewayProxyR
 		}, fmt.Errorf("error al parsear el evento: %v", err)
 	}
 
-	key := fmt.Sprintf("audio_input_raw/%s", songEvent.Key)
+	key := fmt.Sprintf("audio_input_raw/%s.m4a", songEvent.Key)
 	err = h.Downloader.DownloadSong(songEvent.URL, key)
 	if err != nil {
 		h.Logger.Error("Error al descargar la canción", zap.Error(err))
