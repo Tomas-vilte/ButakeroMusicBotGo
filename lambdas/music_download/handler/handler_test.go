@@ -20,7 +20,7 @@ func TestHandleEvent(t *testing.T) {
 		h := NewHandler(mockDownloader, mockUploader, mockLogger)
 		songEvent := SongEvent{
 			URL: "https://example.com/song",
-			Key: "song.m4a",
+			Key: "song",
 		}
 		eventBody, _ := json.Marshal(songEvent)
 
@@ -71,7 +71,7 @@ func TestHandleEvent(t *testing.T) {
 		h := NewHandler(mockDownloader, mockUploader, mockLogger)
 		songEvent := SongEvent{
 			URL: "https://example.com/song",
-			Key: "song.m4a",
+			Key: "song",
 		}
 		eventBody, _ := json.Marshal(songEvent)
 
