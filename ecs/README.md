@@ -14,9 +14,11 @@ Cuando un usuario solicita una canción que no existe en S3, se activa un flujo 
 3. **Subida a S3**: El archivo .m4a se sube a un bucket en S3.
 4. **Activación de Lambda**: Al subir el archivo, una función de AWS Lambda se activa.
 5. **Recolección de Información**: La Lambda recolecta información del archivo recién subido y actualiza el estado en DynamoDB a `PROCESSING`.
-6. **Ejecución en ECS**: Se envía la información a un servicio de AWS ECS que ejecuta el procesamiento del archivo, convirtiéndolo a formato .dca.
-7. **Subida del Archivo Procesado**: El archivo .dca se sube de nuevo a S3.
-8. **Notificación al Usuario**: Se envía una notificación al usuario a través de SQS una vez que el procesamiento se ha completado.
+6. **Verificación de Estado**: Antes de enviar el job a ECS, se verifica en DynamoDB si el registro de la canción ya ha sido procesado. Esto ayuda a evitar procesar la misma canción múltiples veces.
+7. **Ejecución en ECS**: Si la canción no ha sido procesada, se envía la información a un servicio de AWS ECS que ejecuta el procesamiento del archivo, convirtiéndolo a formato .dca.
+8. **Subida del Archivo Procesado**: El archivo .dca se sube de nuevo a S3.
+9. **Notificación al Usuario**: Se envía una notificación al usuario a través de SQS una vez que el procesamiento se ha completado.
+
 
 
 ## Flujo de Trabajo
@@ -25,14 +27,14 @@ Cuando un usuario solicita una canción que no existe en S3, se activa un flujo 
 2. **Descarga desde YouTube**: El bot descarga la canción desde YouTube en formato .m4a.
 3. **Subida a S3**: El archivo .m4a se carga en un bucket de S3.
 4. **Activación de Lambda**: La subida del archivo activa una función Lambda.
-5. **Recolección de Datos**: La Lambda obtiene información del archivo y actualiza el estado en DynamoDB.
-6. **Envío a ECS**: Se envía la información a un servicio ECS para procesar el archivo con FFmpeg y DCA.
+5. **Recolección de Datos**: La Lambda obtiene información del archivo y actualiza el estado en DynamoDB a `PROCESSING`.
+6. **Verificación de Estado**: Se comprueba en DynamoDB si la canción ya fue procesada. Si no, se envía la información a un servicio ECS para procesar el archivo con FFmpeg y DCA.
 7. **Procesamiento en ECS**: ECS convierte el archivo .m4a a .dca y lo sube de nuevo a S3.
 8. **Notificación al Usuario**: Una vez completado el procesamiento, se envía un mensaje de notificación al usuario a través de AWS SQS.
 
-## Diagrama de Arquitectura
+## Diagrama de Secuencia
 
-![Diagrama de Arquitectura](ruta/a/tu/imagen.png)
+![Diagrama de Secuencia](/docs/diagrama-job-ecs.png)
 
 
 ## Variables de Entorno
