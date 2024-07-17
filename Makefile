@@ -23,3 +23,9 @@ test:
 	@echo "Ejecutando pruebas en lambdas/process_event..."
 	@cd lambdas/process_event && go test ./...
 
+	@echo "Ejecutando pruebas en lambdas/lambda_ecs_job_sender..."
+	@cd lambdas/lambda_ecs_job_sender && go test ./...
+
+	@echo "Ejecutando pruebas en ecs/process_audio..."
+	@cd ecs/process_audio && go test ./...
+
