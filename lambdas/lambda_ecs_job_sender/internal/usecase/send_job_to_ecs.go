@@ -76,14 +76,7 @@ func (s *SendJobToECS) Execute(ctx context.Context, job entity.Job) error {
 		NetworkConfiguration: &types.NetworkConfiguration{
 			AwsvpcConfiguration: &types.AwsVpcConfiguration{
 				AssignPublicIp: types.AssignPublicIpEnabled,
-				Subnets: []string{
-					"subnet-04aa2673641ecbbc4",
-					"subnet-0b9790e30fd8dcf38",
-					"subnet-078a7c8f11872752d",
-					"subnet-0a9bb2ea6cdd41557",
-					"subnet-0a74c0dea1afa4e2a",
-					"subnet-0518a6479bf2a02fb",
-				},
+				Subnets:        job.Subnets,
 				SecurityGroups: []string{job.SecurityGroup},
 			},
 		},
