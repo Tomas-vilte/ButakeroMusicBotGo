@@ -12,6 +12,7 @@ type Job struct {
 	TaskDefinition       string
 	ClusterName          string
 	SecurityGroup        string
+	Subnets              []string
 	TaskRoleArn          string
 	TaskExecutionRoleArn string
 	CreatedAt            time.Time
