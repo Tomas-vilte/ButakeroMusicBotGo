@@ -7,4 +7,5 @@ type Config struct {
 	SecretKey       string
 	Key             string
 	InputFileFromS3 string
+	SQSQueueURL     string
 }

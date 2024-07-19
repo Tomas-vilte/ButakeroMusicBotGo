@@ -17,4 +17,5 @@ type Job struct {
 	TaskExecutionRoleArn string
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
+	QueueURL             string
 }
