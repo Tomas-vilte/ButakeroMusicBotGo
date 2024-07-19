@@ -111,6 +111,10 @@ func (s *SendJobToECS) Execute(ctx context.Context, job entity.Job) error {
 							Name:  aws.String("KEY"),
 							Value: aws.String(job.KEY),
 						},
+						{
+							Name:  aws.String("SQS_QUEUE_URL"),
+							Value: aws.String(job.QueueURL),
+						},
 					},
 				},
 			},
