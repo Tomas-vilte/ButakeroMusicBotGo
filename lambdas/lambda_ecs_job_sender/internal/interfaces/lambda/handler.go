@@ -45,6 +45,7 @@ func (h *Handler) Handle(ctx context.Context, event events.S3Event) error {
 			SecurityGroup:        os.Getenv("SECURITY_GROUP"),
 			TaskRoleArn:          os.Getenv("TASK_ROLE_ARN"),
 			TaskExecutionRoleArn: os.Getenv("TASK_EXECUTION_ARN"),
+			QueueURL:             os.Getenv("SQS_QUEUE_URL"),
 			Subnets:              parseSubnets(os.Getenv("SUBNETS")),
 			CreatedAt:            time.Now(),
 			UpdatedAt:            time.Now(),

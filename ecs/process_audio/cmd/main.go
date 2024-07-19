@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/Tomas-vilte/GoMusicBot/ecs/process_audio/internal/config"
 	"github.com/Tomas-vilte/GoMusicBot/ecs/process_audio/internal/logging"
+	"github.com/Tomas-vilte/GoMusicBot/ecs/process_audio/internal/notification"
 	"github.com/Tomas-vilte/GoMusicBot/ecs/process_audio/internal/processor"
 	"github.com/Tomas-vilte/GoMusicBot/ecs/process_audio/internal/uploader"
 	"github.com/aws/aws-sdk-go/aws"
@@ -11,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/aws/aws-sdk-go/service/sqs"
 	"go.uber.org/zap"
 	"os"
 )
@@ -23,6 +25,7 @@ func main() {
 		Region:          os.Getenv("REGION"),
 		Key:             os.Getenv("KEY"),
 		InputFileFromS3: os.Getenv("INPUT_FILE_FROM_S3"),
+		SQSQueueURL:     os.Getenv("SQS_QUEUE_URL"),
 	}
 
 	logger, err := logging.NewZapLogger(false)
@@ -39,6 +42,8 @@ func main() {
 		logger.Error("Error al crear la session de aws", zap.Error(err))
 		return
 	}
+	sqsClient := sqs.New(sess)
+	notifier := notification.NewSQSNotifier(sqsClient, cfg.SQSQueueURL, logger)
 	s3Client := s3.New(sess)
 	s3Uploader := s3manager.NewUploader(sess)
 
@@ -46,9 +51,13 @@ func main() {
 	commandExecutor := processor.NewCommandExecutor()
 	audioProcessor := processor.NewAudioProcessor(logger, commandExecutor, uploaderS3, "dca", "ffmpeg")
 
-	if err := audioProcessor.ProcessToDCA(context.Background(), cfg.Key, cfg.InputFileFromS3); err != nil {
+	err = audioProcessor.ProcessToDCA(context.Background(), cfg.Key, cfg.InputFileFromS3)
+	if err != nil {
 		logger.Error("Error al procesar archivo de audio", zap.Error(err))
+		notifier.NotifyProcessingResult(cfg.Key, cfg.InputFileFromS3, "", false, err.Error())
 	} else {
+		processedFile := cfg.Key
 		logger.Info("Procesamiento de archivo de audio completado exitosamente", zap.String("key", cfg.Key))
+		notifier.NotifyProcessingResult(cfg.Key, cfg.InputFileFromS3, processedFile, true, "")
 	}
 }
