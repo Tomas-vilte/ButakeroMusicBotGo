@@ -3,8 +3,8 @@ package uploader
 import (
 	"context"
 	"fmt"
-	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/config"
-	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/logging"
+	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/config"
+	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/logging"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
