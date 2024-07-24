@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/api/youtube_api"
-	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/cache"
 	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/downloader"
 	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/logging"
 	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/uploader"
@@ -28,20 +27,18 @@ type EventManager interface {
 // Handler es la estructura que maneja los eventos Lambda
 type Handler struct {
 	downloader    downloader.Downloader
-	cache         cache.Cache
 	youTubeClient youtube_api.SongLooker
 	uploader      uploader.Uploader
 	logger        logging.Logger
 }
 
 // NewHandler crea un nuevo Handler con los componentes necesarios
-func NewHandler(downloader downloader.Downloader, uploader uploader.Uploader, logger logging.Logger, clientYouTube youtube_api.SongLooker, cache cache.Cache) *Handler {
+func NewHandler(downloader downloader.Downloader, uploader uploader.Uploader, logger logging.Logger, clientYouTube youtube_api.SongLooker) *Handler {
 	return &Handler{
 		downloader:    downloader,
 		uploader:      uploader,
 		logger:        logger,
 		youTubeClient: clientYouTube,
-		cache:         cache,
 	}
 }
 
@@ -57,30 +54,6 @@ func (h *Handler) HandleEvent(ctx context.Context, event events.APIGatewayProxyR
 			StatusCode: http.StatusBadRequest,
 			Body:       fmt.Sprintf("Error al parsear el evento: %v", err),
 		}, fmt.Errorf("error al parsear el evento: %v", err)
-	}
-
-	cachedSong, err := h.cache.GetSong(ctx, songEvent.Key)
-	if err != nil {
-		h.logger.Error("Error al obtener del cache", zap.Error(err))
-		return events.APIGatewayProxyResponse{
-			StatusCode: http.StatusInternalServerError,
-			Body:       fmt.Sprintf("Error al obtener del cache: %v", err),
-		}, fmt.Errorf("error al obtener del cache: %v", err)
-	}
-	if cachedSong != nil {
-		h.logger.Info("Canción encontrada en cache", zap.String("song", songEvent.Song), zap.String("key", songEvent.Key))
-		songDetails, err := json.Marshal(cachedSong)
-		if err != nil {
-			h.logger.Error("Error al serializar los detalles de la canción", zap.Error(err))
-			return events.APIGatewayProxyResponse{
-				StatusCode: http.StatusInternalServerError,
-				Body:       fmt.Sprintf("Error al serializar los detalles de la canción: %v", err),
-			}, fmt.Errorf("error al serializar los detalles de la canción: %v", err)
-		}
-		return events.APIGatewayProxyResponse{
-			StatusCode: http.StatusOK,
-			Body:       string(songDetails),
-		}, nil
 	}
 
 	videoID, err := h.youTubeClient.SearchYouTubeVideoID(ctx, songEvent.Song)
@@ -121,15 +94,6 @@ func (h *Handler) HandleEvent(ctx context.Context, event events.APIGatewayProxyR
 	}
 
 	h.logger.Info("Canción procesada exitosamente", zap.String("song", songEvent.Song), zap.String("key", songEvent.Key))
-
-	err = h.cache.SetSong(ctx, songEvent.Key, songs[0])
-	if err != nil {
-		h.logger.Error("Error al guardar en cache", zap.Error(err))
-		return events.APIGatewayProxyResponse{
-			StatusCode: http.StatusInternalServerError,
-			Body:       fmt.Sprintf("Error al guardar en cache: %v", err),
-		}, fmt.Errorf("error al guardar en cache: %v", err)
-	}
 
 	songDetails, err := json.Marshal(songs[0])
 	if err != nil {

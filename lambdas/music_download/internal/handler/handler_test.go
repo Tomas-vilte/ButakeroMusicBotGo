@@ -19,9 +19,8 @@ func TestHandleEvent(t *testing.T) {
 		mockUploader := new(MockUploader)
 		mockLogger := new(MockLogger)
 		mockYouTubeClient := new(MockSongLooker)
-		mockCache := new(CacheMock)
 
-		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockCache)
+		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
 		songEvent := SongEvent{
 			Song: "Test Song",
 			Key:  "testKey",
@@ -32,11 +31,9 @@ func TestHandleEvent(t *testing.T) {
 			Body: string(eventBody),
 		}
 
-		mockCache.On("GetSong", mock.Anything, "testKey").Return(nil, nil)
 		mockYouTubeClient.On("SearchYouTubeVideoID", mock.Anything, "Test Song").Return("testVideoID", nil)
 		mockYouTubeClient.On("LookupSongs", mock.Anything, "testVideoID").Return([]*types.Song{{Title: "Test Song"}}, nil)
 		mockDownloader.On("DownloadSong", "https://www.youtube.com/watch?v=testVideoID", "audio_input_raw/testKey.m4a").Return(nil)
-		mockCache.On("SetSong", mock.Anything, "testKey", mock.AnythingOfType("*types.Song")).Return(nil)
 		mockLogger.On("Info", mock.Anything, mock.Anything).Return(nil)
 
 		response, err := h.HandleEvent(context.Background(), event)
@@ -49,7 +46,6 @@ func TestHandleEvent(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "Test Song", responseSong.Title)
 
-		mockCache.AssertExpectations(t)
 		mockLogger.AssertExpectations(t)
 		mockYouTubeClient.AssertExpectations(t)
 		mockDownloader.AssertExpectations(t)
@@ -60,9 +56,8 @@ func TestHandleEvent(t *testing.T) {
 		mockUploader := new(MockUploader)
 		mockLogger := new(MockLogger)
 		mockYouTubeClient := new(MockSongLooker)
-		mockCache := new(CacheMock)
 
-		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockCache)
+		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
 		event := events.APIGatewayProxyRequest{
 			Body: "invalid json",
 		}
@@ -84,9 +79,8 @@ func TestHandleEvent(t *testing.T) {
 		mockUploader := new(MockUploader)
 		mockLogger := new(MockLogger)
 		mockYouTubeClient := new(MockSongLooker)
-		mockCache := new(CacheMock)
 
-		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockCache)
+		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
 		songEvent := SongEvent{
 			Song: "Test Song",
 			Key:  "testKey",
@@ -97,7 +91,6 @@ func TestHandleEvent(t *testing.T) {
 			Body: string(eventBody),
 		}
 
-		mockCache.On("GetSong", mock.Anything, "testKey").Return(nil, nil)
 		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 		mockYouTubeClient.On("SearchYouTubeVideoID", mock.Anything, "Test Song").Return("", errors.New("search error"))
 		mockLogger.On("Error", "Error al buscar el ID del video en YouTube", mock.Anything, mock.Anything).Return()
@@ -117,9 +110,8 @@ func TestHandleEvent(t *testing.T) {
 		mockUploader := new(MockUploader)
 		mockLogger := new(MockLogger)
 		mockYouTubeClient := new(MockSongLooker)
-		mockCache := new(CacheMock)
 
-		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockCache)
+		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
 		songEvent := SongEvent{
 			Song: "Test Song",
 			Key:  "testKey",
@@ -130,7 +122,6 @@ func TestHandleEvent(t *testing.T) {
 			Body: string(eventBody),
 		}
 
-		mockCache.On("GetSong", mock.Anything, "testKey").Return(nil, nil)
 		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 		mockYouTubeClient.On("SearchYouTubeVideoID", mock.Anything, "Test Song").Return("testVideoID", nil)
 		mockYouTubeClient.On("LookupSongs", mock.Anything, "testVideoID").Return([]*types.Song{{Title: "Test Song"}}, nil)
@@ -144,7 +135,6 @@ func TestHandleEvent(t *testing.T) {
 		assert.Contains(t, response.Body, "Error al descargar la canción")
 
 		mockLogger.AssertExpectations(t)
-		mockYouTubeClient.AssertExpectations(t)
 		mockDownloader.AssertExpectations(t)
 	})
 
@@ -153,9 +143,8 @@ func TestHandleEvent(t *testing.T) {
 		mockUploader := new(MockUploader)
 		mockLogger := new(MockLogger)
 		mockYouTubeClient := new(MockSongLooker)
-		mockCache := new(CacheMock)
 
-		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockCache)
+		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
 		songEvent := SongEvent{
 			Song: "Test Song",
 			Key:  "testKey",
@@ -166,7 +155,6 @@ func TestHandleEvent(t *testing.T) {
 			Body: string(eventBody),
 		}
 
-		mockCache.On("GetSong", mock.Anything, "testKey").Return(nil, nil)
 		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 		mockYouTubeClient.On("SearchYouTubeVideoID", mock.Anything, "Test Song").Return("testVideoID", nil)
 		mockYouTubeClient.On("LookupSongs", mock.Anything, "testVideoID").Return([]*types.Song{}, errors.New("error obtaining video details"))
@@ -187,9 +175,8 @@ func TestHandleEvent(t *testing.T) {
 		mockUploader := new(MockUploader)
 		mockLogger := new(MockLogger)
 		mockYouTubeClient := new(MockSongLooker)
-		mockCache := new(CacheMock)
 
-		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockCache)
+		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
 		songEvent := SongEvent{
 			Song: "Test Song",
 			Key:  "testKey",
@@ -200,7 +187,6 @@ func TestHandleEvent(t *testing.T) {
 			Body: string(eventBody),
 		}
 
-		mockCache.On("GetSong", mock.Anything, "testKey").Return(nil, nil)
 		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 		mockYouTubeClient.On("SearchYouTubeVideoID", mock.Anything, "Test Song").Return("testVideoID", nil)
 		mockYouTubeClient.On("LookupSongs", mock.Anything, "testVideoID").Return([]*types.Song{}, nil)
@@ -214,112 +200,6 @@ func TestHandleEvent(t *testing.T) {
 
 		mockLogger.AssertExpectations(t)
 		mockYouTubeClient.AssertExpectations(t)
-	})
-
-	t.Run("Cache retrieval error", func(t *testing.T) {
-		mockDownloader := new(MockDownloader)
-		mockUploader := new(MockUploader)
-		mockLogger := new(MockLogger)
-		mockYouTubeClient := new(MockSongLooker)
-		mockCache := new(CacheMock)
-
-		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockCache)
-		songEvent := SongEvent{
-			Song: "Test Song",
-			Key:  "testKey",
-		}
-		eventBody, _ := json.Marshal(songEvent)
-
-		event := events.APIGatewayProxyRequest{
-			Body: string(eventBody),
-		}
-
-		mockCache.On("GetSong", mock.Anything, "testKey").Return(nil, errors.New("cache error"))
-		mockLogger.On("Error", "Error al obtener del cache", mock.Anything).Return()
-		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
-
-		response, err := h.HandleEvent(context.Background(), event)
-
-		assert.Error(t, err)
-		assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
-		assert.Contains(t, response.Body, "Error al obtener del cache")
-
-		mockLogger.AssertExpectations(t)
-		mockCache.AssertExpectations(t)
-	})
-
-	t.Run("Song found in cache", func(t *testing.T) {
-		mockDownloader := new(MockDownloader)
-		mockUploader := new(MockUploader)
-		mockLogger := new(MockLogger)
-		mockYouTubeClient := new(MockSongLooker)
-		mockCache := new(CacheMock)
-
-		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockCache)
-		songEvent := SongEvent{
-			Song: "Test Song",
-			Key:  "testKey",
-		}
-		eventBody, _ := json.Marshal(songEvent)
-
-		event := events.APIGatewayProxyRequest{
-			Body: string(eventBody),
-		}
-
-		cachedSong := &types.Song{Title: "Test Song"}
-		mockCache.On("GetSong", mock.Anything, "testKey").Return(cachedSong, nil)
-		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
-
-		response, err := h.HandleEvent(context.Background(), event)
-
-		assert.NoError(t, err)
-		assert.Equal(t, http.StatusOK, response.StatusCode)
-
-		var responseSong types.Song
-		err = json.Unmarshal([]byte(response.Body), &responseSong)
-		assert.NoError(t, err)
-		assert.Equal(t, "Test Song", responseSong.Title)
-
-		mockLogger.AssertExpectations(t)
-		mockCache.AssertExpectations(t)
-	})
-
-	t.Run("Cache save error", func(t *testing.T) {
-		mockDownloader := new(MockDownloader)
-		mockUploader := new(MockUploader)
-		mockLogger := new(MockLogger)
-		mockYouTubeClient := new(MockSongLooker)
-		mockCache := new(CacheMock)
-
-		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockCache)
-		songEvent := SongEvent{
-			Song: "Test Song",
-			Key:  "testKey",
-		}
-		eventBody, _ := json.Marshal(songEvent)
-
-		event := events.APIGatewayProxyRequest{
-			Body: string(eventBody),
-		}
-
-		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
-		mockYouTubeClient.On("SearchYouTubeVideoID", mock.Anything, "Test Song").Return("testVideoID", nil)
-		mockYouTubeClient.On("LookupSongs", mock.Anything, "testVideoID").Return([]*types.Song{{Title: "Test Song"}}, nil)
-		mockDownloader.On("DownloadSong", "https://www.youtube.com/watch?v=testVideoID", "audio_input_raw/testKey.m4a").Return(nil)
-		mockCache.On("SetSong", mock.Anything, "testKey", mock.AnythingOfType("*types.Song")).Return(errors.New("cache save error"))
-
-		mockCache.On("GetSong", mock.Anything, "testKey").Return(nil, nil)
-
-		mockLogger.On("Error", "Error al guardar en cache", mock.Anything).Return()
-
-		response, err := h.HandleEvent(context.Background(), event)
-
-		assert.Error(t, err)
-		assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
-		assert.Contains(t, response.Body, "Error al guardar en cache")
-
-		mockLogger.AssertExpectations(t)
-		mockCache.AssertExpectations(t)
 	})
 
 }
