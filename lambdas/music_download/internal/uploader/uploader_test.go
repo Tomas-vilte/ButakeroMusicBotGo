@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/config"
+	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/config"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
