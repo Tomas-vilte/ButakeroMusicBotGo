@@ -6,6 +6,4 @@ type Config struct {
 	AccessKey     string
 	SecretKey     string
 	YouTubeApiKey string
-	RedisURL      string
-	PasswordRedis string
 }

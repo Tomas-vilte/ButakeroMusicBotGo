@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/api/youtube_api"
-	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/cache"
 	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/config"
 	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/downloader"
 	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/handler"
@@ -23,8 +22,6 @@ func main() {
 		SecretKey:     os.Getenv("SECRET_KEY"),
 		Region:        os.Getenv("REGION"),
 		YouTubeApiKey: os.Getenv("YOUTUBE_API_KEY"),
-		RedisURL:      os.Getenv("REDIS_URL"),
-		PasswordRedis: os.Getenv("REDIS_PASSWORD"),
 	}
 	logger, err := logging.NewZapLogger(false)
 	if err != nil {
@@ -43,13 +40,8 @@ func main() {
 		panic("Error al conectarse al cliente de youtube")
 	}
 	youtubeService := youtube_provider.NewYouTubeProvider(logger, youtubeClient)
-	cacheService, err := cache.NewRedisCache(cfg.RedisURL, cfg.PasswordRedis, logger)
-	if err != nil {
-		logger.Error("Error al conectarse a redis cache: ", zap.Error(err))
-		panic(err)
-	}
 	youtubeFetcher := youtube_api.NewYoutubeFetcher(logger, youtubeService)
-	handlerLambda := handler.NewHandler(download, uploaderS3, logger, youtubeFetcher, cacheService)
+	handlerLambda := handler.NewHandler(download, uploaderS3, logger, youtubeFetcher)
 
 	lambda.Start(func(ctx context.Context, event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 		return handlerLambda.HandleEvent(ctx, event)
