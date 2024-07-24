@@ -2,22 +2,29 @@ package main
 
 import (
 	"context"
-	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/config"
-	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/downloader"
-	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/handler"
-	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/logging"
-	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/uploader"
+	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/api/youtube_api"
+	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/cache"
+	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/config"
+	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/downloader"
+	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/handler"
+	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/logging"
+	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/service/provider/youtube_provider"
+	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/uploader"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"go.uber.org/zap"
 	"os"
 )
 
 func main() {
 	cfg := &config.Config{
-		BucketName: os.Getenv("BUCKET_NAME"),
-		AccessKey:  os.Getenv("ACCESS_KEY"),
-		SecretKey:  os.Getenv("SECRET_KEY"),
-		Region:     os.Getenv("REGION"),
+		BucketName:    os.Getenv("BUCKET_NAME"),
+		AccessKey:     os.Getenv("ACCESS_KEY"),
+		SecretKey:     os.Getenv("SECRET_KEY"),
+		Region:        os.Getenv("REGION"),
+		YouTubeApiKey: os.Getenv("YOUTUBE_API_KEY"),
+		RedisURL:      os.Getenv("REDIS_URL"),
+		PasswordRedis: os.Getenv("REDIS_PASSWORD"),
 	}
 	logger, err := logging.NewZapLogger(false)
 	if err != nil {
@@ -30,7 +37,19 @@ func main() {
 	commandExecutor := downloader.NewCommandExecutor()
 	download := downloader.NewDownloader(uploaderS3, logger, commandExecutor, "/opt/lambda-layer/bin/yt-dlp")
 
-	handlerLambda := handler.NewHandler(download, uploaderS3, logger)
+	youtubeClient, err := youtube_provider.NewRealYouTubeClient(cfg.YouTubeApiKey)
+	if err != nil {
+		logger.Error("Error al conectarse al cliente de youtube", zap.Error(err))
+		panic("Error al conectarse al cliente de youtube")
+	}
+	youtubeService := youtube_provider.NewYouTubeProvider(logger, youtubeClient)
+	cacheService, err := cache.NewRedisCache(cfg.RedisURL, cfg.PasswordRedis, logger)
+	if err != nil {
+		logger.Error("Error al conectarse a redis cache: ", zap.Error(err))
+		panic(err)
+	}
+	youtubeFetcher := youtube_api.NewYoutubeFetcher(logger, youtubeService)
+	handlerLambda := handler.NewHandler(download, uploaderS3, logger, youtubeFetcher, cacheService)
 
 	lambda.Start(func(ctx context.Context, event events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 		return handlerLambda.HandleEvent(ctx, event)
