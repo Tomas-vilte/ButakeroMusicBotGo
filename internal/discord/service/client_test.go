@@ -23,7 +23,7 @@ func TestProcessSongMetadata(t *testing.T) {
 		assert.Equal(t, "Sean Paul - No Lie ft. Dua Lipa", requestBody["song"])
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		err = json.NewEncoder(w).Encode(map[string]interface{}{
 			"Type":         "youtube_provider",
 			"Title":        "Sean Paul - No Lie ft. Dua Lipa",
 			"URL":          "https://www.youtube.com/watch?v=GzU8KqOY8YA",
