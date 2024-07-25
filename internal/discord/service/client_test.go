@@ -31,6 +31,7 @@ func TestProcessSongMetadata(t *testing.T) {
 			"ThumbnailURL": "https://i.ytimg.com/vi/GzU8KqOY8YA/default.jpg",
 			"Duration":     229000000000,
 		})
+		assert.NoError(t, err)
 	}))
 	defer server.Close()
 
