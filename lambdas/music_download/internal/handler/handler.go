@@ -16,7 +16,6 @@ import (
 // SongEvent representa la estructura del evento de la canción
 type SongEvent struct {
 	Song string `json:"song"`
-	Key  string `json:"key"`
 }
 
 // EventManager define una interfaz para manejar eventos Lambda
@@ -82,7 +81,7 @@ func (h *Handler) HandleEvent(ctx context.Context, event events.APIGatewayProxyR
 		}, nil
 	}
 
-	key := fmt.Sprintf("audio_input_raw/%s.m4a", songEvent.Key)
+	key := fmt.Sprintf("audio_input_raw/%s.m4a", songs[0].Title)
 	videoURL := fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID)
 	err = h.downloader.DownloadSong(videoURL, key)
 	if err != nil {
@@ -93,7 +92,7 @@ func (h *Handler) HandleEvent(ctx context.Context, event events.APIGatewayProxyR
 		}, fmt.Errorf("error al descargar la canción: %v", err)
 	}
 
-	h.logger.Info("Canción procesada exitosamente", zap.String("song", songEvent.Song), zap.String("key", songEvent.Key))
+	h.logger.Info("Canción procesada exitosamente", zap.String("song", songEvent.Song), zap.String("key", songs[0].Title))
 
 	songDetails, err := json.Marshal(songs[0])
 	if err != nil {

@@ -23,7 +23,6 @@ func TestHandleEvent(t *testing.T) {
 		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
 		songEvent := SongEvent{
 			Song: "Test Song",
-			Key:  "testKey",
 		}
 		eventBody, _ := json.Marshal(songEvent)
 
@@ -33,7 +32,7 @@ func TestHandleEvent(t *testing.T) {
 
 		mockYouTubeClient.On("SearchYouTubeVideoID", mock.Anything, "Test Song").Return("testVideoID", nil)
 		mockYouTubeClient.On("LookupSongs", mock.Anything, "testVideoID").Return([]*types.Song{{Title: "Test Song"}}, nil)
-		mockDownloader.On("DownloadSong", "https://www.youtube.com/watch?v=testVideoID", "audio_input_raw/testKey.m4a").Return(nil)
+		mockDownloader.On("DownloadSong", "https://www.youtube.com/watch?v=testVideoID", "audio_input_raw/Test Song.m4a").Return(nil)
 		mockLogger.On("Info", mock.Anything, mock.Anything).Return(nil)
 
 		response, err := h.HandleEvent(context.Background(), event)
@@ -83,7 +82,6 @@ func TestHandleEvent(t *testing.T) {
 		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
 		songEvent := SongEvent{
 			Song: "Test Song",
-			Key:  "testKey",
 		}
 		eventBody, _ := json.Marshal(songEvent)
 
@@ -114,7 +112,6 @@ func TestHandleEvent(t *testing.T) {
 		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
 		songEvent := SongEvent{
 			Song: "Test Song",
-			Key:  "testKey",
 		}
 		eventBody, _ := json.Marshal(songEvent)
 
@@ -125,7 +122,7 @@ func TestHandleEvent(t *testing.T) {
 		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 		mockYouTubeClient.On("SearchYouTubeVideoID", mock.Anything, "Test Song").Return("testVideoID", nil)
 		mockYouTubeClient.On("LookupSongs", mock.Anything, "testVideoID").Return([]*types.Song{{Title: "Test Song"}}, nil)
-		mockDownloader.On("DownloadSong", "https://www.youtube.com/watch?v=testVideoID", "audio_input_raw/testKey.m4a").Return(errors.New("download error"))
+		mockDownloader.On("DownloadSong", "https://www.youtube.com/watch?v=testVideoID", "audio_input_raw/Test Song.m4a").Return(errors.New("download error"))
 		mockLogger.On("Error", "Error al descargar la canción", mock.Anything).Return()
 
 		response, err := h.HandleEvent(context.Background(), event)
@@ -147,7 +144,6 @@ func TestHandleEvent(t *testing.T) {
 		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
 		songEvent := SongEvent{
 			Song: "Test Song",
-			Key:  "testKey",
 		}
 		eventBody, _ := json.Marshal(songEvent)
 
@@ -179,7 +175,6 @@ func TestHandleEvent(t *testing.T) {
 		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
 		songEvent := SongEvent{
 			Song: "Test Song",
-			Key:  "testKey",
 		}
 		eventBody, _ := json.Marshal(songEvent)
 
