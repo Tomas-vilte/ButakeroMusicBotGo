@@ -7,6 +7,7 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/api/youtube_api"
 	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/downloader"
 	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/logging"
+	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/service/sqs"
 	"github.com/Tomas-vilte/GoMusicBot/lambdas/music_download/internal/uploader"
 	"github.com/aws/aws-lambda-go/events"
 	"go.uber.org/zap"
@@ -29,15 +30,17 @@ type Handler struct {
 	youTubeClient youtube_api.SongLooker
 	uploader      uploader.Uploader
 	logger        logging.Logger
+	sqsClient     sqs.SQSClient
 }
 
 // NewHandler crea un nuevo Handler con los componentes necesarios
-func NewHandler(downloader downloader.Downloader, uploader uploader.Uploader, logger logging.Logger, clientYouTube youtube_api.SongLooker) *Handler {
+func NewHandler(downloader downloader.Downloader, uploader uploader.Uploader, logger logging.Logger, clientYouTube youtube_api.SongLooker, sqsClient sqs.SQSClient) *Handler {
 	return &Handler{
 		downloader:    downloader,
 		uploader:      uploader,
 		logger:        logger,
 		youTubeClient: clientYouTube,
+		sqsClient:     sqsClient,
 	}
 }
 
@@ -102,6 +105,16 @@ func (h *Handler) HandleEvent(ctx context.Context, event events.APIGatewayProxyR
 			Body:       fmt.Sprintf("Error al serializar los detalles de la canción: %v", err),
 		}, fmt.Errorf("error al serializar los detalles de la canción: %v", err)
 	}
+
+	if err := h.sqsClient.SendMessage(ctx, string(songDetails)); err != nil {
+		h.logger.Error("Error al enviar el mensaje a SQS", zap.Error(err))
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusInternalServerError,
+			Body:       fmt.Sprintf("Error al enviar mensaje a SQS: %v", err),
+		}, fmt.Errorf("error al enviar mensaje a SQS: %v", err)
+	}
+
+	h.logger.Info("Metadata enviada a la cosa SQS")
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
