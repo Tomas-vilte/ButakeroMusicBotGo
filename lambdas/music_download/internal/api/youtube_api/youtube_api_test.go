@@ -26,6 +26,7 @@ func TestYouTubeFetcher_LookupSongs(t *testing.T) {
 				Title:                "Test Video",
 				Thumbnails:           &youtube.ThumbnailDetails{Default: &youtube.Thumbnail{Url: "https://example.com/thumbnail.jpg"}},
 				LiveBroadcastContent: "none",
+				PublishedAt:          "2024-07-29T00:00:00Z",
 			},
 			ContentDetails: &youtube.VideoContentDetails{
 				Duration: "PT3M21S",

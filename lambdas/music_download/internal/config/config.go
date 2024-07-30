@@ -6,4 +6,5 @@ type Config struct {
 	AccessKey     string
 	SecretKey     string
 	YouTubeApiKey string
+	QueueURL      string
 }

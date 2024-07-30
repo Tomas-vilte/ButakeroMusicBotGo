@@ -57,3 +57,12 @@ func (m *MockSongLooker) LookupSongs(ctx context.Context, videoID string) ([]*ty
 	args := m.Called(ctx, videoID)
 	return args.Get(0).([]*types.Song), args.Error(1)
 }
+
+type MockSQSClient struct {
+	mock.Mock
+}
+
+func (m *MockSQSClient) SendMessage(ctx context.Context, messageBody string) error {
+	args := m.Called(ctx, messageBody)
+	return args.Error(0)
+}
