@@ -19,8 +19,9 @@ func TestHandleEvent(t *testing.T) {
 		mockUploader := new(MockUploader)
 		mockLogger := new(MockLogger)
 		mockYouTubeClient := new(MockSongLooker)
+		mockSQSClient := new(MockSQSClient)
 
-		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
+		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockSQSClient)
 		songEvent := SongEvent{
 			Song: "Test Song",
 		}
@@ -34,6 +35,7 @@ func TestHandleEvent(t *testing.T) {
 		mockYouTubeClient.On("LookupSongs", mock.Anything, "testVideoID").Return([]*types.Song{{Title: "Test Song"}}, nil)
 		mockDownloader.On("DownloadSong", "https://www.youtube.com/watch?v=testVideoID", "audio_input_raw/Test Song.m4a").Return(nil)
 		mockLogger.On("Info", mock.Anything, mock.Anything).Return(nil)
+		mockSQSClient.On("SendMessage", mock.Anything, mock.Anything).Return(nil)
 
 		response, err := h.HandleEvent(context.Background(), event)
 
@@ -55,8 +57,9 @@ func TestHandleEvent(t *testing.T) {
 		mockUploader := new(MockUploader)
 		mockLogger := new(MockLogger)
 		mockYouTubeClient := new(MockSongLooker)
+		mockSQSClient := new(MockSQSClient)
 
-		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
+		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockSQSClient)
 		event := events.APIGatewayProxyRequest{
 			Body: "invalid json",
 		}
@@ -78,8 +81,9 @@ func TestHandleEvent(t *testing.T) {
 		mockUploader := new(MockUploader)
 		mockLogger := new(MockLogger)
 		mockYouTubeClient := new(MockSongLooker)
+		mockSQSClient := new(MockSQSClient)
 
-		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
+		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockSQSClient)
 		songEvent := SongEvent{
 			Song: "Test Song",
 		}
@@ -108,8 +112,9 @@ func TestHandleEvent(t *testing.T) {
 		mockUploader := new(MockUploader)
 		mockLogger := new(MockLogger)
 		mockYouTubeClient := new(MockSongLooker)
+		mockSQSClient := new(MockSQSClient)
 
-		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
+		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockSQSClient)
 		songEvent := SongEvent{
 			Song: "Test Song",
 		}
@@ -140,8 +145,9 @@ func TestHandleEvent(t *testing.T) {
 		mockUploader := new(MockUploader)
 		mockLogger := new(MockLogger)
 		mockYouTubeClient := new(MockSongLooker)
+		mockSQSClient := new(MockSQSClient)
 
-		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
+		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockSQSClient)
 		songEvent := SongEvent{
 			Song: "Test Song",
 		}
@@ -171,8 +177,9 @@ func TestHandleEvent(t *testing.T) {
 		mockUploader := new(MockUploader)
 		mockLogger := new(MockLogger)
 		mockYouTubeClient := new(MockSongLooker)
+		mockSQSClient := new(MockSQSClient)
 
-		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient)
+		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockSQSClient)
 		songEvent := SongEvent{
 			Song: "Test Song",
 		}
@@ -197,4 +204,38 @@ func TestHandleEvent(t *testing.T) {
 		mockYouTubeClient.AssertExpectations(t)
 	})
 
+	t.Run("SQS send message error", func(t *testing.T) {
+		mockDownloader := new(MockDownloader)
+		mockUploader := new(MockUploader)
+		mockLogger := new(MockLogger)
+		mockYouTubeClient := new(MockSongLooker)
+		mockSQSClient := new(MockSQSClient)
+
+		h := NewHandler(mockDownloader, mockUploader, mockLogger, mockYouTubeClient, mockSQSClient)
+		songEvent := SongEvent{
+			Song: "Test Song",
+		}
+		eventBody, _ := json.Marshal(songEvent)
+
+		event := events.APIGatewayProxyRequest{
+			Body: string(eventBody),
+		}
+
+		mockYouTubeClient.On("SearchYouTubeVideoID", mock.Anything, "Test Song").Return("testVideoID", nil)
+		mockYouTubeClient.On("LookupSongs", mock.Anything, "testVideoID").Return([]*types.Song{{Title: "Test Song"}}, nil)
+		mockDownloader.On("DownloadSong", "https://www.youtube.com/watch?v=testVideoID", "audio_input_raw/Test Song.m4a").Return(nil)
+		mockSQSClient.On("SendMessage", mock.Anything, mock.Anything).Return(errors.New("sqs send error"))
+		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+		mockLogger.On("Error", "Error al enviar el mensaje a SQS", mock.Anything).Return()
+
+		response, err := h.HandleEvent(context.Background(), event)
+
+		assert.Error(t, err)
+		assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
+
+		mockLogger.AssertExpectations(t)
+		mockYouTubeClient.AssertExpectations(t)
+		mockDownloader.AssertExpectations(t)
+		mockSQSClient.AssertExpectations(t)
+	})
 }
