@@ -45,7 +45,19 @@ func (yt *YouTubeFetcher) LookupSongs(ctx context.Context, input string) ([]*typ
 		yt.logger.Error("Error al analizar la duracion: ", zap.Error(err))
 		return nil, fmt.Errorf("error al analizar la duracion")
 	}
+
+	publishedAt, err := time.Parse(time.RFC3339, video.Snippet.PublishedAt)
+	if err != nil {
+		yt.logger.Error("Error al analizar la fecha de publicación: ", zap.Error(err))
+		return nil, fmt.Errorf("error al analizar la fecha de publicación")
+	}
 	thumbnailURL := video.Snippet.Thumbnails.Default.Url
+
+	channel := types.Channel{
+		ID:   video.Snippet.ChannelId,
+		Name: video.Snippet.ChannelTitle,
+		URL:  fmt.Sprintf("https://www.youtube.com/channel/%s", video.Snippet.ChannelId),
+	}
 
 	song := &types.Song{
 		Type:         "youtube_provider",
@@ -54,6 +66,11 @@ func (yt *YouTubeFetcher) LookupSongs(ctx context.Context, input string) ([]*typ
 		Playable:     video.Snippet.LiveBroadcastContent != "live",
 		ThumbnailURL: &thumbnailURL,
 		Duration:     duration,
+		Description:  video.Snippet.Description,
+		Category:     video.Snippet.CategoryId,
+		Channel:      channel,
+		PublishedAt:  publishedAt,
+		Tags:         video.Snippet.Tags,
 	}
 	return []*types.Song{song}, nil
 }
