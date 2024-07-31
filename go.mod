@@ -3,10 +3,9 @@ module github.com/Tomas-vilte/GoMusicBot
 go 1.21.2
 
 require (
-	github.com/aws/aws-sdk-go v1.54.11
+	github.com/aws/aws-sdk-go v1.55.3
 	github.com/bwmarrin/discordgo v0.28.1
 	github.com/grafana/pyroscope-go v1.1.1
-	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/prometheus/client_golang v1.19.1
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.27.0
