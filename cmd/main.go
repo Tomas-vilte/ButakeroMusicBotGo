@@ -12,7 +12,6 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/services/providers/youtube_provider"
 	"github.com/Tomas-vilte/GoMusicBot/internal/storage/s3_audio"
 	"github.com/bwmarrin/discordgo"
-	"github.com/kelseyhightower/envconfig"
 	"go.uber.org/zap"
 	"os"
 	"os/signal"
@@ -22,12 +21,23 @@ import (
 var (
 	ctx       context.Context
 	cancelCtx context.CancelFunc
-	cfg       = &config.Config{}
+	cfg       = &config.Config{
+		DiscordToken:  os.Getenv("DISCORD_TOKEN"),
+		CommandPrefix: os.Getenv("COMMAND_PREFIX"),
+		YoutubeApiKey: os.Getenv("YOUTUBE_API_KEY"),
+		Store: config.StoreConfig{
+			Type: "memory",
+		},
+		BucketName: os.Getenv("BUCKET_NAME"),
+		Region:     os.Getenv("REGION"),
+		AccessKey:  os.Getenv("ACCESS_KEY"),
+		SecretKey:  os.Getenv("SECRET_KEY"),
+	}
 )
 
 func main() {
 	// Crear un nuevo logger usando la librería zap.
-	logger, err := logging.NewZapLogger(true)
+	logger, err := logging.NewZapLogger(false)
 	if err != nil {
 		panic("Error creando el logger: " + err.Error())
 	}
@@ -54,9 +64,6 @@ func main() {
 	}()
 	ctx, cancelCtx = context.WithCancel(context.Background())
 	defer cancelCtx()
-	if err := envconfig.Process("", cfg); err != nil {
-		logger.Error("error al cargar las variables de entorno", zap.Error(err))
-	}
 	dg, err := discordgo.New("Bot " + cfg.DiscordToken)
 	if err != nil {
 		logger.Error("error al crear la session de messaging", zap.Error(err))
