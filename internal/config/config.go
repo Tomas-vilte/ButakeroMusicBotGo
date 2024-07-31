@@ -11,24 +11,24 @@ import (
 )
 
 type Config struct {
-	DiscordToken  string `required:"true"`
+	DiscordToken  string
 	GuildID       string
-	CommandPrefix string `required:"true"`
-	YoutubeApiKey string `required:"true"`
+	CommandPrefix string
+	YoutubeApiKey string
 	Store         StoreConfig
-	BucketName    string `required:"true"`
-	Region        string `required:"true"`
-	AccessKey     string `required:"true"`
-	SecretKey     string `required:"true"`
+	BucketName    string
+	Region        string
+	AccessKey     string
+	SecretKey     string
 }
 
 type StoreConfig struct {
-	Type string `default:"memory"`
+	Type string
 	File FileStoreConfig
 }
 
 type FileStoreConfig struct {
-	Dir string `default:"./playlist"`
+	Dir string
 }
 
 func GetPlaylistStore(cfg *Config, guildID string, logger logging.Logger, persistent file_storage.StatePersistent) (store.SongStorage, store.StateStorage) {
