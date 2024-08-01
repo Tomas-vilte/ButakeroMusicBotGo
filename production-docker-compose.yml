@@ -5,13 +5,13 @@ services:
       dockerfile: ./dockerfile.aws
     container_name: bot
     environment:
-      - DISCORDTOKEN=${DISCORDTOKEN}
-      - COMMANDPREFIX=${COMMANDPREFIX}
-      - YOUTUBEAPIKEY=${YOUTUBEAPIKEY}
-      - BUCKETNAME=${BUCKETNAME}
-      - ACCESSKEY=${ACCESSKEY}
-      - SECRETKEY=${SECRETKEY}
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - COMMAND_PREFIX=${COMMAND_PREFIX}
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+      - BUCKET_NAME=${BUCKET_NAME}
       - REGION=${REGION}
+      - ACCESS_KEY=${ACCESS_KEY}
+      - SECRET_KEY=${SECRET_KEY}
     ports:
       - "8080:8080"
     volumes:

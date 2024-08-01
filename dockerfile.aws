@@ -14,13 +14,13 @@ RUN CGO_ENABLED=1 GOARCH=arm64 GOMAXPROCS=4 go build -ldflags="-s -w" -o /bin/bu
 # Etapa final del contenedor
 FROM --platform=linux/arm64 arm64v8/alpine:edge
 
-ENV DISCORDTOKEN=
-ENV COMMANDPREFIX=
-ENV YOUTUBEAPIKEY=
-ENV BUCKETNAME=
-ENV ACCESSKEY=
-ENV SECRETKEY=
+ENV DISCORD_TOKEN=
+ENV COMMAND_PREFIX=
+ENV YOUTUBE_API_KEY=
+ENV BUCKET_NAME=
 ENV REGION=
+ENV ACCESS_KEY=
+ENV SECRET_KEY=
 
 # Instalar dependencias necesarias para la ejecución
 RUN apk add --no-cache ffmpeg wget opusfile yt-dlp \
