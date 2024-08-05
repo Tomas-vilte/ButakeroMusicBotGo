@@ -2,13 +2,14 @@ package inmemory_storage
 
 import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/stretchr/testify/mock"
 	"testing"
 )
 
 // TestInmemoryStateStorage_GetCurrentSong verifica que el método GetCurrentSong devuelva la canción actual correctamente.
 func TestInmemoryStateStorage_GetCurrentSong(t *testing.T) {
-	mockLogger := &MockLogger{}
+	mockLogger := new(logging.MockLogger)
 	storage := NewInmemoryStateStorage(mockLogger)
 
 	currentSong := &voice.PlayedSong{Song: voice.Song{Title: "Test Song"}}
@@ -31,7 +32,7 @@ func TestInmemoryStateStorage_GetCurrentSong(t *testing.T) {
 
 // TestInmemoryStateStorage_GetVoiceChannel verifica que el método GetVoiceChannel devuelva el canal de voz correctamente.
 func TestInmemoryStateStorage_GetVoiceChannel(t *testing.T) {
-	mockLogger := &MockLogger{}
+	mockLogger := new(logging.MockLogger)
 	mockLogger.On("Info", "Obteniendo el canal de voz", mock.AnythingOfType("[]zapcore.Field")).Return()
 	mockLogger.On("Info", "Canal de voz establecido", mock.AnythingOfType("[]zapcore.Field")).Return()
 
@@ -60,7 +61,7 @@ func TestInmemoryStateStorage_GetVoiceChannel(t *testing.T) {
 
 // TestInmemoryStateStorage_GetTextChannel verifica que el método GetTextChannel devuelva el canal de texto correctamente.
 func TestInmemoryStateStorage_GetTextChannel(t *testing.T) {
-	mockLogger := &MockLogger{}
+	mockLogger := new(logging.MockLogger)
 	mockLogger.On("Info", "Obteniendo el canal de texto", mock.AnythingOfType("[]zapcore.Field")).Return()
 	mockLogger.On("Info", "Canal de texto establecido", mock.AnythingOfType("[]zapcore.Field")).Return()
 

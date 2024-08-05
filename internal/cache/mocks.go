@@ -4,7 +4,6 @@ import (
 	"container/list"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/mock"
-	"go.uber.org/zap"
 	"time"
 )
 
@@ -34,22 +33,6 @@ func (m *MockListInterface) Back() *list.Element {
 func (m *MockListInterface) Len() int {
 	args := m.Called()
 	return args.Int(0)
-}
-
-type MockLogger struct {
-	mock.Mock
-}
-
-func (m *MockLogger) Error(msg string, fields ...zap.Field) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Info(msg string, fields ...zap.Field) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) With(fields ...zap.Field) {
-	m.Called(fields)
 }
 
 // MockCacheMetrics es un mock para la interfaz metrics.CacheMetrics

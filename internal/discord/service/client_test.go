@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"net/http"
@@ -35,7 +36,7 @@ func TestProcessSongMetadata(t *testing.T) {
 	}))
 	defer server.Close()
 
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 
@@ -63,7 +64,7 @@ func TestProcessSongMetadataError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 

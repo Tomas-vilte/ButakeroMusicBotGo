@@ -3,32 +3,16 @@ package discordmessenger
 import (
 	"errors"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"go.uber.org/zap"
 	"testing"
 )
 
 // MockMessageSender es una implementación de MessageSenderWrapper para pruebas.
 type MockMessageSender struct {
 	mock.Mock
-}
-
-type MockLogger struct {
-	mock.Mock
-}
-
-func (m *MockLogger) Error(msg string, fields ...zap.Field) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Info(msg string, fields ...zap.Field) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) With(fields ...zap.Field) {
-	m.Called(fields)
 }
 
 func (m *MockMessageSender) ChannelMessageSendComplex(channelID string, data *discordgo.MessageSend, options ...discordgo.RequestOption) (*discordgo.Message, error) {
@@ -43,7 +27,7 @@ func (m *MockMessageSender) ChannelMessageEditComplex(message *discordgo.Message
 
 func TestSendMessage(t *testing.T) {
 	mockSender := new(MockMessageSender)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	messageSender := NewMessageSenderImpl(mockSender, mockLogger)
 	channelID := "123"
 	message := "Test Message"
@@ -60,7 +44,7 @@ func TestSendMessage(t *testing.T) {
 func TestSendMessage_Error(t *testing.T) {
 	// Configuración
 	mockSender := new(MockMessageSender)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	messageSender := NewMessageSenderImpl(mockSender, mockLogger)
 	channelID := "123"
 	message := "Test Message"
@@ -82,7 +66,7 @@ func TestSendMessage_Error(t *testing.T) {
 func TestSendPlayMessage(t *testing.T) {
 	// Configuración
 	mockSender := new(MockMessageSender)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	messageSender := NewMessageSenderImpl(mockSender, mockLogger)
 	channelID := "123"
 	mockMessage := &voice.PlayMessage{}
@@ -100,7 +84,7 @@ func TestSendPlayMessage(t *testing.T) {
 func TestSendPlayMessage_Error(t *testing.T) {
 	// Configuración
 	mockSender := new(MockMessageSender)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	messageSender := NewMessageSenderImpl(mockSender, mockLogger)
 	channelID := "123"
 	mockMessage := &voice.PlayMessage{}
@@ -123,7 +107,7 @@ func TestSendPlayMessage_Error(t *testing.T) {
 func TestEditPlayMessage(t *testing.T) {
 	// Configuración
 	mockSender := new(MockMessageSender)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	messageSender := NewMessageSenderImpl(mockSender, mockLogger)
 	channelID := "123"
 	messageID := "456"
@@ -141,7 +125,7 @@ func TestEditPlayMessage(t *testing.T) {
 func TestEditPlayMessage_Error(t *testing.T) {
 	// Configuración
 	mockSender := new(MockMessageSender)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	messageSender := NewMessageSenderImpl(mockSender, mockLogger)
 	channelID := "123"
 	messageID := "456"

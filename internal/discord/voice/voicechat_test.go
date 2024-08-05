@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -13,7 +14,7 @@ import (
 
 func TestChatSessionImpl(t *testing.T) {
 	t.Run("Close_Success", func(t *testing.T) {
-		mockLogger := new(MockLogger)
+		mockLogger := new(logging.MockLogger)
 		// Arrange
 		mockDiscordSession := &MockDiscordSessionWrapper{}
 		defer mockDiscordSession.AssertExpectations(t)
@@ -29,7 +30,7 @@ func TestChatSessionImpl(t *testing.T) {
 	})
 
 	t.Run("JoinVoiceChannel_Success", func(t *testing.T) {
-		mockLogger := new(MockLogger)
+		mockLogger := new(logging.MockLogger)
 		// Arrange
 		mockDiscordSession := &MockDiscordSessionWrapper{}
 		defer mockDiscordSession.Mock.AssertExpectations(t)
@@ -48,10 +49,10 @@ func TestChatSessionImpl(t *testing.T) {
 
 	t.Run("JoinVoiceChannel_Error", func(t *testing.T) {
 		// Arrange
-		mockLogger := new(MockLogger)
+		mockLogger := new(logging.MockLogger)
 		mockDiscordSession := &MockDiscordSessionWrapper{}
 		defer mockDiscordSession.Mock.AssertExpectations(t)
-		expectedError := errors.New("Error al unirse al canal de voz")
+		expectedError := errors.New("error al unirse al canal de voz")
 		mockVoiceConnection := &discordgo.VoiceConnection{}
 		mockDiscordSession.On("ChannelVoiceJoin", "test_guild_id", "test_channel_id", false, true).Return(mockVoiceConnection, expectedError)
 		session := NewChatSessionImpl(mockDiscordSession, "test_guild_id", nil, mockLogger)
@@ -69,7 +70,7 @@ func TestChatSessionImpl(t *testing.T) {
 
 	t.Run("LeaveVoiceChannelWithNilConnection", func(t *testing.T) {
 		// Arrange
-		mockLogger := new(MockLogger)
+		mockLogger := new(logging.MockLogger)
 		session := NewChatSessionImpl(nil, "", nil, mockLogger)
 
 		// Act
@@ -99,7 +100,7 @@ func TestChatSessionImpl(t *testing.T) {
 
 	t.Run("LeaveVoiceChannelWithError", func(t *testing.T) {
 		// Arrange
-		mockLogger := new(MockLogger)
+		mockLogger := new(logging.MockLogger)
 		mockVoiceConnection := &MockVoiceConnectionWrapper{}
 		defer mockVoiceConnection.Mock.AssertExpectations(t)
 		expectedError := errors.New("error al dejar el canal de voz")
@@ -122,7 +123,7 @@ func TestChatSessionImpl(t *testing.T) {
 func TestChatSessionImpl_SendAudio(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		// Arrange
-		mockLogger := new(MockLogger)
+		mockLogger := new(logging.MockLogger)
 		mockVoiceConnection := &MockVoiceConnectionWrapper{}
 		defer mockVoiceConnection.AssertExpectations(t)
 		mockDCAStreamer := &MockDCAStreamer{}
@@ -152,12 +153,12 @@ func TestChatSessionImpl_SendAudio(t *testing.T) {
 
 	t.Run("SpeakingTrueError", func(t *testing.T) {
 		// Arrange
-		mockLogger := new(MockLogger)
+		mockLogger := new(logging.MockLogger)
 		mockVoiceConnection := &MockVoiceConnectionWrapper{}
 		defer mockVoiceConnection.AssertExpectations(t)
 		mockDCAStreamer := &MockDCAStreamer{}
 
-		expectedErr := errors.New("Error al enviando la canal de voz")
+		expectedErr := errors.New("error al enviando la canal de voz")
 		mockVoiceConnection.On("Speaking", true).Return(expectedErr).Once()
 		mockLogger.On("Info", "Enviando audio al canal de voz...", mock.AnythingOfType("[]zapcore.Field")).Return()
 		mockLogger.On("Error", "Error al comenzar a hablar: ", mock.AnythingOfType("[]zapcore.Field")).Return()
@@ -180,7 +181,7 @@ func TestChatSessionImpl_SendAudio(t *testing.T) {
 
 	t.Run("SpeakingFalseError", func(t *testing.T) {
 		// Arrange
-		mockLogger := new(MockLogger)
+		mockLogger := new(logging.MockLogger)
 		mockVoiceConnection := &MockVoiceConnectionWrapper{}
 		defer mockVoiceConnection.AssertExpectations(t)
 		mockDCAStreamer := &MockDCAStreamer{}
@@ -213,7 +214,7 @@ func TestChatSessionImpl_SendAudio(t *testing.T) {
 
 	t.Run("StreamError", func(t *testing.T) {
 		// Arrange
-		mockLogger := new(MockLogger)
+		mockLogger := new(logging.MockLogger)
 		mockVoiceConnection := &MockVoiceConnectionWrapper{}
 		defer mockVoiceConnection.AssertExpectations(t)
 		mockDCAStreamer := &MockDCAStreamer{}
@@ -243,7 +244,7 @@ func TestChatSessionImpl_SendAudio(t *testing.T) {
 
 	t.Run("OpusSendChanNil", func(t *testing.T) {
 		// Arrange
-		mockLogger := new(MockLogger)
+		mockLogger := new(logging.MockLogger)
 		mockVoiceConnection := &MockVoiceConnectionWrapper{}
 		defer mockVoiceConnection.AssertExpectations(t)
 		mockDCAStreamer := &MockDCAStreamer{}

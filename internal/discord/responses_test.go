@@ -2,6 +2,7 @@ package discord
 
 import (
 	"errors"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -23,7 +24,7 @@ func (m *MockSessionService) FollowupMessageCreate(i *discordgo.Interaction, wai
 }
 
 func TestDiscordResponseHandler_Respond(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	responseHandler := NewDiscordResponseHandler(mockLogger)
 	mockSession := new(MockSessionService)
 
@@ -41,7 +42,7 @@ func TestDiscordResponseHandler_Respond(t *testing.T) {
 }
 
 func TestDiscordResponseHandler_Respond_Error(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	responseHandler := NewDiscordResponseHandler(mockLogger)
 	mockSession := new(MockSessionService)
 
@@ -69,7 +70,7 @@ func TestDiscordResponseHandler_Respond_Error(t *testing.T) {
 }
 
 func TestDiscordResponseHandler_RespondWithMessage(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	responseHandler := NewDiscordResponseHandler(mockLogger)
 	mockSession := new(MockSessionService)
 
@@ -96,7 +97,7 @@ func TestDiscordResponseHandler_RespondWithMessage(t *testing.T) {
 }
 
 func TestDiscordResponseHandler_CreateFollowupMessage(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	responseHandler := NewDiscordResponseHandler(mockLogger)
 	mockSession := new(MockSessionService)
 
@@ -115,7 +116,7 @@ func TestDiscordResponseHandler_CreateFollowupMessage(t *testing.T) {
 }
 
 func TestDiscordResponseHandler_CreateFollowupMessage_Error(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	responseHandler := NewDiscordResponseHandler(mockLogger)
 	mockSession := new(MockSessionService)
 

@@ -8,7 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/stretchr/testify/mock"
-	"go.uber.org/zap/zapcore"
 	"io"
 )
 
@@ -34,22 +33,6 @@ func (m *MockS3Uploader) FileExists(ctx context.Context, key string) (bool, erro
 func (m *MockS3Uploader) DownloadDCA(ctx context.Context, key string) (io.Reader, error) {
 	args := m.Called(ctx, key)
 	return args.Get(0).(*bytes.Reader), args.Error(1)
-}
-
-type MockLogger struct {
-	mock.Mock
-}
-
-func (m *MockLogger) Info(msg string, fields ...zapcore.Field) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Error(msg string, fields ...zapcore.Field) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) With(fields ...zapcore.Field) {
-	m.Called(fields)
 }
 
 type MockS3Downloader struct {

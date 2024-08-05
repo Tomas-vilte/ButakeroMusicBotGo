@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ import (
 
 func TestS3Uploader_UploadDCA(t *testing.T) {
 	mockUploader := new(MockS3Uploader)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockConfig := &config.Config{
 		BucketName: "test-bucket",
 	}
@@ -43,7 +44,7 @@ func TestS3Uploader_UploadDCA(t *testing.T) {
 
 func TestS3Uploader_FileExists(t *testing.T) {
 	mockClient := new(MockS3Client)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockConfig := &config.Config{
 		BucketName: "test-bucket",
 	}
@@ -70,7 +71,7 @@ func TestS3Uploader_FileExists(t *testing.T) {
 
 func TestS3Uploader_DownloadDCA(t *testing.T) {
 	mockDownloader := new(MockS3Downloader)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockConfig := &config.Config{
 		BucketName: "test-bucket",
 	}
@@ -105,7 +106,7 @@ func TestS3Uploader_DownloadDCA(t *testing.T) {
 func TestS3Uploader_UploadDCA_Error(t *testing.T) {
 	// Arrange
 	mockUploader := new(MockS3Uploader)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockConfig := &config.Config{
 		BucketName: "test-bucket",
 	}
@@ -136,7 +137,7 @@ func TestS3Uploader_UploadDCA_Error(t *testing.T) {
 func TestS3Uploader_FileExists_Error(t *testing.T) {
 	// Arrange
 	mockClient := new(MockS3Client)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockConfig := &config.Config{
 		BucketName: "test-bucket",
 	}
@@ -164,7 +165,7 @@ func TestS3Uploader_FileExists_Error(t *testing.T) {
 
 func TestS3Uploader_DownloadDCA_Error(t *testing.T) {
 	mockDownloader := new(MockS3Downloader)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockConfig := &config.Config{
 		BucketName: "test-bucket",
 	}

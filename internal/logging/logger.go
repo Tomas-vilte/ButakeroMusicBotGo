@@ -5,11 +5,13 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// Logger define la interfaz para los métodos de registro de información y error.
+// Logger define la interfaz para los métodos de registro de información, advertencia y error.
 type Logger interface {
 	Info(msg string, fields ...zapcore.Field)  // Info registra un mensaje informativo.
+	Warn(msg string, fields ...zapcore.Field)  // Warn registra un mensaje de advertencia.
 	Error(msg string, fields ...zapcore.Field) // Error registra un mensaje de error.
-	With(fields ...zapcore.Field)
+	Debug(msg string, fields ...zapcore.Field) // Debug registra un mensaje de depuración.
+	With(fields ...zapcore.Field)              // With añade campos adicionales a los mensajes de log.
 }
 
 // ZapLogger es una implementación de la interfaz Logger utilizando Zap Logger.
@@ -41,7 +43,7 @@ func (l *ZapLogger) Close() error {
 }
 
 func (l *ZapLogger) With(fields ...zapcore.Field) {
-	l.logger.With(fields...)
+	l.logger = l.logger.With(fields...)
 }
 
 // Info registra un mensaje informativo.
@@ -49,7 +51,17 @@ func (l *ZapLogger) Info(msg string, fields ...zapcore.Field) {
 	l.logger.Info(msg, fields...)
 }
 
+// Warn registra un mensaje de advertencia.
+func (l *ZapLogger) Warn(msg string, fields ...zapcore.Field) {
+	l.logger.Warn(msg, fields...)
+}
+
 // Error registra un mensaje de error.
 func (l *ZapLogger) Error(msg string, fields ...zapcore.Field) {
 	l.logger.Error(msg, fields...)
+}
+
+// Debug registra un mensaje de depuración.
+func (l *ZapLogger) Debug(msg string, fields ...zapcore.Field) {
+	l.logger.Debug(msg, fields...)
 }
