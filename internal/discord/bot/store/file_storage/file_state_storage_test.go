@@ -3,6 +3,7 @@ package file_storage
 import (
 	"errors"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -31,7 +32,7 @@ func TestFileStateStorage_GetCurrentSong(t *testing.T) {
 func TestFileStateStorage_GetCurrentSong_Error(t *testing.T) {
 	// Simulate error from ReadState
 	filepath := "test_state.json"
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	// Simulate error returned by ReadState
@@ -75,7 +76,7 @@ func TestFileStateStorage_SetCurrentSong(t *testing.T) {
 
 func TestFileStateStorage_SetCurrentSong_Error(t *testing.T) {
 	filepath := "test_state.json"
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	mockPersistent.On("ReadState", filepath).Return(&FileState{}, errors.New("error reading state"))
@@ -110,7 +111,7 @@ func TestFileStateStorage_GetVoiceChannel(t *testing.T) {
 
 func TestFileStateStorage_GetVoiceChannel_Error(t *testing.T) {
 	filepath := "test_state.json"
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	// Simulate error returned by ReadState
@@ -148,7 +149,7 @@ func TestFileStateStorage_SetVoiceChannel(t *testing.T) {
 
 func TestFileStateStorage_SetTextChannel_Error(t *testing.T) {
 	filepath := "test_state.json"
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	mockPersistent.On("ReadState", filepath).Return(&FileState{}, errors.New("error reading state"))
@@ -204,7 +205,7 @@ func TestFileStateStorage_SetTextChannel(t *testing.T) {
 
 func TestFileStateStorage_SetVoiceChannel_Write_Error(t *testing.T) {
 	filepath := "test_state.json"
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 	initialState := &FileState{
 		Songs: []*voice.Song{
@@ -226,7 +227,7 @@ func TestFileStateStorage_SetVoiceChannel_Write_Error(t *testing.T) {
 
 func TestFileStateStorage_SetCurrentSong_Write_Error(t *testing.T) {
 	filepath := "test_state.json"
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 	initialState := &FileState{
 		Songs: []*voice.Song{
@@ -251,7 +252,7 @@ func TestFileStateStorage_SetCurrentSong_Write_Error(t *testing.T) {
 
 func TestFileStateStorage_GetTextChannel_Read_Error(t *testing.T) {
 	filepath := "test_state.json"
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 	readError := errors.New("error al leer el estado")
 	song := &voice.Song{Title: "Test Song"}
@@ -274,7 +275,7 @@ func TestFileStateStorage_GetTextChannel_Read_Error(t *testing.T) {
 
 func TestFileStateStorage_SetVoiceChannel_Read_Error(t *testing.T) {
 	filepath := "test_state.json"
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 	readError := errors.New("error al leer el estado")
 	song := &voice.Song{Title: "Test Song"}
@@ -297,7 +298,7 @@ func TestFileStateStorage_SetVoiceChannel_Read_Error(t *testing.T) {
 
 func TestFileStateStorage_SetTextChannel_Read_Error(t *testing.T) {
 	filepath := "test_state.json"
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 	readError := errors.New("error al leer el estado")
 	song := &voice.Song{Title: "Test Song"}
@@ -320,7 +321,7 @@ func TestFileStateStorage_SetTextChannel_Read_Error(t *testing.T) {
 
 func TestFileStateStorage_SetTextChannel_Write_Error(t *testing.T) {
 	filepath := "test_state.json"
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 	initialState := &FileState{
 		Songs: []*voice.Song{

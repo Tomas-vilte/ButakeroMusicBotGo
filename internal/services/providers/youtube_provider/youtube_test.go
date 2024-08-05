@@ -3,6 +3,7 @@ package youtube_provider
 import (
 	"context"
 	"errors"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"google.golang.org/api/youtube/v3"
@@ -12,7 +13,7 @@ import (
 func TestSearchVideoID(t *testing.T) {
 	t.Run("successful search", func(t *testing.T) {
 		clientMock := new(MockYouTubeClient)
-		loggerMock := new(MockLogger)
+		loggerMock := new(logging.MockLogger)
 		searchCallMock := new(SearchListCallWrapperMock)
 
 		clientMock.On("SearchListCall", mock.Anything, []string{"id"}).Return(searchCallMock)
@@ -42,7 +43,7 @@ func TestSearchVideoID(t *testing.T) {
 
 	t.Run("search error", func(t *testing.T) {
 		clientMock := new(MockYouTubeClient)
-		loggerMock := new(MockLogger)
+		loggerMock := new(logging.MockLogger)
 		searchCallMock := new(SearchListCallWrapperMock)
 
 		clientMock.On("SearchListCall", mock.Anything, []string{"id"}).Return(searchCallMock)
@@ -68,7 +69,7 @@ func TestSearchVideoID(t *testing.T) {
 
 	t.Run("no video found", func(t *testing.T) {
 		clientMock := new(MockYouTubeClient)
-		loggerMock := new(MockLogger)
+		loggerMock := new(logging.MockLogger)
 		searchCallMock := new(SearchListCallWrapperMock)
 
 		clientMock.On("SearchListCall", mock.Anything, []string{"id"}).Return(searchCallMock)
@@ -99,7 +100,7 @@ func TestSearchVideoID(t *testing.T) {
 func TestGetVideoDetails(t *testing.T) {
 	t.Run("successful get video details", func(t *testing.T) {
 		clientMock := new(MockYouTubeClient)
-		loggerMock := new(MockLogger)
+		loggerMock := new(logging.MockLogger)
 		videosCallMock := new(VideosListCallWrapperMock)
 
 		clientMock.On("VideosListCall", mock.Anything, []string{"snippet", "contentDetails", "liveStreamingDetails"}).Return(videosCallMock)
@@ -126,7 +127,7 @@ func TestGetVideoDetails(t *testing.T) {
 
 	t.Run("get video details error", func(t *testing.T) {
 		clientMock := new(MockYouTubeClient)
-		loggerMock := new(MockLogger)
+		loggerMock := new(logging.MockLogger)
 		videosCallMock := new(VideosListCallWrapperMock)
 
 		clientMock.On("VideosListCall", mock.Anything, []string{"snippet", "contentDetails", "liveStreamingDetails"}).Return(videosCallMock)
@@ -150,7 +151,7 @@ func TestGetVideoDetails(t *testing.T) {
 
 	t.Run("video not found", func(t *testing.T) {
 		clientMock := new(MockYouTubeClient)
-		loggerMock := new(MockLogger)
+		loggerMock := new(logging.MockLogger)
 		videosCallMock := new(VideosListCallWrapperMock)
 
 		clientMock.On("VideosListCall", mock.Anything, []string{"snippet", "contentDetails", "liveStreamingDetails"}).Return(videosCallMock)

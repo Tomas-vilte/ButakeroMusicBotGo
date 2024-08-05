@@ -4,13 +4,14 @@ import (
 	"errors"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
 )
 
 func TestFileSongStorage_PrependSong(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -34,7 +35,7 @@ func TestFileSongStorage_PrependSong(t *testing.T) {
 }
 
 func TestFileSongStorage_PrependSong_ReadStateError(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -57,7 +58,7 @@ func TestFileSongStorage_PrependSong_ReadStateError(t *testing.T) {
 }
 
 func TestFileSongStorage_PrependSong_WriteStateError(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -83,7 +84,7 @@ func TestFileSongStorage_PrependSong_WriteStateError(t *testing.T) {
 }
 
 func TestFileSongStorage_AppendSong(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -107,7 +108,7 @@ func TestFileSongStorage_AppendSong(t *testing.T) {
 }
 
 func TestFileSongStorage_AppendSong_ReadStateError(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -132,7 +133,7 @@ func TestFileSongStorage_AppendSong_ReadStateError(t *testing.T) {
 }
 
 func TestFileSongStorage_AppendSong_WriteStateError(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -158,7 +159,7 @@ func TestFileSongStorage_AppendSong_WriteStateError(t *testing.T) {
 }
 
 func TestFileSongStorage_RemoveSong(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -183,7 +184,7 @@ func TestFileSongStorage_RemoveSong(t *testing.T) {
 }
 
 func TestFileSongStorage_RemoveSong_ReadStateError(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -205,7 +206,7 @@ func TestFileSongStorage_RemoveSong_ReadStateError(t *testing.T) {
 }
 
 func TestFileSongStorage_RemoveSong_InvalidPosition(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -228,7 +229,7 @@ func TestFileSongStorage_RemoveSong_InvalidPosition(t *testing.T) {
 }
 
 func TestFileSongStorage_RemoveSong_WriteStateError(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -254,7 +255,7 @@ func TestFileSongStorage_RemoveSong_WriteStateError(t *testing.T) {
 }
 
 func TestFileSongStorage_ClearPlaylist(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -277,7 +278,7 @@ func TestFileSongStorage_ClearPlaylist(t *testing.T) {
 }
 
 func TestFileSongStorage_ClearPlaylist_ReadStateError(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -301,7 +302,7 @@ func TestFileSongStorage_ClearPlaylist_ReadStateError(t *testing.T) {
 }
 
 func TestFileSongStorage_ClearPlaylist_WriteStateError(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -326,7 +327,7 @@ func TestFileSongStorage_ClearPlaylist_WriteStateError(t *testing.T) {
 }
 
 func TestFileSongStorage_GetSongs(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -350,7 +351,7 @@ func TestFileSongStorage_GetSongs(t *testing.T) {
 }
 
 func TestFileSongStorage_GetSongs_ReadStateError(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -376,7 +377,7 @@ func TestFileSongStorage_GetSongs_ReadStateError(t *testing.T) {
 }
 
 func TestFileSongStorage_PopFirstSong(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -401,7 +402,7 @@ func TestFileSongStorage_PopFirstSong(t *testing.T) {
 }
 
 func TestFileSongStorage_PopFirstSong_ReadStateError(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -427,7 +428,7 @@ func TestFileSongStorage_PopFirstSong_ReadStateError(t *testing.T) {
 }
 
 func TestFileSongStorage_PopFirstSong_WriteStateError(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"
@@ -453,7 +454,7 @@ func TestFileSongStorage_PopFirstSong_WriteStateError(t *testing.T) {
 }
 
 func TestFileSongStorage_PopFirstSong_NoSongs(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockPersistent := new(MockStatePersistent)
 
 	filepath := "test_state.json"

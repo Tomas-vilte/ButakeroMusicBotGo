@@ -3,7 +3,6 @@ package youtube_provider
 import (
 	"context"
 	"github.com/stretchr/testify/mock"
-	"go.uber.org/zap/zapcore"
 	"google.golang.org/api/youtube/v3"
 )
 
@@ -19,22 +18,6 @@ func (m *MockYouTubeClient) VideosListCall(ctx context.Context, part []string) V
 func (m *MockYouTubeClient) SearchListCall(ctx context.Context, part []string) SearchListCallWrapper {
 	args := m.Called(ctx, part)
 	return args.Get(0).(SearchListCallWrapper)
-}
-
-type MockLogger struct {
-	mock.Mock
-}
-
-func (m *MockLogger) Info(msg string, fields ...zapcore.Field) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Error(msg string, fields ...zapcore.Field) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) With(fields ...zapcore.Field) {
-	m.Called(fields)
 }
 
 type SearchListCallWrapperMock struct {

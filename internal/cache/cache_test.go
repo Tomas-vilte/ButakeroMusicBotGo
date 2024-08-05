@@ -3,6 +3,7 @@ package cache
 import (
 	"container/list"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
+	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -13,7 +14,7 @@ func TestCache_Get(t *testing.T) {
 	t.Run("entrada no encontrada en caché", func(t *testing.T) {
 		// Configurar mocks
 		listMock := &MockListInterface{}
-		loggerMock := &MockLogger{}
+		loggerMock := new(logging.MockLogger)
 		metricsMock := &MockCacheMetrics{}
 		entryPoolMock := &MockEntryPoolInterface{}
 		timerMock := &MockTimerInterface{}
@@ -47,7 +48,7 @@ func TestCache_Get(t *testing.T) {
 	t.Run("entrada encontrada en caché y no expirada", func(t *testing.T) {
 		// Configurar mocks
 		listMock := &MockListInterface{}
-		loggerMock := &MockLogger{}
+		loggerMock := new(logging.MockLogger)
 		metricsMock := &MockCacheMetrics{}
 		entryPoolMock := &MockEntryPoolInterface{}
 		timerMock := &MockTimerInterface{}
@@ -88,7 +89,7 @@ func TestCache_Get(t *testing.T) {
 	t.Run("entrada encontrada en caché pero expirada", func(t *testing.T) {
 		// Configurar mocks
 		listMock := &MockListInterface{}
-		loggerMock := &MockLogger{}
+		loggerMock := new(logging.MockLogger)
 		metricsMock := &MockCacheMetrics{}
 		entryPoolMock := &MockEntryPoolInterface{}
 		timerMock := &MockTimerInterface{}
@@ -138,7 +139,7 @@ func TestCache_Set(t *testing.T) {
 	t.Run("actualizar entrada existente en caché", func(t *testing.T) {
 		// Configurar mocks
 		listMock := &MockListInterface{}
-		loggerMock := &MockLogger{}
+		loggerMock := new(logging.MockLogger)
 		metricsMock := &MockCacheMetrics{}
 		entryPoolMock := &MockEntryPoolInterface{}
 		timerMock := &MockTimerInterface{}
@@ -180,7 +181,7 @@ func TestCache_Set(t *testing.T) {
 	t.Run("añadir nueva entrada en caché", func(t *testing.T) {
 		// Configurar mocks
 		listMock := &MockListInterface{}
-		loggerMock := &MockLogger{}
+		loggerMock := new(logging.MockLogger)
 		metricsMock := &MockCacheMetrics{}
 		entryPoolMock := &MockEntryPoolInterface{}
 		timerMock := &MockTimerInterface{}
@@ -226,7 +227,7 @@ func TestCache_Set(t *testing.T) {
 func TestCache_Set_DeleteLRUEntry(t *testing.T) {
 	// Configurar mocks
 	listMock := &MockListInterface{}
-	loggerMock := &MockLogger{}
+	loggerMock := new(logging.MockLogger)
 	metricsMock := &MockCacheMetrics{}
 	entryPoolMock := &MockEntryPoolInterface{}
 
@@ -288,7 +289,7 @@ func TestCache_Set_DeleteLRUEntry(t *testing.T) {
 func TestCache_DeleteLRUEntry(t *testing.T) {
 	// Configurar mocks
 	listMock := &MockListInterface{}
-	loggerMock := &MockLogger{}
+	loggerMock := new(logging.MockLogger)
 	metricsMock := &MockCacheMetrics{}
 	entryPoolMock := &MockEntryPoolInterface{}
 
@@ -326,7 +327,7 @@ func TestCache_DeleteLRUEntry(t *testing.T) {
 func TestCache_DeleteExpiredEntries(t *testing.T) {
 	// Configurar mocks
 	listMock := &MockListInterface{}
-	loggerMock := &MockLogger{}
+	loggerMock := new(logging.MockLogger)
 	metricsMock := &MockCacheMetrics{}
 	entryPoolMock := &MockEntryPoolInterface{}
 
@@ -385,7 +386,7 @@ func TestCache_DeleteExpiredEntries(t *testing.T) {
 func TestCache_cleanupExpiredEntries(t *testing.T) {
 	// Configurar mocks
 	listMock := &MockListInterface{}
-	loggerMock := &MockLogger{}
+	loggerMock := new(logging.MockLogger)
 	metricsMock := &MockCacheMetrics{}
 	entryPoolMock := &MockEntryPoolInterface{}
 	timerMock := &MockTimerInterface{}
@@ -441,7 +442,7 @@ func TestCache_cleanupExpiredEntries(t *testing.T) {
 func TestCache_Size(t *testing.T) {
 	// Configurar mocks
 	listMock := &MockListInterface{}
-	loggerMock := &MockLogger{}
+	loggerMock := new(logging.MockLogger)
 	metricsMock := &MockCacheMetrics{}
 	entryPoolMock := &MockEntryPoolInterface{}
 	timerMock := &MockTimerInterface{}
