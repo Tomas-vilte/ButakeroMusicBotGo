@@ -3,6 +3,7 @@ package logging
 import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"time"
 )
 
 // Logger define la interfaz para los métodos de registro de información, advertencia y error.
@@ -22,6 +23,20 @@ type ZapLogger struct {
 // NewZapLogger crea una nueva instancia de ZapLogger.
 func NewZapLogger(outputLogsBool bool) (*ZapLogger, error) {
 	config := zap.NewProductionConfig()
+
+	config.EncoderConfig = zapcore.EncoderConfig{
+		TimeKey:        "timestamp",
+		LevelKey:       "level",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		MessageKey:     "msg",
+		StacktraceKey:  "stacktrace",
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    zapcore.CapitalLevelEncoder,
+		EncodeTime:     customTimeEncoder,
+		EncodeDuration: zapcore.SecondsDurationEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
+	}
 	if outputLogsBool {
 		config.OutputPaths = []string{"../logs/myapp.log"}
 	}
@@ -43,7 +58,7 @@ func (l *ZapLogger) Close() error {
 }
 
 func (l *ZapLogger) With(fields ...zapcore.Field) {
-	l.logger = l.logger.With(fields...)
+	l.logger.With(fields...)
 }
 
 // Info registra un mensaje informativo.
@@ -64,4 +79,9 @@ func (l *ZapLogger) Error(msg string, fields ...zapcore.Field) {
 // Debug registra un mensaje de depuración.
 func (l *ZapLogger) Debug(msg string, fields ...zapcore.Field) {
 	l.logger.Debug(msg, fields...)
+}
+
+// customTimeEncoder es una función para formatear la fecha y hora.
+func customTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+	enc.AppendString(t.Format("2006-01-02 15:04:05"))
 }
