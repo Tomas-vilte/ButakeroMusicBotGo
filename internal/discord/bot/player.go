@@ -35,7 +35,6 @@ type DCADataGetter func(ctx context.Context, song *voice.Song) (io.Reader, error
 
 // GuildPlayer es el reproductor de música para un servidor específico en Discord.
 type GuildPlayer struct {
-	ctx             context.Context                    // Contexto para la gestión de la vida útil del reproductor.
 	triggerCh       chan Trigger                       // Canal para recibir disparadores de comandos relacionados con la reproducción de música.
 	session         voice.VoiceChatSession             // Sesión de chat de voz que define métodos para interactuar con la sesión de voz del bot de Discord.
 	songCtxCancel   context.CancelFunc                 // Función de cancelación del contexto de la canción actual.
@@ -63,9 +62,8 @@ type VoiceChannelInfo struct {
 }
 
 // NewGuildPlayer crea una nueva instancia de GuildPlayer con los parámetros proporcionados.
-func NewGuildPlayer(ctx context.Context, session voice.VoiceChatSession, songStorage store.SongStorage, stateStorage store.StateStorage, dCADataGetter DCADataGetter, message discordmessenger.ChatMessageSender, logger logging.Logger) *GuildPlayer {
+func NewGuildPlayer(session voice.VoiceChatSession, songStorage store.SongStorage, stateStorage store.StateStorage, dCADataGetter DCADataGetter, message discordmessenger.ChatMessageSender, logger logging.Logger) *GuildPlayer {
 	return &GuildPlayer{
-		ctx:             ctx,
 		songStorage:     songStorage,
 		stateStorage:    stateStorage,
 		triggerCh:       make(chan Trigger),

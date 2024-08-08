@@ -89,7 +89,7 @@ func main() {
 	responseHandler := discord.NewDiscordResponseHandler(logger)
 	sessionService := discord.NewSessionService(dg)
 
-	handler := discord.NewInteractionHandler(ctx, cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter, cacheStorage, audioCache, youtubeService, executorCommand, s3upload).WithLogger(logger)
+	handler := discord.NewInteractionHandler(cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter, cacheStorage, audioCache, youtubeService, executorCommand, s3upload).WithLogger(logger)
 	commandHandler := discord.NewSlashCommandRouter(cfg.CommandPrefix).
 		PlayHandler(handler.PlaySong).
 		SkipHandler(handler.SkipSong).
@@ -99,7 +99,7 @@ func main() {
 		PlayingNowHandler(handler.GetPlayingSong).
 		AddSongOrPlaylistHandler(handler.AddSongOrPlaylist)
 
-	handler.RegisterEventHandlers(dg)
+	handler.RegisterEventHandlers(dg, ctx)
 	dg.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		switch i.Type {
 		case discordgo.InteractionMessageComponent:
@@ -109,10 +109,10 @@ func main() {
 
 		default:
 			if h, ok := commandHandler.GetCommandHandlers()[i.ApplicationCommandData().Name]; ok {
-				h(s, i)
+				h(ctx, s, i)
 			}
 		}
-		handler.CheckVoiceChannelsPresence()
+		handler.CheckVoiceChannelsPresence(ctx)
 	})
 	dg.Identify.Intents = discordgo.IntentsAll
 	err = dg.Open()
