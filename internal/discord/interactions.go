@@ -28,7 +28,6 @@ type GuildID string
 
 // InteractionHandler maneja las interacciones de Discord.
 type InteractionHandler struct {
-	ctx                 context.Context
 	discordToken        string
 	guildsPlayers       map[GuildID]*bot.GuildPlayer
 	songLookup          fetcher.SongLooker
@@ -46,7 +45,7 @@ type InteractionHandler struct {
 }
 
 // NewInteractionHandler crea una nueva instancia de InteractionHandler.
-func NewInteractionHandler(ctx context.Context, discordToken string, responseHandler ResponseHandler, session SessionService,
+func NewInteractionHandler(discordToken string, responseHandler ResponseHandler, session SessionService,
 	songLooker fetcher.SongLooker,
 	storage InteractionStorage,
 	cfg *config.Config, logger logging.Logger,
@@ -57,7 +56,6 @@ func NewInteractionHandler(ctx context.Context, discordToken string, responseHan
 	upload s3_audio.Uploader) *InteractionHandler {
 
 	handler := &InteractionHandler{
-		ctx:                 ctx,
 		discordToken:        discordToken,
 		guildsPlayers:       make(map[GuildID]*bot.GuildPlayer),
 		songLookup:          songLooker,
@@ -90,7 +88,7 @@ func (handler *InteractionHandler) Ready(s *discordgo.Session, event *discordgo.
 }
 
 // GuildCreate se llama cuando el bot se une a un nuevo servidor.
-func (handler *InteractionHandler) GuildCreate(s *discordgo.Session, event *discordgo.GuildCreate) {
+func (handler *InteractionHandler) GuildCreate(ctx context.Context, s *discordgo.Session, event *discordgo.GuildCreate) {
 	if event.Guild.Unavailable {
 		return
 	}
@@ -100,7 +98,7 @@ func (handler *InteractionHandler) GuildCreate(s *discordgo.Session, event *disc
 	handler.logger.Info("conectado al servidor", zap.String("guildID", event.Guild.ID))
 	player.StartListeningEvents(s)
 	go func() {
-		if err := player.Run(handler.ctx); err != nil {
+		if err := player.Run(ctx); err != nil {
 			handler.logger.Error("ocurrió un error al ejecutar el reproductor", zap.Error(err))
 		}
 	}()
@@ -118,7 +116,7 @@ func (handler *InteractionHandler) GuildDelete(s *discordgo.Session, event *disc
 }
 
 // PlaySong maneja el comando de reproducción de una canción.
-func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.InteractionCreate, opt *discordgo.ApplicationCommandInteractionDataOption) {
+func (handler *InteractionHandler) PlaySong(ctx context.Context, s *discordgo.Session, ic *discordgo.InteractionCreate, opt *discordgo.ApplicationCommandInteractionDataOption) {
 	handler.logger.With(zap.String("guildID", ic.GuildID))
 	g, err := s.State.Guild(ic.GuildID)
 	if err != nil {
@@ -156,7 +154,7 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 	}
 
 	go func(ic *discordgo.InteractionCreate, vs *discordgo.VoiceState) {
-		videoID, err := handler.songLookup.SearchYouTubeVideoID(handler.ctx, input)
+		videoID, err := handler.songLookup.SearchYouTubeVideoID(ctx, input)
 		if err != nil {
 			handler.logger.Error("Error al buscar el ID del video en YouTube", zap.Error(err), zap.String("input", input))
 			if err := handler.responseHandler.CreateFollowupMessage(handler.session, ic.Interaction, discordgo.WebhookParams{
@@ -167,7 +165,7 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 			return
 		}
 
-		songs, err := handler.songLookup.LookupSongs(handler.ctx, videoID)
+		songs, err := handler.songLookup.LookupSongs(ctx, videoID)
 		if err != nil {
 			handler.logger.Info("falló al buscar la metadata de la canción", zap.Error(err), zap.String("input", input))
 			if err := handler.responseHandler.CreateFollowupMessage(handler.session, ic.Interaction, discordgo.WebhookParams{
@@ -513,7 +511,7 @@ func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discord
 	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger, handler.caching, handler.realYoutubeClient, handler.audioCaching, handler.executorCommand, handler.upload)
 	persistent := file_storage.NewJSONStatePersistent()
 	songStorage, stateStorage := config.GetPlaylistStore(handler.cfg, string(guildID), handler.logger, persistent)
-	player := bot.NewGuildPlayer(handler.ctx, voiceChat, songStorage, stateStorage, fetcherGetDCA.GetDCAData, messageSender, handler.logger).WithLogger(handler.logger)
+	player := bot.NewGuildPlayer(voiceChat, songStorage, stateStorage, fetcherGetDCA.GetDCAData, messageSender, handler.logger).WithLogger(handler.logger)
 	return player
 }
 
@@ -540,7 +538,7 @@ func getUsersVoiceState(guild *discordgo.Guild, user *discordgo.User) *discordgo
 }
 
 // CheckVoiceChannelsPresence verifica la presencia de usuarios en los canales de voz y desconecta al bot si no hay usuarios presentes.
-func (handler *InteractionHandler) CheckVoiceChannelsPresence() {
+func (handler *InteractionHandler) CheckVoiceChannelsPresence(ctx context.Context) {
 	// Definir el intervalo de verificación
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
@@ -564,7 +562,7 @@ func (handler *InteractionHandler) CheckVoiceChannelsPresence() {
 					}
 				}
 			}
-		case <-handler.ctx.Done():
+		case <-ctx.Done():
 			return
 		}
 	}
@@ -596,12 +594,14 @@ func (handler *InteractionHandler) getVoiceChannelMembers(s *discordgo.Session, 
 }
 
 // RegisterEventHandlers registra los manejadores de eventos en la sesión de Discord.
-func (handler *InteractionHandler) RegisterEventHandlers(s *discordgo.Session) {
+func (handler *InteractionHandler) RegisterEventHandlers(s *discordgo.Session, ctx context.Context) {
 	// Registrar el manejador de eventos Ready
 	s.AddHandler(handler.Ready)
 
 	// Registrar el manejador de eventos GuildCreate
-	s.AddHandler(handler.GuildCreate)
+	s.AddHandler(func(session *discordgo.Session, event *discordgo.GuildCreate) {
+		handler.GuildCreate(ctx, session, event)
+	})
 
 	// Registrar el manejador de eventos GuildDelete
 	s.AddHandler(handler.GuildDelete)

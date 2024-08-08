@@ -1,11 +1,14 @@
 package discord
 
-import "github.com/bwmarrin/discordgo"
+import (
+	"context"
+	"github.com/bwmarrin/discordgo"
+)
 
 // SlashCommandRouter enruta los comandos de barra oblicua en Discord.
 type SlashCommandRouter struct {
 	commandPrefix            string
-	playHandler              func(*discordgo.Session, *discordgo.InteractionCreate, *discordgo.ApplicationCommandInteractionDataOption)
+	playHandler              func(context.Context, *discordgo.Session, *discordgo.InteractionCreate, *discordgo.ApplicationCommandInteractionDataOption)
 	stopHandler              func(*discordgo.Session, *discordgo.InteractionCreate, *discordgo.ApplicationCommandInteractionDataOption)
 	listHandler              func(*discordgo.Session, *discordgo.InteractionCreate, *discordgo.ApplicationCommandInteractionDataOption)
 	skipHandler              func(*discordgo.Session, *discordgo.InteractionCreate, *discordgo.ApplicationCommandInteractionDataOption)
@@ -22,7 +25,7 @@ func NewSlashCommandRouter(commandPrefix string) *SlashCommandRouter {
 }
 
 // PlayHandler establece el manejador para el comando "play".
-func (ch *SlashCommandRouter) PlayHandler(h func(*discordgo.Session, *discordgo.InteractionCreate, *discordgo.ApplicationCommandInteractionDataOption)) *SlashCommandRouter {
+func (ch *SlashCommandRouter) PlayHandler(h func(context.Context, *discordgo.Session, *discordgo.InteractionCreate, *discordgo.ApplicationCommandInteractionDataOption)) *SlashCommandRouter {
 	ch.playHandler = h
 	return ch
 }
@@ -64,15 +67,15 @@ func (ch *SlashCommandRouter) AddSongOrPlaylistHandler(h func(*discordgo.Session
 }
 
 // GetCommandHandlers devuelve los manejadores de los comandos de barra oblicua.
-func (ch *SlashCommandRouter) GetCommandHandlers() map[string]func(*discordgo.Session, *discordgo.InteractionCreate) {
-	return map[string]func(*discordgo.Session, *discordgo.InteractionCreate){
-		ch.commandPrefix: func(s *discordgo.Session, ic *discordgo.InteractionCreate) {
+func (ch *SlashCommandRouter) GetCommandHandlers() map[string]func(context.Context, *discordgo.Session, *discordgo.InteractionCreate) {
+	return map[string]func(context.Context, *discordgo.Session, *discordgo.InteractionCreate){
+		ch.commandPrefix: func(ctx context.Context, s *discordgo.Session, ic *discordgo.InteractionCreate) {
 			options := ic.ApplicationCommandData().Options
 			option := options[0]
 
 			switch option.Name {
 			case "play":
-				ch.playHandler(s, ic, option)
+				ch.playHandler(ctx, s, ic, option)
 			case "stop":
 				ch.stopHandler(s, ic, option)
 			case "list":
