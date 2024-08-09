@@ -22,7 +22,8 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.51.2
-    platform: linux/arm64/v8
+    #platform: linux/arm64/v8
+    platform: linux/amd64
     container_name: prometheus
     ports:
       - "9090:9090"
@@ -34,7 +35,8 @@ services:
 
   loki:
     image: grafana/loki:2.9.0
-    platform: linux/arm64/v8
+    # para arm64 platform: linux/arm64/v8
+    platform: linux/amd64
     container_name: loki
     ports:
       - "3100:3100"
@@ -48,7 +50,8 @@ services:
 
   promtail:
     image: grafana/promtail:2.9.0
-    platform: linux/arm64/v8
+    # para arm64 platform: linux/arm64/v8
+    platform: linux/amd64
     container_name: promtail
     volumes:
       - ./promtail-config.yaml:/etc/promtail/config.yml
@@ -59,7 +62,8 @@ services:
 
   pyroscope:
     image: grafana/pyroscope:1.6.0
-    platform: linux/arm64
+    #platform: linux/arm64
+    platform: linux/amd64
     container_name: pyroscope
     ports:
       - "4040:4040"
@@ -71,7 +75,8 @@ services:
 
   grafana:
     image: grafana/grafana:11.0.0
-    platform: linux/arm64
+    # para arm64 platform: linux/arm64
+    platform: linux/amd64
     container_name: grafana
     ports:
       - "3000:3000"
@@ -88,7 +93,8 @@ services:
 
   node-exporter:
     image: prom/node-exporter:v1.8.1
-    platform: linux/arm64/v8
+    # para arm64 platform: linux/arm64/v8
+    platform: linux/amd64
     container_name: node-exporter
     ports:
       - "9100:9100"

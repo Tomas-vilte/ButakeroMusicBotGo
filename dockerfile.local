@@ -1,15 +1,28 @@
-FROM golang:1.21 AS builder
-RUN apt-get update \
-  && apt-get install -y build-essential libopus-dev libopusfile-dev \
-  && go install github.com/bwmarrin/dca/cmd/dca@latest
+FROM --platform=linux/amd64 golang:1.21-alpine3.18 AS builder
+
+# Instalar las dependencias necesarias para la compilación
+RUN apk add --no-cache build-base opus-dev opusfile-dev \
+    && go install github.com/bwmarrin/dca/cmd/dca@latest
+
+# Establecer el directorio de trabajo
 WORKDIR /src/
+
+# Copiar los archivos de go.mod y go.sum para instalar las dependencias
 COPY go.mod go.sum ./
 RUN go mod download
+
+# Copiar el código fuente del proyecto
 COPY cmd/ cmd/
 COPY internal/ internal/
+
+# Compilar el binario usando la arquitectura amd64
 RUN CGO_ENABLED=1 GOARCH=amd64 GOMAXPROCS=4 go build -ldflags="-s -w" -o /bin/butakero cmd/main.go
-FROM ubuntu:22.04
-ARG YT_DLP_VERSION="2024.04.09"
+
+# Etapa final del contenedor
+# Usar la imagen base de Alpine para arquitectura amd64
+FROM --platform=linux/amd64 alpine:edge
+
+# Definir las variables de entorno necesarias
 ENV DISCORD_TOKEN=
 ENV COMMAND_PREFIX=
 ENV YOUTUBE_API_KEY=
@@ -18,11 +31,16 @@ ENV REGION=
 ENV ACCESS_KEY=
 ENV SECRET_KEY=
 
-RUN apt-get update \
-  && apt-get install -y ffmpeg wget libopusfile0 \
-  && wget "https://github.com/yt-dlp/yt-dlp/releases/download/${YT_DLP_VERSION}/yt-dlp_linux" -O /usr/local/bin/yt-dlp \
-  && chmod +x /usr/local/bin/yt-dlp
+# Instalar las dependencias necesarias para la ejecución del binario
+RUN apk add --no-cache ffmpeg wget opusfile yt-dlp \
+    && apk add --no-cache gcompat libstdc++ \
+    # Actualizar yt-dlp a la última versión
+    && apk -U upgrade yt-dlp
+
+# Copiar el binario compilado desde la etapa de construcción
 COPY --from=builder /bin/butakero /bin/butakero
+# Copiar la herramienta dca compilada desde la etapa de construcción
 COPY --from=builder /go/bin/dca /usr/local/bin/dca
 
+# Definir el comando de inicio del contenedor
 CMD ["/bin/butakero"]
