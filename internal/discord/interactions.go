@@ -7,7 +7,6 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/cache"
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
-	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot/store/file_storage"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/discordmessenger"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice/codec"
@@ -509,8 +508,7 @@ func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discord
 	voiceChat := voice.NewChatSessionImpl(dg, string(guildID), dca, handler.logger)
 	messageSender := discordmessenger.NewMessageSenderImpl(dg, handler.logger)
 	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger, handler.caching, handler.realYoutubeClient, handler.audioCaching, handler.executorCommand, handler.upload)
-	persistent := file_storage.NewJSONStatePersistent()
-	songStorage, stateStorage := config.GetPlaylistStore(handler.cfg, string(guildID), handler.logger, persistent)
+	songStorage, stateStorage := config.GetPlaylistStore(handler.cfg, string(guildID), handler.logger)
 	player := bot.NewGuildPlayer(voiceChat, songStorage, stateStorage, fetcherGetDCA.GetDCAData, messageSender, handler.logger).WithLogger(handler.logger)
 	return player
 }
