@@ -57,6 +57,6 @@ jobs:
             set -e
             cd /opt/app/ButakeroMusicBotGo
             sudo git pull
-            sudo docker compose -f production-docker-compose.yml down
-            sudo docker compose --env-file .env -f production-docker-compose.yml build
-            sudo docker compose --env-file .env -f production-docker-compose.yml up -d
+            docker-compose -f production-docker-compose.yml down
+            docker-compose -f production-docker-compose.yml build
+            docker-compose -f production-docker-compose.yml --env-file .env up -d
