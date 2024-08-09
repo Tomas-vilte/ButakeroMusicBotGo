@@ -37,7 +37,7 @@ var (
 
 func main() {
 	// Crear un nuevo logger usando la librería zap.
-	logger, err := logging.NewZapLogger(false)
+	logger, err := logging.NewZapLogger(true)
 	if err != nil {
 		panic("Error creando el logger: " + err.Error())
 	}
