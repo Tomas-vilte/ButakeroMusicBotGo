@@ -93,8 +93,6 @@ func (p *GuildPlayer) UpdatePresence(voiceState *discordgo.VoiceStateUpdate) {
 				p.logger.Error("falló al detener la reproducción", zap.Error(err))
 			}
 		}
-	} else {
-		p.logger.Info("No se encontró información del canal de voz", zap.String("guildID", voiceState.GuildID))
 	}
 }
 
