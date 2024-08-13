@@ -17,9 +17,6 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
-      - name: Set up environment variables
-        run: echo "IMAGE_TAG=${GITHUB_SHA}" >> $GITHUB_ENV
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -33,8 +30,8 @@ jobs:
 
       - name: Build and Push Docker Image to ECR
         run: |
-          docker build -t ${{ secrets.AWS_ECR_REPOSITORY }}:${{ github.sha }} -f dockerfile.aws .
-          docker push ${{ secrets.AWS_ECR_REPOSITORY }}:${{ github.sha }}
+          docker build -t ${{ secrets.AWS_ECR_REPOSITORY }}:latest -f dockerfile.aws .
+          docker push ${{ secrets.AWS_ECR_REPOSITORY }}:latest
 
   deploy:
     name: Deploy to EC2
@@ -50,8 +47,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           envs: |
             AWS_ECR_REPOSITORY=${{ secrets.AWS_ECR_REPOSITORY }}
-            GITHUB_SHA=${{ github.sha }}
-            IMAGE_TAG=${{ github.sha }}
           script: |
             set -e
             cd /opt/app/ButakeroMusicBotGo
@@ -61,4 +56,3 @@ jobs:
             docker-compose -f production-docker-compose.yml down
             docker-compose -f production-docker-compose.yml pull
             docker-compose -f production-docker-compose.yml up -d --build
-
