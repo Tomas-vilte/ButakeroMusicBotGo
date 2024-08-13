@@ -1,8 +1,6 @@
 services:
   discord-bot:
-    build:
-      context: .
-      dockerfile: ./dockerfile.aws
+    image: ${AWS_ECR_REPOSITORY}:${GITHUB_SHA}
     container_name: bot
     environment:
       - DISCORD_TOKEN=${DISCORD_TOKEN}

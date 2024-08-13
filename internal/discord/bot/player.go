@@ -126,7 +126,7 @@ func (p *GuildPlayer) UpdateVoiceState(s *discordgo.Session, vs *discordgo.Voice
 	}
 
 	if voiceChannelID == "" {
-		p.logger.Info("El bot no está en ningún canal de voz en este servidor")
+		//p.logger.Info("El bot no está en ningún canal de voz en este servidor")
 		return
 	}
 
