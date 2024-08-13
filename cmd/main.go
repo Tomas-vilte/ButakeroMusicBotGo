@@ -38,7 +38,7 @@ var (
 
 func main() {
 	// Crear un nuevo logger usando la librería zap.
-	logger, err := logging.NewZapLogger(true)
+	logger, err := logging.NewZapLogger(false)
 	if err != nil {
 		panic("Error creando el logger: " + err.Error())
 	}
@@ -70,7 +70,6 @@ func main() {
 		logger.Error("error al crear la session de messaging", zap.Error(err))
 		return
 	}
-
 	storage := discord.NewInMemoryStorage()
 	cacheStorage := cache.NewCache(logger, cacheMetrics, cache.DefaultCacheConfig, "metadata_cache")
 	audioCache := cache.NewAudioCache(logger, cache.DefaultCacheConfigAudio, cacheMetrics, "audio_cache")
@@ -91,7 +90,7 @@ func main() {
 	sessionService := discord.NewSessionService(dg)
 	presenceNotifier := observer.NewVoicePresenceNotifier()
 
-	handler := discord.NewInteractionHandler(cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter, cacheStorage, audioCache, youtubeService, executorCommand, s3upload, presenceNotifier).WithLogger(logger)
+	handler := discord.NewInteractionHandler(responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter, cacheStorage, audioCache, youtubeService, executorCommand, s3upload, presenceNotifier).WithLogger(logger)
 	commandHandler := discord.NewSlashCommandRouter(cfg.CommandPrefix).
 		PlayHandler(handler.PlaySong).
 		SkipHandler(handler.SkipSong).
