@@ -27,7 +27,6 @@ type GuildID string
 
 // InteractionHandler maneja las interacciones de Discord.
 type InteractionHandler struct {
-	discordToken        string
 	guildsPlayers       map[GuildID]*bot.GuildPlayer
 	songLookup          fetcher.SongLooker
 	storage             InteractionStorage
@@ -45,7 +44,7 @@ type InteractionHandler struct {
 }
 
 // NewInteractionHandler crea una nueva instancia de InteractionHandler.
-func NewInteractionHandler(discordToken string, responseHandler ResponseHandler, session SessionService,
+func NewInteractionHandler(responseHandler ResponseHandler, session SessionService,
 	songLooker fetcher.SongLooker,
 	storage InteractionStorage,
 	cfg *config.Config, logger logging.Logger,
@@ -57,7 +56,6 @@ func NewInteractionHandler(discordToken string, responseHandler ResponseHandler,
 	presenceNotifier *observer.VoicePresenceNotifier) *InteractionHandler {
 
 	handler := &InteractionHandler{
-		discordToken:        discordToken,
 		guildsPlayers:       make(map[GuildID]*bot.GuildPlayer),
 		songLookup:          songLooker,
 		storage:             storage,
