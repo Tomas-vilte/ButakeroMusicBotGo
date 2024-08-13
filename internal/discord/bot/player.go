@@ -36,13 +36,13 @@ type DCADataGetter func(ctx context.Context, song *voice.Song) (io.Reader, error
 // GuildPlayer es el reproductor de música para un servidor específico en Discord.
 type GuildPlayer struct {
 	triggerCh       chan Trigger                       // Canal para recibir disparadores de comandos relacionados con la reproducción de música.
-	session         voice.VoiceChatSession             // Sesión de chat de voz que define métodos para interactuar con la sesión de voz del bot de Discord.
+	session         voice.VoiceChatSession             // Interfaz voice.VoiceChatSession Sesión de chat de voz que define métodos para interactuar con la sesión de voz del bot de Discord.
 	songCtxCancel   context.CancelFunc                 // Función de cancelación del contexto de la canción actual.
-	songStorage     store.SongStorage                  // Almacenamiento de canciones para la lista de reproducción.
-	stateStorage    store.StateStorage                 // Almacenamiento de estado para el reproductor de música.
+	songStorage     store.SongStorage                  // Interfaz store.SongStorage Almacenamiento de canciones para la lista de reproducción.
+	stateStorage    store.StateStorage                 // Interfaz store.StateStorage Almacenamiento de estado para el reproductor de música.
 	dCADataGetter   DCADataGetter                      // Función para obtener datos de audio codificados en DCA para una canción específica.
 	audioBufferSize int                                // Tamaño del búfer de audio para la transmisión de música.
-	logger          logging.Logger                     // Registro de eventos y errores.
+	logger          logging.Logger                     // Interfaz logging.Logger Registro de eventos y errores.
 	voiceChannelMap map[string]VoiceChannelInfo        // Mapa que contiene información sobre los canales de voz y su estado.
 	message         discordmessenger.ChatMessageSender // Interfaz para enviar mensajes de chat a Discord.
 	mu              sync.Mutex
@@ -76,6 +76,28 @@ func NewGuildPlayer(session voice.VoiceChatSession, songStorage store.SongStorag
 	}
 }
 
+// UpdatePresence actualiza la presencia en el canal de voz y maneja la desconexión si es necesario.
+func (p *GuildPlayer) UpdatePresence(voiceState *discordgo.VoiceStateUpdate) {
+	p.logger.Debug("Actualización de presencia recibida", zap.String("guildID", voiceState.GuildID))
+
+	// Verificamos si hay data del canal de voz en el mapa
+	if voiceChannelInfo, ok := p.voiceChannelMap[voiceState.GuildID]; ok {
+		p.logger.Debug("Información del canal de voz", zap.Int("membersCount", len(voiceChannelInfo.Members)))
+
+		// Verificar si hay un solo miembro o el bot en el canal
+		if len(voiceChannelInfo.Members) == 1 || voiceChannelInfo.BotID == voiceChannelInfo.Members[0].User.ID {
+			p.logger.Warn("Desconectando bot debido a la falta de presencia", zap.String("guildID", voiceState.GuildID))
+
+			// Detenemos la reproduccion de musica
+			if err := p.Stop(); err != nil {
+				p.logger.Error("falló al detener la reproducción", zap.Error(err))
+			}
+		}
+	} else {
+		p.logger.Info("No se encontró información del canal de voz", zap.String("guildID", voiceState.GuildID))
+	}
+}
+
 // WithLogger establece el logger para el GuildPlayer y devuelve el mismo GuildPlayer.
 func (p *GuildPlayer) WithLogger(l logging.Logger) *GuildPlayer {
 	p.logger = l
@@ -86,6 +108,7 @@ func (p *GuildPlayer) WithLogger(l logging.Logger) *GuildPlayer {
 func (p *GuildPlayer) UpdateVoiceState(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
 	// Obtener información sobre el servidor
 	guild, err := s.State.Guild(vs.GuildID)
 	if err != nil {
@@ -95,9 +118,9 @@ func (p *GuildPlayer) UpdateVoiceState(s *discordgo.Session, vs *discordgo.Voice
 
 	// Verificar si el bot está en el canal de voz
 	var voiceChannelID string
-	for _, vs := range guild.VoiceStates {
-		if vs.UserID == s.State.User.ID {
-			voiceChannelID = vs.ChannelID
+	for _, voiceState := range guild.VoiceStates {
+		if voiceState.UserID == s.State.User.ID {
+			voiceChannelID = voiceState.ChannelID
 			break
 		}
 	}
@@ -116,9 +139,9 @@ func (p *GuildPlayer) UpdateVoiceState(s *discordgo.Session, vs *discordgo.Voice
 
 	// Obtener los miembros presentes en el canal de voz
 	var members []*discordgo.Member
-	for _, vs := range guild.VoiceStates {
-		if vs.ChannelID == voiceChannelID {
-			member, err := s.State.Member(guild.ID, vs.UserID)
+	for _, voiceState := range guild.VoiceStates {
+		if voiceState.ChannelID == voiceChannelID {
+			member, err := s.State.Member(guild.ID, voiceState.UserID)
 			if err != nil {
 				p.logger.Error("Error al obtener información del miembro", zap.Error(err))
 			} else {
@@ -127,7 +150,7 @@ func (p *GuildPlayer) UpdateVoiceState(s *discordgo.Session, vs *discordgo.Voice
 		}
 	}
 
-	// Actualizar el mapa de canales de voz solo si es una nueva entrada
+	// Actualizar el mapa de canales de voz
 	p.voiceChannelMap[vs.GuildID] = VoiceChannelInfo{
 		GuildID:         vs.GuildID,
 		GuildName:       guild.Name,
@@ -135,7 +158,7 @@ func (p *GuildPlayer) UpdateVoiceState(s *discordgo.Session, vs *discordgo.Voice
 		TextChannelName: channel.Name,
 		Members:         members,
 		LastUpdated:     time.Now(),
-		BotID:           vs.Member.User.ID,
+		BotID:           s.State.User.ID,
 	}
 }
 
@@ -158,14 +181,6 @@ func (p *GuildPlayer) updateSongPosition(song *voice.Song, position time.Duratio
 // GetVoiceChannelInfo devuelve el mapa con toda la información de los canales de voz y su estado.
 func (p *GuildPlayer) GetVoiceChannelInfo() map[string]VoiceChannelInfo {
 	return p.voiceChannelMap
-}
-
-// StartListeningEvents inicia la escucha de eventos relevantes.
-func (p *GuildPlayer) StartListeningEvents(s *discordgo.Session) {
-	s.AddHandler(func(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
-		p.UpdateVoiceState(s, vs)
-	})
-	p.logger.Info("Comenzando a escuchar eventos relevantes")
 }
 
 // AddSong agrega una o más canciones a la lista de reproducción.

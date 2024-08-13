@@ -8,6 +8,7 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/bot"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/discordmessenger"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/observer"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord/voice/codec"
 	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
@@ -19,7 +20,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 	"strings"
-	"time"
 )
 
 // GuildID representa el ID de un servidor de Discord.
@@ -41,6 +41,7 @@ type InteractionHandler struct {
 	audioCaching        cache.AudioCaching
 	executorCommand     fetcher.CommandExecutor
 	upload              s3_audio.Uploader
+	presenceNotifier    *observer.VoicePresenceNotifier
 }
 
 // NewInteractionHandler crea una nueva instancia de InteractionHandler.
@@ -52,7 +53,8 @@ func NewInteractionHandler(discordToken string, responseHandler ResponseHandler,
 	manager cache.Manager, audioCaching cache.AudioCaching,
 	youtubeClient providers.YouTubeService,
 	executorCommand fetcher.CommandExecutor,
-	upload s3_audio.Uploader) *InteractionHandler {
+	upload s3_audio.Uploader,
+	presenceNotifier *observer.VoicePresenceNotifier) *InteractionHandler {
 
 	handler := &InteractionHandler{
 		discordToken:        discordToken,
@@ -69,6 +71,7 @@ func NewInteractionHandler(discordToken string, responseHandler ResponseHandler,
 		realYoutubeClient:   youtubeClient,
 		executorCommand:     executorCommand,
 		upload:              upload,
+		presenceNotifier:    presenceNotifier,
 	}
 	return handler
 }
@@ -95,12 +98,25 @@ func (handler *InteractionHandler) GuildCreate(ctx context.Context, s *discordgo
 	player := handler.setupGuildPlayer(GuildID(event.Guild.ID), s)
 	handler.guildsPlayers[GuildID(event.Guild.ID)] = player
 	handler.logger.Info("conectado al servidor", zap.String("guildID", event.Guild.ID))
-	player.StartListeningEvents(s)
 	go func() {
 		if err := player.Run(ctx); err != nil {
 			handler.logger.Error("ocurrió un error al ejecutar el reproductor", zap.Error(err))
 		}
 	}()
+}
+
+func (handler *InteractionHandler) StartPresenceCheck(s *discordgo.Session) {
+
+	for _, player := range handler.guildsPlayers {
+		handler.presenceNotifier.AddObserver(player)
+	}
+
+	s.AddHandler(func(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
+		handler.logger.Info("Recibido evento VoiceStateUpdate", zap.String("guildID", vs.GuildID), zap.String("channelID", vs.ChannelID))
+		handler.presenceNotifier.NotifyObservers(vs)
+	})
+
+	handler.logger.Info("Comenzando a escuchar eventos de presencia en el canal de voz")
 }
 
 // GuildDelete se llama cuando el bot es removido de un servidor.
@@ -535,37 +551,6 @@ func getUsersVoiceState(guild *discordgo.Guild, user *discordgo.User) *discordgo
 	return nil
 }
 
-// CheckVoiceChannelsPresence verifica la presencia de usuarios en los canales de voz y desconecta al bot si no hay usuarios presentes.
-func (handler *InteractionHandler) CheckVoiceChannelsPresence(ctx context.Context) {
-	// Definir el intervalo de verificación
-	ticker := time.NewTicker(1 * time.Minute)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			// Iterar sobre los servidores y verificar la presencia en los canales de voz
-			for guildID, player := range handler.guildsPlayers {
-				// Obtener el canal de voz asociado con el servidor actual
-				voiceChannelInfo, ok := player.GetVoiceChannelInfo()[string(guildID)]
-				if !ok {
-					continue
-				}
-
-				// Verificar si hay usuarios presentes solo en el canal de voz asociado al server
-				if len(voiceChannelInfo.Members) == 1 || voiceChannelInfo.BotID == voiceChannelInfo.Members[0].User.ID {
-					handler.logger.Info("Desconectando bot debido a la falta de presencia en el canal de voz", zap.String("guildID", string(guildID)))
-					if err := player.Stop(); err != nil {
-						handler.logger.Error("falló al detener la reproducción", zap.Error(err))
-					}
-				}
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
 // getVoiceChannelMembers obtiene los miembros presentes en un canal de voz específico.
 func (handler *InteractionHandler) getVoiceChannelMembers(s *discordgo.Session, channelID string) {
 	channel, err := s.Channel(channelID)
@@ -599,6 +584,12 @@ func (handler *InteractionHandler) RegisterEventHandlers(s *discordgo.Session, c
 	// Registrar el manejador de eventos GuildCreate
 	s.AddHandler(func(session *discordgo.Session, event *discordgo.GuildCreate) {
 		handler.GuildCreate(ctx, session, event)
+	})
+
+	s.AddHandler(func(session *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
+		if player, ok := handler.guildsPlayers[GuildID(vs.GuildID)]; ok {
+			player.UpdateVoiceState(session, vs)
+		}
 	})
 
 	// Registrar el manejador de eventos GuildDelete

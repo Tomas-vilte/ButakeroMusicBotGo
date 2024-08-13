@@ -5,6 +5,7 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/cache"
 	"github.com/Tomas-vilte/GoMusicBot/internal/config"
 	"github.com/Tomas-vilte/GoMusicBot/internal/discord"
+	"github.com/Tomas-vilte/GoMusicBot/internal/discord/observer"
 	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
 	"github.com/Tomas-vilte/GoMusicBot/internal/metrics"
 	"github.com/Tomas-vilte/GoMusicBot/internal/music/fetcher"
@@ -88,8 +89,9 @@ func main() {
 	youtubeFetcher := fetcher.NewYoutubeFetcher(logger, cacheStorage, youtubeService, audioCache, executorCommand, s3upload)
 	responseHandler := discord.NewDiscordResponseHandler(logger)
 	sessionService := discord.NewSessionService(dg)
+	presenceNotifier := observer.NewVoicePresenceNotifier()
 
-	handler := discord.NewInteractionHandler(cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter, cacheStorage, audioCache, youtubeService, executorCommand, s3upload).WithLogger(logger)
+	handler := discord.NewInteractionHandler(cfg.DiscordToken, responseHandler, sessionService, youtubeFetcher, storage, cfg, logger, commandUsageCounter, cacheStorage, audioCache, youtubeService, executorCommand, s3upload, presenceNotifier).WithLogger(logger)
 	commandHandler := discord.NewSlashCommandRouter(cfg.CommandPrefix).
 		PlayHandler(handler.PlaySong).
 		SkipHandler(handler.SkipSong).
@@ -112,7 +114,7 @@ func main() {
 				h(ctx, s, i)
 			}
 		}
-		handler.CheckVoiceChannelsPresence(ctx)
+		handler.StartPresenceCheck(s)
 	})
 	dg.Identify.Intents = discordgo.IntentsAll
 	err = dg.Open()
