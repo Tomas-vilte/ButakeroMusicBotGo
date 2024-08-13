@@ -45,9 +45,16 @@ jobs:
           host: ${{ secrets.EC2_HOST_IP }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: |
+            AWS_ECR_REPOSITORY=${{ secrets.AWS_ECR_REPOSITORY }}
+            GITHUB_SHA=${{ secrets.GITHUB_SHA }}
           script: |
             set -e
             cd /opt/app/ButakeroMusicBotGo
+            git pull
+            # Autenticarse en ECR
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $AWS_ECR_REPOSITORY
+            docker-compose -f production-docker-compose.yml down
             docker-compose -f production-docker-compose.yml pull
-            docker-compose -f production-docker-compose.yml up -d --no-deps --build discord-bot
+            docker-compose -f production-docker-compose.yml up -d --build
 
