@@ -523,7 +523,7 @@ func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discord
 	messageSender := discordmessenger.NewMessageSenderImpl(dg, handler.logger)
 	fetcherGetDCA := fetcher.NewYoutubeFetcher(handler.logger, handler.caching, handler.realYoutubeClient, handler.audioCaching, handler.executorCommand, handler.upload)
 	songStorage, stateStorage := config.GetPlaylistStore(handler.cfg, string(guildID), handler.logger)
-	player := bot.NewGuildPlayer(voiceChat, songStorage, stateStorage, fetcherGetDCA.GetDCAData, messageSender, handler.logger).WithLogger(handler.logger)
+	player := bot.NewGuildPlayer(voiceChat, songStorage, stateStorage, fetcherGetDCA.GetDCAData, messageSender, handler.logger)
 	return player
 }
 
