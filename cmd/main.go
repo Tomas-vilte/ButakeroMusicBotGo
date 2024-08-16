@@ -43,7 +43,7 @@ func main() {
 	if err != nil {
 		panic("Error creando el logger: " + err.Error())
 	}
-	fmt.Println("test pipeline")
+	fmt.Println("test pipeline 1")
 	promRegistry := metrics.NewPrometheusRegistry()
 	commandUsageCounter := metrics.NewCommandUsageCounter()
 	cacheMetrics := metrics.NewCacheMetrics()
