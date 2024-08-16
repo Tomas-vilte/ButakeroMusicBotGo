@@ -1,6 +1,6 @@
 services:
   discord-bot:
-    image: ${AWS_ECR_REPOSITORY}:${GITHUB_SHA}
+    image: ${AWS_ECR_REPOSITORY}:latest
     container_name: bot
     environment:
       - DISCORD_TOKEN=${DISCORD_TOKEN}

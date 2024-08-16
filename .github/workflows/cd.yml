@@ -30,8 +30,8 @@ jobs:
 
       - name: Build and Push Docker Image to ECR
         run: |
-          docker build -t ${{ secrets.AWS_ECR_REPOSITORY }}:${{ github.sha }} -f dockerfile.aws .
-          docker push ${{ secrets.AWS_ECR_REPOSITORY }}:${{ github.sha }}
+          docker build -t ${{ secrets.AWS_ECR_REPOSITORY }}:latest -f dockerfile.aws .
+          docker push ${{ secrets.AWS_ECR_REPOSITORY }}:latest
 
   deploy:
     name: Deploy to EC2
@@ -47,7 +47,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           envs: |
             AWS_ECR_REPOSITORY=${{ secrets.AWS_ECR_REPOSITORY }}
-            GITHUB_SHA=${{ secrets.GITHUB_SHA }}
           script: |
             set -e
             cd /opt/app/ButakeroMusicBotGo
@@ -57,4 +56,3 @@ jobs:
             docker-compose -f production-docker-compose.yml down
             docker-compose -f production-docker-compose.yml pull
             docker-compose -f production-docker-compose.yml up -d --build
-

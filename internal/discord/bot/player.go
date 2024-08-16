@@ -96,12 +96,6 @@ func (p *GuildPlayer) UpdatePresence(voiceState *discordgo.VoiceStateUpdate) {
 	}
 }
 
-// WithLogger establece el logger para el GuildPlayer y devuelve el mismo GuildPlayer.
-func (p *GuildPlayer) WithLogger(l logging.Logger) *GuildPlayer {
-	p.logger = l
-	return p
-}
-
 // UpdateVoiceState actualiza el mapa de información sobre los canales de voz.
 func (p *GuildPlayer) UpdateVoiceState(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
 	p.mu.Lock()
