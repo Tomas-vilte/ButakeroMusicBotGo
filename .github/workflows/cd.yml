@@ -41,12 +41,13 @@ jobs:
     steps:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          AWS_ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }}
         with:
           host: ${{ secrets.EC2_HOST_IP }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: |
-            AWS_ECR_REPOSITORY=${{ secrets.AWS_ECR_REPOSITORY }}
+          envs: AWS_ECR_REPOSITORY
           script: |
             set -e
             cd /opt/app/ButakeroMusicBotGo
