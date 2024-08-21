@@ -1,15 +1,21 @@
 package encoder
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/Tomas-vilte/GoMusicBot/internal/logging"
+	"github.com/Tomas-vilte/GoMusicBot/internal/types"
 	"go.uber.org/zap"
 	"io"
+	"mccoy.space/g/ogg"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -52,8 +58,6 @@ type (
 		VBR              bool             // Si se usa VBR o no (tasa de bits variable)
 		Threads          int              // Número de hilos a utilizar, 0 para automático
 		StartTime        int              // Tiempo de inicio de la secuencia de entrada en segundos
-		AudioFilter      string
-		Comment          string
 	}
 
 	Frame struct {
@@ -97,35 +101,35 @@ func (e *EncodeOptions) PCMFrameLen() int {
 
 // Validate valida las opciones de codificación para asegurarse de que están dentro de los límites permitidos.
 // Devuelve un error si alguna opción es inválida.
-func (opts *EncodeOptions) Validate() error {
+func (e *EncodeOptions) Validate() error {
 	// Verifica que el volumen esté en el rango permitido.
-	if opts.Volume < 0 || opts.Volume > 512 {
-		return errors.New("Volumen fuera de los límites (0-512)")
+	if e.Volume < 0 || e.Volume > 512 {
+		return ErrInvalidVolume
 	}
 
 	// Verifica que la duración del cuadro sea una de las opciones válidas.
-	if opts.FrameDuration != 20 && opts.FrameDuration != 40 && opts.FrameDuration != 60 {
-		return errors.New("Duración del cuadro inválida")
+	if e.FrameDuration != 20 && e.FrameDuration != 40 && e.FrameDuration != 60 {
+		return ErrInvalidFrameDuration
 	}
 
 	// Verifica que el porcentaje de pérdida de paquetes esté en el rango permitido.
-	if opts.PacketLoss < 0 || opts.PacketLoss > 100 {
-		return errors.New("Porcentaje de pérdida de paquetes inválido")
+	if e.PacketLoss < 0 || e.PacketLoss > 100 {
+		return ErrInvalidPacketLoss
 	}
 
 	// Verifica que la aplicación de audio sea una de las opciones válidas.
-	if opts.Application != AudioApplicationAudio && opts.Application != AudioApplicationVoip && opts.Application != AudioApplicationLowDelay {
-		return errors.New("Aplicación de audio inválida")
+	if e.Application != AudioApplicationAudio && e.Application != AudioApplicationVoip && e.Application != AudioApplicationLowDelay {
+		return ErrInvalidAudioApplication
 	}
 
 	// Verifica que el nivel de compresión esté en el rango permitido.
-	if opts.CompressionLevel < 0 || opts.CompressionLevel > 10 {
-		return errors.New("Nivel de compresión fuera de los límites (0-10)")
+	if e.CompressionLevel < 0 || e.CompressionLevel > 10 {
+		return ErrInvalidCompressionLevel
 	}
 
 	// Verifica que el número de hilos no sea negativo.
-	if opts.Threads < 0 {
-		return errors.New("El número de hilos no puede ser menor que 0")
+	if e.Threads < 0 {
+		return ErrInvalidThreads
 	}
 
 	return nil
@@ -148,12 +152,32 @@ func EncodeMem(r io.Reader, options *EncodeOptions) (session *EncodeSession, err
 	return
 }
 
+func EncodeFile(path string, options *EncodeOptions) (session *EncodeSession, err error) {
+	logger, err := logging.NewZapLogger(false)
+	if err != nil {
+		return nil, err
+	}
+	err = options.Validate()
+	if err != nil {
+		return
+	}
+	session = &EncodeSession{
+		options:      options,
+		filePath:     path,
+		frameChannel: make(chan *Frame, options.BufferedFrames),
+		logging:      *logger,
+	}
+	go session.run()
+	return
+}
+
 func (e *EncodeSession) run() {
 	defer func() {
 		e.Lock()
 		e.running = false
 		e.Unlock()
 	}()
+
 	e.Lock()
 	e.running = true
 
@@ -183,7 +207,7 @@ func (e *EncodeSession) run() {
 		"-f", "ogg",
 		"-vbr", vbrStr,
 		"-compression_level", strconv.Itoa(e.options.CompressionLevel),
-		"-af", fmt.Sprintf("volume=%.2f", e.options.Volume/100.0),
+		"-af", fmt.Sprintf("volume=%.2f", float64(e.options.Volume)/100.0),
 		"-ar", strconv.Itoa(e.options.FrameRate),
 		"-ac", strconv.Itoa(e.options.Channels),
 		"-b:a", strconv.Itoa(e.options.Bitrate * 1000),
@@ -194,13 +218,13 @@ func (e *EncodeSession) run() {
 		"-ss", strconv.Itoa(e.options.StartTime),
 	}
 
-	if e.options.AudioFilter != "" {
-		args = append(args, "-af", e.options.AudioFilter)
-	}
-
 	args = append(args, "pipe:1")
 
 	ffmpeg := exec.Command("ffmpeg", args...)
+
+	e.logging.Debug("Ejecutando ffmpeg",
+		zap.Strings("args", ffmpeg.Args),
+		zap.String("input_file", inFile))
 
 	if e.pipeReader != nil {
 		ffmpeg.Stdin = e.pipeReader
@@ -208,8 +232,16 @@ func (e *EncodeSession) run() {
 
 	stdout, err := ffmpeg.StdoutPipe()
 	if err != nil {
-		e.Unlock()
-		e.logging.Error("StderrPipe Error", zap.Error(err))
+		e.logging.Error("Error al obtener stdout de ffmpeg", zap.Error(err))
+		e.setError(ErrFailedToReadStdout)
+		close(e.frameChannel)
+		return
+	}
+
+	stderr, err := ffmpeg.StderrPipe()
+	if err != nil {
+		e.logging.Error("Error al obtener stderr de ffmpeg", zap.Error(err))
+		e.setError(ErrFailedToReadStderr)
 		close(e.frameChannel)
 		return
 	}
@@ -220,19 +252,20 @@ func (e *EncodeSession) run() {
 
 	err = ffmpeg.Start()
 	if err != nil {
-		e.Unlock()
-		e.logging.Error("FFmpeg Start Error", zap.Error(err))
+		e.logging.Error("Error al iniciar ffmpeg", zap.Error(err))
+		e.setError(ErrFailedToStartFFMPEG)
 		close(e.frameChannel)
 		return
 	}
 
 	e.started = time.Now()
+
 	e.process = ffmpeg.Process
 	e.Unlock()
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go e.readStderr(stdout, &wg)
+	go e.readStderr(stderr, &wg)
 
 	defer close(e.frameChannel)
 	e.readStdout(stdout)
@@ -240,22 +273,218 @@ func (e *EncodeSession) run() {
 	err = ffmpeg.Wait()
 	if err != nil {
 		if err.Error() != "signal: killed" {
-			e.Lock()
-			e.err = err
-			e.Unlock()
+			e.logging.Error("Error al esperar a ffmpeg", zap.Error(err))
+			e.setError(err)
 		}
 	}
-
 }
 
-func (e *EncodeSession) readStderr(stdout io.ReadCloser, s *sync.WaitGroup) {
-	// TODO: implement
+func (e *EncodeSession) setError(err error) {
+	e.Lock()
+	defer e.Unlock()
+	if e.err == nil {
+		e.err = err
+	}
+}
+
+func (e *EncodeSession) readStderr(stderr io.ReadCloser, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	bufReader := bufio.NewReader(stderr)
+	var outBuf bytes.Buffer
+	for {
+		r, _, err := bufReader.ReadRune()
+		if err != nil {
+			if err != io.EOF {
+				e.logging.Error("Error leyendo stderr", zap.Error(err))
+
+			}
+			break
+		}
+
+		switch r {
+		case '\r':
+			if outBuf.Len() > 0 {
+				e.handleStderrLine(outBuf.String())
+				outBuf.Reset()
+			}
+		case '\n':
+			e.Lock()
+			e.ffmpegOutput += outBuf.String() + "\n"
+			e.Unlock()
+			outBuf.Reset()
+		default:
+			outBuf.WriteRune(r)
+		}
+	}
+}
+
+func (e *EncodeSession) handleStderrLine(line string) {
+	if strings.Index(line, "size=") != 0 {
+		return
+	}
+
+	var size int
+
+	var timeH int
+	var timeM int
+	var timeS float32
+
+	var bitrate float32
+	var speed float32
+
+	_, err := fmt.Sscanf(line, "size=%dkB time=%d:%d:%f bitrate=%fkbits/s speed=%fx", &size, &timeH, &timeM, &timeS, &bitrate, &speed)
+	if err != nil {
+		e.logging.Error("Error al analizar línea de stderr", zap.Error(err))
+	}
+
+	dur := time.Duration(timeH) * time.Hour
+	dur += time.Duration(timeM) * time.Minute
+	dur += time.Duration(timeS) * time.Second
+
+	stats := &EncodeStats{
+		Size:     size,
+		Duration: dur,
+		Bitrate:  bitrate,
+		Speed:    speed,
+	}
+
+	e.Lock()
+	e.lastStats = stats
+	e.Unlock()
 }
 
 func (e *EncodeSession) readStdout(stdout io.ReadCloser) {
-	// TODO: implement
+	decoder := NewPacketDecoder(ogg.NewDecoder(stdout))
+
+	skipPackets := 2
+	for {
+		packet, _, err := decoder.Decode()
+		if skipPackets > 0 {
+			skipPackets--
+			continue
+		}
+		if err != nil {
+			if err != io.EOF {
+				e.logging.Error("Error al leer stdout", zap.Error(err))
+			}
+			break
+		}
+		err = e.writeOpusFrame(packet)
+		if err != nil {
+			e.logging.Error("Error escribir opus frame", zap.Error(err))
+			break
+		}
+	}
+}
+
+func (e *EncodeSession) writeOpusFrame(opusFrame []byte) error {
+	var dcaBuf bytes.Buffer
+
+	err := binary.Write(&dcaBuf, binary.LittleEndian, int16(len(opusFrame)))
+	if err != nil {
+		e.logging.Error("Error al escribir datos de frame DCA", zap.Error(err))
+		return err
+	}
+
+	_, err = dcaBuf.Write(opusFrame)
+	if err != nil {
+		e.logging.Error("Error al escribir frame Opus", zap.Error(err))
+		return err
+	}
+
+	e.frameChannel <- &Frame{dcaBuf.Bytes(), false}
+
+	e.Lock()
+	e.lastFrame++
+	e.Unlock()
+
+	return nil
 }
 
 func (e *EncodeSession) writeMetadataFrame() {
-	// TODO: implement
+	metadata := types.Metadata{
+		Opus: &types.OpusMetadata{
+			Bitrate:     e.options.Bitrate * 1000,
+			SampleRate:  e.options.FrameRate,
+			Application: string(e.options.Application),
+			FrameSize:   e.options.PCMFrameLen(),
+			Channels:    e.options.Channels,
+			VBR:         e.options.VBR,
+		},
+		Origin: &types.OriginMetadata{
+			Source:   "file",
+			Channels: e.options.Channels,
+			Bitrate:  e.options.Bitrate * 1000,
+			Encoding: "Opus",
+		},
+	}
+
+	var buf bytes.Buffer
+	buf.Write([]byte(fmt.Sprintf("DCA%d", 1)))
+
+	jsonData, err := json.Marshal(metadata)
+	if err != nil {
+		e.logging.Error("Error al codificar metadatos en JSON", zap.Error(err))
+		return
+	}
+
+	jsonLen := int32(len(jsonData))
+	err = binary.Write(&buf, binary.LittleEndian, &jsonLen)
+	if err != nil {
+		e.logging.Error("Error al escribir longitud de JSON", zap.Error(err))
+		return
+	}
+
+	buf.Write(jsonData)
+	e.frameChannel <- &Frame{buf.Bytes(), true}
+}
+
+func (e *EncodeSession) ReadFrame() (frame []byte, err error) {
+	f := <-e.frameChannel
+	if f == nil {
+		return nil, io.EOF
+	}
+
+	return f.data, nil
+}
+
+func (e *EncodeSession) Read(p []byte) (n int, err error) {
+	if e.buf.Len() >= len(p) {
+		return e.buf.Read(p)
+	}
+
+	for e.buf.Len() < len(p) {
+		f, err := e.ReadFrame()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			e.logging.Error("Error al leer frame", zap.Error(err))
+			return 0, err
+		}
+		e.buf.Write(f)
+	}
+	return e.buf.Read(p)
+}
+
+func (e *EncodeSession) FFMPEGMessages() string {
+	e.Lock()
+	output := e.ffmpegOutput
+	e.Unlock()
+	return output
+}
+
+func (e *EncodeSession) Stop() error {
+	e.Lock()
+	defer e.Unlock()
+	if !e.running || e.process == nil {
+		return errors.New("la session no esta corriendo")
+	}
+	if err := e.process.Kill(); err != nil {
+		e.logging.Error("Error al detener el proceso de codificación", zap.Error(err))
+		return err
+	}
+	e.running = false
+	return nil
 }
