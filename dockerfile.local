@@ -30,6 +30,8 @@ ENV BUCKET_NAME=
 ENV REGION=
 ENV ACCESS_KEY=
 ENV SECRET_KEY=
+ENV USERNAME=
+ENV PASSOWRD=
 
 # Instalar las dependencias necesarias para la ejecución del binario
 RUN apk add --no-cache ffmpeg wget opusfile yt-dlp \

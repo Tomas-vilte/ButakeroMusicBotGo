@@ -1,7 +1,6 @@
 package fetcher
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -12,6 +11,7 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/storage/s3_audio"
 	"go.uber.org/zap"
 	"io"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -33,6 +33,10 @@ type (
 		YoutubeService  providers.YouTubeService
 		CommandExecutor CommandExecutor
 		S3Uploader      s3_audio.Uploader
+
+		// Esto es para uso temporal! Debido a que youtube pide oauth, ademas con esto podemos evitar baneamiento de IP
+		username string
+		password string
 	}
 
 	// CommandExecutor define una interfaz para ejecutar comandos del sistema.
@@ -60,6 +64,8 @@ func NewYoutubeFetcher(logger logging.Logger, cache cache.Manager, youtubeServic
 		audioCache:      audioCache,
 		CommandExecutor: commandExecutor,
 		S3Uploader:      s3Upload,
+		username:        os.Getenv("USERNAME"),
+		password:        os.Getenv("PASSWORD"),
 	}
 }
 
@@ -207,64 +213,21 @@ func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *voice.Song) (io.R
 }
 
 func (s *YoutubeFetcher) downloadAndStreamAudio(ctx context.Context, song *voice.Song, writer io.Writer) error {
-	cookiesFile := "/bin/cookies.txt"
-	ytArgs := []string{"-f", "bestaudio[ext=m4a]", "--audio-quality", "0", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", "--cookies", cookiesFile, song.URL}
+	ytArgs := []string{"-f", "bestaudio[ext=m4a]", "--audio-quality", "0", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", "-u", s.username, "-p", s.password, song.URL}
 	ffmpegArgs := []string{"-i", "pipe:0", "-b:a", "192k", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1"}
 
-	// Comando para descargar audio y convertirlo a formato DCA
+	// Ejecuta una cadena de comandos para descargar el audio de YouTube y convertirlo a formato DCA.
 	cmd := s.CommandExecutor.ExecuteCommand(ctx, "sh", "-c", fmt.Sprintf("yt-dlp %s | ffmpeg %s | dca",
 		strings.Join(ytArgs, " "),
 		strings.Join(ffmpegArgs, " ")))
 
-	// Configurar los pipes para la salida estándar y de error
-	stdoutPipe, err := cmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("error al obtener stdout pipe: %w", err)
-	}
-
-	stderrPipe, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("error al obtener stderr pipe: %w", err)
-	}
-
-	// Configurar el escritor de salida
+	// Configurar la salida del comando para escribir en el pipe
 	cmd.Stdout = writer
-
-	// Función para leer y registrar la salida estándar
-	go func() {
-		scanner := bufio.NewScanner(stdoutPipe)
-		for scanner.Scan() {
-			// Registra la salida estándar (progreso)
-			s.Logger.Info("yt-dlp stdout: %s", zap.String("Scanener", scanner.Text()))
-		}
-		if err := scanner.Err(); err != nil {
-			s.Logger.Error("error leyendo stdout: %v", zap.Error(err))
-		}
-	}()
-
-	// Función para leer y registrar la salida de error
-	go func() {
-		scanner := bufio.NewScanner(stderrPipe)
-		for scanner.Scan() {
-			// Registra la salida de error (errores y advertencias)
-			s.Logger.Error("yt-dlp stderr: %s", zap.String("errorrr", scanner.Text()))
-		}
-		if err := scanner.Err(); err != nil {
-			s.Logger.Error("error leyendo stderr: %v", zap.Error(err))
-		}
-	}()
-
-	// Iniciar el comando
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("error al iniciar el comando: %w", err)
 	}
 
-	// Esperar a que el comando termine
-	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("error al esperar el comando: %w", err)
-	}
-
-	return nil
+	return cmd.Wait()
 }
 
 func (s *YoutubeFetcher) SearchYouTubeVideoID(ctx context.Context, searchTerm string) (string, error) {
