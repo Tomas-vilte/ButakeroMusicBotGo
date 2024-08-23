@@ -1,3 +1,39 @@
+# FROM --platform=linux/arm64 arm64v8/golang:1.21-alpine3.18 AS builder
+
+# # Instalar dependencias necesarias
+# RUN apk add --no-cache build-base opus-dev opusfile-dev \
+#     && go install github.com/bwmarrin/dca/cmd/dca@latest
+
+# WORKDIR /src/
+# COPY go.mod go.sum ./
+# RUN go mod download
+# COPY cmd/ cmd/
+# COPY internal/ internal/
+# RUN CGO_ENABLED=1 GOARCH=arm64 GOMAXPROCS=4 go build -ldflags="-s -w" -o /bin/butakero cmd/main.go
+
+# # Etapa final del contenedor
+# FROM --platform=linux/arm64 arm64v8/alpine:edge
+
+# ENV DISCORD_TOKEN=
+# ENV COMMAND_PREFIX=
+# ENV YOUTUBE_API_KEY=
+# ENV BUCKET_NAME=
+# ENV REGION=
+# ENV ACCESS_KEY=
+# ENV SECRET_KEY=
+
+# # Instalar dependencias necesarias para la ejecución
+# RUN apk add --no-cache ffmpeg wget opusfile yt-dlp \
+#     && apk add --no-cache gcompat libstdc++ \
+#     # Actualizar yt-dlp
+#     && apk -U upgrade yt-dlp
+
+# # Copiar los binarios compilados desde la etapa de construcción
+# COPY --from=builder /bin/butakero /bin/butakero
+# COPY --from=builder /go/bin/dca /usr/local/bin/dca
+
+# CMD ["/bin/butakero"]
+
 # Usar la imagen base de Golang con Alpine para arquitectura amd64
 FROM --platform=linux/amd64 golang:1.21-alpine3.18 AS builder
 
@@ -31,6 +67,8 @@ ENV BUCKET_NAME=
 ENV REGION=
 ENV ACCESS_KEY=
 ENV SECRET_KEY=
+ENV USERNAME=
+ENV PASSOWRD=
 
 # Instalar las dependencias necesarias para la ejecución del binario
 RUN apk add --no-cache ffmpeg wget opusfile yt-dlp \
@@ -42,9 +80,6 @@ RUN apk add --no-cache ffmpeg wget opusfile yt-dlp \
 COPY --from=builder /bin/butakero /bin/butakero
 # Copiar la herramienta dca compilada desde la etapa de construcción
 COPY --from=builder /go/bin/dca /usr/local/bin/dca
-
-# Copiar el archivo de cookies al mismo directorio que el binario
-COPY cookies.txt /bin/cookies.txt
 
 # Definir el comando de inicio del contenedor
 CMD ["/bin/butakero"]
