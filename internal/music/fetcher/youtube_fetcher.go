@@ -1,6 +1,7 @@
 package fetcher
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -210,18 +211,60 @@ func (s *YoutubeFetcher) downloadAndStreamAudio(ctx context.Context, song *voice
 	ytArgs := []string{"-f", "bestaudio[ext=m4a]", "--audio-quality", "0", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", "--cookies", cookiesFile, song.URL}
 	ffmpegArgs := []string{"-i", "pipe:0", "-b:a", "192k", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1"}
 
-	// Ejecuta una cadena de comandos para descargar el audio de YouTube y convertirlo a formato DCA.
+	// Comando para descargar audio y convertirlo a formato DCA
 	cmd := s.CommandExecutor.ExecuteCommand(ctx, "sh", "-c", fmt.Sprintf("yt-dlp %s | ffmpeg %s | dca",
 		strings.Join(ytArgs, " "),
 		strings.Join(ffmpegArgs, " ")))
 
-	// Configurar la salida del comando para escribir en el pipe
+	// Configurar los pipes para la salida estándar y de error
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("error al obtener stdout pipe: %w", err)
+	}
+
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("error al obtener stderr pipe: %w", err)
+	}
+
+	// Configurar el escritor de salida
 	cmd.Stdout = writer
+
+	// Función para leer y registrar la salida estándar
+	go func() {
+		scanner := bufio.NewScanner(stdoutPipe)
+		for scanner.Scan() {
+			// Registra la salida estándar (progreso)
+			s.Logger.Info("yt-dlp stdout: %s", zap.String("Scanener", scanner.Text()))
+		}
+		if err := scanner.Err(); err != nil {
+			s.Logger.Error("error leyendo stdout: %v", zap.Error(err))
+		}
+	}()
+
+	// Función para leer y registrar la salida de error
+	go func() {
+		scanner := bufio.NewScanner(stderrPipe)
+		for scanner.Scan() {
+			// Registra la salida de error (errores y advertencias)
+			s.Logger.Error("yt-dlp stderr: %s", zap.String("errorrr", scanner.Text()))
+		}
+		if err := scanner.Err(); err != nil {
+			s.Logger.Error("error leyendo stderr: %v", zap.Error(err))
+		}
+	}()
+
+	// Iniciar el comando
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("error al iniciar el comando: %w", err)
 	}
 
-	return cmd.Wait()
+	// Esperar a que el comando termine
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("error al esperar el comando: %w", err)
+	}
+
+	return nil
 }
 
 func (s *YoutubeFetcher) SearchYouTubeVideoID(ctx context.Context, searchTerm string) (string, error) {
