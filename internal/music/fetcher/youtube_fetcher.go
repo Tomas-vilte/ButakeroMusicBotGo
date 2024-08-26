@@ -12,7 +12,6 @@ import (
 	"github.com/Tomas-vilte/GoMusicBot/internal/storage/s3_audio"
 	"go.uber.org/zap"
 	"io"
-	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -36,8 +35,8 @@ type (
 		S3Uploader      s3_audio.Uploader
 
 		// Esto es para uso temporal! Debido a que youtube pide oauth, ademas con esto podemos evitar baneamiento de IP
-		username string
-		password string
+		//username string
+		//password string
 	}
 
 	// CommandExecutor define una interfaz para ejecutar comandos del sistema.
@@ -65,8 +64,6 @@ func NewYoutubeFetcher(logger logging.Logger, cache cache.Manager, youtubeServic
 		audioCache:      audioCache,
 		CommandExecutor: commandExecutor,
 		S3Uploader:      s3Upload,
-		username:        os.Getenv("USERNAME"),
-		password:        os.Getenv("PASSWORD"),
 	}
 }
 
@@ -214,7 +211,7 @@ func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *voice.Song) (io.R
 }
 
 func (s *YoutubeFetcher) downloadAndStreamAudio(ctx context.Context, song *voice.Song, writer io.Writer) error {
-	ytArgs := []string{"-f", "bestaudio[ext=m4a]", "--audio-quality", "0", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", "-u", s.username, "-p", s.password, song.URL}
+	ytArgs := []string{"-f", "bestaudio[ext=m4a]", "--audio-quality", "0", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", "--username", "oauth2", "--password", "''", song.URL}
 	ffmpegArgs := []string{"-i", "pipe:0", "-b:a", "192k", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1"}
 
 	cmd := s.CommandExecutor.ExecuteCommand(ctx, "sh", "-c", fmt.Sprintf("yt-dlp %s | ffmpeg %s | dca",

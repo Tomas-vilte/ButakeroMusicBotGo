@@ -1,3 +1,4 @@
+# Usar la imagen base de Golang con Alpine para arquitectura amd64
 FROM --platform=linux/amd64 golang:1.21-alpine3.18 AS builder
 
 # Instalar las dependencias necesarias para la compilación
@@ -30,19 +31,23 @@ ENV BUCKET_NAME=
 ENV REGION=
 ENV ACCESS_KEY=
 ENV SECRET_KEY=
-ENV USERNAME=
-ENV PASSOWRD=
 
 # Instalar las dependencias necesarias para la ejecución del binario
-RUN apk add --no-cache ffmpeg wget opusfile yt-dlp \
-    && apk add --no-cache gcompat libstdc++ \
-    # Actualizar yt-dlp a la última versión
-    && apk -U upgrade yt-dlp
+RUN apk add --no-cache ffmpeg wget opusfile python3 py3-pip \
+    # Crear un entorno virtual y activar el entorno
+    && python3 -m venv /venv \
+    && /venv/bin/pip install --upgrade pip \
+    # Instalar yt-dlp y el plugin OAuth2 en el entorno virtual
+    && /venv/bin/pip install yt-dlp \
+    && /venv/bin/pip install -U https://github.com/coletdjnz/yt-dlp-youtube-oauth2/archive/refs/heads/master.zip
 
 # Copiar el binario compilado desde la etapa de construcción
 COPY --from=builder /bin/butakero /bin/butakero
 # Copiar la herramienta dca compilada desde la etapa de construcción
 COPY --from=builder /go/bin/dca /usr/local/bin/dca
+
+# Establecer el entorno virtual como el predeterminado para los comandos
+ENV PATH="/venv/bin:$PATH"
 
 # Definir el comando de inicio del contenedor
 CMD ["/bin/butakero"]
