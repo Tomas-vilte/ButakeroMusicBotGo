@@ -1,6 +1,7 @@
 package fetcher
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"fmt"
@@ -216,16 +217,39 @@ func (s *YoutubeFetcher) downloadAndStreamAudio(ctx context.Context, song *voice
 	ytArgs := []string{"-f", "bestaudio[ext=m4a]", "--audio-quality", "0", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", "-u", s.username, "-p", s.password, song.URL}
 	ffmpegArgs := []string{"-i", "pipe:0", "-b:a", "192k", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1"}
 
-	// Ejecuta una cadena de comandos para descargar el audio de YouTube y convertirlo a formato DCA.
 	cmd := s.CommandExecutor.ExecuteCommand(ctx, "sh", "-c", fmt.Sprintf("yt-dlp %s | ffmpeg %s | dca",
 		strings.Join(ytArgs, " "),
 		strings.Join(ffmpegArgs, " ")))
 
-	// Configurar la salida del comando para escribir en el pipe
-	cmd.Stdout = writer
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("error al crear el pipe de stdout: %w", err)
+	}
+
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("error al crear el pipe de stderr: %w", err)
+	}
+
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("error al iniciar el comando: %w", err)
 	}
+
+	go func() {
+		scanner := bufio.NewScanner(stdoutPipe)
+		for scanner.Scan() {
+			output := scanner.Text()
+			fmt.Println(output)
+			writer.Write([]byte(output + "\n"))
+		}
+	}()
+
+	go func() {
+		scanner := bufio.NewScanner(stderrPipe)
+		for scanner.Scan() {
+			fmt.Println(scanner.Text())
+		}
+	}()
 
 	return cmd.Wait()
 }
