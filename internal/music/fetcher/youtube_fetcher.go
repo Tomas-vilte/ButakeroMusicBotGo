@@ -231,27 +231,38 @@ func (s *YoutubeFetcher) downloadAndStreamAudio(ctx context.Context, song *voice
 		return fmt.Errorf("error al crear el pipe de stderr: %w", err)
 	}
 
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("error al iniciar el comando: %w", err)
-	}
+	cmd.Stdout = writer
 
 	go func() {
 		scanner := bufio.NewScanner(stdoutPipe)
 		for scanner.Scan() {
-			output := scanner.Text()
-			fmt.Println(output)
-			writer.Write([]byte(output + "\n"))
+			s.Logger.Info("yt-dlp stdout: %s", zap.String("Scanener", scanner.Text()))
+		}
+		if err := scanner.Err(); err != nil {
+			s.Logger.Error("error leyendo stdout: %v", zap.Error(err))
 		}
 	}()
 
 	go func() {
 		scanner := bufio.NewScanner(stderrPipe)
 		for scanner.Scan() {
-			fmt.Println(scanner.Text())
+			// Registra la salida de error (errores y advertencias)
+			s.Logger.Info("yt-dlp stderr: %s", zap.String("errorrr", scanner.Text()))
+		}
+		if err := scanner.Err(); err != nil {
+			s.Logger.Error("error leyendo stderr: %v", zap.Error(err))
 		}
 	}()
 
-	return cmd.Wait()
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("error al iniciar el comando: %w", err)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("error al esperar el comando: %w", err)
+	}
+
+	return nil
 }
 
 func (s *YoutubeFetcher) SearchYouTubeVideoID(ctx context.Context, searchTerm string) (string, error) {
