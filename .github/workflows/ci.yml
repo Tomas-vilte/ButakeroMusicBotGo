@@ -13,9 +13,24 @@ on:
       - "**.go"
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v5
+        with:
+          version: v1.57
+
+  unit-tests:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -42,23 +57,80 @@ jobs:
           && export YT_DLP_VERSION="2023.10.13" \
           && wget "https://github.com/yt-dlp/yt-dlp/releases/download/${YT_DLP_VERSION}/yt-dlp_linux" -O /usr/local/bin/yt-dlp \
           && sudo chmod +x /usr/local/bin/yt-dlp
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v5
-        with:
-          version: v1.57
 
-      - name: Build and test
+      - name: Run unit tests
+        run: go test -v -short ./...
+
+      - name: Generate unit test coverage report
         run: |
-          make build
-          make test
+          go test -short -coverprofile=unit-coverage.out ./...
+          go tool cover -html=unit-coverage.out -o unit-coverage.html
 
-      - name: Generate coverage report
-        run: |
-          go test -coverprofile=coverage.out ./...
-          go tool cover -html=coverage.out -o coverage.html
-
-      - name: Upload coverage report
+      - name: Upload unit test coverage report
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
-          path: coverage.html
+          name: unit-coverage-report
+          path: unit-coverage.html
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: /go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update \
+          && sudo apt-get install -y build-essential libopus-dev libopusfile-dev \
+          && go install github.com/bwmarrin/dca/cmd/dca@latest \
+          && sudo apt-get install -y ffmpeg wget libopusfile0 \
+          && export YT_DLP_VERSION="2023.10.13" \
+          && wget "https://github.com/yt-dlp/yt-dlp/releases/download/${YT_DLP_VERSION}/yt-dlp_linux" -O /usr/local/bin/yt-dlp \
+          && sudo chmod +x /usr/local/bin/yt-dlp
+
+      - name: Run integration tests
+        env:
+          TEST_S3_BUCKET: ${{ secrets.TEST_S3_BUCKET }}
+          TEST_AWS_REGION: ${{ secrets.TEST_AWS_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: go test -v -run Integration ./...
+
+      - name: Generate integration test coverage report
+        run: |
+          go test -run Integration -coverprofile=integration-coverage.out ./...
+          go tool cover -html=integration-coverage.out -o integration-coverage.html
+
+      - name: Upload integration test coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-coverage-report
+          path: integration-coverage.html
+
+  build:
+    needs: [lint, unit-tests, integration-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+
+      - name: Build
+        run: make build
