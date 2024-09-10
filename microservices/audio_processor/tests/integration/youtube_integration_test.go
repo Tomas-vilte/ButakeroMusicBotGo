@@ -14,7 +14,7 @@ func TestYouTubeClientIntegration(t *testing.T) {
 		t.Skip("Saltando test de integración en modo corto")
 	}
 
-	apiKey := os.Getenv("API_KEY")
+	apiKey := os.Getenv("YOUTUBE_API_KEY")
 	client := api.NewYouTubeClient(apiKey)
 
 	t.Run("GetVideoDetails Integration", func(t *testing.T) {
