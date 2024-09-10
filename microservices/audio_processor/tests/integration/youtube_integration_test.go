@@ -3,15 +3,18 @@ package integration
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
+	"os"
 	"testing"
 )
 
 // TestYouTubeClientIntegration contiene pruebas de integración que requieren una API key real.
 // Estas pruebas están deshabilitadas por defecto para evitar llamadas no deseadas a la API.
 func TestYouTubeClientIntegration(t *testing.T) {
-	t.Skip("Se omiten las pruebas de integración. Elimina esta línea para ejecutarlas con una clave API válida.")
+	if testing.Short() {
+		t.Skip("Saltando test de integración en modo corto")
+	}
 
-	apiKey := "APIKEY"
+	apiKey := os.Getenv("API_KEY")
 	client := api.NewYouTubeClient(apiKey)
 
 	t.Run("GetVideoDetails Integration", func(t *testing.T) {
