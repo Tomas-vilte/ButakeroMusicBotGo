@@ -59,7 +59,7 @@ jobs:
           && sudo chmod +x /usr/local/bin/yt-dlp
 
       - name: Run unit tests
-        run: go test -v -short ./...
+        run: make test
 
       - name: Generate unit test coverage report
         run: |
@@ -91,23 +91,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update \
-          && sudo apt-get install -y build-essential libopus-dev libopusfile-dev \
-          && go install github.com/bwmarrin/dca/cmd/dca@latest \
-          && sudo apt-get install -y ffmpeg wget libopusfile0 \
-          && export YT_DLP_VERSION="2023.10.13" \
-          && wget "https://github.com/yt-dlp/yt-dlp/releases/download/${YT_DLP_VERSION}/yt-dlp_linux" -O /usr/local/bin/yt-dlp \
-          && sudo chmod +x /usr/local/bin/yt-dlp
-
       - name: Run integration tests
         env:
-          TEST_S3_BUCKET: ${{ secrets.TEST_S3_BUCKET }}
-          TEST_AWS_REGION: ${{ secrets.TEST_AWS_REGION }}
+          BUCKET_NAME: ${{ secrets.BUCKET_NAME }}
+          REGION: ${{ secrets.REGION }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: go test -v -run Integration ./...
+        run: make integration-test
 
       - name: Generate integration test coverage report
         run: |
@@ -120,17 +110,15 @@ jobs:
           name: integration-coverage-report
           path: integration-coverage.html
 
-  build:
+  notify:
     needs: [lint, unit-tests, integration-tests]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.21
-
-      - name: Build
-        run: make build
+      - name: Notify success or failure
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "All tests and lint checks passed successfully!"
+          else
+            echo "Some tests or lint checks failed. Please check the logs for more details."
+            exit 1
+          fi
