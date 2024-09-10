@@ -93,6 +93,7 @@ jobs:
 
       - name: Run integration tests
         env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           BUCKET_NAME: ${{ secrets.BUCKET_NAME }}
           REGION: ${{ secrets.REGION }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
