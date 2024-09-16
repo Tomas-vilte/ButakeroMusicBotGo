@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
-	"time"
 )
 
 type (
@@ -51,26 +50,19 @@ func (s *MetadataStore) SaveMetadata(ctx context.Context, metadata model.Metadat
 		metadata.ID = uuid.New().String()
 	}
 
-	downloadDate := metadata.DownloadDate
-	if downloadDate == "" {
-		downloadDate = time.Now().Format(time.RFC3339)
-	}
-
 	_, err := s.Client.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String(s.TableName),
 		Item: map[string]types.AttributeValue{
-			"PK":           &types.AttributeValueMemberS{Value: "METADATA#" + metadata.ID},
-			"SK":           &types.AttributeValueMemberS{Value: "METADATA#" + metadata.ID},
-			"ID":           &types.AttributeValueMemberS{Value: metadata.ID},
-			"Title":        &types.AttributeValueMemberS{Value: metadata.Title},
-			"URLYoutube":   &types.AttributeValueMemberS{Value: metadata.URLYouTube},
-			"URLS3":        &types.AttributeValueMemberS{Value: metadata.URLS3},
-			"Platform":     &types.AttributeValueMemberS{Value: metadata.Platform},
-			"DownloadDate": &types.AttributeValueMemberS{Value: downloadDate},
-			"Attempts":     &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", metadata.Attempts)},
-			"Failures":     &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", metadata.Failures)},
-			"Artist":       &types.AttributeValueMemberS{Value: metadata.Artist},
-			"Duration":     &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", metadata.Duration)},
+			"PK":         &types.AttributeValueMemberS{Value: "METADATA#" + metadata.ID},
+			"SK":         &types.AttributeValueMemberS{Value: "METADATA#" + metadata.ID},
+			"ID":         &types.AttributeValueMemberS{Value: metadata.ID},
+			"Title":      &types.AttributeValueMemberS{Value: metadata.Title},
+			"URLYoutube": &types.AttributeValueMemberS{Value: metadata.URLYouTube},
+			"Thumbnail":  &types.AttributeValueMemberS{Value: metadata.Thumbnail},
+			"URLS3":      &types.AttributeValueMemberS{Value: metadata.URLS3},
+			"Platform":   &types.AttributeValueMemberS{Value: metadata.Platform},
+			"Artist":     &types.AttributeValueMemberS{Value: metadata.Artist},
+			"Duration":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", metadata.Duration)},
 		},
 	})
 	if err != nil {

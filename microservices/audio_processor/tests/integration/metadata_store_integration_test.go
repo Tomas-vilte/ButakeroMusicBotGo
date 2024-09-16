@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
-	"time"
 )
 
 func TestIntegrationMetadataStore(t *testing.T) {
@@ -29,18 +28,13 @@ func TestIntegrationMetadataStore(t *testing.T) {
 		require.NoError(t, err)
 
 		metadata := model.Metadata{
-			ID:             "integration-test-id",
-			Title:          "Integration Test Song",
-			URLYouTube:     "https://www.youtube.com/watch?v=example",
-			URLS3:          "https://s3.amazonaws.com/mybucket/integration-test-id",
-			Platform:       "YouTube",
-			DownloadDate:   time.Now().Format(time.RFC3339),
-			Attempts:       1,
-			Failures:       0,
-			ProcessingDate: time.Now().Format(time.RFC3339),
-			Success:        true,
-			Artist:         "Test Artist",
-			Duration:       240,
+			ID:         "integration-test-id",
+			Title:      "Integration Test Song",
+			URLYouTube: "https://www.youtube.com/watch?v=example",
+			URLS3:      "https://s3.amazonaws.com/mybucket/integration-test-id",
+			Platform:   "YouTube",
+			Artist:     "Test Artist",
+			Duration:   240,
 		}
 
 		// act SaveMetadata
@@ -56,9 +50,6 @@ func TestIntegrationMetadataStore(t *testing.T) {
 		assert.Equal(t, metadata.URLYouTube, retrievedMetadata.URLYouTube)
 		assert.Equal(t, metadata.URLS3, retrievedMetadata.URLS3)
 		assert.Equal(t, metadata.Platform, retrievedMetadata.Platform)
-		assert.Equal(t, metadata.DownloadDate, retrievedMetadata.DownloadDate)
-		assert.Equal(t, metadata.Attempts, retrievedMetadata.Attempts)
-		assert.Equal(t, metadata.Failures, retrievedMetadata.Failures)
 		assert.Equal(t, metadata.Artist, retrievedMetadata.Artist)
 		assert.Equal(t, metadata.Duration, retrievedMetadata.Duration)
 
