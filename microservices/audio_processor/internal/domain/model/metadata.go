@@ -1,16 +1,37 @@
 package model
 
+// Metadata representa la información sobre una canción procesada.
+// Contiene detalles sobre la canción, como su título, artista, duración, y URLs de recursos.
 type Metadata struct {
-	ID             string `json:"id"`              // Identificador único de la canción.
-	Title          string `json:"title"`           // Título de la canción.
-	Artist         string `json:"artist"`          // Artista de la canción.
-	Duration       int    `json:"duration"`        // Duración de la canción en segundos.
-	URLS3          string `json:"url_s3"`          // URL del archivo almacenado en S3.
-	URLYouTube     string `json:"url_youtube"`     // URL de la canción en YouTube.
-	DownloadDate   string `json:"download_date"`   // Fecha en que se descargó la canción.
-	Platform       string `json:"platform"`        // Plataforma de origen (e.g., YouTube).
-	ProcessingDate string `json:"processing_date"` // Fecha en que se procesó la canción.
-	Success        bool   `json:"success"`         // Indica si el procesamiento fue exitoso.
-	Attempts       int    `json:"attempts"`        // Número de intentos para descargar o procesar la canción.
-	Failures       int    `json:"failures"`        // Número de fallos durante el proceso.
+	// ID es un identificador único para la canción.
+	// Este campo se utiliza para asociar la metadata con una canción específica.
+	ID string `json:"id"`
+
+	// Title es el título de la canción.
+	// Representa el nombre de la canción tal como aparece en la fuente de origen.
+	Title string `json:"title"`
+
+	// Artist es el nombre del artista o grupo que interpreta la canción.
+	// Este campo ayuda a identificar el creador de la música.
+	Artist string `json:"artist"`
+
+	// Duration es la duración de la canción en segundos.
+	// Representa cuánto tiempo dura la canción desde el inicio hasta el final.
+	Duration int `json:"duration"`
+
+	// URLS3 es la URL del archivo de la canción almacenado en Amazon S3.
+	// Este campo se usa para acceder al archivo de audio descargado y procesado.
+	URLS3 string `json:"url_s3"`
+
+	// URLYouTube es la URL de la canción en YouTube.
+	// Permite localizar la canción en YouTube para referencias adicionales o reproducción.
+	URLYouTube string `json:"url_youtube"`
+
+	// Thumbnail es la imagen en miniatura del contenido.
+	// Proporciona una vista previa visual de la canción, útil para interfaces de usuario y presentación.
+	Thumbnail string `json:"thumbnail"`
+
+	// Platform indica la plataforma de origen de la canción (e.g., YouTube).
+	// Este campo identifica la fuente desde la cual se obtuvo la canción.
+	Platform string `json:"platform"`
 }
