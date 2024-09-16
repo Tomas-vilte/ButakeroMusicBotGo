@@ -7,6 +7,7 @@ type Metadata struct {
 	Duration       int    `json:"duration"`        // Duración de la canción en segundos.
 	URLS3          string `json:"url_s3"`          // URL del archivo almacenado en S3.
 	URLYouTube     string `json:"url_youtube"`     // URL de la canción en YouTube.
+	Thumbnail      string `json:"thumbnail"`       // Imagen del contenido
 	DownloadDate   string `json:"download_date"`   // Fecha en que se descargó la canción.
 	Platform       string `json:"platform"`        // Plataforma de origen (e.g., YouTube).
 	ProcessingDate string `json:"processing_date"` // Fecha en que se procesó la canción.
