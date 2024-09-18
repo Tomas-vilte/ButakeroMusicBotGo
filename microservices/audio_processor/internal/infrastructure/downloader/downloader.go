@@ -20,14 +20,21 @@ type (
 
 	// YTDLPDownloader es una implementación de Downloader que usa yt-dlp para descargar audio.
 	YTDLPDownloader struct {
-		log logger.Logger
+		log       logger.Logger
+		useOAuth2 bool
+	}
+
+	// YTDLPOptions contiene las opciones de configuración para YTDLPDownloader.
+	YTDLPOptions struct {
+		UseOAuth2 bool
 	}
 )
 
 // NewYTDLPDownloader crea y devuelve una nueva instancia de YTDLPDownloader.
-func NewYTDLPDownloader(log logger.Logger) *YTDLPDownloader {
+func NewYTDLPDownloader(log logger.Logger, options YTDLPOptions) *YTDLPDownloader {
 	return &YTDLPDownloader{
-		log: log,
+		log:       log,
+		useOAuth2: options.UseOAuth2,
 	}
 }
 
@@ -44,10 +51,13 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 		"-o", "-",
 		"--force-overwrites",
 		"--http-chunk-size", "100K",
-		"--username", "oauth2",
-		"--password", "''",
-		url,
 	}
+
+	if d.useOAuth2 {
+		ytArgs = append(ytArgs, "--username", "oauth2", "--password", "''")
+	}
+
+	ytArgs = append(ytArgs, url)
 
 	// Registramos el comando que se va a ejecutar
 	d.log.Info("Ejecutando comando yt-dlp", zap.String("comando", fmt.Sprintf("yt-dlp %s", strings.Join(ytArgs, " "))))
