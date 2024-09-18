@@ -12,7 +12,7 @@ import (
 func TestDownloadAudio(t *testing.T) {
 	testLogger, err := logger.NewZapLogger()
 	require.NoError(t, err)
-	downloaderAudio := downloader.NewYTDLPDownloader(testLogger, downloader.YTDLPOptions{UseOAuth2: false})
+	downloaderAudio := downloader.NewYTDLPDownloader(testLogger, downloader.YTDLPOptions{UseOAuth2: true})
 
 	reader, err := downloaderAudio.DownloadAudio(context.TODO(), "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 
