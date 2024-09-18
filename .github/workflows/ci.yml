@@ -51,21 +51,21 @@ jobs:
       - name: Install dependencies
         run: |
           # Instalar dependencias del sistema
-          sudo apt-get update \
-          && sudo apt-get install -y build-essential libopus-dev libopusfile-dev \
-          && go install github.com/bwmarrin/dca/cmd/dca@latest \
-          && sudo apt-get install -y ffmpeg wget libopusfile0 \
+          sudo apt-get update
+          sudo apt-get install -y build-essential libopus-dev libopusfile-dev
+          sudo apt-get install -y ffmpeg wget libopusfile0
+          go install github.com/bwmarrin/dca/cmd/dca@latest
           
           # Instalar pip y python3-venv
-          && sudo apt-get install -y python3-pip python3-venv \
+          sudo apt-get install -y python3-pip python3-venv
           
           # Crear un entorno virtual y activar
-          && python3 -m venv venv \
-          && source venv/bin/activate \
+          python3 -m venv venv
+          source venv/bin/activate
           
           # Instalar yt-dlp y el paquete oauth2 dentro del entorno virtual
-          && pip install -U yt-dlp \
-          && pip install -U https://github.com/coletdjnz/yt-dlp-youtube-oauth2/archive/refs/heads/master.zip
+          pip install -U yt-dlp
+          pip install -U https://github.com/coletdjnz/yt-dlp-youtube-oauth2/archive/refs/heads/master.zip
 
       - name: Run unit tests
         run: make test
