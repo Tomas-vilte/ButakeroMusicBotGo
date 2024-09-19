@@ -1,4 +1,4 @@
-package dynamodbservice
+package dynamodb
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// OperationStore maneja el almacenamiento, recuperación y eliminación de resultados de operación en DynamoDB.
+// OperationStore implementa la interface repository.OperationRepository maneja el almacenamiento, recuperación y eliminación de resultados de operación en DynamoDB.
 type OperationStore struct {
 	Client    DynamoDBAPI // Cliente para interactuar con DynamoDB.
 	TableName string      // Nombre de la tabla en DynamoDB.
@@ -35,8 +35,8 @@ func NewOperationStore(tableName string, region string) (*OperationStore, error)
 	}, nil
 }
 
-// SaveOperationResult guarda el resultado de una operación en DynamoDB. Genera un nuevo ID si es necesario.
-func (s *OperationStore) SaveOperationResult(ctx context.Context, result model.OperationResult) error {
+// SaveOperationsResult guarda el resultado de una operación en DynamoDB. Genera un nuevo ID si es necesario.
+func (s *OperationStore) SaveOperationsResult(ctx context.Context, result model.OperationResult) error {
 	if result.ID == "" {
 		result.ID = uuid.New().String() // Genera un nuevo ID si es necesario.
 	}

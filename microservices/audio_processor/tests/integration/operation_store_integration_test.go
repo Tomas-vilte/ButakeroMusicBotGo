@@ -3,7 +3,7 @@ package integration
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/dynamodbservice"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/persistence/dynamodb"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,7 +23,7 @@ func TestIntegrationOperationStore(t *testing.T) {
 		t.Fatal("DYNAMODB_TABLE_NAME_OPERATION y REGION no fueron seteados para los tests de integracion")
 	}
 
-	store, err := dynamodbservice.NewOperationStore(tableName, region)
+	store, err := dynamodb.NewOperationStore(tableName, region)
 	require.NoError(t, err)
 
 	t.Run("SaveAndRetrieveOperationResult", func(t *testing.T) {
@@ -31,7 +31,7 @@ func TestIntegrationOperationStore(t *testing.T) {
 		result := createTestOperationResult("integration-test-id-1")
 
 		// act SaveOperationResult
-		err = store.SaveOperationResult(context.Background(), result)
+		err = store.SaveOperationsResult(context.Background(), result)
 		require.NoError(t, err)
 
 		// act GetOperationResult
@@ -51,14 +51,14 @@ func TestIntegrationOperationStore(t *testing.T) {
 		result := createTestOperationResult("integration-test-id-2")
 
 		// act SaveOperationResult
-		err = store.SaveOperationResult(context.Background(), result)
+		err = store.SaveOperationsResult(context.Background(), result)
 		require.NoError(t, err)
 
 		// act update operation result
 		result.Status = "completed"
 		result.Message = "Operation completed successfully"
 		result.Data = "Updated data"
-		err = store.SaveOperationResult(context.Background(), result)
+		err = store.SaveOperationsResult(context.Background(), result)
 		require.NoError(t, err)
 
 		// act GetOperationResult
@@ -80,7 +80,7 @@ func TestIntegrationOperationStore(t *testing.T) {
 		result := createTestOperationResult("integration-test-id-3")
 
 		// act SaveOperationResult
-		err = store.SaveOperationResult(context.Background(), result)
+		err = store.SaveOperationsResult(context.Background(), result)
 		require.NoError(t, err)
 
 		// act DeleteOperationResult

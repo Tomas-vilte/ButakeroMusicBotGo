@@ -328,7 +328,7 @@ func (e *EncodeSession) handleStderrLine(line string) {
 	// Analiza la línea y extrae el tamaño, tiempo, tasa de bits y velocidad.
 	_, err := fmt.Sscanf(line, "size=%dkB time=%d:%d:%f bitrate=%fkbits/s speed=%fx", &size, &timeH, &timeM, &timeS, &bitrate, &speed)
 	if err != nil {
-		e.logging.Error("Error al analizar línea de stderr", zap.Error(err)) // Registra un error si el análisis falla.
+		//e.logging.Error("Error al analizar línea de stderr", zap.Error(err)) // Registra un error si el análisis falla.
 	}
 
 	// Calcula la duración total en base a las horas, minutos y segundos extraídos.

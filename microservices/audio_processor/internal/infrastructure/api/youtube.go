@@ -23,10 +23,13 @@ type (
 	// VideoDetails contiene los detalles de un video de YouTube.
 	VideoDetails struct {
 		Title       string    // Título del video.
+		VideoID     string    // ID del video
 		Description string    // Descripción del video.
 		ChannelName string    // Nombre del canal que subió el video.
 		Duration    string    // Duración del video en formato ISO 8601.
 		PublishedAt time.Time // Fecha de publicación del video.
+		URLYouTube  string    // URL de YouTube
+		Thumbnail   string    // URL de la miniatura del video
 	}
 
 	// YouTubeClient es un cliente para interactuar con la API de YouTube.
@@ -50,9 +53,9 @@ func NewYouTubeClient(apiKey string) *YouTubeClient {
 
 // GetVideoDetails obtiene los detalles del video usando su ID.
 func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*VideoDetails, error) {
-	url := fmt.Sprintf("%s/videos?part=snippet,contentDetails&id=%s&key=%s", c.BaseURL, videoID, c.ApiKey)
+	endpoint := fmt.Sprintf("%s/videos?part=snippet,contentDetails&id=%s&key=%s", c.BaseURL, videoID, c.ApiKey)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error al crear la solicitud: %w", err)
 	}
@@ -66,10 +69,16 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*V
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("error en la API de YouTube, código de estado: %d", resp.StatusCode)
 	}
-
+	urlVideo := fmt.Sprintf("https://youtube.com/watch?v=%s", videoID)
 	var result struct {
 		Items []struct {
+			ID      string `json:"id"`
 			Snippet struct {
+				Thumbnails struct {
+					Default struct {
+						URL string `json:"url"`
+					} `json:"default"`
+				} `json:"thumbnails"`
 				Title        string `json:"title"`
 				Description  string `json:"description"`
 				ChannelTitle string `json:"channelTitle"`
@@ -95,10 +104,13 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*V
 
 	videoDetails := &VideoDetails{
 		Title:       item.Snippet.Title,
+		VideoID:     item.ID,
 		Description: item.Snippet.Description,
 		ChannelName: item.Snippet.ChannelTitle,
 		Duration:    item.ContentDetails.Duration,
+		Thumbnail:   item.Snippet.Thumbnails.Default.URL,
 		PublishedAt: publishedAt,
+		URLYouTube:  urlVideo,
 	}
 
 	return videoDetails, nil

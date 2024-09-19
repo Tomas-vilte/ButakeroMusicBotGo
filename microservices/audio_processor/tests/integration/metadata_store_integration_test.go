@@ -3,7 +3,7 @@ package integration
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/dynamodbservice"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/persistence/dynamodb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -24,7 +24,7 @@ func TestIntegrationMetadataStore(t *testing.T) {
 
 	t.Run("SaveAndRetrieveMetadata", func(t *testing.T) {
 		// arrange
-		store, err := dynamodbservice.NewMetadataStore(tableName, region)
+		store, err := dynamodb.NewMetadataStore(tableName, region)
 		require.NoError(t, err)
 
 		metadata := model.Metadata{
@@ -33,7 +33,6 @@ func TestIntegrationMetadataStore(t *testing.T) {
 			URLYouTube: "https://www.youtube.com/watch?v=example",
 			URLS3:      "https://s3.amazonaws.com/mybucket/integration-test-id",
 			Platform:   "YouTube",
-			Artist:     "Test Artist",
 			Duration:   240,
 		}
 
@@ -50,7 +49,6 @@ func TestIntegrationMetadataStore(t *testing.T) {
 		assert.Equal(t, metadata.URLYouTube, retrievedMetadata.URLYouTube)
 		assert.Equal(t, metadata.URLS3, retrievedMetadata.URLS3)
 		assert.Equal(t, metadata.Platform, retrievedMetadata.Platform)
-		assert.Equal(t, metadata.Artist, retrievedMetadata.Artist)
 		assert.Equal(t, metadata.Duration, retrievedMetadata.Duration)
 
 		// act - delete metadata
