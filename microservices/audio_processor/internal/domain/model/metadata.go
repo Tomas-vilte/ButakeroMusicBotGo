@@ -7,13 +7,12 @@ type Metadata struct {
 	// Este campo se utiliza para asociar la metadata con una canción específica.
 	ID string `json:"id"`
 
+	// VideoID Es el identificador del video
+	VideoID string `json:"video_id"`
+
 	// Title es el título de la canción.
 	// Representa el nombre de la canción tal como aparece en la fuente de origen.
 	Title string `json:"title"`
-
-	// Artist es el nombre del artista o grupo que interpreta la canción.
-	// Este campo ayuda a identificar el creador de la música.
-	Artist string `json:"artist"`
 
 	// Duration es la duración de la canción en segundos.
 	// Representa cuánto tiempo dura la canción desde el inicio hasta el final.

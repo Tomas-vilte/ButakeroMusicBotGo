@@ -1,4 +1,4 @@
-package dynamodbservice
+package dynamodb
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 )
 
 type (
-	// MetadataStore proporciona operaciones para almacenar, recuperar y eliminar metadatos en DynamoDB.
+	// MetadataStore Implementa la interface repository.MetadataRepository proporciona operaciones para almacenar, recuperar y eliminar metadatos en DynamoDB.
 	MetadataStore struct {
 		Client    DynamoDBAPI // Cliente para interactuar con DynamoDB.
 		TableName string      // Nombre de la tabla en DynamoDB.
@@ -24,6 +24,7 @@ type (
 		PutItem(ctx context.Context, params *dynamodb.PutItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error)
 		GetItem(ctx context.Context, params *dynamodb.GetItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error)
 		DeleteItem(ctx context.Context, params *dynamodb.DeleteItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error)
+		UpdateItem(ctx context.Context, params *dynamodb.UpdateItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error)
 	}
 )
 
@@ -61,7 +62,6 @@ func (s *MetadataStore) SaveMetadata(ctx context.Context, metadata model.Metadat
 			"Thumbnail":  &types.AttributeValueMemberS{Value: metadata.Thumbnail},
 			"URLS3":      &types.AttributeValueMemberS{Value: metadata.URLS3},
 			"Platform":   &types.AttributeValueMemberS{Value: metadata.Platform},
-			"Artist":     &types.AttributeValueMemberS{Value: metadata.Artist},
 			"Duration":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", metadata.Duration)},
 		},
 	})

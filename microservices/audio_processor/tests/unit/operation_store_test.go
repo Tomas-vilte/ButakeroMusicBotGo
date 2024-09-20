@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/dynamodbservice"
+	dynamodb2 "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/persistence/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +15,7 @@ import (
 func TestSaveOperationResult(t *testing.T) {
 	t.Run("Successful save", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
-		store := dynamodbservice.OperationStore{
+		store := dynamodb2.OperationStore{
 			Client:    mockClient,
 			TableName: "TestOperationStore",
 		}
@@ -27,7 +27,7 @@ func TestSaveOperationResult(t *testing.T) {
 		mockClient.On("PutItem", mock.Anything, mock.AnythingOfType("*dynamodb.PutItemInput"), mock.Anything).
 			Return(&dynamodb.PutItemOutput{}, nil)
 
-		err := store.SaveOperationResult(context.Background(), result)
+		err := store.SaveOperationsResult(context.Background(), result)
 
 		assert.NoError(t, err)
 		mockClient.AssertExpectations(t)
@@ -35,7 +35,7 @@ func TestSaveOperationResult(t *testing.T) {
 
 	t.Run("DynamoDB error", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
-		store := dynamodbservice.OperationStore{
+		store := dynamodb2.OperationStore{
 			Client:    mockClient,
 			TableName: "TestOperationStore",
 		}
@@ -47,7 +47,7 @@ func TestSaveOperationResult(t *testing.T) {
 		mockClient.On("PutItem", mock.Anything, mock.AnythingOfType("*dynamodb.PutItemInput"), mock.Anything).
 			Return((*dynamodb.PutItemOutput)(nil), errors.New("dynamoDB error"))
 
-		err := store.SaveOperationResult(context.Background(), result)
+		err := store.SaveOperationsResult(context.Background(), result)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "error al guardar resultado de operación en DynamoDB")
@@ -58,7 +58,7 @@ func TestSaveOperationResult(t *testing.T) {
 func TestGetOperationResult(t *testing.T) {
 	t.Run("Successful retrieval", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
-		store := dynamodbservice.OperationStore{
+		store := dynamodb2.OperationStore{
 			Client:    mockClient,
 			TableName: "TestOperationStore",
 		}
@@ -84,7 +84,7 @@ func TestGetOperationResult(t *testing.T) {
 
 	t.Run("Item not found", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
-		store := dynamodbservice.OperationStore{
+		store := dynamodb2.OperationStore{
 			Client:    mockClient,
 			TableName: "TestOperationStore",
 		}
@@ -102,7 +102,7 @@ func TestGetOperationResult(t *testing.T) {
 
 	t.Run("DynamoDB error", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
-		store := dynamodbservice.OperationStore{
+		store := dynamodb2.OperationStore{
 			Client:    mockClient,
 			TableName: "TestOperationStore",
 		}
@@ -122,7 +122,7 @@ func TestGetOperationResult(t *testing.T) {
 func TestDeleteOperationResult(t *testing.T) {
 	t.Run("Successful deletion", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
-		store := &dynamodbservice.OperationStore{
+		store := &dynamodb2.OperationStore{
 			Client:    mockClient,
 			TableName: "TestTable",
 		}
@@ -138,7 +138,7 @@ func TestDeleteOperationResult(t *testing.T) {
 
 	t.Run("DynamoDB error", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
-		store := &dynamodbservice.OperationStore{
+		store := &dynamodb2.OperationStore{
 			Client:    mockClient,
 			TableName: "TestTable",
 		}
@@ -150,6 +150,41 @@ func TestDeleteOperationResult(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "error al eliminar resultado de operación desde DynamoDB")
+		mockClient.AssertExpectations(t)
+	})
+}
+
+func TestUpdateOperationStatus(t *testing.T) {
+	t.Run("Successful update", func(t *testing.T) {
+		mockClient := new(mockDynamoDBAPI)
+		store := &dynamodb2.OperationStore{
+			Client:    mockClient,
+			TableName: "TestTable",
+		}
+
+		mockClient.On("UpdateItem", mock.Anything, mock.AnythingOfType("*dynamodb.UpdateItemInput"), mock.Anything).
+			Return(&dynamodb.UpdateItemOutput{}, nil)
+
+		err := store.UpdateOperationStatus(context.Background(), "test-operation-id", "test-song-id", "completed")
+
+		assert.NoError(t, err)
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("DynamoDB error", func(t *testing.T) {
+		mockClient := new(mockDynamoDBAPI)
+		store := dynamodb2.OperationStore{
+			Client:    mockClient,
+			TableName: "TestOperationStore",
+		}
+
+		mockClient.On("UpdateItem", mock.Anything, mock.AnythingOfType("*dynamodb.UpdateItemInput"), mock.Anything).
+			Return((*dynamodb.UpdateItemOutput)(nil), errors.New("dynamoDB error"))
+
+		err := store.UpdateOperationStatus(context.Background(), "test-operation-id", "test-song-id", "failed")
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "error al actualizar el estado de la operación en DynamoDB")
 		mockClient.AssertExpectations(t)
 	})
 }

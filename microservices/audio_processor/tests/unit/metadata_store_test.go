@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/dynamodbservice"
+	dynamodb2 "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/persistence/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/stretchr/testify/assert"
@@ -31,19 +31,23 @@ func (m *mockDynamoDBAPI) DeleteItem(ctx context.Context, params *dynamodb.Delet
 	return args.Get(0).(*dynamodb.DeleteItemOutput), args.Error(1)
 }
 
+func (m *mockDynamoDBAPI) UpdateItem(ctx context.Context, params *dynamodb.UpdateItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error) {
+	args := m.Called(ctx, params, optFns)
+	return args.Get(0).(*dynamodb.UpdateItemOutput), args.Error(1)
+}
+
 func TestMetadataStore(t *testing.T) {
 	t.Run("SaveMetadata", func(t *testing.T) {
 		t.Run("Successful save", func(t *testing.T) {
 			// arrange
 			mockClient := new(mockDynamoDBAPI)
-			store := dynamodbservice.MetadataStore{
+			store := dynamodb2.MetadataStore{
 				Client:    mockClient,
 				TableName: "test-table",
 			}
 			metadata := model.Metadata{
 				ID:       "test-id",
 				Title:    "Test Song",
-				Artist:   "Test Artist",
 				Duration: 180,
 			}
 			mockClient.On("PutItem", mock.Anything, mock.AnythingOfType("*dynamodb.PutItemInput"), mock.Anything).Return(&dynamodb.PutItemOutput{}, nil)
@@ -60,14 +64,13 @@ func TestMetadataStore(t *testing.T) {
 	t.Run("DynamoDB error", func(t *testing.T) {
 		// arrange
 		mockClient := new(mockDynamoDBAPI)
-		store := &dynamodbservice.MetadataStore{
+		store := &dynamodb2.MetadataStore{
 			Client:    mockClient,
 			TableName: "test-table",
 		}
 		metadata := model.Metadata{
 			ID:       "test-id",
 			Title:    "Test Song",
-			Artist:   "Test Artist",
 			Duration: 180,
 		}
 		mockClient.On("PutItem", mock.Anything, mock.AnythingOfType("*dynamodb.PutItemInput"), mock.Anything).Return(&dynamodb.PutItemOutput{}, errors.New("DynamoDB error"))
@@ -88,7 +91,7 @@ func TestMetadataStore(t *testing.T) {
 			region := "us-east-1"
 
 			// act
-			store, err := dynamodbservice.NewMetadataStore(tableName, region)
+			store, err := dynamodb2.NewMetadataStore(tableName, region)
 
 			// assert
 			assert.NoError(t, err)
@@ -100,7 +103,7 @@ func TestMetadataStore(t *testing.T) {
 
 	t.Run("Successful retrieval", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
-		store := &dynamodbservice.MetadataStore{
+		store := &dynamodb2.MetadataStore{
 			Client:    mockClient,
 			TableName: "TestTable",
 		}
@@ -121,7 +124,7 @@ func TestMetadataStore(t *testing.T) {
 
 	t.Run("Item not found", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
-		store := &dynamodbservice.MetadataStore{
+		store := &dynamodb2.MetadataStore{
 			Client:    mockClient,
 			TableName: "TestTable",
 		}
@@ -136,7 +139,7 @@ func TestMetadataStore(t *testing.T) {
 
 	t.Run("DynamoDB error", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
-		store := &dynamodbservice.MetadataStore{
+		store := &dynamodb2.MetadataStore{
 			Client:    mockClient,
 			TableName: "TestTable",
 		}
@@ -156,7 +159,7 @@ func TestMetadataStore(t *testing.T) {
 func TestGetMetadata(t *testing.T) {
 	t.Run("Successful deletion", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
-		store := &dynamodbservice.MetadataStore{
+		store := &dynamodb2.MetadataStore{
 			Client:    mockClient,
 			TableName: "TestTable",
 		}
@@ -170,7 +173,7 @@ func TestGetMetadata(t *testing.T) {
 
 	t.Run("DynamoDB error", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
-		store := &dynamodbservice.MetadataStore{
+		store := &dynamodb2.MetadataStore{
 			Client:    mockClient,
 			TableName: "TestTable",
 		}

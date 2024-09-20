@@ -1,4 +1,4 @@
-package dynamodbservice
+package dynamodb
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// OperationStore maneja el almacenamiento, recuperación y eliminación de resultados de operación en DynamoDB.
+// OperationStore implementa la interface repository.OperationRepository maneja el almacenamiento, recuperación y eliminación de resultados de operación en DynamoDB.
 type OperationStore struct {
 	Client    DynamoDBAPI // Cliente para interactuar con DynamoDB.
 	TableName string      // Nombre de la tabla en DynamoDB.
@@ -35,8 +35,8 @@ func NewOperationStore(tableName string, region string) (*OperationStore, error)
 	}, nil
 }
 
-// SaveOperationResult guarda el resultado de una operación en DynamoDB. Genera un nuevo ID si es necesario.
-func (s *OperationStore) SaveOperationResult(ctx context.Context, result model.OperationResult) error {
+// SaveOperationsResult guarda el resultado de una operación en DynamoDB. Genera un nuevo ID si es necesario.
+func (s *OperationStore) SaveOperationsResult(ctx context.Context, result model.OperationResult) error {
 	if result.ID == "" {
 		result.ID = uuid.New().String() // Genera un nuevo ID si es necesario.
 	}
@@ -103,6 +103,29 @@ func (s *OperationStore) DeleteOperationResult(ctx context.Context, id, songID s
 	_, err := s.Client.DeleteItem(ctx, input)
 	if err != nil {
 		return fmt.Errorf("error al eliminar resultado de operación desde DynamoDB: %w", err)
+	}
+	return nil
+}
+
+func (s *OperationStore) UpdateOperationStatus(ctx context.Context, operationID string, songID string, status string) error {
+	input := &dynamodb.UpdateItemInput{
+		TableName: aws.String(s.TableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: "OPERATION#" + operationID},
+			"SK": &types.AttributeValueMemberS{Value: songID},
+		},
+		ExpressionAttributeNames: map[string]string{
+			"#status": "Status",
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":newStatus": &types.AttributeValueMemberS{Value: status},
+		},
+		UpdateExpression: aws.String("SET #status = :newStatus"),
+	}
+
+	_, err := s.Client.UpdateItem(ctx, input)
+	if err != nil {
+		return fmt.Errorf("error al actualizar el estado de la operación en DynamoDB: %w", err)
 	}
 	return nil
 }
