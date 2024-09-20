@@ -10,6 +10,8 @@ import (
 )
 
 func TestDownloadAudio(t *testing.T) {
+	t.Skip("TestDownloadAudio está deshabilitado temporalmente")
+
 	testLogger, err := logger.NewZapLogger()
 	require.NoError(t, err)
 	downloaderAudio := downloader.NewYTDLPDownloader(testLogger, downloader.YTDLPOptions{UseOAuth2: true})

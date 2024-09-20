@@ -95,6 +95,31 @@ func TestIntegrationOperationStore(t *testing.T) {
 		assert.Contains(t, err.Error(), "resultado de operación no encontrado")
 	})
 
+	t.Run("UpdateOperationStatus", func(t *testing.T) {
+		// arrange
+		result := createTestOperationResult("integration-test-id-4")
+
+		// act SaveOperationResult
+		err = store.SaveOperationsResult(context.Background(), result)
+		require.NoError(t, err)
+
+		// act UpdateOperationStatus
+		newStatus := "completed"
+		err = store.UpdateOperationStatus(context.Background(), result.ID, result.SongID, newStatus)
+		require.NoError(t, err)
+
+		// act GetOperationResult
+		updatedResult, err := store.GetOperationResult(context.Background(), result.ID, result.SongID)
+		require.NoError(t, err)
+
+		// assert
+		assert.Equal(t, newStatus, updatedResult.Status)
+
+		// cleanup
+		err = store.DeleteOperationResult(context.Background(), result.ID, result.SongID)
+		require.NoError(t, err)
+	})
+
 	t.Run("GetNonExistentOperationResult", func(t *testing.T) {
 		// act
 		_, err := store.GetOperationResult(context.Background(), "non-existent-id", "non-existent-song-id")

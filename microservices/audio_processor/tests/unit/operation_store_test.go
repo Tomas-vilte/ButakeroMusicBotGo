@@ -153,3 +153,38 @@ func TestDeleteOperationResult(t *testing.T) {
 		mockClient.AssertExpectations(t)
 	})
 }
+
+func TestUpdateOperationStatus(t *testing.T) {
+	t.Run("Successful update", func(t *testing.T) {
+		mockClient := new(mockDynamoDBAPI)
+		store := &dynamodb2.OperationStore{
+			Client:    mockClient,
+			TableName: "TestTable",
+		}
+
+		mockClient.On("UpdateItem", mock.Anything, mock.AnythingOfType("*dynamodb.UpdateItemInput"), mock.Anything).
+			Return(&dynamodb.UpdateItemOutput{}, nil)
+
+		err := store.UpdateOperationStatus(context.Background(), "test-operation-id", "test-song-id", "completed")
+
+		assert.NoError(t, err)
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("DynamoDB error", func(t *testing.T) {
+		mockClient := new(mockDynamoDBAPI)
+		store := dynamodb2.OperationStore{
+			Client:    mockClient,
+			TableName: "TestOperationStore",
+		}
+
+		mockClient.On("UpdateItem", mock.Anything, mock.AnythingOfType("*dynamodb.UpdateItemInput"), mock.Anything).
+			Return((*dynamodb.UpdateItemOutput)(nil), errors.New("dynamoDB error"))
+
+		err := store.UpdateOperationStatus(context.Background(), "test-operation-id", "test-song-id", "failed")
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "error al actualizar el estado de la operación en DynamoDB")
+		mockClient.AssertExpectations(t)
+	})
+}

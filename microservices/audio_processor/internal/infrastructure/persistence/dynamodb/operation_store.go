@@ -106,3 +106,26 @@ func (s *OperationStore) DeleteOperationResult(ctx context.Context, id, songID s
 	}
 	return nil
 }
+
+func (s *OperationStore) UpdateOperationStatus(ctx context.Context, operationID string, songID string, status string) error {
+	input := &dynamodb.UpdateItemInput{
+		TableName: aws.String(s.TableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: "OPERATION#" + operationID},
+			"SK": &types.AttributeValueMemberS{Value: songID},
+		},
+		ExpressionAttributeNames: map[string]string{
+			"#status": "Status",
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":newStatus": &types.AttributeValueMemberS{Value: status},
+		},
+		UpdateExpression: aws.String("SET #status = :newStatus"),
+	}
+
+	_, err := s.Client.UpdateItem(ctx, input)
+	if err != nil {
+		return fmt.Errorf("error al actualizar el estado de la operación en DynamoDB: %w", err)
+	}
+	return nil
+}

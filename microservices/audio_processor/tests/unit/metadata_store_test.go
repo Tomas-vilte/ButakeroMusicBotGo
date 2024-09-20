@@ -31,6 +31,11 @@ func (m *mockDynamoDBAPI) DeleteItem(ctx context.Context, params *dynamodb.Delet
 	return args.Get(0).(*dynamodb.DeleteItemOutput), args.Error(1)
 }
 
+func (m *mockDynamoDBAPI) UpdateItem(ctx context.Context, params *dynamodb.UpdateItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error) {
+	args := m.Called(ctx, params, optFns)
+	return args.Get(0).(*dynamodb.UpdateItemOutput), args.Error(1)
+}
+
 func TestMetadataStore(t *testing.T) {
 	t.Run("SaveMetadata", func(t *testing.T) {
 		t.Run("Successful save", func(t *testing.T) {

@@ -16,11 +16,18 @@ func TestYouTubeClient(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				response := `{
 					"items": [{
+						"id": "test-video-id",
 						"snippet": {
 							"title": "Test Video",
+							"URLYouTube": "https://youtube.com/watch?v=test-video-id",
 							"description": "This is a test video",
 							"channelTitle": "Test Channel",
-							"publishedAt": "2022-01-01T00:00:00Z"
+							"publishedAt": "2022-01-01T00:00:00Z",
+							"thumbnails": {
+								"default": {
+									"url": "test-url.jpg"
+								}
+							}
 						},
 						"contentDetails": {
 							"duration": "PT1H2M3S"
@@ -48,10 +55,13 @@ func TestYouTubeClient(t *testing.T) {
 			expectedPublishedAt, _ := time.Parse(time.RFC3339, "2022-01-01T00:00:00Z")
 			expected := &api.VideoDetails{
 				Title:       "Test Video",
+				VideoID:     "test-video-id",
 				Description: "This is a test video",
 				ChannelName: "Test Channel",
 				Duration:    "PT1H2M3S",
 				PublishedAt: expectedPublishedAt,
+				URLYouTube:  "https://youtube.com/watch?v=test-video-id",
+				Thumbnail:   "test-url.jpg",
 			}
 
 			if *details != *expected {
