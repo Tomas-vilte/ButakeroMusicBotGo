@@ -48,7 +48,7 @@ func TestMetadataStore(t *testing.T) {
 			metadata := model.Metadata{
 				ID:       "test-id",
 				Title:    "Test Song",
-				Duration: 180,
+				Duration: "180",
 			}
 			mockClient.On("PutItem", mock.Anything, mock.AnythingOfType("*dynamodb.PutItemInput"), mock.Anything).Return(&dynamodb.PutItemOutput{}, nil)
 
@@ -71,7 +71,7 @@ func TestMetadataStore(t *testing.T) {
 		metadata := model.Metadata{
 			ID:       "test-id",
 			Title:    "Test Song",
-			Duration: 180,
+			Duration: "180",
 		}
 		mockClient.On("PutItem", mock.Anything, mock.AnythingOfType("*dynamodb.PutItemInput"), mock.Anything).Return(&dynamodb.PutItemOutput{}, errors.New("DynamoDB error"))
 

@@ -62,7 +62,7 @@ func (s *MetadataStore) SaveMetadata(ctx context.Context, metadata model.Metadat
 			"Thumbnail":  &types.AttributeValueMemberS{Value: metadata.Thumbnail},
 			"URLS3":      &types.AttributeValueMemberS{Value: metadata.URLS3},
 			"Platform":   &types.AttributeValueMemberS{Value: metadata.Platform},
-			"Duration":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", metadata.Duration)},
+			"Duration":   &types.AttributeValueMemberS{Value: metadata.Duration},
 		},
 	})
 	if err != nil {
