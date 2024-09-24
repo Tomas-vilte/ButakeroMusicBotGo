@@ -33,7 +33,7 @@ func TestIntegrationMetadataStore(t *testing.T) {
 			URLYouTube: "https://www.youtube.com/watch?v=example",
 			URLS3:      "https://s3.amazonaws.com/mybucket/integration-test-id",
 			Platform:   "YouTube",
-			Duration:   240,
+			Duration:   "240",
 		}
 
 		// act SaveMetadata
