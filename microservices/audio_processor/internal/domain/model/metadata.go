@@ -16,7 +16,7 @@ type Metadata struct {
 
 	// Duration es la duración de la canción en segundos.
 	// Representa cuánto tiempo dura la canción desde el inicio hasta el final.
-	Duration int `json:"duration"`
+	Duration string `json:"duration"`
 
 	// URLS3 es la URL del archivo de la canción almacenado en Amazon S3.
 	// Este campo se usa para acceder al archivo de audio descargado y procesado.
