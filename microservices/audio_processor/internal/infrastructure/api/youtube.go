@@ -167,7 +167,7 @@ func (c *YouTubeClient) SearchVideoID(ctx context.Context, input string) (string
 // ExtractVideoIDFromURL extrae el ID del video de una URL de YouTube.
 func ExtractVideoIDFromURL(videoURL string) (string, error) {
 	// Expresión regular para extraer el ID del video de una URL de YouTube
-	re := regexp.MustCompile(`(?:https?://)?(?:www\.)?youtube\.com/(?:watch\?v=|embed/|v/|.+/v/|.+/embed/|user/(?:\w+/)?\w+/\w+/|watch\?.*v=|shorts/|playlist\?list=)([\w-]{11})`)
+	re := regexp.MustCompile(`^(?:https?://)?(?:www\.)?youtube\.com/(?:watch\?v=|embed/|v/|.+/v/|.+/embed/|user/(?:\w+/)?\w+/\w+/|watch\?.*v=|shorts/|playlist\?list=)([\w-]{11})$`)
 	matches := re.FindStringSubmatch(videoURL)
 	if len(matches) > 1 {
 		return matches[1], nil
