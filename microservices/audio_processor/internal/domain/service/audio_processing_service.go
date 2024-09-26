@@ -30,14 +30,21 @@ const (
 )
 
 // AudioProcessingService es un servicio que maneja la descarga, codificación y almacenamiento de audio.
-type AudioProcessingService struct {
-	log            logger.Logger                  // Logger para el registro de eventos y errores.
-	storage        storage.Storage                // Interfaz para el almacenamiento en S3.
-	downloader     downloader.Downloader          // Interfaz para la descarga de audio.
-	operationStore repository.OperationRepository // Interfaz para almacenar resultados de operaciones.
-	metadataStore  repository.MetadataRepository  // Interfaz para almacenar metadatos del audio.
-	config         config.Config                  // Configuración del servicio.
-}
+type (
+	AudioProcessingService struct {
+		log            logger.Logger                  // Logger para el registro de eventos y errores.
+		storage        storage.Storage                // Interfaz para el almacenamiento en S3.
+		downloader     downloader.Downloader          // Interfaz para la descarga de audio.
+		operationStore repository.OperationRepository // Interfaz para almacenar resultados de operaciones.
+		metadataStore  repository.MetadataRepository  // Interfaz para almacenar metadatos del audio.
+		config         config.Config                  // Configuración del servicio.
+	}
+
+	AudioProcessor interface {
+		StartOperation(ctx context.Context, song string) (string, error)
+		ProcessAudio(ctx context.Context, operationID string, metadata api.VideoDetails) error
+	}
+)
 
 // NewAudioProcessingService crea una nueva instancia de AudioProcessingService con las configuraciones proporcionadas.
 func NewAudioProcessingService(log logger.Logger, storage storage.Storage,

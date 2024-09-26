@@ -10,7 +10,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.61.2
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/websocket v1.5.3
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.27.0
 	mccoy.space/g/ogg v0.0.0-20221103053400-1ea94e6f3152
