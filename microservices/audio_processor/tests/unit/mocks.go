@@ -3,6 +3,7 @@ package unit
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap/zapcore"
 	"io"
@@ -26,6 +27,14 @@ type (
 	}
 
 	MockLogger struct {
+		mock.Mock
+	}
+
+	MockYouTubeService struct {
+		mock.Mock
+	}
+
+	MockAudioProcessingService struct {
 		mock.Mock
 	}
 )
@@ -93,4 +102,24 @@ func (m *MockLogger) Debug(msg string, fields ...zapcore.Field) {
 
 func (m *MockLogger) With(fields ...zapcore.Field) {
 	m.Called(fields)
+}
+
+func (m *MockYouTubeService) SearchVideoID(ctx context.Context, song string) (string, error) {
+	args := m.Called(ctx, song)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockYouTubeService) GetVideoDetails(ctx context.Context, videoID string) (*api.VideoDetails, error) {
+	args := m.Called(ctx, videoID)
+	return args.Get(0).(*api.VideoDetails), args.Error(1)
+}
+
+func (m *MockAudioProcessingService) StartOperation(ctx context.Context, videoID string) (string, error) {
+	args := m.Called(ctx, videoID)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockAudioProcessingService) ProcessAudio(ctx context.Context, operationID string, videoDetails api.VideoDetails) error {
+	args := m.Called(ctx, operationID, videoDetails)
+	return args.Error(0)
 }
