@@ -37,6 +37,14 @@ type (
 	MockAudioProcessingService struct {
 		mock.Mock
 	}
+
+	MockInitiateDownloadUC struct {
+		mock.Mock
+	}
+
+	MockGetOperationStatusUC struct {
+		mock.Mock
+	}
 )
 
 func (m *MockOperationRepository) SaveOperationsResult(ctx context.Context, result model.OperationResult) error {
@@ -122,4 +130,14 @@ func (m *MockAudioProcessingService) StartOperation(ctx context.Context, videoID
 func (m *MockAudioProcessingService) ProcessAudio(ctx context.Context, operationID string, videoDetails api.VideoDetails) error {
 	args := m.Called(ctx, operationID, videoDetails)
 	return args.Error(0)
+}
+
+func (m *MockInitiateDownloadUC) Execute(ctx context.Context, song string) (string, error) {
+	args := m.Called(ctx, song)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockGetOperationStatusUC) Execute(ctx context.Context, operationID, songID string) (model.OperationResult, error) {
+	args := m.Called(ctx, operationID, songID)
+	return args.Get(0).(model.OperationResult), args.Error(1)
 }
