@@ -28,7 +28,7 @@ func (h *AudioHandler) InitiateDownload(c *gin.Context) {
 		return
 	}
 
-	operationID, err := h.initiateDownloadUC.Execute(context.Background(), song)
+	operationID, err := h.initiateDownloadUC.Execute(c.Request.Context(), song)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
