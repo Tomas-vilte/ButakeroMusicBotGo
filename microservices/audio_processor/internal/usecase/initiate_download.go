@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/service"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
-	"sync"
 )
 
 type InitiateDownloadUseCase struct {
@@ -21,7 +20,6 @@ func NewInitiateDownloadUseCase(audioService service.AudioProcessor, youtubeAPI 
 }
 
 func (uc *InitiateDownloadUseCase) Execute(ctx context.Context, song string) (string, error) {
-	var wg sync.WaitGroup
 	videoID, err := uc.youtubeAPI.SearchVideoID(ctx, song)
 	if err != nil {
 		return "", fmt.Errorf("error al buscar el ID de la cancion: %w", err)
@@ -36,15 +34,15 @@ func (uc *InitiateDownloadUseCase) Execute(ctx context.Context, song string) (st
 	if err != nil {
 		return "", fmt.Errorf("error al iniciar la operación: %w", err)
 	}
-	wg.Add(1)
 
+	// Procesar el audio de manera asíncrona
 	go func() {
-		defer wg.Done()
-		err := uc.audioService.ProcessAudio(ctx, operationID, *youtubeMetadata)
+		backgroundCtx := context.Background()
+		err := uc.audioService.ProcessAudio(backgroundCtx, operationID, *youtubeMetadata)
 		if err != nil {
 			fmt.Printf("Error en el procesamiento: %v", err)
 		}
 	}()
-	wg.Wait()
+
 	return operationID, nil
 }

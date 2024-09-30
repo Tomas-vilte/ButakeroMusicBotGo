@@ -6,6 +6,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/usecase"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"testing"
 )
 
@@ -32,7 +33,14 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 		mockYouTubeService.On("SearchVideoID", ctx, song).Return(videoID, nil)
 		mockYouTubeService.On("GetVideoDetails", ctx, videoID).Return(youtubeMetadata, nil)
 		mockAudioService.On("StartOperation", ctx, videoID).Return("test-operation-id", nil)
-		mockAudioService.On("ProcessAudio", ctx, "test-operation-id", *youtubeMetadata).Return(nil)
+
+		done := make(chan struct{})
+
+		mockAudioService.On("ProcessAudio", mock.Anything, "test-operation-id", *youtubeMetadata).Return(nil).Run(func(args mock.Arguments) {
+			go func() {
+				defer close(done)
+			}()
+		})
 
 		// Act
 		operationID, err := uc.Execute(ctx, song)
@@ -40,7 +48,7 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 		// Assert
 		assert.NoError(t, err)
 		assert.Equal(t, "test-operation-id", operationID)
-
+		<-done
 		mockYouTubeService.AssertExpectations(t)
 		mockAudioService.AssertExpectations(t)
 	})
@@ -67,7 +75,14 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 		mockYouTubeService.On("SearchVideoID", ctx, song).Return(videoID, nil)
 		mockYouTubeService.On("GetVideoDetails", ctx, videoID).Return(youtubeMetadata, nil)
 		mockAudioService.On("StartOperation", ctx, videoID).Return(operationID, nil)
-		mockAudioService.On("ProcessAudio", ctx, operationID, *youtubeMetadata).Return(expectedError)
+
+		done := make(chan struct{})
+
+		mockAudioService.On("ProcessAudio", mock.Anything, operationID, *youtubeMetadata).Return(expectedError).Run(func(args mock.Arguments) {
+			go func() {
+				defer close(done)
+			}()
+		})
 
 		// act
 		operationIDResult, err := uc.Execute(ctx, song)
@@ -75,7 +90,11 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 		// assert
 		assert.NoError(t, err)
 		assert.Equal(t, operationID, operationIDResult)
+
+		<-done
+
 		mockYouTubeService.AssertExpectations(t)
+		mockAudioService.AssertExpectations(t)
 	})
 
 	t.Run("Error in the search ID of the song", func(t *testing.T) {

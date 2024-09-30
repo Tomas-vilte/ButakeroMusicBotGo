@@ -108,9 +108,21 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 // Registra la salida usando el logger apropiado según el tipo y contenido del mensaje.
 func (d *YTDLPDownloader) processOutput(wg *sync.WaitGroup, pipe io.ReadCloser, pipeType string) {
 	defer wg.Done()
-	scanner := bufio.NewScanner(pipe)
-	for scanner.Scan() {
-		line := scanner.Text()
+
+	reader := bufio.NewReader(pipe)
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			d.log.Error(fmt.Sprintf("error leyendo %s", pipeType), zap.Error(err))
+			break
+		}
+
+		line = strings.TrimSpace(line)
+
 		if pipeType == "stdout" {
 			if strings.Contains(line, "Downloading") || strings.Contains(line, "Progress:") {
 				d.log.Info("yt-dlp progreso", zap.String("output", line))
@@ -124,8 +136,5 @@ func (d *YTDLPDownloader) processOutput(wg *sync.WaitGroup, pipe io.ReadCloser, 
 				d.log.Info("yt-dlp stderr", zap.String("output", line))
 			}
 		}
-	}
-	if err := scanner.Err(); err != nil {
-		d.log.Error(fmt.Sprintf("error leyendo %s", pipeType), zap.Error(err))
 	}
 }

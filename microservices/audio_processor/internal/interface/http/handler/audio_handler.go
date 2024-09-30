@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/usecase"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -47,7 +46,7 @@ func (h *AudioHandler) GetOperationStatus(c *gin.Context) {
 		})
 		return
 	}
-	status, err := h.getOperationStatusUC.Execute(context.Background(), operationID, songID)
+	status, err := h.getOperationStatusUC.Execute(c.Request.Context(), operationID, songID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
