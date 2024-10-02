@@ -27,13 +27,15 @@ func (h *AudioHandler) InitiateDownload(c *gin.Context) {
 		return
 	}
 
-	operationID, err := h.initiateDownloadUC.Execute(c.Request.Context(), song)
+	operationID, songID, err := h.initiateDownloadUC.Execute(c.Request.Context(), song)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"operation_id": operationID})
+	c.JSON(http.StatusOK, gin.H{
+		"operation_id": operationID,
+		"song_id":      songID})
 }
 
 func (h *AudioHandler) GetOperationStatus(c *gin.Context) {

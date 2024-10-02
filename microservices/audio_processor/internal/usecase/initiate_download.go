@@ -19,20 +19,20 @@ func NewInitiateDownloadUseCase(audioService service.AudioProcessor, youtubeAPI 
 	}
 }
 
-func (uc *InitiateDownloadUseCase) Execute(ctx context.Context, song string) (string, error) {
+func (uc *InitiateDownloadUseCase) Execute(ctx context.Context, song string) (string, string, error) {
 	videoID, err := uc.youtubeAPI.SearchVideoID(ctx, song)
 	if err != nil {
-		return "", fmt.Errorf("error al buscar el ID de la cancion: %w", err)
+		return "", "", fmt.Errorf("error al buscar el ID de la cancion: %w", err)
 	}
 
 	youtubeMetadata, err := uc.youtubeAPI.GetVideoDetails(ctx, videoID)
 	if err != nil {
-		return "", fmt.Errorf("error al obtener metadata de YouTube: %w", err)
+		return "", "", fmt.Errorf("error al obtener metadata de YouTube: %w", err)
 	}
 
-	operationID, err := uc.audioService.StartOperation(ctx, videoID)
+	operationID, songID, err := uc.audioService.StartOperation(ctx, videoID)
 	if err != nil {
-		return "", fmt.Errorf("error al iniciar la operación: %w", err)
+		return "", "", fmt.Errorf("error al iniciar la operación: %w", err)
 	}
 
 	// Procesar el audio de manera asíncrona
@@ -44,5 +44,5 @@ func (uc *InitiateDownloadUseCase) Execute(ctx context.Context, song string) (st
 		}
 	}()
 
-	return operationID, nil
+	return operationID, songID, nil
 }

@@ -32,7 +32,7 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 
 		mockYouTubeService.On("SearchVideoID", ctx, song).Return(videoID, nil)
 		mockYouTubeService.On("GetVideoDetails", ctx, videoID).Return(youtubeMetadata, nil)
-		mockAudioService.On("StartOperation", ctx, videoID).Return("test-operation-id", nil)
+		mockAudioService.On("StartOperation", ctx, videoID).Return("test-operation-id", "test-video-id", nil)
 
 		done := make(chan struct{})
 
@@ -43,11 +43,12 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 		})
 
 		// Act
-		operationID, err := uc.Execute(ctx, song)
+		operationID, songID, err := uc.Execute(ctx, song)
 
 		// Assert
 		assert.NoError(t, err)
 		assert.Equal(t, "test-operation-id", operationID)
+		assert.Equal(t, "test-video-id", songID)
 		<-done
 		mockYouTubeService.AssertExpectations(t)
 		mockAudioService.AssertExpectations(t)
@@ -74,7 +75,7 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 
 		mockYouTubeService.On("SearchVideoID", ctx, song).Return(videoID, nil)
 		mockYouTubeService.On("GetVideoDetails", ctx, videoID).Return(youtubeMetadata, nil)
-		mockAudioService.On("StartOperation", ctx, videoID).Return(operationID, nil)
+		mockAudioService.On("StartOperation", ctx, videoID).Return(operationID, "test-video-id", nil)
 
 		done := make(chan struct{})
 
@@ -85,11 +86,12 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 		})
 
 		// act
-		operationIDResult, err := uc.Execute(ctx, song)
+		operationIDResult, songID, err := uc.Execute(ctx, song)
 
 		// assert
 		assert.NoError(t, err)
 		assert.Equal(t, operationID, operationIDResult)
+		assert.Equal(t, songID, "test-video-id")
 
 		<-done
 
@@ -108,7 +110,7 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 
 		mockYouTube.On("SearchVideoID", ctx, song).Return("", errors.New("error al buscar ID"))
 
-		_, err := uc.Execute(ctx, song)
+		_, _, err := uc.Execute(ctx, song)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "error al buscar el ID de la cancion")
 	})
@@ -125,7 +127,7 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 		mockYouTube.On("SearchVideoID", ctx, song).Return(videoID, nil)
 		mockYouTube.On("GetVideoDetails", ctx, videoID).Return(&api.VideoDetails{}, errors.New("error al obtener metadata"))
 
-		_, err := uc.Execute(ctx, song)
+		_, _, err := uc.Execute(ctx, song)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "error al obtener metadata de YouTube")
@@ -143,9 +145,9 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 		videoID := "test-video-id"
 		mockYouTube.On("SearchVideoID", ctx, song).Return(videoID, nil)
 		mockYouTube.On("GetVideoDetails", ctx, videoID).Return(&api.VideoDetails{}, nil)
-		mockAudioService.On("StartOperation", ctx, videoID).Return("", errors.New("error al iniciar operación"))
+		mockAudioService.On("StartOperation", ctx, videoID).Return("", "", errors.New("error al iniciar operación"))
 
-		_, err := uc.Execute(ctx, song)
+		_, _, err := uc.Execute(ctx, song)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "error al iniciar la operación")
 	})
