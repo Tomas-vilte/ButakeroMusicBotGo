@@ -83,7 +83,7 @@ func TestAudioProcessingService(t *testing.T) {
 		mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("model.OperationResult")).Return(errors.New("database error"))
 
 		// Act
-		operationID, err := serviceAudio.StartOperation(ctx, songID)
+		operationID, _, err := serviceAudio.StartOperation(ctx, songID)
 
 		// Assert
 		assert.Error(t, err)

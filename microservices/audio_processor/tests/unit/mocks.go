@@ -122,9 +122,9 @@ func (m *MockYouTubeService) GetVideoDetails(ctx context.Context, videoID string
 	return args.Get(0).(*api.VideoDetails), args.Error(1)
 }
 
-func (m *MockAudioProcessingService) StartOperation(ctx context.Context, videoID string) (string, error) {
+func (m *MockAudioProcessingService) StartOperation(ctx context.Context, videoID string) (string, string, error) {
 	args := m.Called(ctx, videoID)
-	return args.String(0), args.Error(1)
+	return args.String(0), args.String(1), args.Error(2)
 }
 
 func (m *MockAudioProcessingService) ProcessAudio(ctx context.Context, operationID string, videoDetails api.VideoDetails) error {
@@ -132,9 +132,9 @@ func (m *MockAudioProcessingService) ProcessAudio(ctx context.Context, operation
 	return args.Error(0)
 }
 
-func (m *MockInitiateDownloadUC) Execute(ctx context.Context, song string) (string, error) {
+func (m *MockInitiateDownloadUC) Execute(ctx context.Context, song string) (string, string, error) {
 	args := m.Called(ctx, song)
-	return args.String(0), args.Error(1)
+	return args.String(0), args.String(1), args.Error(2)
 }
 
 func (m *MockGetOperationStatusUC) Execute(ctx context.Context, operationID, songID string) (model.OperationResult, error) {

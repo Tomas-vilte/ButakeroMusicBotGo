@@ -19,7 +19,7 @@ func TestAudioHandler_InitiateDownload(t *testing.T) {
 
 		handlerHttp := handler.NewAudioHandler(mockInitialDownloadUC, mockGetOperationStatusUC)
 
-		mockInitialDownloadUC.On("Execute", mock.Anything, "test_song").Return("operation_123", nil)
+		mockInitialDownloadUC.On("Execute", mock.Anything, "test_song").Return("operation_123", "song_id", nil)
 
 		gin.SetMode(gin.TestMode)
 		w := httptest.NewRecorder()
@@ -30,6 +30,7 @@ func TestAudioHandler_InitiateDownload(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Body.String(), "operation_123")
+		assert.Contains(t, w.Body.String(), "song_id")
 		mockInitialDownloadUC.AssertExpectations(t)
 	})
 
@@ -55,7 +56,7 @@ func TestAudioHandler_InitiateDownload(t *testing.T) {
 		mockInitialDownloadUC := new(MockInitiateDownloadUC)
 		mockGetOperationStatusUC := new(MockGetOperationStatusUC)
 
-		mockInitialDownloadUC.On("Execute", mock.Anything, "test_song").Return("", errors.New("use case error"))
+		mockInitialDownloadUC.On("Execute", mock.Anything, "test_song").Return("", "", errors.New("use case error"))
 
 		handlerHttp := handler.NewAudioHandler(mockInitialDownloadUC, mockGetOperationStatusUC)
 
