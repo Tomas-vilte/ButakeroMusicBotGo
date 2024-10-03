@@ -61,8 +61,9 @@ func StartServer() error {
 	getOperationStatus := usecase.NewGetOperationStatusUseCase(operationRepo)
 	initiateDownloadUC := usecase.NewInitiateDownloadUseCase(audioProcessingService, youtubeAPI)
 	audioHandler := handler.NewAudioHandler(initiateDownloadUC, getOperationStatus)
+	healthCheck := handler.NewHealthHandler(cfg.YouTubeApiKey)
 	r := gin.Default()
-	router.SetupRoutes(r, audioHandler)
+	router.SetupRoutes(r, audioHandler, healthCheck)
 
 	return r.Run(":8080")
 }
