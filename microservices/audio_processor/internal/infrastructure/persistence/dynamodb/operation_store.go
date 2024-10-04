@@ -3,9 +3,11 @@ package dynamodb
 import (
 	"context"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
+	awsCfg "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -14,14 +16,15 @@ import (
 
 // OperationStore implementa la interface repository.OperationRepository maneja el almacenamiento, recuperación y eliminación de resultados de operación en DynamoDB.
 type OperationStore struct {
-	Client    DynamoDBAPI // Cliente para interactuar con DynamoDB.
-	TableName string      // Nombre de la tabla en DynamoDB.
+	Client DynamoDBAPI // Cliente para interactuar con DynamoDB.
+	Cfg    config.Config
 }
 
 // NewOperationStore crea una nueva instancia de OperationStore con la configuración proporcionada.
-func NewOperationStore(tableName string, region string) (*OperationStore, error) {
+func NewOperationStore(cfgApplication config.Config) (*OperationStore, error) {
 	// Carga la configuración de AWS con la región especificada.
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
+	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApplication.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+		cfgApplication.AccessKey, cfgApplication.SecretKey, "")))
 	if err != nil {
 		return nil, fmt.Errorf("error cargando configuración AWS: %w", err)
 	}
@@ -30,8 +33,8 @@ func NewOperationStore(tableName string, region string) (*OperationStore, error)
 	client := dynamodb.NewFromConfig(cfg)
 
 	return &OperationStore{
-		Client:    client,
-		TableName: tableName,
+		Client: client,
+		Cfg:    cfgApplication,
 	}, nil
 }
 
@@ -42,7 +45,7 @@ func (s *OperationStore) SaveOperationsResult(ctx context.Context, result model.
 	}
 
 	input := &dynamodb.PutItemInput{
-		TableName: aws.String(s.TableName),
+		TableName: aws.String(s.Cfg.OperationResultsTable),
 		Item: map[string]types.AttributeValue{
 			"PK":             &types.AttributeValueMemberS{Value: "OPERATION#" + result.ID},
 			"SK":             &types.AttributeValueMemberS{Value: result.SongID},
@@ -68,7 +71,7 @@ func (s *OperationStore) SaveOperationsResult(ctx context.Context, result model.
 // GetOperationResult recupera el resultado de una operación desde DynamoDB usando el ID y el SongID proporcionados.
 func (s *OperationStore) GetOperationResult(ctx context.Context, id, songID string) (*model.OperationResult, error) {
 	input := &dynamodb.GetItemInput{
-		TableName: aws.String(s.TableName),
+		TableName: aws.String(s.Cfg.OperationResultsTable),
 		Key: map[string]types.AttributeValue{
 			"PK": &types.AttributeValueMemberS{Value: "OPERATION#" + id},
 			"SK": &types.AttributeValueMemberS{Value: songID},
@@ -94,7 +97,7 @@ func (s *OperationStore) GetOperationResult(ctx context.Context, id, songID stri
 // DeleteOperationResult elimina el resultado de una operación de DynamoDB usando el ID y el SongID proporcionados.
 func (s *OperationStore) DeleteOperationResult(ctx context.Context, id, songID string) error {
 	input := &dynamodb.DeleteItemInput{
-		TableName: aws.String(s.TableName),
+		TableName: aws.String(s.Cfg.OperationResultsTable),
 		Key: map[string]types.AttributeValue{
 			"PK": &types.AttributeValueMemberS{Value: "OPERATION#" + id},
 			"SK": &types.AttributeValueMemberS{Value: songID},
@@ -109,7 +112,7 @@ func (s *OperationStore) DeleteOperationResult(ctx context.Context, id, songID s
 
 func (s *OperationStore) UpdateOperationStatus(ctx context.Context, operationID string, songID string, status string) error {
 	input := &dynamodb.UpdateItemInput{
-		TableName: aws.String(s.TableName),
+		TableName: aws.String(s.Cfg.OperationResultsTable),
 		Key: map[string]types.AttributeValue{
 			"PK": &types.AttributeValueMemberS{Value: "OPERATION#" + operationID},
 			"SK": &types.AttributeValueMemberS{Value: songID},

@@ -3,6 +3,7 @@ package unit
 import (
 	"context"
 	"errors"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	dynamodb2 "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/persistence/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -42,8 +43,10 @@ func TestMetadataStore(t *testing.T) {
 			// arrange
 			mockClient := new(mockDynamoDBAPI)
 			store := dynamodb2.MetadataStore{
-				Client:    mockClient,
-				TableName: "test-table",
+				Client: mockClient,
+				Config: config.Config{
+					SongsTable: "test-table",
+				},
 			}
 			metadata := model.Metadata{
 				ID:       "test-id",
@@ -65,8 +68,10 @@ func TestMetadataStore(t *testing.T) {
 		// arrange
 		mockClient := new(mockDynamoDBAPI)
 		store := &dynamodb2.MetadataStore{
-			Client:    mockClient,
-			TableName: "test-table",
+			Client: mockClient,
+			Config: config.Config{
+				SongsTable: "test-table",
+			},
 		}
 		metadata := model.Metadata{
 			ID:       "test-id",
@@ -87,16 +92,18 @@ func TestMetadataStore(t *testing.T) {
 	t.Run("NewMetadataStore", func(t *testing.T) {
 		t.Run("Successful creation", func(t *testing.T) {
 			// arrange
-			tableName := "test-table"
-			region := "us-east-1"
+			cfg := config.Config{
+				SongsTable: "test-table",
+				Region:     "us-east-1",
+			}
 
 			// act
-			store, err := dynamodb2.NewMetadataStore(tableName, region)
+			store, err := dynamodb2.NewMetadataStore(cfg)
 
 			// assert
 			assert.NoError(t, err)
 			assert.NotNil(t, store)
-			assert.Equal(t, tableName, store.TableName)
+			assert.Equal(t, cfg.SongsTable, store.Config.SongsTable)
 			assert.NotNil(t, store.Client)
 		})
 	})
@@ -104,8 +111,10 @@ func TestMetadataStore(t *testing.T) {
 	t.Run("Successful retrieval", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
 		store := &dynamodb2.MetadataStore{
-			Client:    mockClient,
-			TableName: "TestTable",
+			Client: mockClient,
+			Config: config.Config{
+				SongsTable: "test-table",
+			},
 		}
 		expectedMetadata := model.Metadata{
 			ID:    "test-id",
@@ -125,8 +134,10 @@ func TestMetadataStore(t *testing.T) {
 	t.Run("Item not found", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
 		store := &dynamodb2.MetadataStore{
-			Client:    mockClient,
-			TableName: "TestTable",
+			Client: mockClient,
+			Config: config.Config{
+				SongsTable: "test-table",
+			},
 		}
 		mockClient.On("GetItem", mock.Anything, mock.AnythingOfType("*dynamodb.GetItemInput"), mock.Anything).Return(&dynamodb.GetItemOutput{}, nil)
 
@@ -140,8 +151,10 @@ func TestMetadataStore(t *testing.T) {
 	t.Run("DynamoDB error", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
 		store := &dynamodb2.MetadataStore{
-			Client:    mockClient,
-			TableName: "TestTable",
+			Client: mockClient,
+			Config: config.Config{
+				SongsTable: "test-table",
+			},
 		}
 
 		mockClient.On("GetItem", mock.Anything, mock.AnythingOfType("*dynamodb.GetItemInput"), mock.Anything).Return(
@@ -160,8 +173,10 @@ func TestGetMetadata(t *testing.T) {
 	t.Run("Successful deletion", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
 		store := &dynamodb2.MetadataStore{
-			Client:    mockClient,
-			TableName: "TestTable",
+			Client: mockClient,
+			Config: config.Config{
+				SongsTable: "test-table",
+			},
 		}
 		mockClient.On("DeleteItem", mock.Anything, mock.AnythingOfType("*dynamodb.DeleteItemInput"), mock.Anything).Return(&dynamodb.DeleteItemOutput{}, nil)
 
@@ -174,8 +189,10 @@ func TestGetMetadata(t *testing.T) {
 	t.Run("DynamoDB error", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
 		store := &dynamodb2.MetadataStore{
-			Client:    mockClient,
-			TableName: "TestTable",
+			Client: mockClient,
+			Config: config.Config{
+				SongsTable: "test-table",
+			},
 		}
 		mockClient.On("DeleteItem", mock.Anything, mock.AnythingOfType("*dynamodb.DeleteItemInput"), mock.Anything).
 			Return((*dynamodb.DeleteItemOutput)(nil), errors.New("DynamoDB error"))

@@ -3,9 +3,11 @@ package dynamodb
 import (
 	"context"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
+	awsCfg "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -15,8 +17,8 @@ import (
 type (
 	// MetadataStore Implementa la interface repository.MetadataRepository proporciona operaciones para almacenar, recuperar y eliminar metadatos en DynamoDB.
 	MetadataStore struct {
-		Client    DynamoDBAPI // Cliente para interactuar con DynamoDB.
-		TableName string      // Nombre de la tabla en DynamoDB.
+		Client DynamoDBAPI // Cliente para interactuar con DynamoDB.
+		Config config.Config
 	}
 
 	// DynamoDBAPI define los métodos necesarios para interactuar con DynamoDB.
@@ -29,10 +31,11 @@ type (
 )
 
 // NewMetadataStore crea una nueva instancia de MetadataStore con la configuración proporcionada.
-func NewMetadataStore(tableName, region string) (*MetadataStore, error) {
+func NewMetadataStore(cfgApplication config.Config) (*MetadataStore, error) {
 	// Carga la configuración de AWS con la región especificada.
 
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
+	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApplication.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+		cfgApplication.AccessKey, cfgApplication.SecretKey, "")))
 	if err != nil {
 		return nil, fmt.Errorf("error cargando configuración AWS: %w", err)
 	}
@@ -40,8 +43,8 @@ func NewMetadataStore(tableName, region string) (*MetadataStore, error) {
 	client := dynamodb.NewFromConfig(cfg)
 
 	return &MetadataStore{
-		Client:    client,
-		TableName: tableName,
+		Client: client,
+		Config: cfgApplication,
 	}, nil
 }
 
@@ -52,7 +55,7 @@ func (s *MetadataStore) SaveMetadata(ctx context.Context, metadata model.Metadat
 	}
 
 	_, err := s.Client.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName: aws.String(s.TableName),
+		TableName: aws.String(s.Config.SongsTable),
 		Item: map[string]types.AttributeValue{
 			"PK":         &types.AttributeValueMemberS{Value: "METADATA#" + metadata.ID},
 			"SK":         &types.AttributeValueMemberS{Value: "METADATA#" + metadata.ID},
@@ -74,7 +77,7 @@ func (s *MetadataStore) SaveMetadata(ctx context.Context, metadata model.Metadat
 // GetMetadata recupera los metadatos de DynamoDB usando el ID proporcionado.
 func (s *MetadataStore) GetMetadata(ctx context.Context, id string) (*model.Metadata, error) {
 	input := &dynamodb.GetItemInput{
-		TableName: aws.String(s.TableName),
+		TableName: aws.String(s.Config.SongsTable),
 		Key: map[string]types.AttributeValue{
 			"PK": &types.AttributeValueMemberS{Value: "METADATA#" + id},
 			"SK": &types.AttributeValueMemberS{Value: "METADATA#" + id},
@@ -99,7 +102,7 @@ func (s *MetadataStore) GetMetadata(ctx context.Context, id string) (*model.Meta
 // DeleteMetadata elimina los metadatos de DynamoDB usando el ID proporcionado.
 func (s *MetadataStore) DeleteMetadata(ctx context.Context, id string) error {
 	input := &dynamodb.DeleteItemInput{
-		TableName: aws.String(s.TableName),
+		TableName: aws.String(s.Config.SongsTable),
 		Key: map[string]types.AttributeValue{
 			"PK": &types.AttributeValueMemberS{Value: "METADATA#" + id},
 			"SK": &types.AttributeValueMemberS{Value: "METADATA#" + id},

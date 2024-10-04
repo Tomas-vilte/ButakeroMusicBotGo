@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/persistence/dynamodb"
 	"github.com/stretchr/testify/assert"
@@ -15,16 +16,20 @@ func TestIntegrationMetadataStore(t *testing.T) {
 		t.Skip("Saltando test de integración en modo corto")
 	}
 
-	tableName := os.Getenv("DYNAMODB_TABLE_NAME")
-	region := os.Getenv("REGION")
+	cfg := config.Config{
+		SongsTable: os.Getenv("DYNAMODB_TABLE_NAME_SONGS"),
+		Region:     os.Getenv("REGION"),
+		AccessKey:  os.Getenv("ACCESS_KEY"),
+		SecretKey:  os.Getenv("SECRET_KEY"),
+	}
 
-	if tableName == "" || region == "" {
-		t.Fatal("DYNAMODB_TABLE_NAME y REGION no fueron seteados para los tests de integracion")
+	if cfg.SongsTable == "" || cfg.Region == "" {
+		t.Fatal("DYNAMODB_TABLE_NAME_SONGS y REGION no fueron seteados para los tests de integracion")
 	}
 
 	t.Run("SaveAndRetrieveMetadata", func(t *testing.T) {
 		// arrange
-		store, err := dynamodb.NewMetadataStore(tableName, region)
+		store, err := dynamodb.NewMetadataStore(cfg)
 		require.NoError(t, err)
 
 		metadata := model.Metadata{
