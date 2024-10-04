@@ -3,21 +3,25 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	cfgAws "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-func CheckS3() error {
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-east-1"))
+func CheckS3(ctx context.Context, cfgApplication config.Config) error {
+	cfg, err := cfgAws.LoadDefaultConfig(ctx, cfgAws.WithRegion(cfgApplication.Region), cfgAws.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+		cfgApplication.AccessKey, cfgApplication.SecretKey, "")))
 	if err != nil {
 		return fmt.Errorf("error cargando configuración AWS: %w", err)
 	}
 
 	client := s3.NewFromConfig(cfg)
 
-	_, err = client.ListBuckets(context.TODO(), &s3.ListBucketsInput{})
+	_, err = client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(cfgApplication.BucketName)})
 	if err != nil {
-		return fmt.Errorf("error en listar buckets: %w", err)
+		return fmt.Errorf("error en encontrar el bucket: %w", err)
 	}
 	return nil
 }

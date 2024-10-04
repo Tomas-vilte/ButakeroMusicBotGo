@@ -10,4 +10,6 @@ type Config struct {
 	OperationResultsTable string
 	SongsTable            string
 	YouTubeApiKey         string
+	AccessKey             string
+	SecretKey             string
 }

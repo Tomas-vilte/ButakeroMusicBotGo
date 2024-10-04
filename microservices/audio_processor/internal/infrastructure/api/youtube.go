@@ -175,9 +175,15 @@ func ExtractVideoIDFromURL(videoURL string) (string, error) {
 	return "", fmt.Errorf("URL de YouTube invalida: %s", videoURL)
 }
 
-func CheckYouTube(apiKey string) error {
+func CheckYouTube(ctx context.Context, apiKey string) error {
 	endpoint := fmt.Sprintf("https://www.googleapis.com/youtube/v3/videos?id=dQw4w9WgXcQ&key=%s", apiKey)
-	resp, err := http.Get(endpoint)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
