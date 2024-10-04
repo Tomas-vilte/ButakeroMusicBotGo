@@ -1,46 +1,70 @@
 package handler
 
 import (
+	"context"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"sync"
 )
 
 type HealthHandler struct {
-	youtubeAPIKey string
+	cfg config.Config
 }
 
-func NewHealthHandler(youtubeAPIKey string) *HealthHandler {
+func NewHealthHandler(cfg config.Config) *HealthHandler {
 	return &HealthHandler{
-		youtubeAPIKey: youtubeAPIKey,
+		cfg: cfg,
 	}
 }
 
 func (h *HealthHandler) HealthCheckHandler(c *gin.Context) {
-	services := map[string]func() error{
-		"DynamoDB": api.CheckDynamoDB,
-		"S3":       api.CheckS3,
-		"YouTube API": func() error {
-			return api.CheckYouTube(h.youtubeAPIKey)
-		},
-	}
+	var wg sync.WaitGroup
+	wg.Add(3)
+
+	var mu sync.Mutex
+
 	results := make(map[string]string)
 	allHealthy := true
 
-	for name, check := range services {
-		if err := check(); err != nil {
-			results[name] = "indisponible" + err.Error()
-			allHealthy = false
-		} else {
-			results[name] = "saludable"
-		}
+	services := map[string]func(ctx context.Context) error{
+		"DynamoDB": func(ctx context.Context) error {
+			defer wg.Done()
+			return api.CheckDynamoDB(ctx, h.cfg)
+		},
+		"S3": func(ctx context.Context) error {
+			defer wg.Done()
+			return api.CheckS3(ctx, h.cfg)
+		},
+		"YouTube API": func(ctx context.Context) error {
+			defer wg.Done()
+			return api.CheckYouTube(ctx, h.cfg.YouTubeApiKey)
+		},
 	}
+
+	for name, check := range services {
+		go func(name string, check func(ctx context.Context) error) {
+			if err := check(c.Request.Context()); err != nil {
+				mu.Lock()
+				results[name] = "indisponible: " + err.Error()
+				allHealthy = false
+				mu.Unlock()
+			} else {
+				mu.Lock()
+				results[name] = "saludable"
+				mu.Unlock()
+			}
+		}(name, check)
+	}
+
+	wg.Wait()
 
 	status := http.StatusOK
 	message := "Todos los servicios son saludables."
 	if !allHealthy {
 		status = http.StatusInternalServerError
-		message = "Uno o mas servicios no estan saludables"
+		message = "Uno o más servicios no están saludables"
 	}
 
 	c.JSON(status, gin.H{

@@ -25,6 +25,8 @@ func StartServer() error {
 		YouTubeApiKey:         os.Getenv("YOUTUBE_API_KEY"),
 		SongsTable:            os.Getenv("DYNAMODB_TABLE_NAME_SONGS"),
 		OperationResultsTable: os.Getenv("DYNAMODB_TABLE_NAME_OPERATION"),
+		AccessKey:             os.Getenv("ACCESS_KEY"),
+		SecretKey:             os.Getenv("SECRET_KEY"),
 	}
 
 	log, err := logger.NewZapLogger()
@@ -61,7 +63,7 @@ func StartServer() error {
 	getOperationStatus := usecase.NewGetOperationStatusUseCase(operationRepo)
 	initiateDownloadUC := usecase.NewInitiateDownloadUseCase(audioProcessingService, youtubeAPI)
 	audioHandler := handler.NewAudioHandler(initiateDownloadUC, getOperationStatus)
-	healthCheck := handler.NewHealthHandler(cfg.YouTubeApiKey)
+	healthCheck := handler.NewHealthHandler(cfg)
 	r := gin.Default()
 	router.SetupRoutes(r, audioHandler, healthCheck)
 
