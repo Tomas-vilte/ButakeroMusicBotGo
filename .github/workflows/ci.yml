@@ -113,8 +113,8 @@ jobs:
           REGION: ${{ secrets.REGION }}
           DYNAMODB_TABLE_NAME_SONGS: ${{ secrets.DYNAMODB_TABLE_NAME_SONGS }}
           DYNAMODB_TABLE_NAME_OPERATION: ${{ secrets.DYNAMODB_TABLE_NAME_OPERATION }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          SECRET_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: make integration-test
 
       - name: Generate integration test coverage report
