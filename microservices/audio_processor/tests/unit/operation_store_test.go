@@ -3,6 +3,7 @@ package unit
 import (
 	"context"
 	"errors"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	dynamodb2 "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/persistence/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -16,8 +17,10 @@ func TestSaveOperationResult(t *testing.T) {
 	t.Run("Successful save", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
-			Client:    mockClient,
-			TableName: "TestOperationStore",
+			Client: mockClient,
+			Cfg: config.Config{
+				OperationResultsTable: "TestOperationStore",
+			},
 		}
 
 		result := model.OperationResult{
@@ -36,8 +39,10 @@ func TestSaveOperationResult(t *testing.T) {
 	t.Run("DynamoDB error", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
-			Client:    mockClient,
-			TableName: "TestOperationStore",
+			Client: mockClient,
+			Cfg: config.Config{
+				OperationResultsTable: "TestOperationStore",
+			},
 		}
 
 		result := model.OperationResult{
@@ -59,8 +64,10 @@ func TestGetOperationResult(t *testing.T) {
 	t.Run("Successful retrieval", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
-			Client:    mockClient,
-			TableName: "TestOperationStore",
+			Client: mockClient,
+			Cfg: config.Config{
+				OperationResultsTable: "TestOperationStore",
+			},
 		}
 
 		expectedResult := &model.OperationResult{
@@ -85,8 +92,10 @@ func TestGetOperationResult(t *testing.T) {
 	t.Run("Item not found", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
-			Client:    mockClient,
-			TableName: "TestOperationStore",
+			Client: mockClient,
+			Cfg: config.Config{
+				OperationResultsTable: "TestOperationStore",
+			},
 		}
 
 		mockClient.On("GetItem", mock.Anything, mock.AnythingOfType("*dynamodb.GetItemInput"), mock.Anything).
@@ -103,8 +112,10 @@ func TestGetOperationResult(t *testing.T) {
 	t.Run("DynamoDB error", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
-			Client:    mockClient,
-			TableName: "TestOperationStore",
+			Client: mockClient,
+			Cfg: config.Config{
+				OperationResultsTable: "TestOperationStore",
+			},
 		}
 
 		mockClient.On("GetItem", mock.Anything, mock.AnythingOfType("*dynamodb.GetItemInput"), mock.Anything).
@@ -122,9 +133,11 @@ func TestGetOperationResult(t *testing.T) {
 func TestDeleteOperationResult(t *testing.T) {
 	t.Run("Successful deletion", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
-		store := &dynamodb2.OperationStore{
-			Client:    mockClient,
-			TableName: "TestTable",
+		store := dynamodb2.OperationStore{
+			Client: mockClient,
+			Cfg: config.Config{
+				OperationResultsTable: "TestOperationStore",
+			},
 		}
 
 		mockClient.On("DeleteItem", mock.Anything, mock.AnythingOfType("*dynamodb.DeleteItemInput"), mock.Anything).
@@ -138,9 +151,11 @@ func TestDeleteOperationResult(t *testing.T) {
 
 	t.Run("DynamoDB error", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
-		store := &dynamodb2.OperationStore{
-			Client:    mockClient,
-			TableName: "TestTable",
+		store := dynamodb2.OperationStore{
+			Client: mockClient,
+			Cfg: config.Config{
+				OperationResultsTable: "TestOperationStore",
+			},
 		}
 
 		mockClient.On("DeleteItem", mock.Anything, mock.AnythingOfType("*dynamodb.DeleteItemInput"), mock.Anything).
@@ -157,9 +172,11 @@ func TestDeleteOperationResult(t *testing.T) {
 func TestUpdateOperationStatus(t *testing.T) {
 	t.Run("Successful update", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
-		store := &dynamodb2.OperationStore{
-			Client:    mockClient,
-			TableName: "TestTable",
+		store := dynamodb2.OperationStore{
+			Client: mockClient,
+			Cfg: config.Config{
+				OperationResultsTable: "TestOperationStore",
+			},
 		}
 
 		mockClient.On("UpdateItem", mock.Anything, mock.AnythingOfType("*dynamodb.UpdateItemInput"), mock.Anything).
@@ -174,8 +191,10 @@ func TestUpdateOperationStatus(t *testing.T) {
 	t.Run("DynamoDB error", func(t *testing.T) {
 		mockClient := new(mockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
-			Client:    mockClient,
-			TableName: "TestOperationStore",
+			Client: mockClient,
+			Cfg: config.Config{
+				OperationResultsTable: "TestOperationStore",
+			},
 		}
 
 		mockClient.On("UpdateItem", mock.Anything, mock.AnythingOfType("*dynamodb.UpdateItemInput"), mock.Anything).

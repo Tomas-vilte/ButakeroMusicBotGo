@@ -3,6 +3,7 @@ package unit
 import (
 	"context"
 	"errors"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/storage"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"strings"
@@ -36,8 +37,10 @@ func TestS3Storage_UploadFile(t *testing.T) {
 		})
 
 		storageS3 := storage.S3Storage{
-			Client:     mockClient,
-			BucketName: "test-bucket",
+			Client: mockClient,
+			Config: config.Config{
+				BucketName: "test-bucket",
+			},
 		}
 
 		// act
@@ -57,8 +60,10 @@ func TestS3Storage_UploadFile(t *testing.T) {
 		})
 
 		storageS3 := storage.S3Storage{
-			Client:     mockClient,
-			BucketName: "test-bucket",
+			Client: mockClient,
+			Config: config.Config{
+				BucketName: "test-bucket",
+			},
 		}
 
 		// act
@@ -81,7 +86,9 @@ func TestS3Storage_UploadFile(t *testing.T) {
 				t.Fatal("No se debería llamar a PutObject")
 				return nil, nil
 			}),
-			BucketName: "test-bucket",
+			Config: config.Config{
+				BucketName: "test-bucket",
+			},
 		}
 
 		// act
@@ -100,7 +107,11 @@ func TestS3Storage_UploadFile(t *testing.T) {
 func TestNewS3Storage(t *testing.T) {
 	t.Run("Successful creation", func(t *testing.T) {
 		// act
-		storageS3, err := storage.NewS3Storage("test-bucket", "us-east-1")
+		cfg := config.Config{
+			BucketName: "test-bucket",
+			Region:     "us-east-1",
+		}
+		storageS3, err := storage.NewS3Storage(cfg)
 
 		// assert
 		if err != nil {
@@ -110,7 +121,7 @@ func TestNewS3Storage(t *testing.T) {
 		if storageS3 == nil {
 			t.Fatal("se esperaba un storage no nulo")
 		}
-		if got, want := storageS3.BucketName, "test-bucket"; got != want {
+		if got, want := storageS3.Config.BucketName, "test-bucket"; got != want {
 			t.Errorf("bucketName = %q, se esperaba %q", got, want)
 		}
 	})

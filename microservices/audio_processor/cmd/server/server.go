@@ -35,18 +35,18 @@ func StartServer() error {
 	}
 	defer log.Close()
 
-	storageService, err := storage.NewS3Storage(cfg.BucketName, cfg.Region)
+	storageService, err := storage.NewS3Storage(cfg)
 	if err != nil {
 		return err
 	}
 
-	downloaderMusic := downloader.NewYTDLPDownloader(log, downloader.YTDLPOptions{UseOAuth2: false})
-	operationRepo, err := dynamodb.NewOperationStore(cfg.OperationResultsTable, cfg.Region)
+	downloaderMusic := downloader.NewYTDLPDownloader(log, downloader.YTDLPOptions{UseOAuth2: true})
+	operationRepo, err := dynamodb.NewOperationStore(cfg)
 	if err != nil {
 		return err
 	}
 
-	metadataRepo, err := dynamodb.NewMetadataStore(cfg.SongsTable, cfg.Region)
+	metadataRepo, err := dynamodb.NewMetadataStore(cfg)
 	if err != nil {
 		return err
 	}

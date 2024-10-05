@@ -3,9 +3,11 @@ package integration
 import (
 	"context"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/storage"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
+	awsCfg "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"io"
 	"os"
@@ -19,19 +21,25 @@ func TestS3StorageIntegration(t *testing.T) {
 		t.Skip("Saltando test de integración en modo corto")
 	}
 
+	cfgApp := config.Config{
+		BucketName: os.Getenv("BUCKET_NAME"),
+		Region:     os.Getenv("REGION"),
+		AccessKey:  os.Getenv("ACCESS_KEY"),
+		SecretKey:  os.Getenv("SECRET_KEY"),
+	}
+
 	// config
-	bucketName := os.Getenv("BUCKET_NAME")
-	region := os.Getenv("REGION")
-	if bucketName == "" || region == "" {
+	if cfgApp.BucketName == "" || cfgApp.Region == "" {
 		t.Fatal("BUCKET_NAME y AWS_REGION deben estar configurados para los tests de integración")
 	}
 
-	s3Storage, err := storage.NewS3Storage(bucketName, region)
+	s3Storage, err := storage.NewS3Storage(cfgApp)
 	if err != nil {
 		t.Fatalf("Error al crear S3Storage: %v", err)
 	}
 
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
+	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApp.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+		cfgApp.AccessKey, cfgApp.SecretKey, "")))
 	if err != nil {
 		t.Fatalf("Error al cargar la configuración de AWS: %v", err)
 	}
@@ -50,7 +58,7 @@ func TestS3StorageIntegration(t *testing.T) {
 
 		// assert
 		getObjectInput := &s3.GetObjectInput{
-			Bucket: aws.String(bucketName),
+			Bucket: aws.String(cfgApp.BucketName),
 			Key:    aws.String("audio/" + fileName),
 		}
 		result, err := s3Client.GetObject(context.Background(), getObjectInput)
@@ -70,7 +78,7 @@ func TestS3StorageIntegration(t *testing.T) {
 
 		// clear
 		deleteObjectInput := &s3.DeleteObjectInput{
-			Bucket: aws.String(bucketName),
+			Bucket: aws.String(cfgApp.BucketName),
 			Key:    aws.String("audio/" + fileName),
 		}
 
