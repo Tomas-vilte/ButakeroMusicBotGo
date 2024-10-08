@@ -21,7 +21,7 @@ func NewHealthHandler(cfg config.Config) *HealthHandler {
 
 func (h *HealthHandler) HealthCheckHandler(c *gin.Context) {
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(2)
 
 	var mu sync.Mutex
 
@@ -36,10 +36,6 @@ func (h *HealthHandler) HealthCheckHandler(c *gin.Context) {
 		"S3": func(ctx context.Context) error {
 			defer wg.Done()
 			return api.CheckS3(ctx, h.cfg)
-		},
-		"YouTube API": func(ctx context.Context) error {
-			defer wg.Done()
-			return api.CheckYouTube(ctx, h.cfg.YouTubeApiKey)
 		},
 	}
 
