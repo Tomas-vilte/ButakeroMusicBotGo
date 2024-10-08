@@ -7,3 +7,4 @@
 /terraform/terraform.tfvars
 .env
 /logs
+/microservices/audio_processor/credentials.env
