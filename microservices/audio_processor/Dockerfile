@@ -20,9 +20,7 @@ COPY --from=builder /app/main .
 
 ENV PATH="/venv/bin:$PATH"
 
-# Verificar las versiones de ffmpeg, yt-dlp y curl
-RUN ffmpeg -version && yt-dlp --version && curl --version
-
 EXPOSE 8080
+HEALTHCHECK CMD curl http://localhost:8080/api/health || exit 1
 
 CMD ["./main"]
