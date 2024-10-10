@@ -12,4 +12,5 @@ type Config struct {
 	YouTubeApiKey         string
 	AccessKey             string
 	SecretKey             string
+	Environment           string
 }

@@ -27,6 +27,7 @@ func StartServer() error {
 		OperationResultsTable: os.Getenv("DYNAMODB_TABLE_NAME_OPERATION"),
 		AccessKey:             os.Getenv("ACCESS_KEY"),
 		SecretKey:             os.Getenv("SECRET_KEY"),
+		Environment:           getGinMode(),
 	}
 
 	log, err := logger.NewZapLogger()
@@ -64,8 +65,15 @@ func StartServer() error {
 	initiateDownloadUC := usecase.NewInitiateDownloadUseCase(audioProcessingService, youtubeAPI)
 	audioHandler := handler.NewAudioHandler(initiateDownloadUC, getOperationStatus)
 	healthCheck := handler.NewHealthHandler(cfg)
-	r := gin.Default()
-	router.SetupRoutes(r, audioHandler, healthCheck)
-
+	gin.SetMode(cfg.Environment)
+	r := gin.New()
+	router.SetupRoutes(r, audioHandler, healthCheck, log)
 	return r.Run(":8080")
+}
+
+func getGinMode() string {
+	if mode := os.Getenv("GIN_MODE"); mode != "" {
+		return mode
+	}
+	return "debug"
 }
