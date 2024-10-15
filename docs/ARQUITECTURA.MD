@@ -33,7 +33,7 @@ El bot de Discord de ButakeroMusicBotGo está alojado en Amazon EC2, lo que prop
 
 ## Diagrama de Arquitectura
 
-![Diagrama de Arquitectura](/docs/Arquitectura%20Webhook.png)
+![Diagrama de Arquitectura](/images/Arquitectura%20Webhook.png)
 
 **Descripción:**
 
@@ -71,7 +71,7 @@ ButakeroMusicBotGo utiliza un webhook de GitHub para recibir eventos de nuevas v
 
 ## Diagrama de Secuencia CI/CD
 
-![Diagrama de Secuencia CI/CD](/docs/ci-cd%20d%20secuencia.png)
+![Diagrama de Secuencia CI/CD](/images/ci-cd%20d%20secuencia.png)
 
 **Descripción:**
 
@@ -123,7 +123,7 @@ A continuación, se muestran algunas capturas de pantalla de los paneles en Graf
 
 #### Grafana:
 
-![Panel de Grafana 1](/docs/paneles.png)
+![Panel de Grafana 1](/images/paneles.png)
 1. **Panel 1: GC duration quantile**
    - **Descripción:** Muestra la duración de los ciclos de recolección de basura (GC) en diferentes percentiles.
    - **Explicación:** Indica cuánto tiempo tarda el recolector de basura en limpiar la memoria. Un aumento en la duración del GC puede señalar problemas de memoria o de rendimiento.
@@ -150,7 +150,7 @@ A continuación, se muestran algunas capturas de pantalla de los paneles en Graf
 
 #### Pyroscope:
 
-![Captura de Pyroscope](/docs/profiling.png)
+![Captura de Pyroscope](/images/profiling.png)
 ### Profiling
 
 **Panel Superior:**

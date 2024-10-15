@@ -142,6 +142,9 @@ cfg := config.Config{
     YouTubeApiKey:         os.Getenv("YOUTUBE_API_KEY"),
     SongsTable:            os.Getenv("DYNAMODB_TABLE_NAME_SONGS"),
     OperationResultsTable: os.Getenv("DYNAMODB_TABLE_NAME_OPERATION"),
+    AccessKey:             os.Getenv("ACCESS_KEY"),
+    SecretKey:             os.Getenv("SECRET_KEY"),
+    Environment:           os.Getenv("GIN_MODE"), 
 }
 ```
 
@@ -152,6 +155,8 @@ Asegurate de tener configuradas las siguientes variables de entorno:
 - `YOUTUBE_API_KEY`: La clave de API de YouTube.
 - `DYNAMODB_TABLE_NAME_SONGS`: El nombre de la tabla de DynamoDB para los metadatos de canciones.
 - `DYNAMODB_TABLE_NAME_OPERATION`: El nombre de la tabla de DynamoDB para los resultados de operaciones.
+- `ACCESS_KEY` y `SECRET_KEY` : Credenciales de AWS necesarias para acceder a los servicios.
+- `GIN_MODE`: Modo de ejecuccion de la applicacion de Gin. Puede ser `release` o `debug`, por default esta en `default`.
 
 ## Pruebas
 
@@ -166,7 +171,7 @@ go test ./...
 
 ## Diagrama de Secuencia
 
-![image](/docs/diagrama-de-secuencia-microservicio.png)
+![image](/images/diagrama-de-secuencia-microservicio.png)
 
 El diagrama de secuencia ilustra el flujo de interacción entre los diferentes componentes del microservicio durante el proceso de descarga y procesamiento de audio. A continuación, se describen los pasos clave:
 
@@ -178,17 +183,37 @@ El diagrama de secuencia ilustra el flujo de interacción entre los diferentes c
 
 Este enfoque asíncrono asegura que el usuario reciba una respuesta inmediata, mejorando la experiencia del usuario.
 
-## Diagrama de Arquitectura
+# Arquitectura de la Aplicación en AWS ECS
 
-![image](/docs/diagram-arquitectura-microservicio.png)
+![image](/images/arquitectura-microservice-aws.png)
 
-El diagrama de arquitectura presenta la infraestructura general del microservicio, destacando los componentes principales y su interconexión. A continuación, se describen los elementos clave:
+## Componentes de la Arquitectura
 
-1. **Load Balancer**: Distribuye las solicitudes entrantes entre las instancias del microservicio, garantizando una carga equilibrada y alta disponibilidad.
-2. **Microservicio**: El núcleo de la aplicación que maneja las solicitudes de descarga de audio. Se comunica con:
-   - **YouTube API**: Para buscar y obtener los detalles del video.
-   - **DynamoDB**: Para almacenar resultados de operaciones y metadatos relacionados con las canciones.
-   - **AWS CloudWatch**: Para la monitorización y registro de logs, permitiendo un seguimiento eficaz del rendimiento y posibles errores.
-    - **AWS S3**: Para almacenar las canciones para no tener que volver a descargarlas, estos archivos se guardan como `.dca`.
+### 1. VPC (Virtual Private Cloud)
+Primero, tenemos nuestra VPC, que es como nuestro propio espacio en la nube. Nos permite gestionar nuestros recursos de manera aislada y segura, dándonos la flexibilidad que necesitamos.
 
-Este diagrama ilustra cómo se interrelacionan los distintos componentes dentro de AWS, ofreciendo un marco robusto y escalable para el microservicio.
+### 2. EC2 Instance
+El tráfico llega primero a una instancia de EC2 que actúa como puerta de entrada. Desde aca, la applicacion **Nuestro Bot de musica** envía requests a nuestra aplicación **Donde se encuentra la logica de procesamiento de audio**, que son redirigidas a través de un Application Load Balancer.
+
+### 3. Application Load Balancer (ALB)
+El ALB es el responsable de recibir el tráfico HTTP en el puerto 80 y distribuirlo a un Target Group. Este grupo se encarga de enrutar las solicitudes a los contenedores en ECS. También implementa un **health check** cada 30 segundos para asegurarse de que nuestras tareas estén saludables y funcionando bien.
+
+### 4. ECS Cluster y Fargate
+Las tareas de nuestra aplicación se ejecutan en un clúster de ECS utilizando Fargate. Básicamente, Fargate nos libera de la carga de gestionar servidores, permitiéndonos concentrarnos en el código y la lógica de nuestra aplicación.
+
+### 5. ECS Tasks
+Las tareas de ECS son los contenedores que realmente hacen el trabajo. Cuando llegan las solicitudes, estos contenedores procesan la información y acceden a servicios externos como S3 para almacenamiento y DynamoDB para gestionar el estado de la aplicación.
+
+### 6. CloudWatch
+Monitorizamos el rendimiento de nuestras tareas con Amazon CloudWatch. Esto nos permite establecer políticas de escalado automático basadas en el uso de CPU y memoria, asegurando que la aplicación puede adaptarse a picos de tráfico sin problemas.
+
+### 7. Security Groups
+Por último, tenemos los grupos de seguridad. Estos son clave para controlar el acceso a nuestros recursos en la VPC, asegurando que solo el tráfico autorizado pueda llegar a nuestras instancias y servicios.
+
+## Flujo de Tráfico
+
+1. **Applicacion bot de musica**: Envía una requests desde un cliente EC2.
+2. **ALB**: La solicitud llega al ALB, que se encarga de dirigir el tráfico al Target Group.
+3. **Target Group**: Este grupo enruta el tráfico a las tareas de ECS corriendo en Fargate.
+4. **ECS Tasks**: Las tareas procesan la solicitud y, si necesitan, acceden a S3 y DynamoDB para manejar los datos.
+5. **CloudWatch**: Monitorea el rendimiento y activa políticas de escalado si se detectan problemas de capacidad.
