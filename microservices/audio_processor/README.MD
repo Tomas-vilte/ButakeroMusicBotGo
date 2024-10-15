@@ -121,7 +121,7 @@ Respuesta (ejemplo de operación fallida):
 
 ```json
 {
-  "operationID": "unique-operation-id",
+  "operation_id": "unique-operation-id",
   "status": "failed",
   "error": "Descripción del error ocurrido"
 }
@@ -178,7 +178,7 @@ El diagrama de secuencia ilustra el flujo de interacción entre los diferentes c
 1. **Cliente**: Inicia la solicitud de descarga de audio enviando la canción deseada al microservicio.
 2. **Microservicio**: Recibe la solicitud y utiliza el servicio de YouTube para buscar el ID del video correspondiente a la canción.
 3. **YouTube API**: Proporciona el ID del video y sus detalles (metadata) al microservicio.
-4. **Microservicio**: Inicia una operación para el procesamiento del audio y devuelve el `operationID` y `songID` al cliente.
+4. **Microservicio**: Inicia una operación para el procesamiento del audio y devuelve el `operation_id` y `song_id` al cliente.
 5. **Proceso Asíncrono**: En paralelo, el microservicio procesa el audio utilizando el ID de operación y los detalles obtenidos, permitiendo al cliente continuar con otras tareas sin esperar la finalización.
 
 Este enfoque asíncrono asegura que el usuario reciba una respuesta inmediata, mejorando la experiencia del usuario.
@@ -193,7 +193,7 @@ Este enfoque asíncrono asegura que el usuario reciba una respuesta inmediata, m
 Primero, tenemos nuestra VPC, que es como nuestro propio espacio en la nube. Nos permite gestionar nuestros recursos de manera aislada y segura, dándonos la flexibilidad que necesitamos.
 
 ### 2. EC2 Instance
-El tráfico llega primero a una instancia de EC2 que actúa como puerta de entrada. Desde aca, la applicacion **Nuestro Bot de musica** envía requests a nuestra aplicación **Donde se encuentra la logica de procesamiento de audio**, que son redirigidas a través de un Application Load Balancer.
+El tráfico llega primero a una instancia de EC2 que actúa como puerta de entrada. Desde aca, la aplicacion **Nuestro Bot de musica** envía requests a nuestra aplicación **Donde se encuentra la logica de procesamiento de audio**, que son redirigidas a través de un Application Load Balancer.
 
 ### 3. Application Load Balancer (ALB)
 El ALB es el responsable de recibir el tráfico HTTP en el puerto 80 y distribuirlo a un Target Group. Este grupo se encarga de enrutar las solicitudes a los contenedores en ECS. También implementa un **health check** cada 30 segundos para asegurarse de que nuestras tareas estén saludables y funcionando bien.
