@@ -4,7 +4,7 @@
 
 ## 🏗️ Arquitectura del Bot
 
-¿Querés chusmear la arquitectura del bot en producción? Hacé clic [aca](/docs/ARQUITECTURA.MD) para ver todos los detalles sobre cómo está construido y desplegado ButakeroMusicBotGo.
+¿Querés chusmear la arquitectura del bot en producción? Hacé clic [aca](/images/ARQUITECTURA.MD) para ver todos los detalles sobre cómo está construido y desplegado ButakeroMusicBotGo.
 
 ## 🤖 Invitación al Bot
 
