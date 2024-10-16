@@ -40,28 +40,22 @@ func NewOperationStore(cfgApplication config.Config) (*OperationStore, error) {
 
 // SaveOperationsResult guarda el resultado de una operación en DynamoDB. Genera un nuevo ID si es necesario.
 func (s *OperationStore) SaveOperationsResult(ctx context.Context, result model.OperationResult) error {
-	if result.ID == "" {
-		result.ID = uuid.New().String() // Genera un nuevo ID si es necesario.
+	if result.PK == "" {
+		result.PK = uuid.New().String()
+	}
+
+	// Convierte el struct a un mapa compatible con DynamoDB
+	item, err := attributevalue.MarshalMap(result)
+	if err != nil {
+		return fmt.Errorf("error al convertir la operación a un mapa de DynamoDB: %w", err)
 	}
 
 	input := &dynamodb.PutItemInput{
 		TableName: aws.String(s.Cfg.OperationResultsTable),
-		Item: map[string]types.AttributeValue{
-			"PK":             &types.AttributeValueMemberS{Value: "OPERATION#" + result.ID},
-			"SK":             &types.AttributeValueMemberS{Value: result.SongID},
-			"ID":             &types.AttributeValueMemberS{Value: result.ID},
-			"SongID":         &types.AttributeValueMemberS{Value: result.SongID},
-			"Status":         &types.AttributeValueMemberS{Value: result.Status},
-			"Message":        &types.AttributeValueMemberS{Value: result.Message},
-			"Data":           &types.AttributeValueMemberS{Value: result.Data},
-			"ProcessingDate": &types.AttributeValueMemberS{Value: result.ProcessingDate},
-			"Success":        &types.AttributeValueMemberBOOL{Value: result.Success},
-			"Attempts":       &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", result.Attempts)},
-			"Failures":       &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", result.Failures)},
-		},
+		Item:      item,
 	}
 
-	_, err := s.Client.PutItem(ctx, input)
+	_, err = s.Client.PutItem(ctx, input)
 	if err != nil {
 		return fmt.Errorf("error al guardar resultado de operación en DynamoDB: %w", err)
 	}
@@ -73,7 +67,7 @@ func (s *OperationStore) GetOperationResult(ctx context.Context, id, songID stri
 	input := &dynamodb.GetItemInput{
 		TableName: aws.String(s.Cfg.OperationResultsTable),
 		Key: map[string]types.AttributeValue{
-			"PK": &types.AttributeValueMemberS{Value: "OPERATION#" + id},
+			"PK": &types.AttributeValueMemberS{Value: id},
 			"SK": &types.AttributeValueMemberS{Value: songID},
 		},
 	}
@@ -99,7 +93,7 @@ func (s *OperationStore) DeleteOperationResult(ctx context.Context, id, songID s
 	input := &dynamodb.DeleteItemInput{
 		TableName: aws.String(s.Cfg.OperationResultsTable),
 		Key: map[string]types.AttributeValue{
-			"PK": &types.AttributeValueMemberS{Value: "OPERATION#" + id},
+			"PK": &types.AttributeValueMemberS{Value: id},
 			"SK": &types.AttributeValueMemberS{Value: songID},
 		},
 	}
@@ -114,7 +108,7 @@ func (s *OperationStore) UpdateOperationStatus(ctx context.Context, operationID 
 	input := &dynamodb.UpdateItemInput{
 		TableName: aws.String(s.Cfg.OperationResultsTable),
 		Key: map[string]types.AttributeValue{
-			"PK": &types.AttributeValueMemberS{Value: "OPERATION#" + operationID},
+			"PK": &types.AttributeValueMemberS{Value: operationID},
 			"SK": &types.AttributeValueMemberS{Value: songID},
 		},
 		ExpressionAttributeNames: map[string]string{

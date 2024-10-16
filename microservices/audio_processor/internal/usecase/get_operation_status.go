@@ -17,12 +17,12 @@ func NewGetOperationStatusUseCase(operationRepository repository.OperationReposi
 	}
 }
 
-func (uc *GetOperationStatusUseCaseImpl) Execute(ctx context.Context, operationID, songID string) (model.OperationResult, error) {
+func (uc *GetOperationStatusUseCaseImpl) Execute(ctx context.Context, operationID, songID string) (*model.OperationResult, error) {
 	operation, err := uc.operationRepository.GetOperationResult(ctx, operationID, songID)
 	if err != nil {
-		return model.OperationResult{}, fmt.Errorf("error al obtener la operación: %w", err)
+		return &model.OperationResult{}, fmt.Errorf("error al obtener la operación: %w", err)
 	}
 
-	return *operation, nil
+	return operation, nil
 
 }

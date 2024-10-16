@@ -13,35 +13,11 @@ import (
 	"testing"
 )
 
-type mockDynamoDBAPI struct {
-	mock.Mock
-}
-
-func (m *mockDynamoDBAPI) PutItem(ctx context.Context, params *dynamodb.PutItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error) {
-	args := m.Called(ctx, params, optFns)
-	return args.Get(0).(*dynamodb.PutItemOutput), args.Error(1)
-}
-
-func (m *mockDynamoDBAPI) GetItem(ctx context.Context, params *dynamodb.GetItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error) {
-	args := m.Called(ctx, params, optFns)
-	return args.Get(0).(*dynamodb.GetItemOutput), args.Error(1)
-}
-
-func (m *mockDynamoDBAPI) DeleteItem(ctx context.Context, params *dynamodb.DeleteItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error) {
-	args := m.Called(ctx, params, optFns)
-	return args.Get(0).(*dynamodb.DeleteItemOutput), args.Error(1)
-}
-
-func (m *mockDynamoDBAPI) UpdateItem(ctx context.Context, params *dynamodb.UpdateItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error) {
-	args := m.Called(ctx, params, optFns)
-	return args.Get(0).(*dynamodb.UpdateItemOutput), args.Error(1)
-}
-
 func TestMetadataStore(t *testing.T) {
 	t.Run("SaveMetadata", func(t *testing.T) {
 		t.Run("Successful save", func(t *testing.T) {
 			// arrange
-			mockClient := new(mockDynamoDBAPI)
+			mockClient := new(MockDynamoDBAPI)
 			store := dynamodb2.MetadataStore{
 				Client: mockClient,
 				Config: config.Config{
@@ -66,7 +42,7 @@ func TestMetadataStore(t *testing.T) {
 
 	t.Run("DynamoDB error", func(t *testing.T) {
 		// arrange
-		mockClient := new(mockDynamoDBAPI)
+		mockClient := new(MockDynamoDBAPI)
 		store := &dynamodb2.MetadataStore{
 			Client: mockClient,
 			Config: config.Config{
@@ -109,7 +85,7 @@ func TestMetadataStore(t *testing.T) {
 	})
 
 	t.Run("Successful retrieval", func(t *testing.T) {
-		mockClient := new(mockDynamoDBAPI)
+		mockClient := new(MockDynamoDBAPI)
 		store := &dynamodb2.MetadataStore{
 			Client: mockClient,
 			Config: config.Config{
@@ -132,7 +108,7 @@ func TestMetadataStore(t *testing.T) {
 	})
 
 	t.Run("Item not found", func(t *testing.T) {
-		mockClient := new(mockDynamoDBAPI)
+		mockClient := new(MockDynamoDBAPI)
 		store := &dynamodb2.MetadataStore{
 			Client: mockClient,
 			Config: config.Config{
@@ -149,7 +125,7 @@ func TestMetadataStore(t *testing.T) {
 	})
 
 	t.Run("DynamoDB error", func(t *testing.T) {
-		mockClient := new(mockDynamoDBAPI)
+		mockClient := new(MockDynamoDBAPI)
 		store := &dynamodb2.MetadataStore{
 			Client: mockClient,
 			Config: config.Config{
@@ -171,7 +147,7 @@ func TestMetadataStore(t *testing.T) {
 
 func TestGetMetadata(t *testing.T) {
 	t.Run("Successful deletion", func(t *testing.T) {
-		mockClient := new(mockDynamoDBAPI)
+		mockClient := new(MockDynamoDBAPI)
 		store := &dynamodb2.MetadataStore{
 			Client: mockClient,
 			Config: config.Config{
@@ -187,7 +163,7 @@ func TestGetMetadata(t *testing.T) {
 	})
 
 	t.Run("DynamoDB error", func(t *testing.T) {
-		mockClient := new(mockDynamoDBAPI)
+		mockClient := new(MockDynamoDBAPI)
 		store := &dynamodb2.MetadataStore{
 			Client: mockClient,
 			Config: config.Config{

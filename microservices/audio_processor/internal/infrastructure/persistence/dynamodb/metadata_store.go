@@ -63,7 +63,6 @@ func (s *MetadataStore) SaveMetadata(ctx context.Context, metadata model.Metadat
 			"Title":      &types.AttributeValueMemberS{Value: metadata.Title},
 			"URLYoutube": &types.AttributeValueMemberS{Value: metadata.URLYouTube},
 			"Thumbnail":  &types.AttributeValueMemberS{Value: metadata.Thumbnail},
-			"URLS3":      &types.AttributeValueMemberS{Value: metadata.URLS3},
 			"Platform":   &types.AttributeValueMemberS{Value: metadata.Platform},
 			"Duration":   &types.AttributeValueMemberS{Value: metadata.Duration},
 		},

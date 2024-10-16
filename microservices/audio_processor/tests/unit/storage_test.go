@@ -3,38 +3,23 @@ package unit
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/storage"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"strings"
 	"testing"
 )
 
-type mockPutObjectAPI func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
-
-func (m mockPutObjectAPI) PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
-	return m(ctx, params, optFns...)
-}
-
 func TestS3Storage_UploadFile(t *testing.T) {
 	t.Run("Successful upload", func(t *testing.T) {
 		// arrange
-		mockClient := mockPutObjectAPI(func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
-			// assert
-			if params.Bucket == nil {
-				t.Fatal("se espera que el bucket no sea nulo")
-			}
-			if got, want := *params.Bucket, "test-bucket"; got != want {
-				t.Errorf("bucket = %q, se esperaba %q", got, want)
-			}
-			if params.Key == nil {
-				t.Fatal("se espera que la clave no sea nula")
-			}
-			if got, want := *params.Key, "audio/test-file.txt"; got != want {
-				t.Errorf("clave = %q, se esperaba %q", got, want)
-			}
-			return &s3.PutObjectOutput{}, nil
-		})
+		mockClient := new(MockStorageS3API)
+		mockClient.On("PutObject", mock.Anything, mock.AnythingOfType("*s3.PutObjectInput"), mock.Anything).
+			Return(&s3.PutObjectOutput{}, nil)
 
 		storageS3 := storage.S3Storage{
 			Client: mockClient,
@@ -50,14 +35,15 @@ func TestS3Storage_UploadFile(t *testing.T) {
 		if err != nil {
 			t.Fatalf("error inesperado: %v", err)
 		}
+		mockClient.AssertExpectations(t)
 	})
 
 	t.Run("Upload error", func(t *testing.T) {
 		// arrange
 		expectedErr := errors.New("s3 error")
-		mockClient := mockPutObjectAPI(func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
-			return nil, expectedErr
-		})
+		mockClient := new(MockStorageS3API)
+		mockClient.On("PutObject", mock.Anything, mock.AnythingOfType("*s3.PutObjectInput"), mock.Anything).
+			Return((*s3.PutObjectOutput)(nil), expectedErr)
 
 		storageS3 := storage.S3Storage{
 			Client: mockClient,
@@ -77,15 +63,16 @@ func TestS3Storage_UploadFile(t *testing.T) {
 		if !errors.Is(err, expectedErr) {
 			t.Errorf("got error %v, want %v", err, expectedErr)
 		}
+		mockClient.AssertExpectations(t)
 	})
 
 	t.Run("Nil Body", func(t *testing.T) {
 		// arrange
+		mockClient := new(MockStorageS3API)
+		// No configuramos expectativas para PutObject porque no debería ser llamado
+
 		storageS3 := storage.S3Storage{
-			Client: mockPutObjectAPI(func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
-				t.Fatal("No se debería llamar a PutObject")
-				return nil, nil
-			}),
+			Client: mockClient,
 			Config: config.Config{
 				BucketName: "test-bucket",
 			},
@@ -101,6 +88,75 @@ func TestS3Storage_UploadFile(t *testing.T) {
 		if got, want := err.Error(), "el cuerpo no puede ser nulo"; got != want {
 			t.Errorf("error = %q, se esperaba %q", got, want)
 		}
+		mockClient.AssertNotCalled(t, "PutObject")
+	})
+}
+
+func TestS3Storage_GetFileMetadata(t *testing.T) {
+	t.Run("Successful metadata retrieval", func(t *testing.T) {
+		// Arrange
+		mockClient := new(MockStorageS3API)
+		bucketName := "test-bucket"
+		key := "test-file.dca"
+		contentType := "application/octet-stream"
+		contentLength := int64(1024 * 1024) // 1 MB
+
+		mockClient.On("HeadObject", mock.Anything, &s3.HeadObjectInput{
+			Bucket: aws.String(bucketName),
+			Key:    aws.String("audio/" + key),
+		}, mock.Anything).Return(&s3.HeadObjectOutput{
+			ContentType:   aws.String(contentType),
+			ContentLength: aws.Int64(contentLength),
+		}, nil)
+
+		s3Storage := storage.S3Storage{
+			Client: mockClient,
+			Config: config.Config{
+				BucketName: bucketName,
+			},
+		}
+
+		// Act
+		fileData, err := s3Storage.GetFileMetadata(context.Background(), key)
+
+		// Assert
+		assert.NoError(t, err)
+		assert.NotNil(t, fileData)
+		assert.Equal(t, "audio/"+key, fileData.FilePath)
+		assert.Equal(t, contentType, fileData.FileType)
+		assert.Equal(t, "1.00MB", fileData.FileSize)
+		assert.Equal(t, fmt.Sprintf("https://%s.s3.amazonaws.com/%s", bucketName, key), fileData.PublicURL)
+
+		mockClient.AssertExpectations(t)
+	})
+
+	t.Run("Error retrieving metadata", func(t *testing.T) {
+		// Arrange
+		mockClient := new(MockStorageS3API)
+		bucketName := "test-bucket"
+		key := "non-existent-file.mp3"
+
+		mockClient.On("HeadObject", mock.Anything, &s3.HeadObjectInput{
+			Bucket: aws.String(bucketName),
+			Key:    aws.String("audio/" + key),
+		}, mock.Anything).Return((*s3.HeadObjectOutput)(nil), errors.New("s3 error"))
+
+		s3Storage := storage.S3Storage{
+			Client: mockClient,
+			Config: config.Config{
+				BucketName: bucketName,
+			},
+		}
+
+		// Act
+		fileData, err := s3Storage.GetFileMetadata(context.Background(), key)
+
+		// Assert
+		assert.Error(t, err)
+		assert.Nil(t, fileData)
+		assert.Contains(t, err.Error(), "error obteniendo metadata del archivo de S3")
+
+		mockClient.AssertExpectations(t)
 	})
 }
 

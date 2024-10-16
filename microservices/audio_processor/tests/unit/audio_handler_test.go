@@ -80,9 +80,8 @@ func TestAudioHandler_GetOperationStatus(t *testing.T) {
 
 		handlerHttp := handler.NewAudioHandler(mockInitialDownloadUC, mockGetOperationStatusUC)
 
-		expectedResult := model.OperationResult{
+		expectedResult := &model.OperationResult{
 			Status: "completed",
-			Data:   "some data",
 		}
 
 		mockGetOperationStatusUC.On("Execute", mock.Anything, "operation_123", "song_123").Return(expectedResult, nil)
@@ -96,7 +95,6 @@ func TestAudioHandler_GetOperationStatus(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Body.String(), "completed")
-		assert.Contains(t, w.Body.String(), "some data")
 		mockGetOperationStatusUC.AssertExpectations(t)
 	})
 
@@ -123,7 +121,7 @@ func TestAudioHandler_GetOperationStatus(t *testing.T) {
 
 		handlerHttp := handler.NewAudioHandler(mockInitialDownloadUC, mockGetOperationStatusUC)
 
-		mockGetOperationStatusUC.On("Execute", mock.Anything, "operation_123", "song_123").Return(model.OperationResult{}, errors.New("use case error"))
+		mockGetOperationStatusUC.On("Execute", mock.Anything, "operation_123", "song_123").Return(&model.OperationResult{}, errors.New("use case error"))
 
 		gin.SetMode(gin.TestMode)
 		w := httptest.NewRecorder()

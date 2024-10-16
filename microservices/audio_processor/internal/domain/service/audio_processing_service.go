@@ -25,7 +25,6 @@ const (
 	statusSuccess      = "success"   // Estado de la operación cuando se procesa con éxito.
 	statusFailed       = "failed"    // Estado de la operación cuando falla después de intentos.
 	platformYoutube    = "Youtube"   // Plataforma de origen del audio.
-	s3BucketName       = "butakero"  // Nombre del bucket en S3 donde se almacenarán los archivos.
 	audioFileExtension = ".dca"      // Extensión de archivo para los audios procesados.
 )
 
@@ -73,8 +72,8 @@ func NewAudioProcessingService(log logger.Logger, storage storage.Storage,
 // StartOperation inicia una nueva operación de procesamiento de audio y guarda su estado inicial.
 func (a *AudioProcessingService) StartOperation(ctx context.Context, songID string) (string, string, error) {
 	operationResult := model.OperationResult{
-		ID:     uuid.New().String(),
-		SongID: songID,
+		PK:     uuid.New().String(),
+		SK:     songID,
 		Status: statusInitiating,
 	}
 
@@ -82,7 +81,7 @@ func (a *AudioProcessingService) StartOperation(ctx context.Context, songID stri
 	if err != nil {
 		return "", "", fmt.Errorf("error al guardar operación: %w", err)
 	}
-	return operationResult.ID, operationResult.SongID, nil
+	return operationResult.PK, operationResult.SK, nil
 }
 
 // ProcessAudio procesa el audio descargando, codificando y almacenando en S3, con reintentos en caso de fallos.
@@ -126,14 +125,17 @@ func (a *AudioProcessingService) processAudioAttempt(ctx context.Context, operat
 		return fmt.Errorf("error al subir archivo a S3: %w", err)
 	}
 
-	metadata.URLS3 = fmt.Sprintf("s3://%s/%s", s3BucketName, keyS3)
+	fileMetadata, err := a.storage.GetFileMetadata(ctx, keyS3)
+	if err != nil {
+		return fmt.Errorf("error al obtener metadata del archivo en S3: %w", err)
+	}
 
 	err = a.metadataStore.SaveMetadata(ctx, metadata)
 	if err != nil {
 		return fmt.Errorf("error al guardar metadata: %w", err)
 	}
 
-	result := a.createSuccessResult(operationID, metadata, attempt)
+	result := a.createSuccessResult(operationID, metadata, *fileMetadata, attempt)
 	err = a.operationStore.SaveOperationsResult(ctx, result)
 	if err != nil {
 		return fmt.Errorf("error al guardar resultado de operación: %w", err)
@@ -157,13 +159,14 @@ func (a *AudioProcessingService) createMetadata(youtubeMetadata api.VideoDetails
 }
 
 // createSuccessResult crea un resultado de operación exitoso después del procesamiento de audio.
-func (a *AudioProcessingService) createSuccessResult(operationID string, metadata model.Metadata, attempts int) model.OperationResult {
+func (a *AudioProcessingService) createSuccessResult(operationID string, metadata model.Metadata, fileData model.FileData, attempts int) model.OperationResult {
 	return model.OperationResult{
-		ID:             operationID,
-		SongID:         metadata.VideoID,
+		PK:             operationID,
+		SK:             metadata.VideoID,
 		Status:         statusSuccess,
 		Message:        "Procesamiento exitoso",
-		Data:           fmt.Sprintf("Archivo guardado en S3: %s", metadata.URLS3),
+		Metadata:       metadata,
+		FileData:       fileData,
 		ProcessingDate: time.Now().Format(time.RFC3339),
 		Success:        true,
 		Attempts:       attempts,
@@ -174,11 +177,10 @@ func (a *AudioProcessingService) createSuccessResult(operationID string, metadat
 // handleFailedProcessing maneja el caso en que el procesamiento falla después de varios intentos.
 func (a *AudioProcessingService) handleFailedProcessing(ctx context.Context, operationID string, metadata model.Metadata) error {
 	result := model.OperationResult{
-		ID:             operationID,
-		SongID:         metadata.VideoID,
+		PK:             operationID,
+		SK:             metadata.VideoID,
 		Status:         statusFailed,
-		Message:        "Fallo en el procesamiento después de varios intentos",
-		Data:           fmt.Sprintf("Fallos: %d", a.config.MaxAttempts),
+		Message:        fmt.Sprintf("Fallo en el procesamiento después de varios intentos: %d", a.config.MaxAttempts),
 		ProcessingDate: time.Now().Format(time.RFC3339),
 		Success:        false,
 		Attempts:       a.config.MaxAttempts,
