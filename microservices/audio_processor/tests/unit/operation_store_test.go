@@ -77,7 +77,7 @@ func TestGetOperationResult(t *testing.T) {
 		mockClient.On("GetItem", mock.Anything, mock.AnythingOfType("*dynamodb.GetItemInput"), mock.Anything).
 			Return(&dynamodb.GetItemOutput{
 				Item: map[string]types.AttributeValue{
-					"SongID": &types.AttributeValueMemberS{Value: "test-song-id"},
+					"SK": &types.AttributeValueMemberS{Value: "test-song-id"},
 				},
 			}, nil)
 
