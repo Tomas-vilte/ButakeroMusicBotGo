@@ -190,25 +190,34 @@ Este enfoque asíncrono asegura que el usuario reciba una respuesta inmediata, m
 ## Componentes de la Arquitectura
 
 ### 1. VPC (Virtual Private Cloud)
-Primero, tenemos nuestra VPC, que es como nuestro propio espacio en la nube. Nos permite gestionar nuestros recursos de manera aislada y segura, dándonos la flexibilidad que necesitamos.
+Todo corre dentro de una VPC para asegurar que los recursos estén aislados y podamos aplicar reglas de seguridad específicas. Esto nos permite controlar el tráfico y proteger los servicios.
 
 ### 2. EC2 Instance
 El tráfico llega primero a una instancia de EC2 que actúa como puerta de entrada. Desde aca, la aplicacion **Nuestro Bot de musica** envía requests a nuestra aplicación **Donde se encuentra la logica de procesamiento de audio**, que son redirigidas a través de un Application Load Balancer.
 
 ### 3. Application Load Balancer (ALB)
-El ALB es el responsable de recibir el tráfico HTTP en el puerto 80 y distribuirlo a un Target Group. Este grupo se encarga de enrutar las solicitudes a los contenedores en ECS. También implementa un **health check** cada 30 segundos para asegurarse de que nuestras tareas estén saludables y funcionando bien.
+El ALB es clave en esta arquitectura. Recibe tráfico HTTP en el puerto 80 y lo distribuye a un Target Group configurado para enrutar las solicitudes a las tareas de ECS. Además, tiene configurado un **health check** que verifica cada 30 segundos el estado de las tareas para garantizar que solo las instancias saludables reciban tráfico.
 
 ### 4. ECS Cluster y Fargate
-Las tareas de nuestra aplicación se ejecutan en un clúster de ECS utilizando Fargate. Básicamente, Fargate nos libera de la carga de gestionar servidores, permitiéndonos concentrarnos en el código y la lógica de nuestra aplicación.
+Estamos usando Fargate, lo que significa que no tenemos que gestionar la infraestructura de los contenedores. Las tareas de ECS se ejecutan dentro del clúster, sin la necesidad de manejar instancias EC2. Esto nos permite concentrarnos en el desarrollo, y Fargate se encarga del resto.
 
 ### 5. ECS Tasks
-Las tareas de ECS son los contenedores que realmente hacen el trabajo. Cuando llegan las solicitudes, estos contenedores procesan la información y acceden a servicios externos como S3 para almacenamiento y DynamoDB para gestionar el estado de la aplicación.
+Las tareas de ECS son donde realmente se ejecuta nuestro código. Los contenedores están corriendo en el puerto 8080, y el ALB enruta el tráfico hacia este puerto desde el Target Group. Cada tarea tiene permisos para interactuar con servicios como S3 y DynamoDB a través de roles IAM configurados específicamente para esto.
 
-### 6. CloudWatch
-Monitorizamos el rendimiento de nuestras tareas con Amazon CloudWatch. Esto nos permite establecer políticas de escalado automático basadas en el uso de CPU y memoria, asegurando que la aplicación puede adaptarse a picos de tráfico sin problemas.
+#### Interacción con S3
+Nuestras tareas ECS pueden acceder a S3 para subir o descargar objetos. Por ejemplo, usamos S3 para almacenar archivos multimedia por ej **.dca**. Las tareas hacen uso de la API de S3 para gestionar estos archivos.
 
-### 7. Security Groups
-Por último, tenemos los grupos de seguridad. Estos son clave para controlar el acceso a nuestros recursos en la VPC, asegurando que solo el tráfico autorizado pueda llegar a nuestras instancias y servicios.
+#### Interacción con DynamoDB
+Además, las tareas se conectan a DynamoDB para gestionar el estado de la aplicación, como el seguimiento de operaciones o el almacenamiento de metadatos. DynamoDB es rápido y se adapta bien a las necesidades de baja latencia de nuestra aplicación.
+
+### 6. CloudWatch y Auto Scaling
+El monitoreo está a cargo de CloudWatch. Configuramos métricas clave, como el uso de CPU y memoria en las tareas ECS. En base a estas métricas, tenemos configuradas **políticas de Auto Scaling**, que permiten escalar horizontalmente las tareas de ECS. Esto significa que si el uso de CPU o memoria supera ciertos umbrales, automáticamente se lanzan más tareas para manejar el tráfico adicional, y se reducen cuando ya no son necesarias.
+
+#### Configuración del Auto Scaling
+Configuramos el Auto Scaling usando CloudWatch como desencadenante. Cuando se alcanza un cierto umbral de CPU o memoria (por ejemplo, 75%), se activa la política que lanza nuevas tareas ECS hasta que los recursos vuelvan a estar en niveles normales. Esto asegura que nuestra aplicación se mantenga eficiente sin desperdiciar recursos.
+
+### 7. IAM Roles y Seguridad
+Cada tarea de ECS tiene asociado un **IAM Role** que le permite acceder a servicios específicos como S3 y DynamoDB, pero sin dar permisos innecesarios. Estos roles están configurados con permisos mínimos para garantizar la seguridad. Por otro lado, usamos **Security Groups** para controlar el tráfico entrante y saliente en la VPC, asegurando que solo el tráfico autorizado llegue a los contenedores.
 
 ## Flujo de Tráfico
 
