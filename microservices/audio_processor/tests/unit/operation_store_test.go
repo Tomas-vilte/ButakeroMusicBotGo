@@ -15,7 +15,7 @@ import (
 
 func TestSaveOperationResult(t *testing.T) {
 	t.Run("Successful save", func(t *testing.T) {
-		mockClient := new(mockDynamoDBAPI)
+		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
@@ -24,7 +24,7 @@ func TestSaveOperationResult(t *testing.T) {
 		}
 
 		result := model.OperationResult{
-			SongID: "test-song-id",
+			SK: "test-song-id",
 		}
 
 		mockClient.On("PutItem", mock.Anything, mock.AnythingOfType("*dynamodb.PutItemInput"), mock.Anything).
@@ -37,7 +37,7 @@ func TestSaveOperationResult(t *testing.T) {
 	})
 
 	t.Run("DynamoDB error", func(t *testing.T) {
-		mockClient := new(mockDynamoDBAPI)
+		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
@@ -46,7 +46,7 @@ func TestSaveOperationResult(t *testing.T) {
 		}
 
 		result := model.OperationResult{
-			SongID: "test-song-id",
+			SK: "test-song-id",
 		}
 
 		mockClient.On("PutItem", mock.Anything, mock.AnythingOfType("*dynamodb.PutItemInput"), mock.Anything).
@@ -62,7 +62,7 @@ func TestSaveOperationResult(t *testing.T) {
 
 func TestGetOperationResult(t *testing.T) {
 	t.Run("Successful retrieval", func(t *testing.T) {
-		mockClient := new(mockDynamoDBAPI)
+		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
@@ -71,7 +71,7 @@ func TestGetOperationResult(t *testing.T) {
 		}
 
 		expectedResult := &model.OperationResult{
-			SongID: "test-song-id",
+			SK: "test-song-id",
 		}
 
 		mockClient.On("GetItem", mock.Anything, mock.AnythingOfType("*dynamodb.GetItemInput"), mock.Anything).
@@ -90,7 +90,7 @@ func TestGetOperationResult(t *testing.T) {
 	})
 
 	t.Run("Item not found", func(t *testing.T) {
-		mockClient := new(mockDynamoDBAPI)
+		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
@@ -110,7 +110,7 @@ func TestGetOperationResult(t *testing.T) {
 	})
 
 	t.Run("DynamoDB error", func(t *testing.T) {
-		mockClient := new(mockDynamoDBAPI)
+		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
@@ -132,7 +132,7 @@ func TestGetOperationResult(t *testing.T) {
 
 func TestDeleteOperationResult(t *testing.T) {
 	t.Run("Successful deletion", func(t *testing.T) {
-		mockClient := new(mockDynamoDBAPI)
+		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
@@ -150,7 +150,7 @@ func TestDeleteOperationResult(t *testing.T) {
 	})
 
 	t.Run("DynamoDB error", func(t *testing.T) {
-		mockClient := new(mockDynamoDBAPI)
+		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
@@ -171,7 +171,7 @@ func TestDeleteOperationResult(t *testing.T) {
 
 func TestUpdateOperationStatus(t *testing.T) {
 	t.Run("Successful update", func(t *testing.T) {
-		mockClient := new(mockDynamoDBAPI)
+		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
@@ -189,7 +189,7 @@ func TestUpdateOperationStatus(t *testing.T) {
 	})
 
 	t.Run("DynamoDB error", func(t *testing.T) {
-		mockClient := new(mockDynamoDBAPI)
+		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{

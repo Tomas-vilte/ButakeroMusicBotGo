@@ -18,10 +18,6 @@ type Metadata struct {
 	// Representa cuánto tiempo dura la canción desde el inicio hasta el final.
 	Duration string `json:"duration"`
 
-	// URLS3 es la URL del archivo de la canción almacenado en Amazon S3.
-	// Este campo se usa para acceder al archivo de audio descargado y procesado.
-	URLS3 string `json:"url_s3"`
-
 	// URLYouTube es la URL de la canción en YouTube.
 	// Permite localizar la canción en YouTube para referencias adicionales o reproducción.
 	URLYouTube string `json:"url_youtube"`

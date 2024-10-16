@@ -40,14 +40,14 @@ func TestIntegrationOperationStore(t *testing.T) {
 		require.NoError(t, err)
 
 		// act GetOperationResult
-		retrievedResult, err := store.GetOperationResult(context.Background(), result.ID, result.SongID)
+		retrievedResult, err := store.GetOperationResult(context.Background(), result.PK, result.SK)
 		require.NoError(t, err)
 
 		// assert
 		assertOperationResultEqual(t, result, *retrievedResult)
 
 		// cleanup
-		err = store.DeleteOperationResult(context.Background(), result.ID, result.SongID)
+		err = store.DeleteOperationResult(context.Background(), result.PK, result.SK)
 		require.NoError(t, err)
 	})
 
@@ -62,21 +62,19 @@ func TestIntegrationOperationStore(t *testing.T) {
 		// act update operation result
 		result.Status = "completed"
 		result.Message = "Operation completed successfully"
-		result.Data = "Updated data"
 		err = store.SaveOperationsResult(context.Background(), result)
 		require.NoError(t, err)
 
 		// act GetOperationResult
-		updatedResult, err := store.GetOperationResult(context.Background(), result.ID, result.SongID)
+		updatedResult, err := store.GetOperationResult(context.Background(), result.PK, result.SK)
 		require.NoError(t, err)
 
 		// assert
 		assert.Equal(t, "completed", updatedResult.Status)
 		assert.Equal(t, "Operation completed successfully", updatedResult.Message)
-		assert.Equal(t, "Updated data", updatedResult.Data)
 
 		// cleanup
-		err = store.DeleteOperationResult(context.Background(), result.ID, result.SongID)
+		err = store.DeleteOperationResult(context.Background(), result.PK, result.SK)
 		require.NoError(t, err)
 	})
 
@@ -89,11 +87,11 @@ func TestIntegrationOperationStore(t *testing.T) {
 		require.NoError(t, err)
 
 		// act DeleteOperationResult
-		err = store.DeleteOperationResult(context.Background(), result.ID, result.SongID)
+		err = store.DeleteOperationResult(context.Background(), result.PK, result.SK)
 		require.NoError(t, err)
 
 		// act Intentar obtener el resultado de la operación eliminada
-		_, err = store.GetOperationResult(context.Background(), result.ID, result.SongID)
+		_, err = store.GetOperationResult(context.Background(), result.PK, result.SK)
 
 		// assert
 		assert.Error(t, err)
@@ -110,18 +108,18 @@ func TestIntegrationOperationStore(t *testing.T) {
 
 		// act UpdateOperationStatus
 		newStatus := "completed"
-		err = store.UpdateOperationStatus(context.Background(), result.ID, result.SongID, newStatus)
+		err = store.UpdateOperationStatus(context.Background(), result.PK, result.SK, newStatus)
 		require.NoError(t, err)
 
 		// act GetOperationResult
-		updatedResult, err := store.GetOperationResult(context.Background(), result.ID, result.SongID)
+		updatedResult, err := store.GetOperationResult(context.Background(), result.PK, result.SK)
 		require.NoError(t, err)
 
 		// assert
 		assert.Equal(t, newStatus, updatedResult.Status)
 
 		// cleanup
-		err = store.DeleteOperationResult(context.Background(), result.ID, result.SongID)
+		err = store.DeleteOperationResult(context.Background(), result.PK, result.SK)
 		require.NoError(t, err)
 	})
 
@@ -137,18 +135,16 @@ func TestIntegrationOperationStore(t *testing.T) {
 
 func createTestOperationResult(songID string) model.OperationResult {
 	return model.OperationResult{
-		ID:      uuid.New().String(),
-		SongID:  songID,
+		PK:      uuid.New().String(),
+		SK:      songID,
 		Status:  "in_progress",
 		Message: "Operation is in progress",
-		Data:    "Some initial data",
 	}
 }
 
 func assertOperationResultEqual(t *testing.T, expected, actual model.OperationResult) {
-	assert.Equal(t, expected.ID, actual.ID)
-	assert.Equal(t, expected.SongID, actual.SongID)
+	assert.Equal(t, expected.PK, actual.PK)
+	assert.Equal(t, expected.SK, actual.SK)
 	assert.Equal(t, expected.Status, actual.Status)
 	assert.Equal(t, expected.Message, actual.Message)
-	assert.Equal(t, expected.Data, actual.Data)
 }

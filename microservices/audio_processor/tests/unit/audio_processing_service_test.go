@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/service"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
 	"github.com/stretchr/testify/assert"
@@ -42,6 +43,7 @@ func TestAudioProcessingService(t *testing.T) {
 
 			mockDownloader.On("DownloadAudio", mock.Anything, mock.AnythingOfType("string")).Return(bytes.NewReader([]byte("test audio data")), nil)
 			mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil)
+			mockStorage.On("GetFileMetadata", mock.Anything, mock.Anything).Return(&model.FileData{}, nil)
 			mockMetadataRepo.On("SaveMetadata", mock.Anything, mock.AnythingOfType("model.Metadata")).Return(nil)
 			mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("model.OperationResult")).Return(nil)
 			mockLogger.On("Info", mock.Anything, mock.Anything).Return()
@@ -120,6 +122,7 @@ func TestAudioProcessingService(t *testing.T) {
 
 			mockDownloader.On("DownloadAudio", mock.Anything, mock.AnythingOfType("string")).Return(bytes.NewReader([]byte("test audio data")), nil)
 			mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil)
+			mockStorage.On("GetFileMetadata", mock.Anything, mock.Anything).Return(&model.FileData{}, nil)
 			mockMetadataRepo.On("SaveMetadata", mock.Anything, mock.AnythingOfType("model.Metadata")).Return(nil)
 			mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("model.OperationResult")).Return(nil)
 			mockLogger.On("Info", mock.Anything, mock.Anything).Return()
@@ -207,6 +210,7 @@ func TestAudioProcessingService(t *testing.T) {
 
 		mockDownloader.On("DownloadAudio", mock.Anything, mock.AnythingOfType("string")).Return(bytes.NewReader([]byte("test audio data")), nil)
 		mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil)
+		mockStorage.On("GetFileMetadata", mock.Anything, mock.Anything).Return(&model.FileData{}, nil)
 		mockMetadataRepo.On("SaveMetadata", mock.Anything, mock.AnythingOfType("model.Metadata")).Return(errors.New("metadata save error"))
 		mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("model.OperationResult")).Return(nil)
 		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
@@ -252,6 +256,7 @@ func TestAudioProcessingService(t *testing.T) {
 
 		mockDownloader.On("DownloadAudio", mock.Anything, mock.AnythingOfType("string")).Return(bytes.NewReader([]byte("test audio data")), nil)
 		mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil)
+		mockStorage.On("GetFileMetadata", mock.Anything, mock.Anything).Return(&model.FileData{}, nil)
 		mockMetadataRepo.On("SaveMetadata", mock.Anything, mock.AnythingOfType("model.Metadata")).Return(errors.New("metadata save error"))
 		mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("model.OperationResult")).Return(nil)
 		mockLogger.On("Error", mock.Anything, mock.Anything).Return()

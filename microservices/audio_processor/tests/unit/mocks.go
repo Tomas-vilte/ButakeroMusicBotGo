@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap/zapcore"
@@ -48,6 +49,10 @@ type (
 	}
 
 	MockStorageS3API struct {
+		mock.Mock
+	}
+
+	MockDynamoDBAPI struct {
 		mock.Mock
 	}
 )
@@ -160,4 +165,24 @@ func (m *MockInitiateDownloadUC) Execute(ctx context.Context, song string) (stri
 func (m *MockGetOperationStatusUC) Execute(ctx context.Context, operationID, songID string) (*model.OperationResult, error) {
 	args := m.Called(ctx, operationID, songID)
 	return args.Get(0).(*model.OperationResult), args.Error(1)
+}
+
+func (m *MockDynamoDBAPI) PutItem(ctx context.Context, params *dynamodb.PutItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.PutItemOutput, error) {
+	args := m.Called(ctx, params, optFns)
+	return args.Get(0).(*dynamodb.PutItemOutput), args.Error(1)
+}
+
+func (m *MockDynamoDBAPI) GetItem(ctx context.Context, params *dynamodb.GetItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.GetItemOutput, error) {
+	args := m.Called(ctx, params, optFns)
+	return args.Get(0).(*dynamodb.GetItemOutput), args.Error(1)
+}
+
+func (m *MockDynamoDBAPI) DeleteItem(ctx context.Context, params *dynamodb.DeleteItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.DeleteItemOutput, error) {
+	args := m.Called(ctx, params, optFns)
+	return args.Get(0).(*dynamodb.DeleteItemOutput), args.Error(1)
+}
+
+func (m *MockDynamoDBAPI) UpdateItem(ctx context.Context, params *dynamodb.UpdateItemInput, optFns ...func(*dynamodb.Options)) (*dynamodb.UpdateItemOutput, error) {
+	args := m.Called(ctx, params, optFns)
+	return args.Get(0).(*dynamodb.UpdateItemOutput), args.Error(1)
 }

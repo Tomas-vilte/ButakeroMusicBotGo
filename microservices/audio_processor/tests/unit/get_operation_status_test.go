@@ -15,7 +15,7 @@ func TestGetOperationStatusUseCase_Execute(t *testing.T) {
 		ctx := context.Background()
 		uc := usecase.NewGetOperationStatusUseCase(mockRepo)
 		expectedOperation := &model.OperationResult{
-			ID:     "operation-id",
+			PK:     "operation-id",
 			Status: "completed",
 		}
 
@@ -24,7 +24,7 @@ func TestGetOperationStatusUseCase_Execute(t *testing.T) {
 		result, err := uc.Execute(ctx, "operation-id", "song-id")
 
 		assert.NoError(t, err)
-		assert.Equal(t, expectedOperation, &result)
+		assert.Equal(t, expectedOperation, result)
 		mockRepo.AssertExpectations(t)
 	})
 

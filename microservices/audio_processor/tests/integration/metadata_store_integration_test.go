@@ -36,7 +36,6 @@ func TestIntegrationMetadataStore(t *testing.T) {
 			ID:         "integration-test-id",
 			Title:      "Integration Test Song",
 			URLYouTube: "https://www.youtube.com/watch?v=example",
-			URLS3:      "https://s3.amazonaws.com/mybucket/integration-test-id",
 			Platform:   "YouTube",
 			Duration:   "240",
 		}
@@ -52,7 +51,6 @@ func TestIntegrationMetadataStore(t *testing.T) {
 		assert.Equal(t, metadata.ID, retrievedMetadata.ID)
 		assert.Equal(t, metadata.Title, retrievedMetadata.Title)
 		assert.Equal(t, metadata.URLYouTube, retrievedMetadata.URLYouTube)
-		assert.Equal(t, metadata.URLS3, retrievedMetadata.URLS3)
 		assert.Equal(t, metadata.Platform, retrievedMetadata.Platform)
 		assert.Equal(t, metadata.Duration, retrievedMetadata.Duration)
 
