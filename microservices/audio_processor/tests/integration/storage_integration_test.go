@@ -101,4 +101,77 @@ func TestS3StorageIntegration(t *testing.T) {
 			t.Errorf("Mensaje de error inesperado. Obtenido: %s, Esperado: 'el cuerpo no puede ser nulo'", err.Error())
 		}
 	})
+
+	t.Run("Get file metadata for existing file", func(t *testing.T) {
+		// arrange
+		fileName := fmt.Sprintf("test-metadata-%d.dca", time.Now().UnixNano())
+		content := "Este es un archivo de prueba"
+
+		// subimos archivo
+		err := s3Storage.UploadFile(context.Background(), fileName, strings.NewReader(content))
+		if err != nil {
+			t.Fatalf("Error al subir el archivo para la prueba de metadata: %v", err)
+		}
+
+		// act
+		fileData, err := s3Storage.GetFileMetadata(context.Background(), fileName)
+
+		// assert
+		if err != nil {
+			t.Fatalf("Error al obtener metadata del archivo: %v", err)
+		}
+
+		if fileData == nil {
+			t.Fatal("FileData es nil, se esperaba un objeto no nulo")
+		}
+		expectedFilePath := fmt.Sprintf("audio/%s", fileName)
+		if fileData.FilePath != expectedFilePath {
+			t.Errorf("FilePath incorrecto. Obtenido: %s, Esperado: %s", fileData.FilePath, expectedFilePath)
+		}
+
+		// Verificar FileType (asumiendo que se establece correctamente al subir)
+		if fileData.FileType != "application/octet-stream" {
+			t.Errorf("FileType incorrecto. Obtenido: %s, Esperado: audio/mpeg", fileData.FileType)
+		}
+
+		// Verificar FileSize (el formato exacto dependerá de tu implementación)
+		if fileData.FileSize == "" {
+			t.Error("FileSize está vacío, se esperaba un valor")
+		}
+
+		expectedPublicURL := fmt.Sprintf("https://%s.s3.amazonaws.com/%s", cfgApp.BucketName, fileName)
+		if fileData.PublicURL != expectedPublicURL {
+			t.Errorf("PublicURL incorrecto. Obtenido: %s, Esperado: %s", fileData.PublicURL, expectedPublicURL)
+		}
+
+		// clear
+		deleteObjectInput := &s3.DeleteObjectInput{
+			Bucket: aws.String(cfgApp.BucketName),
+			Key:    aws.String("audio/" + fileName),
+		}
+
+		_, err = s3Client.DeleteObject(context.Background(), deleteObjectInput)
+		if err != nil {
+			t.Fatalf("Error al eliminar el objeto de prueba de metadata: %v", err)
+		}
+	})
+
+	t.Run("Get file metadata for non-existent file", func(t *testing.T) {
+		// act
+		nonExistentFileName := "non-existent-file.mp3"
+		fileData, err := s3Storage.GetFileMetadata(context.Background(), nonExistentFileName)
+
+		// assert
+		if err == nil {
+			t.Fatal("Se esperaba un error al obtener metadata de un archivo no existente, pero no se obtuvo ninguno")
+		}
+
+		if fileData != nil {
+			t.Error("Se esperaba que FileData fuera nil para un archivo no existente")
+		}
+
+		if !strings.Contains(err.Error(), "error obteniendo metadata del archivo de S3") {
+			t.Errorf("Mensaje de error inesperado. Obtenido: %s, Esperado que contenga: 'error obteniendo metadata del archivo de S3'", err.Error())
+		}
+	})
 }

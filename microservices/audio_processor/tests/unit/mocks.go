@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap/zapcore"
 	"io"
@@ -45,7 +46,21 @@ type (
 	MockGetOperationStatusUC struct {
 		mock.Mock
 	}
+
+	MockStorageS3API struct {
+		mock.Mock
+	}
 )
+
+func (m *MockStorageS3API) HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
+	args := m.Called(ctx, params, optFns)
+	return args.Get(0).(*s3.HeadObjectOutput), args.Error(1)
+}
+
+func (m *MockStorageS3API) PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+	args := m.Called(ctx, params, optFns)
+	return args.Get(0).(*s3.PutObjectOutput), args.Error(1)
+}
 
 func (m *MockOperationRepository) SaveOperationsResult(ctx context.Context, result model.OperationResult) error {
 	args := m.Called(ctx, result)
@@ -90,6 +105,11 @@ func (m *MockDownloader) DownloadAudio(ctx context.Context, url string) (io.Read
 func (m *MockStorage) UploadFile(ctx context.Context, key string, body io.Reader) error {
 	args := m.Called(ctx, key, body)
 	return args.Error(0)
+}
+
+func (m *MockStorage) GetFileMetadata(ctx context.Context, key string) (*model.FileData, error) {
+	args := m.Called(ctx, key)
+	return args.Get(0).(*model.FileData), args.Error(1)
 }
 
 func (m *MockLogger) Info(msg string, fields ...zapcore.Field) {
@@ -137,7 +157,7 @@ func (m *MockInitiateDownloadUC) Execute(ctx context.Context, song string) (stri
 	return args.String(0), args.String(1), args.Error(2)
 }
 
-func (m *MockGetOperationStatusUC) Execute(ctx context.Context, operationID, songID string) (model.OperationResult, error) {
+func (m *MockGetOperationStatusUC) Execute(ctx context.Context, operationID, songID string) (*model.OperationResult, error) {
 	args := m.Called(ctx, operationID, songID)
-	return args.Get(0).(model.OperationResult), args.Error(1)
+	return args.Get(0).(*model.OperationResult), args.Error(1)
 }
