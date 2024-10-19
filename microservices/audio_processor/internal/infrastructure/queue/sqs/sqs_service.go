@@ -17,6 +17,11 @@ import (
 	"time"
 )
 
+const (
+	maxRetries     = 3
+	retryBaseDelay = time.Second
+)
+
 type SQSService struct {
 	Client queue.SQSClientInterface
 	Config config.Config
@@ -40,6 +45,7 @@ func NewSQSService(cfgApplication config.Config, log logger.Logger) (*SQSService
 	}, nil
 }
 
+// SendMessage envía un mensaje a la cola SQS.
 func (s *SQSService) SendMessage(ctx context.Context, message queue.Message) error {
 	body, err := json.Marshal(message)
 	if err != nil {
@@ -51,20 +57,20 @@ func (s *SQSService) SendMessage(ctx context.Context, message queue.Message) err
 		MessageBody: aws.String(string(body)),
 	}
 
-	retries := 3
-	for i := 0; i < retries; i++ {
+	for i := 0; i < maxRetries; i++ {
 		_, err = s.Client.SendMessage(ctx, input)
 		if err == nil {
 			s.Log.Info("Mensaje enviado exitosamente", zap.String("messageID", message.ID))
 			return nil
 		}
 		s.Log.Warn("Error al enviar mensaje, reintentando", zap.Error(err), zap.Int("retry", i+1))
-		time.Sleep(time.Second * time.Duration(i+1))
+		time.Sleep(retryBaseDelay * time.Duration(i+1))
 	}
 
 	return errors.Wrap(err, "error al enviar mensaje a SQS después de varios intentos")
 }
 
+// ReceiveMessage recibe un mensaje de la cola SQS.
 func (s *SQSService) ReceiveMessage(ctx context.Context) (*types.Message, error) {
 	input := &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(s.Config.QueueURL),
@@ -74,7 +80,7 @@ func (s *SQSService) ReceiveMessage(ctx context.Context) (*types.Message, error)
 
 	output, err := s.Client.ReceiveMessage(ctx, input)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error al recibir mensaje de SQS")
 	}
 
 	if len(output.Messages) == 0 {
@@ -84,6 +90,7 @@ func (s *SQSService) ReceiveMessage(ctx context.Context) (*types.Message, error)
 	return &output.Messages[0], nil
 }
 
+// DeleteMessage elimina un mensaje de la cola SQS.
 func (s *SQSService) DeleteMessage(ctx context.Context, receiptHandle string) error {
 	input := &sqs.DeleteMessageInput{
 		QueueUrl:      aws.String(s.Config.QueueURL),
@@ -91,5 +98,8 @@ func (s *SQSService) DeleteMessage(ctx context.Context, receiptHandle string) er
 	}
 
 	_, err := s.Client.DeleteMessage(ctx, input)
-	return err
+	if err != nil {
+		return errors.Wrap(err, "error al eliminar el mensaje de SQS")
+	}
+	return nil
 }
