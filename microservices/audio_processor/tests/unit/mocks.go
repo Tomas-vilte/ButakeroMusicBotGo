@@ -67,6 +67,16 @@ func (m *MockSQSClient) SendMessage(ctx context.Context, params *sqs.SendMessage
 	return args.Get(0).(*sqs.SendMessageOutput), args.Error(1)
 }
 
+func (m *MockSQSClient) ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
+	args := m.Called(ctx, params, optFns)
+	return args.Get(0).(*sqs.ReceiveMessageOutput), args.Error(1)
+}
+
+func (m *MockSQSClient) DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
+	args := m.Called(ctx, params, optFns)
+	return args.Get(0).(*sqs.DeleteMessageOutput), args.Error(1)
+}
+
 func (m *MockStorageS3API) HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
 	args := m.Called(ctx, params, optFns)
 	return args.Get(0).(*s3.HeadObjectOutput), args.Error(1)
