@@ -115,6 +115,7 @@ jobs:
           DYNAMODB_TABLE_NAME_OPERATION: ${{ secrets.DYNAMODB_TABLE_NAME_OPERATION }}
           ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
           SECRET_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          SQS_QUEUE_URL: ${{ secrets.SQS_QUEUE_URL }}
         run: make integration-test
 
       - name: Generate integration test coverage report
