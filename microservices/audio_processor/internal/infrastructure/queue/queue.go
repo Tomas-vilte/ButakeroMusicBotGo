@@ -3,14 +3,13 @@ package queue
 import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
 type (
 	// MessageQueue es la interfaz que debe implementar cualquier servicio de mensajeria
 	MessageQueue interface {
 		SendMessage(ctx context.Context, message Message) error
-		ReceiveMessage(ctx context.Context) (*types.Message, error)
+		ReceiveMessage(ctx context.Context) ([]Message, error)
 		DeleteMessage(ctx context.Context, receiptHandle string) error
 	}
 
@@ -22,6 +21,12 @@ type (
 
 	// Message seria la estructura de un mensaje
 	Message struct {
+		ID            string
+		Content       string
+		ReceiptHandle string
+	}
+
+	MessageBody struct {
 		ID      string `json:"id"`
 		Content string `json:"content"`
 	}

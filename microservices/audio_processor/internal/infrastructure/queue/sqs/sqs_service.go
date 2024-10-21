@@ -11,7 +11,6 @@ import (
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"time"
@@ -71,23 +70,41 @@ func (s *SQSService) SendMessage(ctx context.Context, message queue.Message) err
 }
 
 // ReceiveMessage recibe un mensaje de la cola SQS.
-func (s *SQSService) ReceiveMessage(ctx context.Context) (*types.Message, error) {
+func (s *SQSService) ReceiveMessage(ctx context.Context) ([]queue.Message, error) {
 	input := &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(s.Config.QueueURL),
-		MaxNumberOfMessages: 1,
-		WaitTimeSeconds:     20,
+		MaxNumberOfMessages: 10,
 	}
 
-	output, err := s.Client.ReceiveMessage(ctx, input)
+	result, err := s.Client.ReceiveMessage(ctx, input)
 	if err != nil {
+		s.Log.Error("Error al recibir mensajes de SQS", zap.Error(err))
 		return nil, errors.Wrap(err, "error al recibir mensaje de SQS")
 	}
 
-	if len(output.Messages) == 0 {
-		return nil, nil
+	var messages []queue.Message
+
+	for _, msg := range result.Messages {
+		var messageBody queue.MessageBody
+		if err := json.Unmarshal([]byte(*msg.Body), &messageBody); err != nil {
+			s.Log.Error("Error al deserializar mensaje", zap.Error(err), zap.String("messageBody", *msg.Body))
+			continue
+		}
+
+		message := queue.Message{
+			ID:            messageBody.ID,
+			Content:       messageBody.Content,
+			ReceiptHandle: *msg.ReceiptHandle,
+		}
+		messages = append(messages, message)
+		s.Log.Debug("Mensaje recibido",
+			zap.String("ID", message.ID),
+			zap.String("Content", message.Content),
+			zap.String("ReceiptHandle", message.ReceiptHandle))
 	}
 
-	return &output.Messages[0], nil
+	s.Log.Info("Mensajes recibidos exitosamente", zap.Int("count", len(messages)))
+	return messages, nil
 }
 
 // DeleteMessage elimina un mensaje de la cola SQS.
@@ -99,7 +116,10 @@ func (s *SQSService) DeleteMessage(ctx context.Context, receiptHandle string) er
 
 	_, err := s.Client.DeleteMessage(ctx, input)
 	if err != nil {
+		s.Log.Error("Error al eliminar el mensaje de SQS", zap.Error(err))
 		return errors.Wrap(err, "error al eliminar el mensaje de SQS")
 	}
+
+	s.Log.Info("Mensaje eliminado exitosamente", zap.String("receiptHandle", receiptHandle))
 	return nil
 }
