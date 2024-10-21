@@ -15,4 +15,6 @@ type Config struct {
 	SecretKey             string
 	Environment           string
 	QueueURL              string
+	Brokers               []string
+	Topic                 string
 }

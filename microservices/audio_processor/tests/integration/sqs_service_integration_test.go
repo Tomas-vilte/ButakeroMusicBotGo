@@ -2,12 +2,10 @@ package integration
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue"
 	serviceSqs "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue/sqs"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
-	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -48,70 +46,69 @@ func TestSQSServiceIntegration(t *testing.T) {
 		err = service.SendMessage(context.Background(), message)
 		require.NoError(t, err)
 
-		var receivedMessage *types.Message
+		// Esperar un poco para asegurarse de que el mensaje esté disponible
+		time.Sleep(time.Second * 5)
+
+		var receivedMessages []queue.Message
 		for i := 0; i < 3; i++ {
-			receivedMessage, err = service.ReceiveMessage(context.Background())
+			receivedMessages, err = service.ReceiveMessage(context.Background())
 			require.NoError(t, err)
 
-			if receivedMessage != nil {
+			if len(receivedMessages) > 0 {
 				break
 			}
 			time.Sleep(time.Second * 5)
 		}
 
 		// assert - verificamos que el mensaje se recibió correctamente
-		require.NotNil(t, receivedMessage, "No se recibio ningun mensaje")
+		require.NotEmpty(t, receivedMessages, "No se recibió ningún mensaje")
 
-		var receivedMessageBody queue.Message
-		err = json.Unmarshal([]byte(*receivedMessage.Body), &receivedMessageBody)
-		require.NoError(t, err)
-
-		assert.Equal(t, message.ID, receivedMessageBody.ID)
-		assert.Equal(t, message.Content, receivedMessageBody.Content)
+		receivedMessage := receivedMessages[0]
+		assert.Equal(t, message.ID, receivedMessage.ID)
+		assert.Equal(t, message.Content, receivedMessage.Content)
+		assert.NotEmpty(t, receivedMessage.ReceiptHandle, "ReceiptHandle no debe estar vacío")
 
 		// act DeleteMessage
-		err = service.DeleteMessage(context.Background(), *receivedMessage.ReceiptHandle)
+		err = service.DeleteMessage(context.Background(), receivedMessage.ReceiptHandle)
 		require.NoError(t, err)
 
-		deletedMessage, err := service.ReceiveMessage(context.Background())
+		// Esperar un poco más para asegurarse de que el mensaje se ha eliminado
+		time.Sleep(time.Second * 10)
+
+		// Intentar recibir mensajes nuevamente
+		deletedMessages, err := service.ReceiveMessage(context.Background())
 		require.NoError(t, err)
 
-		assert.Nil(t, deletedMessage, "El mensaje no deberia estar disponible despues de eliminarlo")
+		// Verificar que no se recibió el mensaje eliminado
+		for _, msg := range deletedMessages {
+			assert.NotEqual(t, message.ID, msg.ID, "El mensaje eliminado no debería estar disponible")
+		}
 	})
 
 	t.Run("ReceiveAndDeleteMessage", func(t *testing.T) {
+		// Enviar un mensaje para la prueba
 		message := queue.Message{
-			ID:      "Integration-test-id",
-			Content: "Integration Test Message",
+			ID:      "Integration-test-id-2",
+			Content: "Integration Test Message 2",
 		}
 
-		err = service.SendMessage(context.Background(), message)
-		require.NoError(t, err)
+		err := service.SendMessage(context.Background(), message)
+		require.NoError(t, err, "Error al enviar el mensaje")
 
-		var receivedMessage *types.Message
-		for i := 0; i < 3; i++ {
-			receivedMessage, err = service.ReceiveMessage(context.Background())
-			if err == nil && receivedMessage != nil {
-				break
-			}
-			time.Sleep(time.Second * 2)
-		}
+		receivedMessages, err := service.ReceiveMessage(context.Background())
+		require.NoError(t, err, "Error al recibir mensajes de la cola")
+		require.NotEmpty(t, receivedMessages, "No se recibió ningún mensaje")
 
-		require.NoError(t, err)
-		require.NotNil(t, receivedMessage, "No se recibio ningun mensaje")
+		receivedMessage := receivedMessages[0]
+		assert.Equal(t, message.ID, receivedMessage.ID, "El ID del mensaje no coincide")
 
-		var receivedMessageBody queue.Message
-		err = json.Unmarshal([]byte(*receivedMessage.Body), &receivedMessageBody)
-		require.NoError(t, err)
+		err = service.DeleteMessage(context.Background(), receivedMessage.ReceiptHandle)
+		require.NoError(t, err, "Error al eliminar el mensaje de la cola")
 
-		assert.Equal(t, message.ID, receivedMessageBody.ID)
-		assert.Equal(t, message.Content, receivedMessageBody.Content)
+		time.Sleep(6 * time.Second)
 
-		err = service.DeleteMessage(context.Background(), *receivedMessage.ReceiptHandle)
-		require.NoError(t, err)
-
-		deletedMessage, err := service.ReceiveMessage(context.Background())
-		require.NoError(t, err)
-		assert.Nil(t, deletedMessage, "El mensaje no deberia estar disponible despues de eliminarlo")
+		emptyMessages, err := service.ReceiveMessage(context.Background())
+		require.NoError(t, err, "Error al recibir mensajes de la cola luego de eliminar")
+		assert.Empty(t, emptyMessages, "La cola debería estar vacía luego de eliminar el mensaje")
 	})
 }

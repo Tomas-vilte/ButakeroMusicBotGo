@@ -118,16 +118,31 @@ func TestReceiveMessage(t *testing.T) {
 	}
 
 	t.Run("Success", func(t *testing.T) {
+		messageBody := queue.MessageBody{
+			ID:      "test-id",
+			Content: "test content",
+		}
+		jsonBody, _ := json.Marshal(messageBody)
 		expectedOutput := &sqs.ReceiveMessageOutput{
-			Messages: []types.Message{{Body: aws.String("test message")}},
+			Messages: []types.Message{
+				{
+					Body:          aws.String(string(jsonBody)),
+					ReceiptHandle: aws.String("test-receipt-handle"),
+				},
+			},
 		}
 		mockClient.On("ReceiveMessage", mock.Anything, mock.Anything, mock.Anything).Return(expectedOutput, nil).Once()
+		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
-		message, err := service.ReceiveMessage(context.Background())
+		messages, err := service.ReceiveMessage(context.Background())
 
 		assert.NoError(t, err)
-		assert.NotNil(t, message)
-		assert.Equal(t, "test message", *message.Body)
+		assert.NotNil(t, messages)
+		assert.Len(t, messages, 1)
+		assert.Equal(t, messageBody.ID, messages[0].ID)
+		assert.Equal(t, messageBody.Content, messages[0].Content)
+		assert.Equal(t, "test-receipt-handle", messages[0].ReceiptHandle)
 
 		mockClient.AssertExpectations(t)
 	})
@@ -138,21 +153,23 @@ func TestReceiveMessage(t *testing.T) {
 		}
 
 		mockClient.On("ReceiveMessage", mock.Anything, mock.Anything, mock.Anything).Return(expectedOutput, nil).Once()
+		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
-		message, err := service.ReceiveMessage(context.Background())
+		messages, err := service.ReceiveMessage(context.Background())
 
 		assert.NoError(t, err)
-		assert.Nil(t, message)
+		assert.Empty(t, messages)
 		mockClient.AssertExpectations(t)
 	})
 
 	t.Run("Error", func(t *testing.T) {
 		mockClient.On("ReceiveMessage", mock.Anything, mock.Anything, mock.Anything).Return(&sqs.ReceiveMessageOutput{}, assert.AnError).Once()
+		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 
-		message, err := service.ReceiveMessage(context.Background())
+		messages, err := service.ReceiveMessage(context.Background())
 
 		assert.Error(t, err)
-		assert.Nil(t, message)
+		assert.Nil(t, messages)
 		mockClient.AssertExpectations(t)
 	})
 }
@@ -170,6 +187,7 @@ func TestDeleteMessage(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		mockClient.On("DeleteMessage", mock.Anything, mock.Anything, mock.Anything).Return(&sqs.DeleteMessageOutput{}, nil).Once()
+		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
 		err := service.DeleteMessage(context.Background(), "receipt-handle")
 
@@ -179,6 +197,7 @@ func TestDeleteMessage(t *testing.T) {
 
 	t.Run("Error", func(t *testing.T) {
 		mockClient.On("DeleteMessage", mock.Anything, mock.Anything, mock.Anything).Return(&sqs.DeleteMessageOutput{}, assert.AnError).Once()
+		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 
 		err := service.DeleteMessage(context.Background(), "receipt-handle")
 
