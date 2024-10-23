@@ -91,7 +91,7 @@ func (s *SQSService) ReceiveMessage(ctx context.Context) ([]queue.Message, error
 	input := &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(s.Config.QueueURL),
 		MaxNumberOfMessages: 10,
-		WaitTimeSeconds:     20,
+		WaitTimeSeconds:     1,
 	}
 
 	result, err := s.Client.ReceiveMessage(ctx, input)

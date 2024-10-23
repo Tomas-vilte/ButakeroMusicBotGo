@@ -15,8 +15,8 @@ import (
 )
 
 type (
-	// MetadataStore Implementa la interface repository.MetadataRepository proporciona operaciones para almacenar, recuperar y eliminar metadatos en DynamoDB.
-	MetadataStore struct {
+	// DynamoMetadataRepository Implementa la interface repository.MetadataRepository proporciona operaciones para almacenar, recuperar y eliminar metadatos en DynamoDB.
+	DynamoMetadataRepository struct {
 		Client DynamoDBAPI // Cliente para interactuar con DynamoDB.
 		Config config.Config
 	}
@@ -31,7 +31,7 @@ type (
 )
 
 // NewMetadataStore crea una nueva instancia de MetadataStore con la configuración proporcionada.
-func NewMetadataStore(cfgApplication config.Config) (*MetadataStore, error) {
+func NewMetadataStore(cfgApplication config.Config) (*DynamoMetadataRepository, error) {
 	// Carga la configuración de AWS con la región especificada.
 
 	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApplication.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
@@ -42,14 +42,14 @@ func NewMetadataStore(cfgApplication config.Config) (*MetadataStore, error) {
 
 	client := dynamodb.NewFromConfig(cfg)
 
-	return &MetadataStore{
+	return &DynamoMetadataRepository{
 		Client: client,
 		Config: cfgApplication,
 	}, nil
 }
 
 // SaveMetadata guarda los metadatos en DynamoDB. Genera un nuevo ID si no está presente y usa la fecha actual si DownloadDate está vacío.
-func (s *MetadataStore) SaveMetadata(ctx context.Context, metadata *model.Metadata) error {
+func (s *DynamoMetadataRepository) SaveMetadata(ctx context.Context, metadata *model.Metadata) error {
 	if metadata.ID == "" {
 		metadata.ID = uuid.New().String()
 	}
@@ -74,7 +74,7 @@ func (s *MetadataStore) SaveMetadata(ctx context.Context, metadata *model.Metada
 }
 
 // GetMetadata recupera los metadatos de DynamoDB usando el ID proporcionado.
-func (s *MetadataStore) GetMetadata(ctx context.Context, id string) (*model.Metadata, error) {
+func (s *DynamoMetadataRepository) GetMetadata(ctx context.Context, id string) (*model.Metadata, error) {
 	input := &dynamodb.GetItemInput{
 		TableName: aws.String(s.Config.SongsTable),
 		Key: map[string]types.AttributeValue{
@@ -99,7 +99,7 @@ func (s *MetadataStore) GetMetadata(ctx context.Context, id string) (*model.Meta
 }
 
 // DeleteMetadata elimina los metadatos de DynamoDB usando el ID proporcionado.
-func (s *MetadataStore) DeleteMetadata(ctx context.Context, id string) error {
+func (s *DynamoMetadataRepository) DeleteMetadata(ctx context.Context, id string) error {
 	input := &dynamodb.DeleteItemInput{
 		TableName: aws.String(s.Config.SongsTable),
 		Key: map[string]types.AttributeValue{

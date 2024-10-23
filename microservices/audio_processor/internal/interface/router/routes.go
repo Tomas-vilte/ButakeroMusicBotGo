@@ -11,8 +11,8 @@ func SetupRoutes(router *gin.Engine, audioHandler *handler.AudioHandler, healthC
 	router.Use(middleware.LoggingMiddleware(log))
 	api := router.Group("/api")
 	{
-		api.POST("/audio/start", audioHandler.InitiateDownload)
-		api.GET("/audio/status", audioHandler.GetOperationStatus)
-		api.GET("/health", healthCheck.HealthCheckHandler)
+		api.POST("/v1/audio/start", audioHandler.InitiateDownload)
+		api.GET("/v1/audio/status", audioHandler.GetOperationStatus)
+		api.GET("/v1/health", healthCheck.HealthCheckHandler)
 	}
 }

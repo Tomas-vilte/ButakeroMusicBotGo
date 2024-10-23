@@ -18,7 +18,7 @@ func TestMetadataStore(t *testing.T) {
 		t.Run("Successful save", func(t *testing.T) {
 			// arrange
 			mockClient := new(MockDynamoDBAPI)
-			store := dynamodb2.MetadataStore{
+			store := dynamodb2.DynamoMetadataRepository{
 				Client: mockClient,
 				Config: config.Config{
 					SongsTable: "test-table",
@@ -43,7 +43,7 @@ func TestMetadataStore(t *testing.T) {
 	t.Run("DynamoDB error", func(t *testing.T) {
 		// arrange
 		mockClient := new(MockDynamoDBAPI)
-		store := &dynamodb2.MetadataStore{
+		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
 			Config: config.Config{
 				SongsTable: "test-table",
@@ -86,7 +86,7 @@ func TestMetadataStore(t *testing.T) {
 
 	t.Run("Successful retrieval", func(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
-		store := &dynamodb2.MetadataStore{
+		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
 			Config: config.Config{
 				SongsTable: "test-table",
@@ -109,7 +109,7 @@ func TestMetadataStore(t *testing.T) {
 
 	t.Run("Item not found", func(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
-		store := &dynamodb2.MetadataStore{
+		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
 			Config: config.Config{
 				SongsTable: "test-table",
@@ -126,7 +126,7 @@ func TestMetadataStore(t *testing.T) {
 
 	t.Run("DynamoDB error", func(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
-		store := &dynamodb2.MetadataStore{
+		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
 			Config: config.Config{
 				SongsTable: "test-table",
@@ -148,7 +148,7 @@ func TestMetadataStore(t *testing.T) {
 func TestGetMetadata(t *testing.T) {
 	t.Run("Successful deletion", func(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
-		store := &dynamodb2.MetadataStore{
+		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
 			Config: config.Config{
 				SongsTable: "test-table",
@@ -164,7 +164,7 @@ func TestGetMetadata(t *testing.T) {
 
 	t.Run("DynamoDB error", func(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
-		store := &dynamodb2.MetadataStore{
+		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
 			Config: config.Config{
 				SongsTable: "test-table",

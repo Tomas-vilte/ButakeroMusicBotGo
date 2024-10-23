@@ -17,6 +17,10 @@ func TestYouTubeClientIntegration(t *testing.T) {
 	apiKey := os.Getenv("YOUTUBE_API_KEY")
 	client := api.NewYouTubeClient(apiKey)
 
+	if apiKey == "" {
+		t.Fatalf("YOUTUBE_API_KEY no fue seteada")
+	}
+
 	t.Run("GetVideoDetails Integration", func(t *testing.T) {
 		ctx := context.Background()
 		videoID := "dQw4w9WgXcQ" // ID del video "Never Gonna Give You Up" de Rick Astley
