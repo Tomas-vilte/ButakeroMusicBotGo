@@ -17,4 +17,10 @@ type Config struct {
 	QueueURL              string
 	Brokers               []string
 	Topic                 string
+	MongoUser             string
+	MongoPassword         string
+	MongoPort             string
+	MongoHost             string
+	MongoDB               string
+	SongsCollection       string
 }

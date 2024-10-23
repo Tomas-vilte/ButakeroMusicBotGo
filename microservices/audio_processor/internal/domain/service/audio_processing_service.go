@@ -99,11 +99,11 @@ func (a *AudioProcessingService) ProcessAudio(ctx context.Context, operationID s
 		a.log.Error("Attempt failed", zap.Int("attempt", attempts), zap.Error(err))
 	}
 
-	return a.handleFailedProcessing(ctx, operationID, metadata)
+	return a.handleFailedProcessing(ctx, operationID, *metadata)
 }
 
 // processAudioAttempt intenta procesar el audio una vez, manejando la descarga, codificación y almacenamiento.
-func (a *AudioProcessingService) processAudioAttempt(ctx context.Context, operationID string, metadata model.Metadata, attempt int) error {
+func (a *AudioProcessingService) processAudioAttempt(ctx context.Context, operationID string, metadata *model.Metadata, attempt int) error {
 	reader, err := a.downloader.DownloadAudio(ctx, metadata.URLYouTube)
 	if err != nil {
 		return fmt.Errorf("error al descargar audio: %w", err)
@@ -146,8 +146,8 @@ func (a *AudioProcessingService) processAudioAttempt(ctx context.Context, operat
 }
 
 // createMetadata genera metadatos a partir de los detalles de un video de YouTube.
-func (a *AudioProcessingService) createMetadata(youtubeMetadata api.VideoDetails) model.Metadata {
-	return model.Metadata{
+func (a *AudioProcessingService) createMetadata(youtubeMetadata api.VideoDetails) *model.Metadata {
+	return &model.Metadata{
 		ID:         uuid.New().String(),
 		VideoID:    youtubeMetadata.VideoID,
 		Title:      youtubeMetadata.Title,
@@ -159,13 +159,13 @@ func (a *AudioProcessingService) createMetadata(youtubeMetadata api.VideoDetails
 }
 
 // createSuccessResult crea un resultado de operación exitoso después del procesamiento de audio.
-func (a *AudioProcessingService) createSuccessResult(operationID string, metadata model.Metadata, fileData model.FileData, attempts int) model.OperationResult {
+func (a *AudioProcessingService) createSuccessResult(operationID string, metadata *model.Metadata, fileData model.FileData, attempts int) model.OperationResult {
 	return model.OperationResult{
 		PK:             operationID,
 		SK:             metadata.VideoID,
 		Status:         statusSuccess,
 		Message:        "Procesamiento exitoso",
-		Metadata:       metadata,
+		Metadata:       *metadata,
 		FileData:       fileData,
 		ProcessingDate: time.Now().Format(time.RFC3339),
 		Success:        true,

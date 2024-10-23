@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
@@ -13,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"time"
 )
 
 const (
@@ -28,9 +29,16 @@ type SQSService struct {
 }
 
 func NewSQSService(cfgApplication config.Config, log logger.Logger) (*SQSService, error) {
-	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApplication.Region), awsCfg.WithCredentialsProvider(
-		credentials.NewStaticCredentialsProvider(
-			cfgApplication.AccessKey, cfgApplication.SecretKey, "")))
+	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(),
+		awsCfg.WithRegion(cfgApplication.Region),
+		awsCfg.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider(
+				cfgApplication.AccessKey,
+				cfgApplication.SecretKey,
+				"",
+			),
+		),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error cargando configuración AWS: %w", err)
 	}
@@ -44,9 +52,14 @@ func NewSQSService(cfgApplication config.Config, log logger.Logger) (*SQSService
 	}, nil
 }
 
-// SendMessage envía un mensaje a la cola SQS.
 func (s *SQSService) SendMessage(ctx context.Context, message queue.Message) error {
-	body, err := json.Marshal(message)
+	// Convertimos Message a MessageBody para la serialización
+	messageBody := queue.MessageBody{
+		ID:      message.ID,
+		Content: message.Content,
+	}
+
+	body, err := json.Marshal(messageBody)
 	if err != nil {
 		return errors.Wrap(err, "error al serializar mensaje")
 	}
@@ -56,24 +69,29 @@ func (s *SQSService) SendMessage(ctx context.Context, message queue.Message) err
 		MessageBody: aws.String(string(body)),
 	}
 
+	var result *sqs.SendMessageOutput
 	for i := 0; i < maxRetries; i++ {
-		_, err = s.Client.SendMessage(ctx, input)
+		result, err = s.Client.SendMessage(ctx, input)
 		if err == nil {
-			s.Log.Info("Mensaje enviado exitosamente", zap.String("messageID", message.ID))
+			s.Log.Info("Mensaje enviado exitosamente",
+				zap.String("messageID", message.ID),
+				zap.String("sqsMessageID", *result.MessageId))
 			return nil
 		}
-		s.Log.Warn("Error al enviar mensaje, reintentando", zap.Error(err), zap.Int("retry", i+1))
+		s.Log.Warn("Error al enviar mensaje, reintentando",
+			zap.Error(err),
+			zap.Int("retry", i+1))
 		time.Sleep(retryBaseDelay * time.Duration(i+1))
 	}
 
 	return errors.Wrap(err, "error al enviar mensaje a SQS después de varios intentos")
 }
 
-// ReceiveMessage recibe un mensaje de la cola SQS.
 func (s *SQSService) ReceiveMessage(ctx context.Context) ([]queue.Message, error) {
 	input := &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(s.Config.QueueURL),
 		MaxNumberOfMessages: 10,
+		WaitTimeSeconds:     20,
 	}
 
 	result, err := s.Client.ReceiveMessage(ctx, input)
@@ -82,12 +100,13 @@ func (s *SQSService) ReceiveMessage(ctx context.Context) ([]queue.Message, error
 		return nil, errors.Wrap(err, "error al recibir mensaje de SQS")
 	}
 
-	var messages []queue.Message
-
+	messages := make([]queue.Message, 0, len(result.Messages))
 	for _, msg := range result.Messages {
 		var messageBody queue.MessageBody
 		if err := json.Unmarshal([]byte(*msg.Body), &messageBody); err != nil {
-			s.Log.Error("Error al deserializar mensaje", zap.Error(err), zap.String("messageBody", *msg.Body))
+			s.Log.Error("Error al deserializar mensaje",
+				zap.Error(err),
+				zap.String("messageBody", *msg.Body))
 			continue
 		}
 
@@ -96,7 +115,9 @@ func (s *SQSService) ReceiveMessage(ctx context.Context) ([]queue.Message, error
 			Content:       messageBody.Content,
 			ReceiptHandle: *msg.ReceiptHandle,
 		}
+
 		messages = append(messages, message)
+
 		s.Log.Debug("Mensaje recibido",
 			zap.String("ID", message.ID),
 			zap.String("Content", message.Content),
@@ -107,7 +128,6 @@ func (s *SQSService) ReceiveMessage(ctx context.Context) ([]queue.Message, error
 	return messages, nil
 }
 
-// DeleteMessage elimina un mensaje de la cola SQS.
 func (s *SQSService) DeleteMessage(ctx context.Context, receiptHandle string) error {
 	input := &sqs.DeleteMessageInput{
 		QueueUrl:      aws.String(s.Config.QueueURL),

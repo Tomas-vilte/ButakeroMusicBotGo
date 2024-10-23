@@ -2,18 +2,23 @@ package integration
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue"
 	serviceSqs "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue/sqs"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
-	"time"
 )
 
 func TestSQSServiceIntegration(t *testing.T) {
+	t.Parallel()
+
 	if testing.Short() {
 		t.Skip("Saltando test de integración en modo corto")
 	}
@@ -35,80 +40,68 @@ func TestSQSServiceIntegration(t *testing.T) {
 	service, err := serviceSqs.NewSQSService(cfg, log)
 	require.NoError(t, err)
 
-	t.Run("SendAndReceiveMessage", func(t *testing.T) {
-		// arrange
+	t.Run("TestMessageLifecycle", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := context.Background()
+		uniqueID := uuid.New().String()
 		message := queue.Message{
-			ID:      "Integration-test-id",
-			Content: "Integration Test Message",
+			ID:      fmt.Sprintf("test-msg-%s", uniqueID),
+			Content: fmt.Sprintf("Test Message Content %s", uniqueID),
 		}
 
-		// act - SendMessage
-		err = service.SendMessage(context.Background(), message)
-		require.NoError(t, err)
+		// Enviar mensaje
+		err = service.SendMessage(ctx, message)
+		require.NoError(t, err, "Error al enviar mensaje")
 
-		// Esperar un poco para asegurarse de que el mensaje esté disponible
-		time.Sleep(time.Second * 5)
+		// Función auxiliar para buscar nuestro mensaje específico
+		findOurMessage := func(messages []queue.Message) *queue.Message {
+			for _, msg := range messages {
+				if msg.ID == message.ID {
+					return &msg
+				}
+			}
+			return nil
+		}
 
-		var receivedMessages []queue.Message
+		// Intentar recibir el mensaje con reintentos más cortos
+		var receivedMessage *queue.Message
 		for i := 0; i < 3; i++ {
-			receivedMessages, err = service.ReceiveMessage(context.Background())
-			require.NoError(t, err)
+			messages, err := service.ReceiveMessage(ctx)
+			require.NoError(t, err, "Error al recibir mensajes")
 
-			if len(receivedMessages) > 0 {
+			if msg := findOurMessage(messages); msg != nil {
+				receivedMessage = msg
 				break
 			}
-			time.Sleep(time.Second * 5)
+			time.Sleep(time.Second)
 		}
 
-		// assert - verificamos que el mensaje se recibió correctamente
-		require.NotEmpty(t, receivedMessages, "No se recibió ningún mensaje")
+		// Verificar que el mensaje se recibió correctamente
+		require.NotNil(t, receivedMessage, "No se pudo encontrar nuestro mensaje específico")
+		assert.Equal(t, message.ID, receivedMessage.ID, "ID del mensaje no coincide")
+		assert.Equal(t, message.Content, receivedMessage.Content, "Contenido del mensaje no coincide")
+		assert.NotEmpty(t, receivedMessage.ReceiptHandle, "ReceiptHandle está vacío")
 
-		receivedMessage := receivedMessages[0]
-		assert.Equal(t, message.ID, receivedMessage.ID)
-		assert.Equal(t, message.Content, receivedMessage.Content)
-		assert.NotEmpty(t, receivedMessage.ReceiptHandle, "ReceiptHandle no debe estar vacío")
+		// Eliminar el mensaje
+		err = service.DeleteMessage(ctx, receivedMessage.ReceiptHandle)
+		require.NoError(t, err, "Error al eliminar mensaje")
 
-		// act DeleteMessage
-		err = service.DeleteMessage(context.Background(), receivedMessage.ReceiptHandle)
-		require.NoError(t, err)
+		// Verificar que el mensaje ya no está disponible
+		time.Sleep(2 * time.Second) // Reducido el tiempo de espera
 
-		// Esperar un poco más para asegurarse de que el mensaje se ha eliminado
-		time.Sleep(time.Second * 10)
+		var messageStillExists bool
+		for i := 0; i < 2; i++ { // Reducido el número de intentos
+			messages, err := service.ReceiveMessage(ctx)
+			require.NoError(t, err, "Error al verificar eliminación del mensaje")
 
-		// Intentar recibir mensajes nuevamente
-		deletedMessages, err := service.ReceiveMessage(context.Background())
-		require.NoError(t, err)
-
-		// Verificar que no se recibió el mensaje eliminado
-		for _, msg := range deletedMessages {
-			assert.NotEqual(t, message.ID, msg.ID, "El mensaje eliminado no debería estar disponible")
-		}
-	})
-
-	t.Run("ReceiveAndDeleteMessage", func(t *testing.T) {
-		// Enviar un mensaje para la prueba
-		message := queue.Message{
-			ID:      "Integration-test-id-2",
-			Content: "Integration Test Message 2",
+			if msg := findOurMessage(messages); msg != nil {
+				messageStillExists = true
+				break
+			}
+			time.Sleep(time.Second)
 		}
 
-		err := service.SendMessage(context.Background(), message)
-		require.NoError(t, err, "Error al enviar el mensaje")
-
-		receivedMessages, err := service.ReceiveMessage(context.Background())
-		require.NoError(t, err, "Error al recibir mensajes de la cola")
-		require.NotEmpty(t, receivedMessages, "No se recibió ningún mensaje")
-
-		receivedMessage := receivedMessages[0]
-		assert.Equal(t, message.ID, receivedMessage.ID, "El ID del mensaje no coincide")
-
-		err = service.DeleteMessage(context.Background(), receivedMessage.ReceiptHandle)
-		require.NoError(t, err, "Error al eliminar el mensaje de la cola")
-
-		time.Sleep(6 * time.Second)
-
-		emptyMessages, err := service.ReceiveMessage(context.Background())
-		require.NoError(t, err, "Error al recibir mensajes de la cola luego de eliminar")
-		assert.Empty(t, emptyMessages, "La cola debería estar vacía luego de eliminar el mensaje")
+		assert.False(t, messageStillExists, "El mensaje no debería estar disponible después de ser eliminado")
 	})
 }

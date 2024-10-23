@@ -9,6 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/mock"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap/zapcore"
 	"io"
 )
@@ -73,7 +75,26 @@ type (
 	MockPartitionConsumer struct {
 		mock.Mock
 	}
+
+	MockCollection struct {
+		mock.Mock
+	}
 )
+
+func (m *MockCollection) InsertOne(ctx context.Context, document interface{}, opts ...*options.InsertOneOptions) (*mongo.InsertOneResult, error) {
+	args := m.Called(ctx, document, opts)
+	return args.Get(0).(*mongo.InsertOneResult), args.Error(1)
+}
+
+func (m *MockCollection) FindOne(ctx context.Context, filter interface{}, opts ...*options.FindOneOptions) *mongo.SingleResult {
+	args := m.Called(ctx, filter, opts)
+	return args.Get(0).(*mongo.SingleResult)
+}
+
+func (m *MockCollection) DeleteOne(ctx context.Context, filter interface{}, opts ...*options.DeleteOptions) (*mongo.DeleteResult, error) {
+	args := m.Called(ctx, filter, opts)
+	return args.Get(0).(*mongo.DeleteResult), args.Error(1)
+}
 
 func (m *MockPartitionConsumer) Close() error {
 	args := m.Called()
@@ -234,7 +255,7 @@ func (m *MockOperationRepository) UpdateOperationStatus(ctx context.Context, ope
 	return args.Error(0)
 }
 
-func (m *MockMetadataRepository) SaveMetadata(ctx context.Context, metadata model.Metadata) error {
+func (m *MockMetadataRepository) SaveMetadata(ctx context.Context, metadata *model.Metadata) error {
 	args := m.Called(ctx, metadata)
 	return args.Error(0)
 }
