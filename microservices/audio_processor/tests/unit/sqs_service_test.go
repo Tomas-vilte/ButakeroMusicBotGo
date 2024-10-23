@@ -51,14 +51,22 @@ func TestSendMessage(t *testing.T) {
 			Content: "test-content",
 		}
 
-		expectedBody, _ := json.Marshal(message)
+		// Crear MessageBody para serialización
+		messageBody := queue.MessageBody{
+			ID:      message.ID,
+			Content: message.Content,
+		}
+
+		expectedBody, _ := json.Marshal(messageBody)
 		expectedInput := &sqs.SendMessageInput{
 			QueueUrl:    aws.String(cfg.QueueURL),
 			MessageBody: aws.String(string(expectedBody)),
 		}
 
-		mockClient.On("SendMessage", mock.Anything, expectedInput, mock.Anything).Return(&sqs.SendMessageOutput{}, nil)
-		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+		mockClient.On("SendMessage", mock.Anything, expectedInput, mock.Anything).Return(&sqs.SendMessageOutput{
+			MessageId: aws.String("test-message-id"),
+		}, nil)
+		mockLogger.On("Info", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 
 		err := service.SendMessage(context.Background(), message)
 
@@ -85,7 +93,12 @@ func TestSendMessage(t *testing.T) {
 			Content: "test-content",
 		}
 
-		expectedBody, _ := json.Marshal(message)
+		messageBody := queue.MessageBody{
+			ID:      message.ID,
+			Content: message.Content,
+		}
+
+		expectedBody, _ := json.Marshal(messageBody)
 		expectedInput := &sqs.SendMessageInput{
 			QueueUrl:    aws.String(cfg.QueueURL),
 			MessageBody: aws.String(string(expectedBody)),
@@ -93,7 +106,7 @@ func TestSendMessage(t *testing.T) {
 
 		mockClient.On("SendMessage", mock.Anything, expectedInput, mock.Anything).
 			Return(&sqs.SendMessageOutput{}, errors.New("SQS error")).Times(3)
-		mockLogger.On("Warn", mock.Anything, mock.Anything).Return()
+		mockLogger.On("Warn", mock.Anything, mock.Anything, mock.Anything).Return()
 
 		err := service.SendMessage(context.Background(), message)
 
@@ -102,22 +115,21 @@ func TestSendMessage(t *testing.T) {
 		mockClient.AssertExpectations(t)
 		mockLogger.AssertExpectations(t)
 	})
-
 }
 
 func TestReceiveMessage(t *testing.T) {
-	mockClient := new(MockSQSClient)
-	mockLogger := new(MockLogger)
-
-	service := &sqsService.SQSService{
-		Config: config.Config{
-			QueueURL: "test-queue-url",
-		},
-		Client: mockClient,
-		Log:    mockLogger,
-	}
-
 	t.Run("Success", func(t *testing.T) {
+		mockClient := new(MockSQSClient)
+		mockLogger := new(MockLogger)
+
+		service := &sqsService.SQSService{
+			Config: config.Config{
+				QueueURL: "test-queue-url",
+			},
+			Client: mockClient,
+			Log:    mockLogger,
+		}
+
 		messageBody := queue.MessageBody{
 			ID:      "test-id",
 			Content: "test content",
@@ -131,8 +143,15 @@ func TestReceiveMessage(t *testing.T) {
 				},
 			},
 		}
-		mockClient.On("ReceiveMessage", mock.Anything, mock.Anything, mock.Anything).Return(expectedOutput, nil).Once()
-		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+
+		expectedInput := &sqs.ReceiveMessageInput{
+			QueueUrl:            aws.String(service.Config.QueueURL),
+			MaxNumberOfMessages: 10,
+			WaitTimeSeconds:     20,
+		}
+
+		mockClient.On("ReceiveMessage", mock.Anything, expectedInput, mock.Anything).Return(expectedOutput, nil)
+		mockLogger.On("Debug", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
 		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
 		messages, err := service.ReceiveMessage(context.Background())
@@ -145,14 +164,32 @@ func TestReceiveMessage(t *testing.T) {
 		assert.Equal(t, "test-receipt-handle", messages[0].ReceiptHandle)
 
 		mockClient.AssertExpectations(t)
+		mockLogger.AssertExpectations(t)
 	})
 
 	t.Run("No Messages", func(t *testing.T) {
+		mockClient := new(MockSQSClient)
+		mockLogger := new(MockLogger)
+
+		service := &sqsService.SQSService{
+			Config: config.Config{
+				QueueURL: "test-queue-url",
+			},
+			Client: mockClient,
+			Log:    mockLogger,
+		}
+
+		expectedInput := &sqs.ReceiveMessageInput{
+			QueueUrl:            aws.String(service.Config.QueueURL),
+			MaxNumberOfMessages: 10,
+			WaitTimeSeconds:     20,
+		}
+
 		expectedOutput := &sqs.ReceiveMessageOutput{
 			Messages: []types.Message{},
 		}
 
-		mockClient.On("ReceiveMessage", mock.Anything, mock.Anything, mock.Anything).Return(expectedOutput, nil).Once()
+		mockClient.On("ReceiveMessage", mock.Anything, expectedInput, mock.Anything).Return(expectedOutput, nil)
 		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
 		messages, err := service.ReceiveMessage(context.Background())
@@ -160,10 +197,28 @@ func TestReceiveMessage(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Empty(t, messages)
 		mockClient.AssertExpectations(t)
+		mockLogger.AssertExpectations(t)
 	})
 
 	t.Run("Error", func(t *testing.T) {
-		mockClient.On("ReceiveMessage", mock.Anything, mock.Anything, mock.Anything).Return(&sqs.ReceiveMessageOutput{}, assert.AnError).Once()
+		mockClient := new(MockSQSClient)
+		mockLogger := new(MockLogger)
+
+		service := &sqsService.SQSService{
+			Config: config.Config{
+				QueueURL: "test-queue-url",
+			},
+			Client: mockClient,
+			Log:    mockLogger,
+		}
+
+		expectedInput := &sqs.ReceiveMessageInput{
+			QueueUrl:            aws.String(service.Config.QueueURL),
+			MaxNumberOfMessages: 10,
+			WaitTimeSeconds:     20,
+		}
+
+		mockClient.On("ReceiveMessage", mock.Anything, expectedInput, mock.Anything).Return(&sqs.ReceiveMessageOutput{}, assert.AnError)
 		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 
 		messages, err := service.ReceiveMessage(context.Background())
@@ -171,37 +226,62 @@ func TestReceiveMessage(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, messages)
 		mockClient.AssertExpectations(t)
+		mockLogger.AssertExpectations(t)
 	})
 }
 
 func TestDeleteMessage(t *testing.T) {
-	mockClient := new(MockSQSClient)
-	mockLogger := new(MockLogger)
-	service := &sqsService.SQSService{
-		Config: config.Config{
-			QueueURL: "test-queue-url",
-		},
-		Log:    mockLogger,
-		Client: mockClient,
-	}
-
 	t.Run("Success", func(t *testing.T) {
-		mockClient.On("DeleteMessage", mock.Anything, mock.Anything, mock.Anything).Return(&sqs.DeleteMessageOutput{}, nil).Once()
+		mockClient := new(MockSQSClient)
+		mockLogger := new(MockLogger)
+		service := &sqsService.SQSService{
+			Config: config.Config{
+				QueueURL: "test-queue-url",
+			},
+			Log:    mockLogger,
+			Client: mockClient,
+		}
+
+		receiptHandle := "test-receipt-handle"
+		expectedInput := &sqs.DeleteMessageInput{
+			QueueUrl:      aws.String(service.Config.QueueURL),
+			ReceiptHandle: aws.String(receiptHandle),
+		}
+
+		mockClient.On("DeleteMessage", mock.Anything, expectedInput, mock.Anything).Return(&sqs.DeleteMessageOutput{}, nil)
 		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
-		err := service.DeleteMessage(context.Background(), "receipt-handle")
+		err := service.DeleteMessage(context.Background(), receiptHandle)
 
 		assert.NoError(t, err)
 		mockClient.AssertExpectations(t)
+		mockLogger.AssertExpectations(t)
 	})
 
 	t.Run("Error", func(t *testing.T) {
-		mockClient.On("DeleteMessage", mock.Anything, mock.Anything, mock.Anything).Return(&sqs.DeleteMessageOutput{}, assert.AnError).Once()
+		mockClient := new(MockSQSClient)
+		mockLogger := new(MockLogger)
+		service := &sqsService.SQSService{
+			Config: config.Config{
+				QueueURL: "test-queue-url",
+			},
+			Log:    mockLogger,
+			Client: mockClient,
+		}
+
+		receiptHandle := "test-receipt-handle"
+		expectedInput := &sqs.DeleteMessageInput{
+			QueueUrl:      aws.String(service.Config.QueueURL),
+			ReceiptHandle: aws.String(receiptHandle),
+		}
+
+		mockClient.On("DeleteMessage", mock.Anything, expectedInput, mock.Anything).Return(&sqs.DeleteMessageOutput{}, assert.AnError)
 		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 
-		err := service.DeleteMessage(context.Background(), "receipt-handle")
+		err := service.DeleteMessage(context.Background(), receiptHandle)
 
 		assert.Error(t, err)
 		mockClient.AssertExpectations(t)
+		mockLogger.AssertExpectations(t)
 	})
 }
