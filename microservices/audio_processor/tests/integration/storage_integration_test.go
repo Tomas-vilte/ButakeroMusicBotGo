@@ -30,7 +30,7 @@ func TestS3StorageIntegration(t *testing.T) {
 
 	// config
 	if cfgApp.BucketName == "" || cfgApp.Region == "" {
-		t.Fatal("BUCKET_NAME y AWS_REGION deben estar configurados para los tests de integración")
+		t.Fatal("BUCKET_NAME y REGION deben estar configurados para los tests de integración")
 	}
 
 	s3Storage, err := storage.NewS3Storage(cfgApp)

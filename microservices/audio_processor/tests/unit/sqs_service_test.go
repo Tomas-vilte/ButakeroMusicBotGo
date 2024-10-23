@@ -147,7 +147,7 @@ func TestReceiveMessage(t *testing.T) {
 		expectedInput := &sqs.ReceiveMessageInput{
 			QueueUrl:            aws.String(service.Config.QueueURL),
 			MaxNumberOfMessages: 10,
-			WaitTimeSeconds:     20,
+			WaitTimeSeconds:     1,
 		}
 
 		mockClient.On("ReceiveMessage", mock.Anything, expectedInput, mock.Anything).Return(expectedOutput, nil)
@@ -182,7 +182,7 @@ func TestReceiveMessage(t *testing.T) {
 		expectedInput := &sqs.ReceiveMessageInput{
 			QueueUrl:            aws.String(service.Config.QueueURL),
 			MaxNumberOfMessages: 10,
-			WaitTimeSeconds:     20,
+			WaitTimeSeconds:     1,
 		}
 
 		expectedOutput := &sqs.ReceiveMessageOutput{
@@ -215,7 +215,7 @@ func TestReceiveMessage(t *testing.T) {
 		expectedInput := &sqs.ReceiveMessageInput{
 			QueueUrl:            aws.String(service.Config.QueueURL),
 			MaxNumberOfMessages: 10,
-			WaitTimeSeconds:     20,
+			WaitTimeSeconds:     1,
 		}
 
 		mockClient.On("ReceiveMessage", mock.Anything, expectedInput, mock.Anything).Return(&sqs.ReceiveMessageOutput{}, assert.AnError)
