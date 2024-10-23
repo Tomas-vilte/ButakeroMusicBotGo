@@ -24,7 +24,7 @@ func TestMetadataStore(t *testing.T) {
 					SongsTable: "test-table",
 				},
 			}
-			metadata := model.Metadata{
+			metadata := &model.Metadata{
 				ID:       "test-id",
 				Title:    "Test Song",
 				Duration: "180",
@@ -49,7 +49,7 @@ func TestMetadataStore(t *testing.T) {
 				SongsTable: "test-table",
 			},
 		}
-		metadata := model.Metadata{
+		metadata := &model.Metadata{
 			ID:       "test-id",
 			Title:    "Test Song",
 			Duration: "180",

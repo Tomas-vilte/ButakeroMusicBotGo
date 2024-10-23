@@ -32,7 +32,7 @@ func TestIntegrationMetadataStore(t *testing.T) {
 		store, err := dynamodb.NewMetadataStore(cfg)
 		require.NoError(t, err)
 
-		metadata := model.Metadata{
+		metadata := &model.Metadata{
 			ID:         "integration-test-id",
 			Title:      "Integration Test Song",
 			URLYouTube: "https://www.youtube.com/watch?v=example",

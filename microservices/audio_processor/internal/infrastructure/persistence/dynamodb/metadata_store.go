@@ -49,7 +49,7 @@ func NewMetadataStore(cfgApplication config.Config) (*MetadataStore, error) {
 }
 
 // SaveMetadata guarda los metadatos en DynamoDB. Genera un nuevo ID si no está presente y usa la fecha actual si DownloadDate está vacío.
-func (s *MetadataStore) SaveMetadata(ctx context.Context, metadata model.Metadata) error {
+func (s *MetadataStore) SaveMetadata(ctx context.Context, metadata *model.Metadata) error {
 	if metadata.ID == "" {
 		metadata.ID = uuid.New().String()
 	}

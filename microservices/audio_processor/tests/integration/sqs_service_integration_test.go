@@ -92,7 +92,7 @@ func TestSQSServiceIntegration(t *testing.T) {
 			Content: "Integration Test Message 2",
 		}
 
-		err := service.SendMessage(context.Background(), message)
+		err = service.SendMessage(context.Background(), message)
 		require.NoError(t, err, "Error al enviar el mensaje")
 
 		receivedMessages, err := service.ReceiveMessage(context.Background())
