@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/repository"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/port"
 )
 
 type GetOperationStatusUseCaseImpl struct {
-	operationRepository repository.OperationRepository
+	operationRepository port.OperationRepository
 }
 
-func NewGetOperationStatusUseCase(operationRepository repository.OperationRepository) *GetOperationStatusUseCaseImpl {
+func NewGetOperationStatusUseCase(operationRepository port.OperationRepository) *GetOperationStatusUseCaseImpl {
 	return &GetOperationStatusUseCaseImpl{
 		operationRepository: operationRepository,
 	}

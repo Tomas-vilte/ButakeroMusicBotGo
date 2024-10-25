@@ -5,15 +5,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/port"
 	"io"
 	"time"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/repository"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/downloader"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/encoder"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/storage"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -31,12 +30,12 @@ const (
 // AudioProcessingService es un servicio que maneja la descarga, codificación y almacenamiento de audio.
 type (
 	AudioProcessingService struct {
-		log            logger.Logger                  // Logger para el registro de eventos y errores.
-		storage        storage.Storage                // Interfaz para el almacenamiento en S3.
-		downloader     downloader.Downloader          // Interfaz para la descarga de audio.
-		operationStore repository.OperationRepository // Interfaz para almacenar resultados de operaciones.
-		metadataStore  repository.MetadataRepository  // Interfaz para almacenar metadatos del audio.
-		config         config.Config                  // Configuración del servicio.
+		log            logger.Logger            // Logger para el registro de eventos y errores.
+		storage        port.Storage             // Interfaz para el almacenamiento en S3.
+		downloader     downloader.Downloader    // Interfaz para la descarga de audio.
+		operationStore port.OperationRepository // Interfaz para almacenar resultados de operaciones.
+		metadataStore  port.MetadataRepository  // Interfaz para almacenar metadatos del audio.
+		config         config.Config            // Configuración del servicio.
 	}
 
 	AudioProcessor interface {
@@ -46,10 +45,10 @@ type (
 )
 
 // NewAudioProcessingService crea una nueva instancia de AudioProcessingService con las configuraciones proporcionadas.
-func NewAudioProcessingService(log logger.Logger, storage storage.Storage,
+func NewAudioProcessingService(log logger.Logger, storage port.Storage,
 	downloader downloader.Downloader,
-	operationStore repository.OperationRepository,
-	metadataStore repository.MetadataRepository,
+	operationStore port.OperationRepository,
+	metadataStore port.MetadataRepository,
 	config config.Config) *AudioProcessingService {
 
 	if config.MaxAttempts == 0 {

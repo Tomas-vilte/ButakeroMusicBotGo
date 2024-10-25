@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/port"
 	"time"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
@@ -23,7 +23,7 @@ const (
 )
 
 type SQSService struct {
-	Client queue.SQSClientInterface
+	Client port.SQSClientInterface
 	Config config.Config
 	Log    logger.Logger
 }
@@ -52,9 +52,9 @@ func NewSQSService(cfgApplication config.Config, log logger.Logger) (*SQSService
 	}, nil
 }
 
-func (s *SQSService) SendMessage(ctx context.Context, message queue.Message) error {
+func (s *SQSService) SendMessage(ctx context.Context, message port.Message) error {
 	// Convertimos Message a MessageBody para la serialización
-	messageBody := queue.MessageBody{
+	messageBody := port.MessageBody{
 		ID:      message.ID,
 		Content: message.Content,
 	}
@@ -87,7 +87,7 @@ func (s *SQSService) SendMessage(ctx context.Context, message queue.Message) err
 	return errors.Wrap(err, "error al enviar mensaje a SQS después de varios intentos")
 }
 
-func (s *SQSService) ReceiveMessage(ctx context.Context) ([]queue.Message, error) {
+func (s *SQSService) ReceiveMessage(ctx context.Context) ([]port.Message, error) {
 	input := &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(s.Config.QueueURL),
 		MaxNumberOfMessages: 10,
@@ -100,9 +100,9 @@ func (s *SQSService) ReceiveMessage(ctx context.Context) ([]queue.Message, error
 		return nil, errors.Wrap(err, "error al recibir mensaje de SQS")
 	}
 
-	messages := make([]queue.Message, 0, len(result.Messages))
+	messages := make([]port.Message, 0, len(result.Messages))
 	for _, msg := range result.Messages {
-		var messageBody queue.MessageBody
+		var messageBody port.MessageBody
 		if err := json.Unmarshal([]byte(*msg.Body), &messageBody); err != nil {
 			s.Log.Error("Error al deserializar mensaje",
 				zap.Error(err),
@@ -110,7 +110,7 @@ func (s *SQSService) ReceiveMessage(ctx context.Context) ([]queue.Message, error
 			continue
 		}
 
-		message := queue.Message{
+		message := port.Message{
 			ID:            messageBody.ID,
 			Content:       messageBody.Content,
 			ReceiptHandle: *msg.ReceiptHandle,

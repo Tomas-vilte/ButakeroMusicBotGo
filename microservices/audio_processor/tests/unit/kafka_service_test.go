@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"github.com/IBM/sarama"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/port"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue/kafka"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -27,7 +27,7 @@ func TestKafkaService(t *testing.T) {
 			Log:      mockLogger,
 		}
 
-		message := queue.Message{ID: "test-id", Content: "test-content"}
+		message := port.Message{ID: "test-id", Content: "test-content"}
 		expectedPartition := int32(0)
 		expectedOffset := int64(1)
 
@@ -53,7 +53,7 @@ func TestKafkaService(t *testing.T) {
 			Consumer: mockConsumer,
 		}
 
-		message := queue.Message{ID: "test-id", Content: "test-content"}
+		message := port.Message{ID: "test-id", Content: "test-content"}
 		messageBytes, err := json.Marshal(message)
 
 		messageChan := make(chan *sarama.ConsumerMessage, 1)
