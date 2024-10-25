@@ -25,7 +25,7 @@ func TestIntegrationOperationStore(t *testing.T) {
 	}
 
 	if cfg.OperationResultsTable == "" || cfg.Region == "" {
-		t.Fatal("DYNAMODB_TABLE_NAME_OPERATIONS y REGION no fueron seteados para los tests de integracion")
+		t.Fatal("DYNAMODB_TABLE_NAME_OPERATION y REGION no fueron seteados para los tests de integracion")
 	}
 
 	store, err := dynamodb.NewOperationStore(cfg)
@@ -44,7 +44,7 @@ func TestIntegrationOperationStore(t *testing.T) {
 		require.NoError(t, err)
 
 		// assert
-		assertOperationResultEqual(t, result, *retrievedResult)
+		assertOperationResultEqual(t, result, retrievedResult)
 
 		// cleanup
 		err = store.DeleteOperationResult(context.Background(), result.PK, result.SK)
@@ -133,8 +133,8 @@ func TestIntegrationOperationStore(t *testing.T) {
 	})
 }
 
-func createTestOperationResult(songID string) model.OperationResult {
-	return model.OperationResult{
+func createTestOperationResult(songID string) *model.OperationResult {
+	return &model.OperationResult{
 		PK:      uuid.New().String(),
 		SK:      songID,
 		Status:  "in_progress",
@@ -142,7 +142,7 @@ func createTestOperationResult(songID string) model.OperationResult {
 	}
 }
 
-func assertOperationResultEqual(t *testing.T, expected, actual model.OperationResult) {
+func assertOperationResultEqual(t *testing.T, expected, actual *model.OperationResult) {
 	assert.Equal(t, expected.PK, actual.PK)
 	assert.Equal(t, expected.SK, actual.SK)
 	assert.Equal(t, expected.Status, actual.Status)
