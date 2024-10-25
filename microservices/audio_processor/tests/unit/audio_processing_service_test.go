@@ -45,7 +45,7 @@ func TestAudioProcessingService(t *testing.T) {
 			mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil)
 			mockStorage.On("GetFileMetadata", mock.Anything, mock.Anything).Return(&model.FileData{}, nil)
 			mockMetadataRepo.On("SaveMetadata", mock.Anything, mock.AnythingOfType("*model.Metadata")).Return(nil)
-			mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("model.OperationResult")).Return(nil)
+			mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("*model.OperationResult")).Return(nil)
 			mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 			mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 			mockLogger.On("Error", mock.Anything, mock.Anything).Return()
@@ -82,7 +82,7 @@ func TestAudioProcessingService(t *testing.T) {
 		ctx := context.Background()
 		songID := "test-song-id"
 
-		mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("model.OperationResult")).Return(errors.New("database error"))
+		mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("*model.OperationResult")).Return(errors.New("database error"))
 
 		// Act
 		operationID, _, err := serviceAudio.StartOperation(ctx, songID)
@@ -124,7 +124,7 @@ func TestAudioProcessingService(t *testing.T) {
 			mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil)
 			mockStorage.On("GetFileMetadata", mock.Anything, mock.Anything).Return(&model.FileData{}, nil)
 			mockMetadataRepo.On("SaveMetadata", mock.Anything, mock.AnythingOfType("*model.Metadata")).Return(nil)
-			mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("model.OperationResult")).Return(nil)
+			mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("*model.OperationResult")).Return(nil)
 			mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 			mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 			mockLogger.On("Error", mock.Anything, mock.Anything).Return()
@@ -169,7 +169,7 @@ func TestAudioProcessingService(t *testing.T) {
 		mockAudioContent := bytes.NewBufferString("fake audio content")
 
 		mockDownloader.On("DownloadAudio", mock.Anything, mock.AnythingOfType("string")).Return(mockAudioContent, errors.New("download error"))
-		mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("model.OperationResult")).Return(nil)
+		mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("*model.OperationResult")).Return(nil)
 		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 
 		// Act
@@ -212,7 +212,7 @@ func TestAudioProcessingService(t *testing.T) {
 		mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil)
 		mockStorage.On("GetFileMetadata", mock.Anything, mock.Anything).Return(&model.FileData{}, nil)
 		mockMetadataRepo.On("SaveMetadata", mock.Anything, mock.AnythingOfType("*model.Metadata")).Return(errors.New("metadata save error"))
-		mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("model.OperationResult")).Return(nil)
+		mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("*model.OperationResult")).Return(nil)
 		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
@@ -258,7 +258,7 @@ func TestAudioProcessingService(t *testing.T) {
 		mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil)
 		mockStorage.On("GetFileMetadata", mock.Anything, mock.Anything).Return(&model.FileData{}, nil)
 		mockMetadataRepo.On("SaveMetadata", mock.Anything, mock.AnythingOfType("*model.Metadata")).Return(errors.New("metadata save error"))
-		mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("model.OperationResult")).Return(nil)
+		mockOperationRepo.On("SaveOperationsResult", mock.Anything, mock.AnythingOfType("*model.OperationResult")).Return(nil)
 		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 

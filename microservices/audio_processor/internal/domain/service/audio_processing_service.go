@@ -70,7 +70,7 @@ func NewAudioProcessingService(log logger.Logger, storage port.Storage,
 
 // StartOperation inicia una nueva operación de procesamiento de audio y guarda su estado inicial.
 func (a *AudioProcessingService) StartOperation(ctx context.Context, songID string) (string, string, error) {
-	operationResult := model.OperationResult{
+	operationResult := &model.OperationResult{
 		PK:     uuid.New().String(),
 		SK:     songID,
 		Status: statusInitiating,
@@ -158,8 +158,8 @@ func (a *AudioProcessingService) createMetadata(youtubeMetadata api.VideoDetails
 }
 
 // createSuccessResult crea un resultado de operación exitoso después del procesamiento de audio.
-func (a *AudioProcessingService) createSuccessResult(operationID string, metadata *model.Metadata, fileData model.FileData, attempts int) model.OperationResult {
-	return model.OperationResult{
+func (a *AudioProcessingService) createSuccessResult(operationID string, metadata *model.Metadata, fileData model.FileData, attempts int) *model.OperationResult {
+	return &model.OperationResult{
 		PK:             operationID,
 		SK:             metadata.VideoID,
 		Status:         statusSuccess,
@@ -175,7 +175,7 @@ func (a *AudioProcessingService) createSuccessResult(operationID string, metadat
 
 // handleFailedProcessing maneja el caso en que el procesamiento falla después de varios intentos.
 func (a *AudioProcessingService) handleFailedProcessing(ctx context.Context, operationID string, metadata model.Metadata) error {
-	result := model.OperationResult{
+	result := &model.OperationResult{
 		PK:             operationID,
 		SK:             metadata.VideoID,
 		Status:         statusFailed,

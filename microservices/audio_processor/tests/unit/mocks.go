@@ -214,7 +214,7 @@ func (m *MockStorageS3API) PutObject(ctx context.Context, params *s3.PutObjectIn
 	return args.Get(0).(*s3.PutObjectOutput), args.Error(1)
 }
 
-func (m *MockOperationRepository) SaveOperationsResult(ctx context.Context, result model.OperationResult) error {
+func (m *MockOperationRepository) SaveOperationsResult(ctx context.Context, result *model.OperationResult) error {
 	args := m.Called(ctx, result)
 	return args.Error(0)
 }

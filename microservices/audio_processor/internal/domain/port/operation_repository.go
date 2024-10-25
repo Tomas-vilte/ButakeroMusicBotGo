@@ -7,7 +7,7 @@ import (
 
 // OperationRepository define las operaciones para manejar resultados de operación.
 type OperationRepository interface {
-	SaveOperationsResult(ctx context.Context, result model.OperationResult) error
+	SaveOperationsResult(ctx context.Context, result *model.OperationResult) error
 	GetOperationResult(ctx context.Context, id, songID string) (*model.OperationResult, error)
 	DeleteOperationResult(ctx context.Context, id, songID string) error
 	UpdateOperationStatus(ctx context.Context, operationID string, songID string, status string) error

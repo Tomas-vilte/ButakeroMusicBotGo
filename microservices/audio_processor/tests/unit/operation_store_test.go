@@ -23,7 +23,7 @@ func TestSaveOperationResult(t *testing.T) {
 			},
 		}
 
-		result := model.OperationResult{
+		result := &model.OperationResult{
 			SK: "test-song-id",
 		}
 
@@ -45,7 +45,7 @@ func TestSaveOperationResult(t *testing.T) {
 			},
 		}
 
-		result := model.OperationResult{
+		result := &model.OperationResult{
 			SK: "test-song-id",
 		}
 

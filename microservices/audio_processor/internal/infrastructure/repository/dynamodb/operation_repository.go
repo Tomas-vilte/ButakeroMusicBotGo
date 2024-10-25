@@ -39,7 +39,7 @@ func NewOperationStore(cfgApplication config.Config) (*OperationStore, error) {
 }
 
 // SaveOperationsResult guarda el resultado de una operación en DynamoDB. Genera un nuevo ID si es necesario.
-func (s *OperationStore) SaveOperationsResult(ctx context.Context, result model.OperationResult) error {
+func (s *OperationStore) SaveOperationsResult(ctx context.Context, result *model.OperationResult) error {
 	if result.PK == "" {
 		result.PK = uuid.New().String()
 	}
