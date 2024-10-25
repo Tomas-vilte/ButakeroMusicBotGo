@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"github.com/IBM/sarama"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/port"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -41,7 +41,7 @@ func NewKafkaService(cfgApplication config.Config, log logger.Logger) (*KafkaSer
 	}, nil
 }
 
-func (k *KafkaService) SendMessage(ctx context.Context, message queue.Message) error {
+func (k *KafkaService) SendMessage(ctx context.Context, message port.Message) error {
 	body, err := json.Marshal(message)
 	if err != nil {
 		return errors.Wrap(err, "error deserializar mensaje")
@@ -66,7 +66,7 @@ func (k *KafkaService) SendMessage(ctx context.Context, message queue.Message) e
 	return nil
 }
 
-func (k *KafkaService) ReceiveMessage(ctx context.Context) ([]queue.Message, error) {
+func (k *KafkaService) ReceiveMessage(ctx context.Context) ([]port.Message, error) {
 	partitionConsumer, err := k.Consumer.ConsumePartition(k.Config.Topic, 0, sarama.OffsetOldest)
 	if err != nil {
 		return nil, errors.Wrap(err, "error al crear la particion del consumidor")
@@ -77,12 +77,12 @@ func (k *KafkaService) ReceiveMessage(ctx context.Context) ([]queue.Message, err
 		}
 	}()
 
-	var messages []queue.Message
+	var messages []port.Message
 
 	select {
 	case msg := <-partitionConsumer.Messages():
 		k.Log.Info("Mensaje recibido desde Kafka", zap.String("MessageID", string(msg.Key)))
-		var message queue.Message
+		var message port.Message
 		if err := json.Unmarshal(msg.Value, &message); err != nil {
 			return nil, errors.Wrap(err, "error al deserializar mensaje")
 		}

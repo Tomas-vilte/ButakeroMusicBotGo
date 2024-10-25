@@ -3,7 +3,7 @@ package integration
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/port"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue/kafka"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/stretchr/testify/assert"
@@ -43,7 +43,7 @@ func TestKafkaIntegration_SendAndReceiveMessage(t *testing.T) {
 	kafkaService, err := kafka.NewKafkaService(cfg, log)
 	assert.NoError(t, err)
 
-	message := queue.Message{
+	message := port.Message{
 		ID:      "test-id",
 		Content: "test-content",
 	}

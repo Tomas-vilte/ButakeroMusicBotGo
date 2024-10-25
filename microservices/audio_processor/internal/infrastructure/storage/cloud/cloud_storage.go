@@ -1,4 +1,4 @@
-package storage
+package cloud
 
 import (
 	"context"
@@ -13,16 +13,6 @@ import (
 )
 
 type (
-	// Storage define la interfaz para interactuar con un servicio de almacenamiento.
-	// Permite subir archivos y obtener metadatos de archivos.
-	Storage interface {
-		// UploadFile sube un archivo al servicio de almacenamiento con la clave especificada.
-		UploadFile(ctx context.Context, key string, body io.Reader) error
-
-		// GetFileMetadata obtiene los metadatos del archivo con la clave especificada.
-		GetFileMetadata(ctx context.Context, key string) (*model.FileData, error)
-	}
-
 	// S3Client define la interfaz para interactuar con el servicio S3 de AWS.
 	// Permite subir archivos y obtener información del encabezado del objeto.
 	S3Client interface {

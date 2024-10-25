@@ -3,7 +3,7 @@ package integration
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
-	mongoRepo "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/persistence/mongo"
+	mongoRepo "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/repository/mongodb"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +20,7 @@ var mongoContainer *mongodb.MongoDBContainer
 
 func TestMain(t *testing.M) {
 	var err error
-	mongoContainer, err = mongodb.Run(context.Background(), "mongo:6")
+	mongoContainer, err = mongodb.Run(context.Background(), "mongodb:6")
 	if err != nil {
 		log.Fatalf("Error al iniciar el contendor de MongoDB: %v", err)
 	}

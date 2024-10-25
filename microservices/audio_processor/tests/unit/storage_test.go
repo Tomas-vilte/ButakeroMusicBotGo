@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/storage"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/storage/cloud"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +21,7 @@ func TestS3Storage_UploadFile(t *testing.T) {
 		mockClient.On("PutObject", mock.Anything, mock.AnythingOfType("*s3.PutObjectInput"), mock.Anything).
 			Return(&s3.PutObjectOutput{}, nil)
 
-		storageS3 := storage.S3Storage{
+		storageS3 := cloud.S3Storage{
 			Client: mockClient,
 			Config: config.Config{
 				BucketName: "test-bucket",
@@ -45,7 +45,7 @@ func TestS3Storage_UploadFile(t *testing.T) {
 		mockClient.On("PutObject", mock.Anything, mock.AnythingOfType("*s3.PutObjectInput"), mock.Anything).
 			Return((*s3.PutObjectOutput)(nil), expectedErr)
 
-		storageS3 := storage.S3Storage{
+		storageS3 := cloud.S3Storage{
 			Client: mockClient,
 			Config: config.Config{
 				BucketName: "test-bucket",
@@ -71,7 +71,7 @@ func TestS3Storage_UploadFile(t *testing.T) {
 		mockClient := new(MockStorageS3API)
 		// No configuramos expectativas para PutObject porque no debería ser llamado
 
-		storageS3 := storage.S3Storage{
+		storageS3 := cloud.S3Storage{
 			Client: mockClient,
 			Config: config.Config{
 				BucketName: "test-bucket",
@@ -109,7 +109,7 @@ func TestS3Storage_GetFileMetadata(t *testing.T) {
 			ContentLength: aws.Int64(contentLength),
 		}, nil)
 
-		s3Storage := storage.S3Storage{
+		s3Storage := cloud.S3Storage{
 			Client: mockClient,
 			Config: config.Config{
 				BucketName: bucketName,
@@ -141,7 +141,7 @@ func TestS3Storage_GetFileMetadata(t *testing.T) {
 			Key:    aws.String("audio/" + key),
 		}, mock.Anything).Return((*s3.HeadObjectOutput)(nil), errors.New("s3 error"))
 
-		s3Storage := storage.S3Storage{
+		s3Storage := cloud.S3Storage{
 			Client: mockClient,
 			Config: config.Config{
 				BucketName: bucketName,
@@ -167,7 +167,7 @@ func TestNewS3Storage(t *testing.T) {
 			BucketName: "test-bucket",
 			Region:     "us-east-1",
 		}
-		storageS3, err := storage.NewS3Storage(cfg)
+		storageS3, err := cloud.NewS3Storage(cfg)
 
 		// assert
 		if err != nil {

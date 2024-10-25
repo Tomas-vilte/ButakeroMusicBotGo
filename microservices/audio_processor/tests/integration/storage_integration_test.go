@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/storage"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/storage/cloud"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -33,7 +33,7 @@ func TestS3StorageIntegration(t *testing.T) {
 		t.Fatal("BUCKET_NAME y REGION deben estar configurados para los tests de integración")
 	}
 
-	s3Storage, err := storage.NewS3Storage(cfgApp)
+	s3Storage, err := cloud.NewS3Storage(cfgApp)
 	if err != nil {
 		t.Fatalf("Error al crear S3Storage: %v", err)
 	}

@@ -3,12 +3,12 @@ package integration
 import (
 	"context"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/port"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue"
 	serviceSqs "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue/sqs"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/google/uuid"
@@ -45,7 +45,7 @@ func TestSQSServiceIntegration(t *testing.T) {
 
 		ctx := context.Background()
 		uniqueID := uuid.New().String()
-		message := queue.Message{
+		message := port.Message{
 			ID:      fmt.Sprintf("test-msg-%s", uniqueID),
 			Content: fmt.Sprintf("Test Message Content %s", uniqueID),
 		}
@@ -55,7 +55,7 @@ func TestSQSServiceIntegration(t *testing.T) {
 		require.NoError(t, err, "Error al enviar mensaje")
 
 		// Función auxiliar para buscar nuestro mensaje específico
-		findOurMessage := func(messages []queue.Message) *queue.Message {
+		findOurMessage := func(messages []port.Message) *port.Message {
 			for _, msg := range messages {
 				if msg.ID == message.ID {
 					return &msg
@@ -65,7 +65,7 @@ func TestSQSServiceIntegration(t *testing.T) {
 		}
 
 		// Intentar recibir el mensaje con reintentos más cortos
-		var receivedMessage *queue.Message
+		var receivedMessage *port.Message
 		for i := 0; i < 3; i++ {
 			messages, err := service.ReceiveMessage(ctx)
 			require.NoError(t, err, "Error al recibir mensajes")
