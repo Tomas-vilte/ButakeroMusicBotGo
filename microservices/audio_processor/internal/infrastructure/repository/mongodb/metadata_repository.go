@@ -38,11 +38,19 @@ type (
 )
 
 // NewMongoMetadataRepository crea una nueva instancia de MongoMetadataRepository
-func NewMongoMetadataRepository(opts MongoMetadataOptions) *MongoMetadataRepository {
+func NewMongoMetadataRepository(opts MongoMetadataOptions) (*MongoMetadataRepository, error) {
+	if opts.Log == nil {
+		return nil, fmt.Errorf("logger necesario")
+	}
+
+	if opts.Collection == nil {
+		return nil, fmt.Errorf("collection necesario")
+	}
+
 	return &MongoMetadataRepository{
 		collection: opts.Collection,
 		log:        opts.Log,
-	}
+	}, nil
 }
 
 // SaveMetadata guarda los metadatos en MongoDB
