@@ -25,7 +25,7 @@ func NewGetOperationStatusUseCase(operationRepository port.OperationRepository) 
 
 func (uc *GetOperationStatusUseCaseImpl) Execute(ctx context.Context, operationID, songID string) (*model.OperationResult, error) {
 	// Validación de entrada: comprobar que los IDs son UUIDs válidos
-	if !isValidUUID(operationID) || !isValidUUID(songID) {
+	if !isValidUUID(operationID) {
 		return nil, ErrInvalidUUID
 	}
 

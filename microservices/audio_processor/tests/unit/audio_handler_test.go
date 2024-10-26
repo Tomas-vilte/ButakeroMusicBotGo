@@ -2,9 +2,11 @@ package unit
 
 import (
 	"errors"
+	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/interface/http/handler"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"net/http"
@@ -80,16 +82,18 @@ func TestAudioHandler_GetOperationStatus(t *testing.T) {
 
 		handlerHttp := handler.NewAudioHandler(mockInitialDownloadUC, mockGetOperationStatusUC)
 
+		operationID := uuid.New().String()
 		expectedResult := &model.OperationResult{
 			Status: "completed",
 		}
 
-		mockGetOperationStatusUC.On("Execute", mock.Anything, "operation_123", "song_123").Return(expectedResult, nil)
+		mockGetOperationStatusUC.On("Execute", mock.Anything, operationID, "song_123").Return(expectedResult, nil)
 
 		gin.SetMode(gin.TestMode)
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request, _ = http.NewRequest(http.MethodGet, "/status?operation_id=operation_123&song_id=song_123", nil)
+		url := fmt.Sprintf("/status?operation_id=%s&song_id=song_123", operationID)
+		c.Request, _ = http.NewRequest(http.MethodGet, url, nil)
 
 		handlerHttp.GetOperationStatus(c)
 
@@ -119,14 +123,17 @@ func TestAudioHandler_GetOperationStatus(t *testing.T) {
 		mockInitialDownloadUC := new(MockInitiateDownloadUC)
 		mockGetOperationStatusUC := new(MockGetOperationStatusUC)
 
+		operationID := uuid.New().String()
+
 		handlerHttp := handler.NewAudioHandler(mockInitialDownloadUC, mockGetOperationStatusUC)
 
-		mockGetOperationStatusUC.On("Execute", mock.Anything, "operation_123", "song_123").Return(&model.OperationResult{}, errors.New("use case error"))
+		mockGetOperationStatusUC.On("Execute", mock.Anything, operationID, "song_123").Return(&model.OperationResult{}, errors.New("use case error"))
 
 		gin.SetMode(gin.TestMode)
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
-		c.Request, _ = http.NewRequest(http.MethodGet, "/status?operation_id=operation_123&song_id=song_123", nil)
+		url := fmt.Sprintf("/status?operation_id=%s&song_id=song_123", operationID)
+		c.Request, _ = http.NewRequest(http.MethodGet, url, nil)
 
 		handlerHttp.GetOperationStatus(c)
 

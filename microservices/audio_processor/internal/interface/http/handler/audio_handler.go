@@ -3,6 +3,7 @@ package handler
 import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/usecase"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"net/http"
 )
 
@@ -48,6 +49,12 @@ func (h *AudioHandler) GetOperationStatus(c *gin.Context) {
 		})
 		return
 	}
+
+	if _, err := uuid.Parse(operationID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "operation_id invalido"})
+		return
+	}
+
 	status, err := h.getOperationStatusUC.Execute(c.Request.Context(), operationID, songID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
