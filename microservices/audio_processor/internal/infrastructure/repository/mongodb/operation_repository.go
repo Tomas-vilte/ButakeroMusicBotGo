@@ -1,3 +1,6 @@
+// Paquete mongodb gestiona la interacción con una colección MongoDB
+// para el almacenamiento y manipulación de resultados de operaciones.
+
 package mongodb
 
 import (
@@ -12,24 +15,53 @@ import (
 	"go.uber.org/zap"
 )
 
-// ErrOperationNotFound es un error personalizado para cuando no se encuentra una operación
-var ErrOperationNotFound = errors.New("operación no encontrada")
+// Errores predefinidos para condiciones específicas
+var (
+	ErrOperationNotFound = errors.New("operación no encontrada") // Error si la operación no se encuentra
+	ErrInvalidUUID       = errors.New("UUID inválido")           // Error si un UUID no es válido
+	ErrInvalidStatus     = errors.New("estado inválido")         // Error si el estado es inválido
+)
 
-// OperationRepository implementa la interface port.OperationRepository para MongoDB
+// ValidStatus define los estados permitidos para una operación.
+var ValidStatus = map[string]bool{
+	"pending":    true,
+	"complete":   true,
+	"failed":     true,
+	"processing": true,
+}
+
+// OperationRepository define el repositorio de operaciones con MongoDB.
 type (
 	OperationRepository struct {
-		collection *mongo.Collection
-		log        logger.Logger
+		collection *mongo.Collection // Colección de MongoDB para almacenar operaciones
+		log        logger.Logger     // Interfaz de logging
 	}
 
-	// OperationOptions contiene las opciones para crear un nuevo OperationRepository
+	// OperationOptions agrupa las opciones necesarias para inicializar port.OperationRepository.
 	OperationOptions struct {
-		Collection *mongo.Collection
-		Log        logger.Logger
+		Collection *mongo.Collection // Colección de MongoDB
+		Log        logger.Logger     // Logger para registrar eventos
 	}
 )
 
-// NewOperationRepository crea una nueva instancia de OperationRepository
+// isValidUUID verifica si una cadena es un UUID válido
+func isValidUUID(id string) bool {
+	_, err := uuid.Parse(id)
+	return err == nil
+}
+
+// createSafeFilter crea un filtro BSON para las consultas, usando IDs válidos
+func createSafeFilter(pk, sk string) (bson.D, error) {
+	if !isValidUUID(pk) || !isValidUUID(sk) {
+		return nil, ErrInvalidUUID
+	}
+	return bson.D{
+		{Key: "pk", Value: pk},
+		{Key: "sk", Value: sk},
+	}, nil
+}
+
+// NewOperationRepository crea un nuevo repositorio de operaciones con las opciones proporcionadas.
 func NewOperationRepository(opts OperationOptions) (*OperationRepository, error) {
 	if opts.Collection == nil {
 		return nil, errors.New("collection no puede ser nil")
@@ -44,16 +76,21 @@ func NewOperationRepository(opts OperationOptions) (*OperationRepository, error)
 	}, nil
 }
 
-// SaveOperationsResult guarda un resultado de operación en MongoDB
+// SaveOperationsResult guarda un resultado de operación en la colección MongoDB.
 func (s *OperationRepository) SaveOperationsResult(ctx context.Context, result *model.OperationResult) error {
 	if result == nil {
 		return errors.New("result no puede ser nil")
 	}
-
 	if result.PK == "" {
-		result.PK = uuid.New().String()
+		result.PK = uuid.New().String() // Genera un UUID si PK está vacío
 	}
 
+	// Validar UUIDs
+	if !isValidUUID(result.PK) || !isValidUUID(result.SK) {
+		return ErrInvalidUUID
+	}
+
+	// Intento de inserción en MongoDB y manejo de errores
 	if _, err := s.collection.InsertOne(ctx, result); err != nil {
 		s.log.Error("Error al guardar resultado de operación:", zap.Error(err))
 		return fmt.Errorf("error al guardar resultado de operación: %w", err)
@@ -63,19 +100,14 @@ func (s *OperationRepository) SaveOperationsResult(ctx context.Context, result *
 	return nil
 }
 
-// GetOperationResult obtiene un resultado de operación por ID y songID
+// GetOperationResult obtiene el resultado de una operación a partir de su ID y songID.
 func (s *OperationRepository) GetOperationResult(ctx context.Context, id, songID string) (*model.OperationResult, error) {
-	if id == "" || songID == "" {
-		return nil, errors.New("id y songID son requeridos")
-	}
-
-	filter := bson.M{
-		"pk": id,
-		"sk": songID,
+	filter, err := createSafeFilter(id, songID)
+	if err != nil {
+		return nil, err
 	}
 
 	var result model.OperationResult
-
 	if err := s.collection.FindOne(ctx, filter).Decode(&result); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, ErrOperationNotFound
@@ -87,15 +119,11 @@ func (s *OperationRepository) GetOperationResult(ctx context.Context, id, songID
 	return &result, nil
 }
 
-// DeleteOperationResult elimina un resultado de operación
+// DeleteOperationResult elimina el resultado de una operación específica en MongoDB.
 func (s *OperationRepository) DeleteOperationResult(ctx context.Context, id, songID string) error {
-	if id == "" || songID == "" {
-		return errors.New("id y songID son requeridos")
-	}
-
-	filter := bson.M{
-		"pk": id,
-		"sk": songID,
+	filter, err := createSafeFilter(id, songID)
+	if err != nil {
+		return err
 	}
 
 	result, err := s.collection.DeleteOne(ctx, filter)
@@ -112,21 +140,21 @@ func (s *OperationRepository) DeleteOperationResult(ctx context.Context, id, son
 	return nil
 }
 
-// UpdateOperationStatus actualiza el estado de una operación
+// UpdateOperationStatus actualiza el estado de una operación, si el estado es válido.
 func (s *OperationRepository) UpdateOperationStatus(ctx context.Context, operationID string, songID string, status string) error {
-	if operationID == "" || songID == "" || status == "" {
-		return errors.New("operationID, songID y status son requeridos")
+	if !ValidStatus[status] {
+		return ErrInvalidStatus
 	}
 
-	filter := bson.M{
-		"pk": operationID,
-		"sk": songID,
+	filter, err := createSafeFilter(operationID, songID)
+	if err != nil {
+		return err
 	}
 
-	update := bson.M{
-		"$set": bson.M{
-			"status": status,
-		},
+	update := bson.D{
+		{Key: "$set", Value: bson.D{
+			{Key: "status", Value: status},
+		}},
 	}
 
 	result, err := s.collection.UpdateOne(ctx, filter, update)
@@ -139,6 +167,8 @@ func (s *OperationRepository) UpdateOperationStatus(ctx context.Context, operati
 		return ErrOperationNotFound
 	}
 
-	s.log.Info("Estado de operacion actualizado exitosamente", zap.String("id", operationID), zap.String("status", status))
+	s.log.Info("Estado de operacion actualizado exitosamente",
+		zap.String("id", operationID),
+		zap.String("status", status))
 	return nil
 }
