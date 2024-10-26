@@ -68,6 +68,12 @@ func (s *OperationRepository) GetOperationResult(ctx context.Context, id, songID
 	if id == "" || songID == "" {
 		return nil, errors.New("id y songID son requeridos")
 	}
+	if _, err := uuid.Parse(id); err != nil {
+		return nil, errors.New("id no es un UUID válido")
+	}
+	if _, err := uuid.Parse(songID); err != nil {
+		return nil, errors.New("songID no es un UUID válido")
+	}
 
 	filter := bson.M{
 		"pk": id,
@@ -91,6 +97,12 @@ func (s *OperationRepository) GetOperationResult(ctx context.Context, id, songID
 func (s *OperationRepository) DeleteOperationResult(ctx context.Context, id, songID string) error {
 	if id == "" || songID == "" {
 		return errors.New("id y songID son requeridos")
+	}
+	if _, err := uuid.Parse(id); err != nil {
+		return errors.New("id no es un UUID válido")
+	}
+	if _, err := uuid.Parse(songID); err != nil {
+		return errors.New("songID no es un UUID válido")
 	}
 
 	filter := bson.M{
