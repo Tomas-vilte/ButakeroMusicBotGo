@@ -56,8 +56,8 @@ func createSafeFilter(pk, sk string) (bson.D, error) {
 		return nil, ErrInvalidUUID
 	}
 	// Ensure the values are properly sanitized
-	sanitizedPK := bson.M{"$eq": pk}
-	sanitizedSK := bson.M{"$eq": sk}
+	sanitizedPK := pk
+	sanitizedSK := sk
 	return bson.D{
 		{Key: "pk", Value: sanitizedPK},
 		{Key: "sk", Value: sanitizedSK},
