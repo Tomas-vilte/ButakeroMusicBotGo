@@ -137,7 +137,7 @@ func createTestOperationResult(songID string) *model.OperationResult {
 	return &model.OperationResult{
 		ID:      uuid.New().String(),
 		SK:      songID,
-		Status:  "in_progress",
+		Status:  "starting",
 		Message: "Operation is in progress",
 	}
 }
