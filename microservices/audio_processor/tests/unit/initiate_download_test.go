@@ -36,7 +36,7 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 
 		done := make(chan struct{})
 
-		mockAudioService.On("ProcessAudio", mock.Anything, "test-operation-id", *youtubeMetadata).Return(nil).Run(func(args mock.Arguments) {
+		mockAudioService.On("ProcessAudio", mock.Anything, "test-operation-id", youtubeMetadata).Return(nil).Run(func(args mock.Arguments) {
 			go func() {
 				defer close(done)
 			}()
@@ -79,7 +79,7 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 
 		done := make(chan struct{})
 
-		mockAudioService.On("ProcessAudio", mock.Anything, operationID, *youtubeMetadata).Return(expectedError).Run(func(args mock.Arguments) {
+		mockAudioService.On("ProcessAudio", mock.Anything, operationID, youtubeMetadata).Return(expectedError).Run(func(args mock.Arguments) {
 			go func() {
 				defer close(done)
 			}()

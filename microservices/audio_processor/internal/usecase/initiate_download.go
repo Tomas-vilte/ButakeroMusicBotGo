@@ -38,7 +38,7 @@ func (uc *InitiateDownloadUseCase) Execute(ctx context.Context, song string) (st
 	// Procesar el audio de manera asíncrona
 	go func() {
 		backgroundCtx := context.Background()
-		err := uc.audioService.ProcessAudio(backgroundCtx, operationID, *youtubeMetadata)
+		err := uc.audioService.ProcessAudio(backgroundCtx, operationID, youtubeMetadata)
 		if err != nil {
 			fmt.Printf("Error en el procesamiento: %v", err)
 		}

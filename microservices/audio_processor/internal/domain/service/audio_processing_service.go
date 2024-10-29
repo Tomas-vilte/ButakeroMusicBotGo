@@ -35,12 +35,13 @@ type (
 		downloader     downloader.Downloader    // Interfaz para la descarga de audio.
 		operationStore port.OperationRepository // Interfaz para almacenar resultados de operaciones.
 		metadataStore  port.MetadataRepository  // Interfaz para almacenar metadatos del audio.
+		messaging      port.MessageQueue        // Interfaz
 		config         config.Config            // Configuración del servicio.
 	}
 
 	AudioProcessor interface {
 		StartOperation(ctx context.Context, song string) (string, string, error)
-		ProcessAudio(ctx context.Context, operationID string, metadata api.VideoDetails) error
+		ProcessAudio(ctx context.Context, operationID string, metadata *api.VideoDetails) error
 	}
 )
 
@@ -49,6 +50,7 @@ func NewAudioProcessingService(log logger.Logger, storage port.Storage,
 	downloader downloader.Downloader,
 	operationStore port.OperationRepository,
 	metadataStore port.MetadataRepository,
+	messaging port.MessageQueue,
 	config config.Config) *AudioProcessingService {
 
 	if config.MaxAttempts == 0 {
@@ -64,6 +66,7 @@ func NewAudioProcessingService(log logger.Logger, storage port.Storage,
 		downloader:     downloader,
 		operationStore: operationStore,
 		metadataStore:  metadataStore,
+		messaging:      messaging,
 		config:         config,
 	}
 }
@@ -71,7 +74,7 @@ func NewAudioProcessingService(log logger.Logger, storage port.Storage,
 // StartOperation inicia una nueva operación de procesamiento de audio y guarda su estado inicial.
 func (a *AudioProcessingService) StartOperation(ctx context.Context, songID string) (string, string, error) {
 	operationResult := &model.OperationResult{
-		PK:     uuid.New().String(),
+		ID:     uuid.New().String(),
 		SK:     songID,
 		Status: statusInitiating,
 	}
@@ -80,11 +83,11 @@ func (a *AudioProcessingService) StartOperation(ctx context.Context, songID stri
 	if err != nil {
 		return "", "", fmt.Errorf("error al guardar operación: %w", err)
 	}
-	return operationResult.PK, operationResult.SK, nil
+	return operationResult.ID, operationResult.SK, nil
 }
 
 // ProcessAudio procesa el audio descargando, codificando y almacenando en S3, con reintentos en caso de fallos.
-func (a *AudioProcessingService) ProcessAudio(ctx context.Context, operationID string, youtubeMetadata api.VideoDetails) error {
+func (a *AudioProcessingService) ProcessAudio(ctx context.Context, operationID string, youtubeMetadata *api.VideoDetails) error {
 	ctx, cancel := context.WithTimeout(ctx, a.config.Timeout)
 	defer cancel()
 
@@ -98,7 +101,7 @@ func (a *AudioProcessingService) ProcessAudio(ctx context.Context, operationID s
 		a.log.Error("Attempt failed", zap.Int("attempt", attempts), zap.Error(err))
 	}
 
-	return a.handleFailedProcessing(ctx, operationID, *metadata)
+	return a.handleFailedProcessing(ctx, operationID, metadata)
 }
 
 // processAudioAttempt intenta procesar el audio una vez, manejando la descarga, codificación y almacenamiento.
@@ -134,10 +137,19 @@ func (a *AudioProcessingService) processAudioAttempt(ctx context.Context, operat
 		return fmt.Errorf("error al guardar metadata: %w", err)
 	}
 
-	result := a.createSuccessResult(operationID, metadata, *fileMetadata, attempt)
-	err = a.operationStore.SaveOperationsResult(ctx, result)
+	result := a.createSuccessResult(operationID, metadata, fileMetadata, attempt)
+	err = a.operationStore.UpdateOperationResult(ctx, operationID, result)
 	if err != nil {
 		return fmt.Errorf("error al guardar resultado de operación: %w", err)
+	}
+
+	message := port.Message{
+		ID:      operationID,
+		Content: "hola desde el service",
+	}
+
+	if err := a.messaging.SendMessage(ctx, message); err != nil {
+		a.log.Error("Error al enviar el mensaje de exito", zap.Error(err))
 	}
 
 	a.log.Info("Procesamiento exitoso", zap.Int("attempts", attempt))
@@ -145,7 +157,7 @@ func (a *AudioProcessingService) processAudioAttempt(ctx context.Context, operat
 }
 
 // createMetadata genera metadatos a partir de los detalles de un video de YouTube.
-func (a *AudioProcessingService) createMetadata(youtubeMetadata api.VideoDetails) *model.Metadata {
+func (a *AudioProcessingService) createMetadata(youtubeMetadata *api.VideoDetails) *model.Metadata {
 	return &model.Metadata{
 		ID:         uuid.New().String(),
 		VideoID:    youtubeMetadata.VideoID,
@@ -158,13 +170,13 @@ func (a *AudioProcessingService) createMetadata(youtubeMetadata api.VideoDetails
 }
 
 // createSuccessResult crea un resultado de operación exitoso después del procesamiento de audio.
-func (a *AudioProcessingService) createSuccessResult(operationID string, metadata *model.Metadata, fileData model.FileData, attempts int) *model.OperationResult {
+func (a *AudioProcessingService) createSuccessResult(operationID string, metadata *model.Metadata, fileData *model.FileData, attempts int) *model.OperationResult {
 	return &model.OperationResult{
-		PK:             operationID,
+		ID:             operationID,
 		SK:             metadata.VideoID,
 		Status:         statusSuccess,
 		Message:        "Procesamiento exitoso",
-		Metadata:       *metadata,
+		Metadata:       metadata,
 		FileData:       fileData,
 		ProcessingDate: time.Now().Format(time.RFC3339),
 		Success:        true,
@@ -174,9 +186,9 @@ func (a *AudioProcessingService) createSuccessResult(operationID string, metadat
 }
 
 // handleFailedProcessing maneja el caso en que el procesamiento falla después de varios intentos.
-func (a *AudioProcessingService) handleFailedProcessing(ctx context.Context, operationID string, metadata model.Metadata) error {
+func (a *AudioProcessingService) handleFailedProcessing(ctx context.Context, operationID string, metadata *model.Metadata) error {
 	result := &model.OperationResult{
-		PK:             operationID,
+		ID:             operationID,
 		SK:             metadata.VideoID,
 		Status:         statusFailed,
 		Message:        fmt.Sprintf("Fallo en el procesamiento después de varios intentos: %d", a.config.MaxAttempts),
@@ -189,6 +201,15 @@ func (a *AudioProcessingService) handleFailedProcessing(ctx context.Context, ope
 	err := a.operationStore.SaveOperationsResult(ctx, result)
 	if err != nil {
 		a.log.Error("Error al guardar resultado de operación fallida", zap.Error(err))
+	}
+
+	message := port.Message{
+		ID:      operationID,
+		Content: "hola desde el service 1",
+	}
+
+	if err := a.messaging.SendMessage(ctx, message); err != nil {
+		a.log.Error("Error al enviar el mensaje de fallo", zap.Error(err))
 	}
 
 	a.log.Error("El procesamiento falló después de varios intentos", zap.Int("attempts", a.config.MaxAttempts))

@@ -18,7 +18,7 @@ func TestGetOperationStatusUseCase_Execute(t *testing.T) {
 
 		operationID := uuid.New().String()
 		expectedOperation := &model.OperationResult{
-			PK:     operationID,
+			ID:     operationID,
 			Status: "completed",
 		}
 
