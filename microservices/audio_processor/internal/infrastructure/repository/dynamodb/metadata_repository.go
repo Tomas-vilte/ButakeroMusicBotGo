@@ -57,14 +57,14 @@ func (s *DynamoMetadataRepository) SaveMetadata(ctx context.Context, metadata *m
 	_, err := s.Client.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String(s.Config.SongsTable),
 		Item: map[string]types.AttributeValue{
-			"PK":         &types.AttributeValueMemberS{Value: "METADATA#" + metadata.ID},
-			"SK":         &types.AttributeValueMemberS{Value: "METADATA#" + metadata.ID},
-			"ID":         &types.AttributeValueMemberS{Value: metadata.ID},
-			"Title":      &types.AttributeValueMemberS{Value: metadata.Title},
-			"URLYoutube": &types.AttributeValueMemberS{Value: metadata.URLYouTube},
-			"Thumbnail":  &types.AttributeValueMemberS{Value: metadata.Thumbnail},
-			"Platform":   &types.AttributeValueMemberS{Value: metadata.Platform},
-			"Duration":   &types.AttributeValueMemberS{Value: metadata.Duration},
+			"PK":          &types.AttributeValueMemberS{Value: "METADATA#" + metadata.ID},
+			"SK":          &types.AttributeValueMemberS{Value: "METADATA#" + metadata.ID},
+			"ID":          &types.AttributeValueMemberS{Value: metadata.ID},
+			"title":       &types.AttributeValueMemberS{Value: metadata.Title},
+			"url_youtube": &types.AttributeValueMemberS{Value: metadata.URLYouTube},
+			"thumbnail":   &types.AttributeValueMemberS{Value: metadata.Thumbnail},
+			"platform":    &types.AttributeValueMemberS{Value: metadata.Platform},
+			"duration":    &types.AttributeValueMemberS{Value: metadata.Duration},
 		},
 	})
 	if err != nil {
