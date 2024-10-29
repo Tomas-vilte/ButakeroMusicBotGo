@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/IBM/sarama"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/port"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -73,7 +74,26 @@ type (
 	MockPartitionConsumer struct {
 		mock.Mock
 	}
+
+	MockMessagingQueue struct {
+		mock.Mock
+	}
 )
+
+func (m *MockMessagingQueue) SendMessage(ctx context.Context, message port.Message) error {
+	args := m.Called(ctx, message)
+	return args.Error(0)
+}
+
+func (m *MockMessagingQueue) ReceiveMessage(ctx context.Context) ([]port.Message, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]port.Message), args.Error(1)
+}
+
+func (m *MockMessagingQueue) DeleteMessage(ctx context.Context, receiptHandle string) error {
+	args := m.Called(ctx, receiptHandle)
+	return args.Error(0)
+}
 
 func (m *MockPartitionConsumer) Close() error {
 	args := m.Called()
@@ -234,6 +254,11 @@ func (m *MockOperationRepository) UpdateOperationStatus(ctx context.Context, ope
 	return args.Error(0)
 }
 
+func (m *MockOperationRepository) UpdateOperationResult(ctx context.Context, operationID string, operationResult *model.OperationResult) error {
+	args := m.Called(ctx, operationID, operationResult)
+	return args.Error(0)
+}
+
 func (m *MockMetadataRepository) SaveMetadata(ctx context.Context, metadata *model.Metadata) error {
 	args := m.Called(ctx, metadata)
 	return args.Error(0)
@@ -299,7 +324,7 @@ func (m *MockAudioProcessingService) StartOperation(ctx context.Context, videoID
 	return args.String(0), args.String(1), args.Error(2)
 }
 
-func (m *MockAudioProcessingService) ProcessAudio(ctx context.Context, operationID string, videoDetails api.VideoDetails) error {
+func (m *MockAudioProcessingService) ProcessAudio(ctx context.Context, operationID string, videoDetails *api.VideoDetails) error {
 	args := m.Called(ctx, operationID, videoDetails)
 	return args.Error(0)
 }

@@ -1,6 +1,3 @@
-// Paquete mongodb gestiona la interacción con una colección MongoDB
-// para el almacenamiento y manipulación de resultados de operaciones.
-
 package mongodb
 
 import (
@@ -24,10 +21,9 @@ var (
 
 // ValidStatus define los estados permitidos para una operación.
 var ValidStatus = map[string]bool{
-	"pending":    true,
-	"complete":   true,
-	"failed":     true,
-	"processing": true,
+	"starting": true,
+	"failed":   true,
+	"success":  true,
 }
 
 // OperationRepository define el repositorio de operaciones con MongoDB.
@@ -51,16 +47,13 @@ func isValidUUID(id string) bool {
 }
 
 // createSafeFilter crea un filtro BSON para las consultas, usando IDs válidos
-func createSafeFilter(pk, sk string) (bson.D, error) {
-	if !isValidUUID(pk) || !isValidUUID(sk) {
+func createSafeFilter(pk string) (bson.D, error) {
+	// solo validar `pk` como UUID
+	if !isValidUUID(pk) {
 		return nil, ErrInvalidUUID
 	}
-	// Ensure the values are properly sanitized
-	sanitizedPK := pk
-	sanitizedSK := sk
 	return bson.D{
-		{Key: "pk", Value: sanitizedPK},
-		{Key: "sk", Value: sanitizedSK},
+		{Key: "_id", Value: pk},
 	}, nil
 }
 
@@ -84,12 +77,12 @@ func (s *OperationRepository) SaveOperationsResult(ctx context.Context, result *
 	if result == nil {
 		return errors.New("result no puede ser nil")
 	}
-	if result.PK == "" {
-		result.PK = uuid.New().String() // Genera un UUID si PK está vacío
+	if result.ID == "" {
+		result.ID = uuid.New().String() // Genera un UUID si PK está vacío
 	}
 
 	// Validar UUIDs
-	if !isValidUUID(result.PK) || !isValidUUID(result.SK) {
+	if !isValidUUID(result.ID) {
 		return ErrInvalidUUID
 	}
 
@@ -98,18 +91,16 @@ func (s *OperationRepository) SaveOperationsResult(ctx context.Context, result *
 		s.log.Error("Error al guardar resultado de operación:", zap.Error(err))
 		return fmt.Errorf("error al guardar resultado de operación: %w", err)
 	}
-
-	s.log.Info("Operacion guardada exitosamente", zap.String("id", result.PK))
+	s.log.Info("Operacion guardada exitosamente", zap.String("id", result.ID))
 	return nil
 }
 
 // GetOperationResult obtiene el resultado de una operación a partir de su ID y songID.
 func (s *OperationRepository) GetOperationResult(ctx context.Context, id, songID string) (*model.OperationResult, error) {
-	filter, err := createSafeFilter(id, songID)
+	filter, err := createSafeFilter(id)
 	if err != nil {
 		return nil, err
 	}
-
 	var result model.OperationResult
 	if err := s.collection.FindOne(ctx, filter).Decode(&result); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
@@ -124,7 +115,7 @@ func (s *OperationRepository) GetOperationResult(ctx context.Context, id, songID
 
 // DeleteOperationResult elimina el resultado de una operación específica en MongoDB.
 func (s *OperationRepository) DeleteOperationResult(ctx context.Context, id, songID string) error {
-	filter, err := createSafeFilter(id, songID)
+	filter, err := createSafeFilter(id)
 	if err != nil {
 		return err
 	}
@@ -149,7 +140,7 @@ func (s *OperationRepository) UpdateOperationStatus(ctx context.Context, operati
 		return ErrInvalidStatus
 	}
 
-	filter, err := createSafeFilter(operationID, songID)
+	filter, err := createSafeFilter(operationID)
 	if err != nil {
 		return err
 	}
@@ -173,5 +164,38 @@ func (s *OperationRepository) UpdateOperationStatus(ctx context.Context, operati
 	s.log.Info("Estado de operacion actualizado exitosamente",
 		zap.String("id", operationID),
 		zap.String("status", status))
+	return nil
+}
+
+func (s *OperationRepository) UpdateOperationResult(ctx context.Context, operationID string, operationResult *model.OperationResult) error {
+	filter, err := createSafeFilter(operationID)
+	if err != nil {
+		return err
+	}
+
+	update := bson.D{
+		{Key: "$set", Value: bson.D{
+			{Key: "status", Value: operationResult.Status},
+			{Key: "message", Value: operationResult.Message},
+			{Key: "metadata", Value: operationResult.Metadata},
+			{Key: "file_data", Value: operationResult.FileData},
+			{Key: "processing_date", Value: operationResult.ProcessingDate},
+			{Key: "success", Value: operationResult.Success},
+			{Key: "attempts", Value: operationResult.Attempts},
+			{Key: "failures", Value: operationResult.Failures},
+		}},
+	}
+
+	result, err := s.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		s.log.Error("Error al actualizar el resultado de la operacion:", zap.Error(err))
+		return fmt.Errorf("error al actualizar resultado de operacion: %w", err)
+	}
+
+	if result.MatchedCount == 0 {
+		return ErrOperationNotFound
+	}
+
+	s.log.Info("Resultado de operacion actualizado con exito", zap.String("id", operationID))
 	return nil
 }

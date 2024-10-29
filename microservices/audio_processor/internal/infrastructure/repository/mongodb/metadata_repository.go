@@ -110,7 +110,9 @@ func (m *MongoMetadataRepository) GetMetadata(ctx context.Context, id string) (*
 	m.log.Debug("Buscando metadatos", zap.String("id", id))
 
 	var metadata model.Metadata
-	filter := bson.M{"_id": id}
+	filter := bson.D{
+		{"_id", id},
+	}
 
 	err := m.collection.FindOne(ctx, filter).Decode(&metadata)
 	if err != nil {
@@ -164,14 +166,14 @@ func (m *MongoMetadataRepository) DeleteMetadata(ctx context.Context, id string)
 func createMetadataDocument(metadata *model.Metadata) bson.M {
 	now := time.Now()
 	return bson.M{
-		"_id":        metadata.ID,
-		"title":      metadata.Title,
-		"urlYoutube": metadata.URLYouTube,
-		"thumbnail":  metadata.Thumbnail,
-		"platform":   metadata.Platform,
-		"duration":   metadata.Duration,
-		"createdAt":  now,
-		"updatedAt":  now,
+		"_id":         metadata.ID,
+		"title":       metadata.Title,
+		"url_youtube": metadata.URLYouTube,
+		"thumbnail":   metadata.Thumbnail,
+		"platform":    metadata.Platform,
+		"duration":    metadata.Duration,
+		"createdAt":   now,
+		"updatedAt":   now,
 	}
 }
 

@@ -40,8 +40,8 @@ func NewOperationStore(cfgApplication config.Config) (*OperationStore, error) {
 
 // SaveOperationsResult guarda el resultado de una operación en DynamoDB. Genera un nuevo ID si es necesario.
 func (s *OperationStore) SaveOperationsResult(ctx context.Context, result *model.OperationResult) error {
-	if result.PK == "" {
-		result.PK = uuid.New().String()
+	if result.ID == "" {
+		result.ID = uuid.New().String()
 	}
 
 	// Convierte el struct a un mapa compatible con DynamoDB
@@ -124,5 +124,44 @@ func (s *OperationStore) UpdateOperationStatus(ctx context.Context, operationID 
 	if err != nil {
 		return fmt.Errorf("error al actualizar el estado de la operación en DynamoDB: %w", err)
 	}
+	return nil
+}
+
+func (s *OperationStore) UpdateOperationResult(ctx context.Context, operationID string, operationResult *model.OperationResult) error {
+	input := &dynamodb.UpdateItemInput{
+		TableName: aws.String(s.Cfg.OperationResultsTable),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: operationID},
+			"SK": &types.AttributeValueMemberS{Value: operationResult.Metadata.VideoID},
+		},
+		UpdateExpression: aws.String("SET #status = :status, #message = :message, #metadata = :metadata, #file_data = :file_data, #processing_date = :processing_date, #success = :success, #attempts = :attempts, #failures = :failures"),
+		ExpressionAttributeNames: map[string]string{
+			"#status":          "status",
+			"#message":         "message",
+			"#metadata":        "metadata",
+			"#file_data":       "file_data",
+			"#processing_date": "processing_date",
+			"#success":         "success",
+			"#attempts":        "attempts",
+			"#failures":        "failures",
+		},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":status":          &types.AttributeValueMemberS{Value: operationResult.Status},
+			":message":         &types.AttributeValueMemberS{Value: operationResult.Message},
+			":metadata":        &types.AttributeValueMemberM{Value: operationResult.Metadata.ToAttributeValue()},
+			":file_data":       &types.AttributeValueMemberM{Value: operationResult.FileData.ToAttributeValue()},
+			":processing_date": &types.AttributeValueMemberS{Value: operationResult.ProcessingDate},
+			":success":         &types.AttributeValueMemberBOOL{Value: operationResult.Success},
+			":attempts":        &types.AttributeValueMemberN{Value: fmt.Sprint(operationResult.Attempts)},
+			":failures":        &types.AttributeValueMemberN{Value: fmt.Sprint(operationResult.Failures)},
+		},
+		ReturnValues: types.ReturnValueUpdatedNew,
+	}
+
+	_, err := s.Client.UpdateItem(ctx, input)
+	if err != nil {
+		return fmt.Errorf("error al actualizar resultado de operacion: %w", err)
+	}
+
 	return nil
 }

@@ -61,7 +61,7 @@ func TestOperationRepository(t *testing.T) {
 	t.Run("SaveOperationResult", func(t *testing.T) {
 		t.Run("should save operation successfully with valid UUIDs", func(t *testing.T) {
 			operation := &model.OperationResult{
-				PK:     generateValidUUID(),
+				ID:     generateValidUUID(),
 				SK:     generateValidUUID(),
 				Status: "pending",
 			}
@@ -69,9 +69,9 @@ func TestOperationRepository(t *testing.T) {
 			err := repo.SaveOperationsResult(helper.Context, operation)
 
 			assert.NoError(t, err)
-			assert.NotEmpty(t, operation.PK)
+			assert.NotEmpty(t, operation.ID)
 
-			saved, err := repo.GetOperationResult(helper.Context, operation.PK, operation.SK)
+			saved, err := repo.GetOperationResult(helper.Context, operation.ID, operation.SK)
 			assert.NoError(t, err)
 			assert.Equal(t, operation.Status, saved.Status)
 			assert.Equal(t, operation.SK, saved.SK)
@@ -79,7 +79,7 @@ func TestOperationRepository(t *testing.T) {
 
 		t.Run("should return error when operation has invalid UUID", func(t *testing.T) {
 			operation := &model.OperationResult{
-				PK:     "invalid-uuid",
+				ID:     "invalid-uuid",
 				SK:     generateValidUUID(),
 				Status: "pending",
 			}
@@ -102,10 +102,10 @@ func TestOperationRepository(t *testing.T) {
 
 			err := repo.SaveOperationsResult(helper.Context, operation)
 			assert.NoError(t, err)
-			assert.NotEmpty(t, operation.PK)
+			assert.NotEmpty(t, operation.ID)
 
 			// Verificar que el PK generado es un UUID válido
-			_, err = uuid.Parse(operation.PK)
+			_, err = uuid.Parse(operation.ID)
 			assert.NoError(t, err)
 		})
 	})
@@ -113,7 +113,7 @@ func TestOperationRepository(t *testing.T) {
 	t.Run("GetOperationResult", func(t *testing.T) {
 		t.Run("should get existing operation successfully with valid UUIDs", func(t *testing.T) {
 			operation := &model.OperationResult{
-				PK:     generateValidUUID(),
+				ID:     generateValidUUID(),
 				SK:     generateValidUUID(),
 				Status: "pending",
 			}
@@ -121,7 +121,7 @@ func TestOperationRepository(t *testing.T) {
 			err := repo.SaveOperationsResult(helper.Context, operation)
 			assert.NoError(t, err)
 
-			result, err := repo.GetOperationResult(helper.Context, operation.PK, operation.SK)
+			result, err := repo.GetOperationResult(helper.Context, operation.ID, operation.SK)
 			assert.NoError(t, err)
 			assert.NotNil(t, result)
 			assert.Equal(t, operation.Status, result.Status)
@@ -144,25 +144,25 @@ func TestOperationRepository(t *testing.T) {
 	t.Run("UpdateOperationStatus", func(t *testing.T) {
 		t.Run("should update status successfully with valid status", func(t *testing.T) {
 			operation := &model.OperationResult{
-				PK:     generateValidUUID(),
+				ID:     generateValidUUID(),
 				SK:     generateValidUUID(),
-				Status: "pending",
+				Status: "starting",
 			}
 
 			err := repo.SaveOperationsResult(helper.Context, operation)
 			assert.NoError(t, err)
 
-			err = repo.UpdateOperationStatus(helper.Context, operation.PK, operation.SK, "complete")
+			err = repo.UpdateOperationStatus(helper.Context, operation.ID, operation.SK, "success")
 			assert.NoError(t, err)
 
-			updated, err := repo.GetOperationResult(helper.Context, operation.PK, operation.SK)
+			updated, err := repo.GetOperationResult(helper.Context, operation.ID, operation.SK)
 			assert.NoError(t, err)
-			assert.Equal(t, "complete", updated.Status)
+			assert.Equal(t, "success", updated.Status)
 		})
 
 		t.Run("should return error with invalid status", func(t *testing.T) {
 			operation := &model.OperationResult{
-				PK:     generateValidUUID(),
+				ID:     generateValidUUID(),
 				SK:     generateValidUUID(),
 				Status: "pending",
 			}
@@ -170,12 +170,12 @@ func TestOperationRepository(t *testing.T) {
 			err := repo.SaveOperationsResult(helper.Context, operation)
 			assert.NoError(t, err)
 
-			err = repo.UpdateOperationStatus(helper.Context, operation.PK, operation.SK, "invalid-status")
+			err = repo.UpdateOperationStatus(helper.Context, operation.ID, operation.SK, "invalid-status")
 			assert.ErrorIs(t, err, mongodb.ErrInvalidStatus)
 		})
 
 		t.Run("should return error with invalid UUID", func(t *testing.T) {
-			err := repo.UpdateOperationStatus(helper.Context, "invalid-uuid", generateValidUUID(), "complete")
+			err := repo.UpdateOperationStatus(helper.Context, "invalid-uuid", generateValidUUID(), "success")
 			assert.ErrorIs(t, err, mongodb.ErrInvalidUUID)
 		})
 	})
@@ -183,7 +183,7 @@ func TestOperationRepository(t *testing.T) {
 	t.Run("DeleteOperationResult", func(t *testing.T) {
 		t.Run("should delete operation successfully with valid UUIDs", func(t *testing.T) {
 			operation := &model.OperationResult{
-				PK:     generateValidUUID(),
+				ID:     generateValidUUID(),
 				SK:     generateValidUUID(),
 				Status: "pending",
 			}
@@ -191,10 +191,10 @@ func TestOperationRepository(t *testing.T) {
 			err := repo.SaveOperationsResult(helper.Context, operation)
 			assert.NoError(t, err)
 
-			err = repo.DeleteOperationResult(helper.Context, operation.PK, operation.SK)
+			err = repo.DeleteOperationResult(helper.Context, operation.ID, operation.SK)
 			assert.NoError(t, err)
 
-			_, err = repo.GetOperationResult(helper.Context, operation.PK, operation.SK)
+			_, err = repo.GetOperationResult(helper.Context, operation.ID, operation.SK)
 			assert.ErrorIs(t, err, mongodb.ErrOperationNotFound)
 		})
 
@@ -207,9 +207,9 @@ func TestOperationRepository(t *testing.T) {
 	t.Run("Integration flows", func(t *testing.T) {
 		t.Run("should handle complete CRUD operation flow with valid data", func(t *testing.T) {
 			operation := &model.OperationResult{
-				PK:     generateValidUUID(),
+				ID:     generateValidUUID(),
 				SK:     generateValidUUID(),
-				Status: "pending",
+				Status: "starting",
 			}
 
 			// Create
@@ -217,36 +217,36 @@ func TestOperationRepository(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Read
-			retrieved, err := repo.GetOperationResult(helper.Context, operation.PK, operation.SK)
+			retrieved, err := repo.GetOperationResult(helper.Context, operation.ID, operation.SK)
 			assert.NoError(t, err)
 			assert.Equal(t, operation.Status, retrieved.Status)
 
 			// Update with valid status
-			err = repo.UpdateOperationStatus(helper.Context, operation.PK, operation.SK, "complete")
+			err = repo.UpdateOperationStatus(helper.Context, operation.ID, operation.SK, "success")
 			assert.NoError(t, err)
 
 			// Verify update
-			updated, err := repo.GetOperationResult(helper.Context, operation.PK, operation.SK)
+			updated, err := repo.GetOperationResult(helper.Context, operation.ID, operation.SK)
 			assert.NoError(t, err)
-			assert.Equal(t, "complete", updated.Status)
+			assert.Equal(t, "success", updated.Status)
 
 			// Delete
-			err = repo.DeleteOperationResult(helper.Context, operation.PK, operation.SK)
+			err = repo.DeleteOperationResult(helper.Context, operation.ID, operation.SK)
 			assert.NoError(t, err)
 
 			// Verify deletion
-			_, err = repo.GetOperationResult(helper.Context, operation.PK, operation.SK)
+			_, err = repo.GetOperationResult(helper.Context, operation.ID, operation.SK)
 			assert.ErrorIs(t, err, mongodb.ErrOperationNotFound)
 		})
 
 		t.Run("should handle concurrent operations with valid data", func(t *testing.T) {
 			operation1 := &model.OperationResult{
-				PK:     generateValidUUID(),
+				ID:     generateValidUUID(),
 				SK:     generateValidUUID(),
 				Status: "pending",
 			}
 			operation2 := &model.OperationResult{
-				PK:     generateValidUUID(),
+				ID:     generateValidUUID(),
 				SK:     generateValidUUID(),
 				Status: "pending",
 			}
@@ -256,11 +256,11 @@ func TestOperationRepository(t *testing.T) {
 
 			assert.NoError(t, err1)
 			assert.NoError(t, err2)
-			assert.NotEqual(t, operation1.PK, operation2.PK)
+			assert.NotEqual(t, operation1.ID, operation2.ID)
 
 			// Cleanup
-			_ = repo.DeleteOperationResult(helper.Context, operation1.PK, operation1.SK)
-			_ = repo.DeleteOperationResult(helper.Context, operation2.PK, operation2.SK)
+			_ = repo.DeleteOperationResult(helper.Context, operation1.ID, operation1.SK)
+			_ = repo.DeleteOperationResult(helper.Context, operation2.ID, operation2.SK)
 		})
 	})
 }

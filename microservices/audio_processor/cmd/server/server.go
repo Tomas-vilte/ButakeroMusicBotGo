@@ -5,6 +5,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/service"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/downloader"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue/sqs"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/repository/dynamodb"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/storage/cloud"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/interface/http/handler"
@@ -27,7 +28,20 @@ func StartServer() error {
 		OperationResultsTable: os.Getenv("DYNAMODB_TABLE_NAME_OPERATION"),
 		AccessKey:             os.Getenv("ACCESS_KEY"),
 		SecretKey:             os.Getenv("SECRET_KEY"),
+		QueueURL:              os.Getenv("SQS_QUEUE_URL"),
+		Topic:                 os.Getenv("TOPIC"),
+		Brokers:               []string{os.Getenv("KAFKA_BROKERS")},
 		Environment:           getGinMode(),
+		OAuth2:                os.Getenv("OAUTH2"),
+		Mongo: config.MongoConfig{
+			User:                       os.Getenv("MONGO_USER"),
+			Password:                   os.Getenv("MONGO_PASSWORD"),
+			Port:                       os.Getenv("MONGO_PORT"),
+			Host:                       os.Getenv("MONGO_HOST"),
+			Database:                   os.Getenv("MONGO_DATABASE"),
+			SongsCollection:            os.Getenv("MONGO_SONGS_COLLECTION"),
+			OperationResultsCollection: os.Getenv("MONGO_OPERATION_RESULTS_COLLECTION"),
+		},
 	}
 
 	log, err := logger.NewZapLogger()
@@ -41,7 +55,7 @@ func StartServer() error {
 		return err
 	}
 
-	downloaderMusic := downloader.NewYTDLPDownloader(log, downloader.YTDLPOptions{UseOAuth2: true})
+	downloaderMusic := downloader.NewYTDLPDownloader(log, downloader.YTDLPOptions{UseOAuth2: cfg.ParseBool()})
 	operationRepo, err := dynamodb.NewOperationStore(cfg)
 	if err != nil {
 		return err
@@ -52,6 +66,37 @@ func StartServer() error {
 		return err
 	}
 
+	//options := mongodb.MongoOptions{
+	//	Config: cfg,
+	//	Log:    log,
+	//}
+	//
+	//client, err := mongodb.NewMongoDB(options)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//operationRepo, err := mongodb.NewOperationRepository(mongodb.OperationOptions{
+	//	Collection: client.GetCollection(cfg.Mongo.OperationResultsCollection),
+	//	Log:        log,
+	//})
+	//
+	//metadataRepo, err := mongodb.NewMongoMetadataRepository(mongodb.MongoMetadataOptions{
+	//	Collection: client.GetCollection(cfg.Mongo.SongsCollection),
+	//	Log:        log,
+	//})
+	//defer client.Close(context.Background())
+
+	messaging, err := sqs.NewSQSService(cfg, log)
+	if err != nil {
+		return err
+	}
+
+	//messaging, err := kafka.NewKafkaService(cfg, log)
+	//if err != nil {
+	//	return err
+	//}
+
 	youtubeAPI := api.NewYouTubeClient(cfg.YouTubeApiKey)
 	audioProcessingService := service.NewAudioProcessingService(
 		log,
@@ -59,6 +104,7 @@ func StartServer() error {
 		downloaderMusic,
 		operationRepo,
 		metadataRepo,
+		messaging,
 		cfg,
 	)
 	getOperationStatus := usecase.NewGetOperationStatusUseCase(operationRepo)

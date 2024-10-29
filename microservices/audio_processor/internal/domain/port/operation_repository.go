@@ -11,4 +11,5 @@ type OperationRepository interface {
 	GetOperationResult(ctx context.Context, id, songID string) (*model.OperationResult, error)
 	DeleteOperationResult(ctx context.Context, id, songID string) error
 	UpdateOperationStatus(ctx context.Context, operationID string, songID string, status string) error
+	UpdateOperationResult(ctx context.Context, operationID string, operationResult *model.OperationResult) error
 }
