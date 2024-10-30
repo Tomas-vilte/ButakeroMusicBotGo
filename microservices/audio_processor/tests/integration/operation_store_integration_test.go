@@ -117,7 +117,7 @@ func TestIntegrationOperationStore(t *testing.T) {
 		require.NoError(t, err)
 
 		// act UpdateOperationStatus
-		newStatus := "completed"
+		newStatus := "complete"
 		err = store.UpdateOperationStatus(context.Background(), result.ID, result.SK, newStatus)
 		require.NoError(t, err)
 

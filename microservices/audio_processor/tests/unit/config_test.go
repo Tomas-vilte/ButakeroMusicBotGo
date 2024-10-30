@@ -12,6 +12,8 @@ import (
 func TestLoadConfig_ValidConfig(t *testing.T) {
 	// Crear un archivo de configuración temporal
 	configContent := `environment: "local"
+gin:
+  mode: release
 service:
   max_attempts: 3
   timeout: "4m"

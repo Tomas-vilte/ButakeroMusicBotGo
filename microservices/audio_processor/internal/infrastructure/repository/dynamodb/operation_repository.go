@@ -112,7 +112,7 @@ func (s *OperationStore) UpdateOperationStatus(ctx context.Context, operationID 
 			"SK": &types.AttributeValueMemberS{Value: songID},
 		},
 		ExpressionAttributeNames: map[string]string{
-			"#status": "Status",
+			"#status": "status",
 		},
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":newStatus": &types.AttributeValueMemberS{Value: status},
