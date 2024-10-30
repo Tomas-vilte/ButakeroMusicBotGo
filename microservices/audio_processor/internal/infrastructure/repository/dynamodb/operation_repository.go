@@ -23,8 +23,8 @@ type OperationStore struct {
 // NewOperationStore crea una nueva instancia de OperationStore con la configuración proporcionada.
 func NewOperationStore(cfgApplication config.Config) (*OperationStore, error) {
 	// Carga la configuración de AWS con la región especificada.
-	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApplication.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-		cfgApplication.AccessKey, cfgApplication.SecretKey, "")))
+	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApplication.AWS.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+		cfgApplication.AWS.Credentials.AccessKey, cfgApplication.AWS.Credentials.SecretKey, "")))
 	if err != nil {
 		return nil, fmt.Errorf("error cargando configuración AWS: %w", err)
 	}
@@ -51,7 +51,7 @@ func (s *OperationStore) SaveOperationsResult(ctx context.Context, result *model
 	}
 
 	input := &dynamodb.PutItemInput{
-		TableName: aws.String(s.Cfg.OperationResultsTable),
+		TableName: aws.String(s.Cfg.Database.DynamoDB.Tables.Operations),
 		Item:      item,
 	}
 
@@ -65,7 +65,7 @@ func (s *OperationStore) SaveOperationsResult(ctx context.Context, result *model
 // GetOperationResult recupera el resultado de una operación desde DynamoDB usando el ID y el SongID proporcionados.
 func (s *OperationStore) GetOperationResult(ctx context.Context, id, songID string) (*model.OperationResult, error) {
 	input := &dynamodb.GetItemInput{
-		TableName: aws.String(s.Cfg.OperationResultsTable),
+		TableName: aws.String(s.Cfg.Database.DynamoDB.Tables.Operations),
 		Key: map[string]types.AttributeValue{
 			"PK": &types.AttributeValueMemberS{Value: id},
 			"SK": &types.AttributeValueMemberS{Value: songID},
@@ -91,7 +91,7 @@ func (s *OperationStore) GetOperationResult(ctx context.Context, id, songID stri
 // DeleteOperationResult elimina el resultado de una operación de DynamoDB usando el ID y el SongID proporcionados.
 func (s *OperationStore) DeleteOperationResult(ctx context.Context, id, songID string) error {
 	input := &dynamodb.DeleteItemInput{
-		TableName: aws.String(s.Cfg.OperationResultsTable),
+		TableName: aws.String(s.Cfg.Database.DynamoDB.Tables.Operations),
 		Key: map[string]types.AttributeValue{
 			"PK": &types.AttributeValueMemberS{Value: id},
 			"SK": &types.AttributeValueMemberS{Value: songID},
@@ -106,7 +106,7 @@ func (s *OperationStore) DeleteOperationResult(ctx context.Context, id, songID s
 
 func (s *OperationStore) UpdateOperationStatus(ctx context.Context, operationID string, songID string, status string) error {
 	input := &dynamodb.UpdateItemInput{
-		TableName: aws.String(s.Cfg.OperationResultsTable),
+		TableName: aws.String(s.Cfg.Database.DynamoDB.Tables.Operations),
 		Key: map[string]types.AttributeValue{
 			"PK": &types.AttributeValueMemberS{Value: operationID},
 			"SK": &types.AttributeValueMemberS{Value: songID},
@@ -129,7 +129,7 @@ func (s *OperationStore) UpdateOperationStatus(ctx context.Context, operationID 
 
 func (s *OperationStore) UpdateOperationResult(ctx context.Context, operationID string, operationResult *model.OperationResult) error {
 	input := &dynamodb.UpdateItemInput{
-		TableName: aws.String(s.Cfg.OperationResultsTable),
+		TableName: aws.String(s.Cfg.Database.DynamoDB.Tables.Operations),
 		Key: map[string]types.AttributeValue{
 			"PK": &types.AttributeValueMemberS{Value: operationID},
 			"SK": &types.AttributeValueMemberS{Value: operationResult.Metadata.VideoID},

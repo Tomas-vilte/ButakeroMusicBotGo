@@ -22,14 +22,22 @@ func TestS3StorageIntegration(t *testing.T) {
 	}
 
 	cfgApp := config.Config{
-		BucketName: os.Getenv("BUCKET_NAME"),
-		Region:     os.Getenv("REGION"),
-		AccessKey:  os.Getenv("ACCESS_KEY"),
-		SecretKey:  os.Getenv("SECRET_KEY"),
+		AWS: &config.AWSConfig{
+			Region: os.Getenv("REGION"),
+			Credentials: config.CredentialsConfig{
+				AccessKey: os.Getenv("ACCESS_KEY"),
+				SecretKey: os.Getenv("SECRET_KEY"),
+			},
+		},
+		Storage: config.StorageConfig{
+			S3Config: &config.S3Config{
+				BucketName: os.Getenv("BUCKET_NAME"),
+			},
+		},
 	}
 
 	// config
-	if cfgApp.BucketName == "" || cfgApp.Region == "" {
+	if cfgApp.Storage.S3Config.BucketName == "" || cfgApp.AWS.Region == "" {
 		t.Fatal("BUCKET_NAME y REGION deben estar configurados para los tests de integración")
 	}
 
@@ -38,8 +46,8 @@ func TestS3StorageIntegration(t *testing.T) {
 		t.Fatalf("Error al crear S3Storage: %v", err)
 	}
 
-	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApp.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-		cfgApp.AccessKey, cfgApp.SecretKey, "")))
+	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApp.AWS.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+		cfgApp.AWS.Credentials.AccessKey, cfgApp.AWS.Credentials.SecretKey, "")))
 	if err != nil {
 		t.Fatalf("Error al cargar la configuración de AWS: %v", err)
 	}
@@ -58,7 +66,7 @@ func TestS3StorageIntegration(t *testing.T) {
 
 		// assert
 		getObjectInput := &s3.GetObjectInput{
-			Bucket: aws.String(cfgApp.BucketName),
+			Bucket: aws.String(cfgApp.Storage.S3Config.BucketName),
 			Key:    aws.String("audio/" + fileName),
 		}
 		result, err := s3Client.GetObject(context.Background(), getObjectInput)
@@ -78,7 +86,7 @@ func TestS3StorageIntegration(t *testing.T) {
 
 		// clear
 		deleteObjectInput := &s3.DeleteObjectInput{
-			Bucket: aws.String(cfgApp.BucketName),
+			Bucket: aws.String(cfgApp.Storage.S3Config.BucketName),
 			Key:    aws.String("audio/" + fileName),
 		}
 
@@ -139,14 +147,14 @@ func TestS3StorageIntegration(t *testing.T) {
 			t.Error("FileSize está vacío, se esperaba un valor")
 		}
 
-		expectedPublicURL := fmt.Sprintf("https://%s.s3.amazonaws.com/%s", cfgApp.BucketName, fileName)
+		expectedPublicURL := fmt.Sprintf("https://%s.s3.amazonaws.com/%s", cfgApp.Storage.S3Config.BucketName, fileName)
 		if fileData.PublicURL != expectedPublicURL {
 			t.Errorf("PublicURL incorrecto. Obtenido: %s, Esperado: %s", fileData.PublicURL, expectedPublicURL)
 		}
 
 		// clear
 		deleteObjectInput := &s3.DeleteObjectInput{
-			Bucket: aws.String(cfgApp.BucketName),
+			Bucket: aws.String(cfgApp.Storage.S3Config.BucketName),
 			Key:    aws.String("audio/" + fileName),
 		}
 

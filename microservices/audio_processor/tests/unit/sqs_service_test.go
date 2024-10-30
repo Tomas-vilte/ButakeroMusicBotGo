@@ -19,10 +19,18 @@ func TestSendMessage(t *testing.T) {
 	t.Run("NewSQSService", func(t *testing.T) {
 		mockLogger := new(MockLogger)
 		cfg := config.Config{
-			Region:    "us-east-1",
-			AccessKey: "test-access-key",
-			SecretKey: "test-secret-key",
-			QueueURL:  "test-queue-url",
+			AWS: &config.AWSConfig{
+				Region: "us-east-1",
+				Credentials: config.CredentialsConfig{
+					AccessKey: "test-access-key",
+					SecretKey: "test-secret-key",
+				},
+			},
+			Messaging: config.MessagingConfig{
+				SQS: &config.SQSConfig{
+					QueueURL: "test-queue-url",
+				},
+			},
 		}
 
 		service, err := sqsService.NewSQSService(cfg, mockLogger)
@@ -37,7 +45,11 @@ func TestSendMessage(t *testing.T) {
 		mockLogger := new(MockLogger)
 
 		cfg := config.Config{
-			QueueURL: "test-queue-url",
+			Messaging: config.MessagingConfig{
+				SQS: &config.SQSConfig{
+					QueueURL: "test-queue-url",
+				},
+			},
 		}
 
 		service := &sqsService.SQSService{
@@ -59,7 +71,7 @@ func TestSendMessage(t *testing.T) {
 
 		expectedBody, _ := json.Marshal(messageBody)
 		expectedInput := &sqs.SendMessageInput{
-			QueueUrl:    aws.String(cfg.QueueURL),
+			QueueUrl:    aws.String(cfg.Messaging.SQS.QueueURL),
 			MessageBody: aws.String(string(expectedBody)),
 		}
 
@@ -79,7 +91,11 @@ func TestSendMessage(t *testing.T) {
 		mockClient := new(MockSQSClient)
 		mockLogger := new(MockLogger)
 		cfg := config.Config{
-			QueueURL: "test-queue-url",
+			Messaging: config.MessagingConfig{
+				SQS: &config.SQSConfig{
+					QueueURL: "test-queue-url",
+				},
+			},
 		}
 
 		service := &sqsService.SQSService{
@@ -100,7 +116,7 @@ func TestSendMessage(t *testing.T) {
 
 		expectedBody, _ := json.Marshal(messageBody)
 		expectedInput := &sqs.SendMessageInput{
-			QueueUrl:    aws.String(cfg.QueueURL),
+			QueueUrl:    aws.String(cfg.Messaging.SQS.QueueURL),
 			MessageBody: aws.String(string(expectedBody)),
 		}
 
@@ -124,7 +140,11 @@ func TestReceiveMessage(t *testing.T) {
 
 		service := &sqsService.SQSService{
 			Config: config.Config{
-				QueueURL: "test-queue-url",
+				Messaging: config.MessagingConfig{
+					SQS: &config.SQSConfig{
+						QueueURL: "test-queue-url",
+					},
+				},
 			},
 			Client: mockClient,
 			Log:    mockLogger,
@@ -145,7 +165,7 @@ func TestReceiveMessage(t *testing.T) {
 		}
 
 		expectedInput := &sqs.ReceiveMessageInput{
-			QueueUrl:            aws.String(service.Config.QueueURL),
+			QueueUrl:            aws.String(service.Config.Messaging.SQS.QueueURL),
 			MaxNumberOfMessages: 10,
 			WaitTimeSeconds:     1,
 		}
@@ -173,14 +193,18 @@ func TestReceiveMessage(t *testing.T) {
 
 		service := &sqsService.SQSService{
 			Config: config.Config{
-				QueueURL: "test-queue-url",
+				Messaging: config.MessagingConfig{
+					SQS: &config.SQSConfig{
+						QueueURL: "test-queue-url",
+					},
+				},
 			},
 			Client: mockClient,
 			Log:    mockLogger,
 		}
 
 		expectedInput := &sqs.ReceiveMessageInput{
-			QueueUrl:            aws.String(service.Config.QueueURL),
+			QueueUrl:            aws.String(service.Config.Messaging.SQS.QueueURL),
 			MaxNumberOfMessages: 10,
 			WaitTimeSeconds:     1,
 		}
@@ -206,14 +230,18 @@ func TestReceiveMessage(t *testing.T) {
 
 		service := &sqsService.SQSService{
 			Config: config.Config{
-				QueueURL: "test-queue-url",
+				Messaging: config.MessagingConfig{
+					SQS: &config.SQSConfig{
+						QueueURL: "test-queue-url",
+					},
+				},
 			},
 			Client: mockClient,
 			Log:    mockLogger,
 		}
 
 		expectedInput := &sqs.ReceiveMessageInput{
-			QueueUrl:            aws.String(service.Config.QueueURL),
+			QueueUrl:            aws.String(service.Config.Messaging.SQS.QueueURL),
 			MaxNumberOfMessages: 10,
 			WaitTimeSeconds:     1,
 		}
@@ -236,7 +264,11 @@ func TestDeleteMessage(t *testing.T) {
 		mockLogger := new(MockLogger)
 		service := &sqsService.SQSService{
 			Config: config.Config{
-				QueueURL: "test-queue-url",
+				Messaging: config.MessagingConfig{
+					SQS: &config.SQSConfig{
+						QueueURL: "test-queue-url",
+					},
+				},
 			},
 			Log:    mockLogger,
 			Client: mockClient,
@@ -244,7 +276,7 @@ func TestDeleteMessage(t *testing.T) {
 
 		receiptHandle := "test-receipt-handle"
 		expectedInput := &sqs.DeleteMessageInput{
-			QueueUrl:      aws.String(service.Config.QueueURL),
+			QueueUrl:      aws.String(service.Config.Messaging.SQS.QueueURL),
 			ReceiptHandle: aws.String(receiptHandle),
 		}
 
@@ -263,7 +295,11 @@ func TestDeleteMessage(t *testing.T) {
 		mockLogger := new(MockLogger)
 		service := &sqsService.SQSService{
 			Config: config.Config{
-				QueueURL: "test-queue-url",
+				Messaging: config.MessagingConfig{
+					SQS: &config.SQSConfig{
+						QueueURL: "test-queue-url",
+					},
+				},
 			},
 			Log:    mockLogger,
 			Client: mockClient,
@@ -271,7 +307,7 @@ func TestDeleteMessage(t *testing.T) {
 
 		receiptHandle := "test-receipt-handle"
 		expectedInput := &sqs.DeleteMessageInput{
-			QueueUrl:      aws.String(service.Config.QueueURL),
+			QueueUrl:      aws.String(service.Config.Messaging.SQS.QueueURL),
 			ReceiptHandle: aws.String(receiptHandle),
 		}
 

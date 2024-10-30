@@ -14,8 +14,12 @@ import (
 
 func TestKafkaService(t *testing.T) {
 	cfg := config.Config{
-		Brokers: []string{"localhost:9092"},
-		Topic:   "test-topic",
+		Messaging: config.MessagingConfig{
+			Kafka: &config.KafkaConfig{
+				Brokers: []string{"localhost:9092"},
+				Topic:   "test-topic",
+			},
+		},
 	}
 	mockLogger := new(MockLogger)
 
@@ -59,7 +63,7 @@ func TestKafkaService(t *testing.T) {
 		messageChan := make(chan *sarama.ConsumerMessage, 1)
 		messageChan <- &sarama.ConsumerMessage{Value: messageBytes}
 
-		mockConsumer.On("ConsumePartition", cfg.Topic, int32(0), sarama.OffsetOldest).Return(mockPartitionConsumer, nil)
+		mockConsumer.On("ConsumePartition", cfg.Messaging.Kafka.Topic, int32(0), sarama.OffsetOldest).Return(mockPartitionConsumer, nil)
 		mockPartitionConsumer.On("Messages").Return((<-chan *sarama.ConsumerMessage)(messageChan))
 		mockPartitionConsumer.On("Close").Return(nil)
 		mockLogger.On("Info", mock.Anything, mock.Anything).Return()

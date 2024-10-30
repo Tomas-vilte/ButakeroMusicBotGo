@@ -21,7 +21,13 @@ func TestMetadataStore(t *testing.T) {
 			store := dynamodb2.DynamoMetadataRepository{
 				Client: mockClient,
 				Config: config.Config{
-					SongsTable: "test-table",
+					Database: config.DatabaseConfig{
+						DynamoDB: &config.DynamoDBConfig{
+							Tables: config.Tables{
+								Operations: "test-table",
+							},
+						},
+					},
 				},
 			}
 			metadata := &model.Metadata{
@@ -46,7 +52,13 @@ func TestMetadataStore(t *testing.T) {
 		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
 			Config: config.Config{
-				SongsTable: "test-table",
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Songs: "test-table",
+						},
+					},
+				},
 			},
 		}
 		metadata := &model.Metadata{
@@ -69,8 +81,16 @@ func TestMetadataStore(t *testing.T) {
 		t.Run("Successful creation", func(t *testing.T) {
 			// arrange
 			cfg := config.Config{
-				SongsTable: "test-table",
-				Region:     "us-east-1",
+				AWS: &config.AWSConfig{
+					Region: "us-east-1",
+				},
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Songs: "test-table",
+						},
+					},
+				},
 			}
 
 			// act
@@ -79,7 +99,7 @@ func TestMetadataStore(t *testing.T) {
 			// assert
 			assert.NoError(t, err)
 			assert.NotNil(t, store)
-			assert.Equal(t, cfg.SongsTable, store.Config.SongsTable)
+			assert.Equal(t, cfg.Database.DynamoDB.Tables.Songs, store.Config.Database.DynamoDB.Tables.Songs)
 			assert.NotNil(t, store.Client)
 		})
 	})
@@ -89,7 +109,13 @@ func TestMetadataStore(t *testing.T) {
 		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
 			Config: config.Config{
-				SongsTable: "test-table",
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Songs: "test-table",
+						},
+					},
+				},
 			},
 		}
 		expectedMetadata := model.Metadata{
@@ -112,7 +138,13 @@ func TestMetadataStore(t *testing.T) {
 		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
 			Config: config.Config{
-				SongsTable: "test-table",
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Songs: "test-table",
+						},
+					},
+				},
 			},
 		}
 		mockClient.On("GetItem", mock.Anything, mock.AnythingOfType("*dynamodb.GetItemInput"), mock.Anything).Return(&dynamodb.GetItemOutput{}, nil)
@@ -129,7 +161,13 @@ func TestMetadataStore(t *testing.T) {
 		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
 			Config: config.Config{
-				SongsTable: "test-table",
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Songs: "test-table",
+						},
+					},
+				},
 			},
 		}
 
@@ -151,7 +189,13 @@ func TestGetMetadata(t *testing.T) {
 		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
 			Config: config.Config{
-				SongsTable: "test-table",
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Songs: "test-table",
+						},
+					},
+				},
 			},
 		}
 		mockClient.On("DeleteItem", mock.Anything, mock.AnythingOfType("*dynamodb.DeleteItemInput"), mock.Anything).Return(&dynamodb.DeleteItemOutput{}, nil)
@@ -167,7 +211,13 @@ func TestGetMetadata(t *testing.T) {
 		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
 			Config: config.Config{
-				SongsTable: "test-table",
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Songs: "test-table",
+						},
+					},
+				},
 			},
 		}
 		mockClient.On("DeleteItem", mock.Anything, mock.AnythingOfType("*dynamodb.DeleteItemInput"), mock.Anything).

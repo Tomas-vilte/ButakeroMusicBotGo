@@ -33,8 +33,12 @@ func TestKafkaIntegration_SendAndReceiveMessage(t *testing.T) {
 	assert.NoError(t, err)
 
 	cfg := config.Config{
-		Brokers: brokers,
-		Topic:   "test-topic",
+		Messaging: config.MessagingConfig{
+			Kafka: &config.KafkaConfig{
+				Brokers: brokers,
+				Topic:   "test-topic",
+			},
+		},
 	}
 
 	log, err := logger.NewZapLogger()

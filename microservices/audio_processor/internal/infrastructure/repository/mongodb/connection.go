@@ -54,7 +54,7 @@ func NewMongoDB(opts MongoOptions) (*MongoDB, error) {
 }
 
 func (db *MongoDB) GetCollection(collectionName string) *mongo.Collection {
-	return db.client.Database(db.config.Mongo.Database).Collection(collectionName)
+	return db.client.Database(db.config.Database.Mongo.Database).Collection(collectionName)
 }
 
 func (db *MongoDB) Close(ctx context.Context) error {
@@ -63,8 +63,8 @@ func (db *MongoDB) Close(ctx context.Context) error {
 
 func buildMongoURI(cfg config.Config) string {
 	return fmt.Sprintf("mongodb://%s:%s@%s:%s",
-		cfg.Mongo.User,
-		cfg.Mongo.Password,
-		cfg.Mongo.Host,
-		cfg.Mongo.Port)
+		cfg.Database.Mongo.User,
+		cfg.Database.Mongo.Password,
+		cfg.Database.Mongo.Host,
+		cfg.Database.Mongo.Port)
 }
