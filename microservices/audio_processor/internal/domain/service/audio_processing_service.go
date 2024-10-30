@@ -53,11 +53,11 @@ func NewAudioProcessingService(log logger.Logger, storage port.Storage,
 	messaging port.MessageQueue,
 	config config.Config) *AudioProcessingService {
 
-	if config.MaxAttempts == 0 {
-		config.MaxAttempts = maxAttempts
+	if config.Service.MaxAttempts == 0 {
+		config.Service.MaxAttempts = maxAttempts
 	}
-	if config.Timeout == 0 {
-		config.Timeout = 5 * time.Minute
+	if config.Service.Timeout == 0 {
+		config.Service.Timeout = 5 * time.Minute
 	}
 
 	return &AudioProcessingService{
@@ -88,12 +88,12 @@ func (a *AudioProcessingService) StartOperation(ctx context.Context, songID stri
 
 // ProcessAudio procesa el audio descargando, codificando y almacenando en S3, con reintentos en caso de fallos.
 func (a *AudioProcessingService) ProcessAudio(ctx context.Context, operationID string, youtubeMetadata *api.VideoDetails) error {
-	ctx, cancel := context.WithTimeout(ctx, a.config.Timeout)
+	ctx, cancel := context.WithTimeout(ctx, a.config.Service.Timeout)
 	defer cancel()
 
 	metadata := a.createMetadata(youtubeMetadata)
 
-	for attempts := 1; attempts <= a.config.MaxAttempts; attempts++ {
+	for attempts := 1; attempts <= a.config.Service.MaxAttempts; attempts++ {
 		err := a.processAudioAttempt(ctx, operationID, metadata, attempts)
 		if err == nil {
 			return nil
@@ -191,11 +191,11 @@ func (a *AudioProcessingService) handleFailedProcessing(ctx context.Context, ope
 		ID:             operationID,
 		SK:             metadata.VideoID,
 		Status:         statusFailed,
-		Message:        fmt.Sprintf("Fallo en el procesamiento después de varios intentos: %d", a.config.MaxAttempts),
+		Message:        fmt.Sprintf("Fallo en el procesamiento después de varios intentos: %d", a.config.Service.MaxAttempts),
 		ProcessingDate: time.Now().Format(time.RFC3339),
 		Success:        false,
-		Attempts:       a.config.MaxAttempts,
-		Failures:       a.config.MaxAttempts,
+		Attempts:       a.config.Service.MaxAttempts,
+		Failures:       a.config.Service.MaxAttempts,
 	}
 
 	err := a.operationStore.SaveOperationsResult(ctx, result)
@@ -212,8 +212,8 @@ func (a *AudioProcessingService) handleFailedProcessing(ctx context.Context, ope
 		a.log.Error("Error al enviar el mensaje de fallo", zap.Error(err))
 	}
 
-	a.log.Error("El procesamiento falló después de varios intentos", zap.Int("attempts", a.config.MaxAttempts))
-	return fmt.Errorf("el procesamiento falló después de %d intentos", a.config.MaxAttempts)
+	a.log.Error("El procesamiento falló después de varios intentos", zap.Int("attempts", a.config.Service.MaxAttempts))
+	return fmt.Errorf("el procesamiento falló después de %d intentos", a.config.Service.MaxAttempts)
 }
 
 // readAudioFramesToBuffer lee los frames de audio de la sesión de codificación y los almacena en un buffer.

@@ -24,7 +24,11 @@ func TestS3Storage_UploadFile(t *testing.T) {
 		storageS3 := cloud.S3Storage{
 			Client: mockClient,
 			Config: config.Config{
-				BucketName: "test-bucket",
+				Storage: config.StorageConfig{
+					S3Config: &config.S3Config{
+						BucketName: "test-bucket",
+					},
+				},
 			},
 		}
 
@@ -48,7 +52,11 @@ func TestS3Storage_UploadFile(t *testing.T) {
 		storageS3 := cloud.S3Storage{
 			Client: mockClient,
 			Config: config.Config{
-				BucketName: "test-bucket",
+				Storage: config.StorageConfig{
+					S3Config: &config.S3Config{
+						BucketName: "test-bucket",
+					},
+				},
 			},
 		}
 
@@ -74,7 +82,11 @@ func TestS3Storage_UploadFile(t *testing.T) {
 		storageS3 := cloud.S3Storage{
 			Client: mockClient,
 			Config: config.Config{
-				BucketName: "test-bucket",
+				Storage: config.StorageConfig{
+					S3Config: &config.S3Config{
+						BucketName: "test-bucket",
+					},
+				},
 			},
 		}
 
@@ -112,7 +124,11 @@ func TestS3Storage_GetFileMetadata(t *testing.T) {
 		s3Storage := cloud.S3Storage{
 			Client: mockClient,
 			Config: config.Config{
-				BucketName: bucketName,
+				Storage: config.StorageConfig{
+					S3Config: &config.S3Config{
+						BucketName: "test-bucket",
+					},
+				},
 			},
 		}
 
@@ -144,7 +160,11 @@ func TestS3Storage_GetFileMetadata(t *testing.T) {
 		s3Storage := cloud.S3Storage{
 			Client: mockClient,
 			Config: config.Config{
-				BucketName: bucketName,
+				Storage: config.StorageConfig{
+					S3Config: &config.S3Config{
+						BucketName: "test-bucket",
+					},
+				},
 			},
 		}
 
@@ -164,8 +184,14 @@ func TestNewS3Storage(t *testing.T) {
 	t.Run("Successful creation", func(t *testing.T) {
 		// act
 		cfg := config.Config{
-			BucketName: "test-bucket",
-			Region:     "us-east-1",
+			Storage: config.StorageConfig{
+				S3Config: &config.S3Config{
+					BucketName: "test-bucket",
+				},
+			},
+			AWS: &config.AWSConfig{
+				Region: "us-east-1",
+			},
 		}
 		storageS3, err := cloud.NewS3Storage(cfg)
 
@@ -177,7 +203,7 @@ func TestNewS3Storage(t *testing.T) {
 		if storageS3 == nil {
 			t.Fatal("se esperaba un storage no nulo")
 		}
-		if got, want := storageS3.Config.BucketName, "test-bucket"; got != want {
+		if got, want := storageS3.Config.Storage.S3Config.BucketName, "test-bucket"; got != want {
 			t.Errorf("bucketName = %q, se esperaba %q", got, want)
 		}
 	})

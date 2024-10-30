@@ -18,13 +18,23 @@ func TestIntegrationOperationStore(t *testing.T) {
 	}
 
 	cfg := config.Config{
-		OperationResultsTable: os.Getenv("DYNAMODB_TABLE_NAME_OPERATION"),
-		Region:                os.Getenv("REGION"),
-		AccessKey:             os.Getenv("ACCESS_KEY"),
-		SecretKey:             os.Getenv("SECRET_KEY"),
+		AWS: &config.AWSConfig{
+			Region: os.Getenv("REGION"),
+			Credentials: config.CredentialsConfig{
+				AccessKey: os.Getenv("ACCESS_KEY"),
+				SecretKey: os.Getenv("SECRET_KEY"),
+			},
+		},
+		Database: config.DatabaseConfig{
+			DynamoDB: &config.DynamoDBConfig{
+				Tables: config.Tables{
+					Operations: os.Getenv("DYNAMODB_TABLE_NAME_OPERATION"),
+				},
+			},
+		},
 	}
 
-	if cfg.OperationResultsTable == "" || cfg.Region == "" {
+	if cfg.Database.DynamoDB.Tables.Operations == "" || cfg.AWS.Region == "" {
 		t.Fatal("DYNAMODB_TABLE_NAME_OPERATION y REGION no fueron seteados para los tests de integracion")
 	}
 

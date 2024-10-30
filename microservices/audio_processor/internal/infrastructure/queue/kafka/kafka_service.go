@@ -23,12 +23,12 @@ func NewKafkaService(cfgApplication config.Config, log logger.Logger) (*KafkaSer
 	cfg.Producer.Return.Successes = true
 	cfg.Consumer.Return.Errors = true
 
-	producer, err := sarama.NewSyncProducer(cfgApplication.Brokers, cfg)
+	producer, err := sarama.NewSyncProducer(cfgApplication.Messaging.Kafka.Brokers, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	consumer, err := sarama.NewConsumer(cfgApplication.Brokers, cfg)
+	consumer, err := sarama.NewConsumer(cfgApplication.Messaging.Kafka.Brokers, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (k *KafkaService) SendMessage(ctx context.Context, message port.Message) er
 
 	msg := &sarama.ProducerMessage{
 		Key:   sarama.StringEncoder(message.ID),
-		Topic: k.Config.Topic,
+		Topic: k.Config.Messaging.Kafka.Topic,
 		Value: sarama.StringEncoder(body),
 	}
 
@@ -67,7 +67,7 @@ func (k *KafkaService) SendMessage(ctx context.Context, message port.Message) er
 }
 
 func (k *KafkaService) ReceiveMessage(ctx context.Context) ([]port.Message, error) {
-	partitionConsumer, err := k.Consumer.ConsumePartition(k.Config.Topic, 0, sarama.OffsetOldest)
+	partitionConsumer, err := k.Consumer.ConsumePartition(k.Config.Messaging.Kafka.Topic, 0, sarama.OffsetOldest)
 	if err != nil {
 		return nil, errors.Wrap(err, "error al crear la particion del consumidor")
 	}

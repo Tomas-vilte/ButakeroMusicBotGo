@@ -30,11 +30,11 @@ type SQSService struct {
 
 func NewSQSService(cfgApplication config.Config, log logger.Logger) (*SQSService, error) {
 	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(),
-		awsCfg.WithRegion(cfgApplication.Region),
+		awsCfg.WithRegion(cfgApplication.AWS.Region),
 		awsCfg.WithCredentialsProvider(
 			credentials.NewStaticCredentialsProvider(
-				cfgApplication.AccessKey,
-				cfgApplication.SecretKey,
+				cfgApplication.AWS.Credentials.AccessKey,
+				cfgApplication.AWS.Credentials.SecretKey,
 				"",
 			),
 		),
@@ -65,7 +65,7 @@ func (s *SQSService) SendMessage(ctx context.Context, message port.Message) erro
 	}
 
 	input := &sqs.SendMessageInput{
-		QueueUrl:    aws.String(s.Config.QueueURL),
+		QueueUrl:    aws.String(s.Config.Messaging.SQS.QueueURL),
 		MessageBody: aws.String(string(body)),
 	}
 
@@ -89,7 +89,7 @@ func (s *SQSService) SendMessage(ctx context.Context, message port.Message) erro
 
 func (s *SQSService) ReceiveMessage(ctx context.Context) ([]port.Message, error) {
 	input := &sqs.ReceiveMessageInput{
-		QueueUrl:            aws.String(s.Config.QueueURL),
+		QueueUrl:            aws.String(s.Config.Messaging.SQS.QueueURL),
 		MaxNumberOfMessages: 10,
 		WaitTimeSeconds:     1,
 	}
@@ -130,7 +130,7 @@ func (s *SQSService) ReceiveMessage(ctx context.Context) ([]port.Message, error)
 
 func (s *SQSService) DeleteMessage(ctx context.Context, receiptHandle string) error {
 	input := &sqs.DeleteMessageInput{
-		QueueUrl:      aws.String(s.Config.QueueURL),
+		QueueUrl:      aws.String(s.Config.Messaging.SQS.QueueURL),
 		ReceiptHandle: aws.String(receiptHandle),
 	}
 

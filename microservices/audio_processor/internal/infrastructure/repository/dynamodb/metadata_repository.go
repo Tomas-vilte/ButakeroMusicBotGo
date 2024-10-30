@@ -34,8 +34,8 @@ type (
 func NewMetadataStore(cfgApplication config.Config) (*DynamoMetadataRepository, error) {
 	// Carga la configuración de AWS con la región especificada.
 
-	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApplication.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-		cfgApplication.AccessKey, cfgApplication.SecretKey, "")))
+	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApplication.AWS.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+		cfgApplication.AWS.Credentials.AccessKey, cfgApplication.AWS.Credentials.SecretKey, "")))
 	if err != nil {
 		return nil, fmt.Errorf("error cargando configuración AWS: %w", err)
 	}
@@ -55,7 +55,7 @@ func (s *DynamoMetadataRepository) SaveMetadata(ctx context.Context, metadata *m
 	}
 
 	_, err := s.Client.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName: aws.String(s.Config.SongsTable),
+		TableName: aws.String(s.Config.Database.DynamoDB.Tables.Songs),
 		Item: map[string]types.AttributeValue{
 			"PK":          &types.AttributeValueMemberS{Value: "METADATA#" + metadata.ID},
 			"SK":          &types.AttributeValueMemberS{Value: "METADATA#" + metadata.ID},
@@ -76,7 +76,7 @@ func (s *DynamoMetadataRepository) SaveMetadata(ctx context.Context, metadata *m
 // GetMetadata recupera los metadatos de DynamoDB usando el ID proporcionado.
 func (s *DynamoMetadataRepository) GetMetadata(ctx context.Context, id string) (*model.Metadata, error) {
 	input := &dynamodb.GetItemInput{
-		TableName: aws.String(s.Config.SongsTable),
+		TableName: aws.String(s.Config.Database.DynamoDB.Tables.Songs),
 		Key: map[string]types.AttributeValue{
 			"PK": &types.AttributeValueMemberS{Value: "METADATA#" + id},
 			"SK": &types.AttributeValueMemberS{Value: "METADATA#" + id},
@@ -101,7 +101,7 @@ func (s *DynamoMetadataRepository) GetMetadata(ctx context.Context, id string) (
 // DeleteMetadata elimina los metadatos de DynamoDB usando el ID proporcionado.
 func (s *DynamoMetadataRepository) DeleteMetadata(ctx context.Context, id string) error {
 	input := &dynamodb.DeleteItemInput{
-		TableName: aws.String(s.Config.SongsTable),
+		TableName: aws.String(s.Config.Database.DynamoDB.Tables.Songs),
 		Key: map[string]types.AttributeValue{
 			"PK": &types.AttributeValueMemberS{Value: "METADATA#" + id},
 			"SK": &types.AttributeValueMemberS{Value: "METADATA#" + id},

@@ -17,13 +17,23 @@ func TestIntegrationMetadataStore(t *testing.T) {
 	}
 
 	cfg := config.Config{
-		SongsTable: os.Getenv("DYNAMODB_TABLE_NAME_SONGS"),
-		Region:     os.Getenv("REGION"),
-		AccessKey:  os.Getenv("ACCESS_KEY"),
-		SecretKey:  os.Getenv("SECRET_KEY"),
+		AWS: &config.AWSConfig{
+			Region: os.Getenv("REGION"),
+			Credentials: config.CredentialsConfig{
+				AccessKey: os.Getenv("ACCESS_KEY"),
+				SecretKey: os.Getenv("SECRET_KEY"),
+			},
+		},
+		Database: config.DatabaseConfig{
+			DynamoDB: &config.DynamoDBConfig{
+				Tables: config.Tables{
+					Songs: os.Getenv("DYNAMODB_TABLE_NAME_SONGS"),
+				},
+			},
+		},
 	}
 
-	if cfg.SongsTable == "" || cfg.Region == "" {
+	if cfg.Database.DynamoDB.Tables.Songs == "" || cfg.AWS.Region == "" {
 		t.Fatal("DYNAMODB_TABLE_NAME_SONGS y REGION no fueron seteados para los tests de integracion")
 	}
 

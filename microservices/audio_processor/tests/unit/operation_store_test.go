@@ -19,7 +19,13 @@ func TestSaveOperationResult(t *testing.T) {
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
-				OperationResultsTable: "TestOperationStore",
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Operations: "TestOperationStore",
+						},
+					},
+				},
 			},
 		}
 
@@ -41,7 +47,13 @@ func TestSaveOperationResult(t *testing.T) {
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
-				OperationResultsTable: "TestOperationStore",
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Operations: "TestOperationStore",
+						},
+					},
+				},
 			},
 		}
 
@@ -66,7 +78,13 @@ func TestGetOperationResult(t *testing.T) {
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
-				OperationResultsTable: "TestOperationStore",
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Operations: "TestOperationStore",
+						},
+					},
+				},
 			},
 		}
 
@@ -94,7 +112,13 @@ func TestGetOperationResult(t *testing.T) {
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
-				OperationResultsTable: "TestOperationStore",
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Operations: "TestOperationStore",
+						},
+					},
+				},
 			},
 		}
 
@@ -114,7 +138,13 @@ func TestGetOperationResult(t *testing.T) {
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
-				OperationResultsTable: "TestOperationStore",
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Operations: "TestOperationStore",
+						},
+					},
+				},
 			},
 		}
 
@@ -136,7 +166,13 @@ func TestDeleteOperationResult(t *testing.T) {
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
-				OperationResultsTable: "TestOperationStore",
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Operations: "TestOperationStore",
+						},
+					},
+				},
 			},
 		}
 
@@ -154,7 +190,13 @@ func TestDeleteOperationResult(t *testing.T) {
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
-				OperationResultsTable: "TestOperationStore",
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Operations: "TestOperationStore",
+						},
+					},
+				},
 			},
 		}
 
@@ -175,7 +217,13 @@ func TestUpdateOperationStatus(t *testing.T) {
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
-				OperationResultsTable: "TestOperationStore",
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Operations: "TestOperationStore",
+						},
+					},
+				},
 			},
 		}
 
@@ -193,7 +241,13 @@ func TestUpdateOperationStatus(t *testing.T) {
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
 			Cfg: config.Config{
-				OperationResultsTable: "TestOperationStore",
+				Database: config.DatabaseConfig{
+					DynamoDB: &config.DynamoDBConfig{
+						Tables: config.Tables{
+							Operations: "TestOperationStore",
+						},
+					},
+				},
 			},
 		}
 

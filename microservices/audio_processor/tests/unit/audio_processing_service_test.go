@@ -27,8 +27,10 @@ func TestAudioProcessingService(t *testing.T) {
 			mockMessagingQueue := new(MockMessagingQueue)
 
 			configService := config.Config{
-				MaxAttempts: 3,
-				Timeout:     5 * time.Minute,
+				Service: config.ServiceConfig{
+					MaxAttempts: 3,
+					Timeout:     5 * time.Minute,
+				},
 			}
 
 			serviceAudio := service.NewAudioProcessingService(mockLogger, mockStorage, mockDownloader, mockOperationRepo, mockMetadataRepo, mockMessagingQueue, configService)
@@ -77,8 +79,10 @@ func TestAudioProcessingService(t *testing.T) {
 		mockMessagingQueue := new(MockMessagingQueue)
 
 		configService := config.Config{
-			MaxAttempts: 3,
-			Timeout:     5 * time.Minute,
+			Service: config.ServiceConfig{
+				MaxAttempts: 3,
+				Timeout:     5 * time.Minute,
+			},
 		}
 
 		serviceAudio := service.NewAudioProcessingService(mockLogger, mockStorage, mockDownloader, mockOperationRepo, mockMetadataRepo, mockMessagingQueue, configService)
@@ -110,8 +114,10 @@ func TestAudioProcessingService(t *testing.T) {
 			mockMessagingQueue := new(MockMessagingQueue)
 
 			configService := config.Config{
-				MaxAttempts: 3,
-				Timeout:     5 * time.Minute,
+				Service: config.ServiceConfig{
+					MaxAttempts: 3,
+					Timeout:     5 * time.Minute,
+				},
 			}
 
 			serviceAudio := service.NewAudioProcessingService(mockLogger, mockStorage, mockDownloader, mockOperationRepo, mockMetadataRepo, mockMessagingQueue, configService)
@@ -160,8 +166,10 @@ func TestAudioProcessingService(t *testing.T) {
 		mockMessagingQueue := new(MockMessagingQueue)
 
 		configService := config.Config{
-			MaxAttempts: 3,
-			Timeout:     5 * time.Minute,
+			Service: config.ServiceConfig{
+				MaxAttempts: 3,
+				Timeout:     5 * time.Minute,
+			},
 		}
 
 		serviceAudio := service.NewAudioProcessingService(mockLogger, mockStorage, mockDownloader, mockOperationRepo, mockMetadataRepo, mockMessagingQueue, configService)
@@ -203,8 +211,10 @@ func TestAudioProcessingService(t *testing.T) {
 		mockMessagingQueue := new(MockMessagingQueue)
 
 		configService := config.Config{
-			MaxAttempts: 3,
-			Timeout:     5 * time.Minute,
+			Service: config.ServiceConfig{
+				MaxAttempts: 3,
+				Timeout:     5 * time.Minute,
+			},
 		}
 
 		serviceAudio := service.NewAudioProcessingService(mockLogger, mockStorage, mockDownloader, mockOperationRepo, mockMetadataRepo, mockMessagingQueue, configService)
@@ -251,8 +261,10 @@ func TestAudioProcessingService(t *testing.T) {
 		mockMessagingQueue := new(MockMessagingQueue)
 
 		configService := config.Config{
-			MaxAttempts: 3,
-			Timeout:     5 * time.Minute,
+			Service: config.ServiceConfig{
+				MaxAttempts: 3,
+				Timeout:     5 * time.Minute,
+			},
 		}
 
 		serviceAudio := service.NewAudioProcessingService(mockLogger, mockStorage, mockDownloader, mockOperationRepo, mockMetadataRepo, mockMessagingQueue, configService)

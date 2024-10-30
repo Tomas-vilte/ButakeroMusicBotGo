@@ -27,13 +27,21 @@ func TestSQSServiceIntegration(t *testing.T) {
 	}
 
 	cfg := config.Config{
-		QueueURL:  os.Getenv("SQS_QUEUE_URL"),
-		Region:    os.Getenv("REGION"),
-		AccessKey: os.Getenv("ACCESS_KEY"),
-		SecretKey: os.Getenv("SECRET_KEY"),
+		AWS: &config.AWSConfig{
+			Region: os.Getenv("REGION"),
+			Credentials: config.CredentialsConfig{
+				AccessKey: os.Getenv("ACCESS_KEY"),
+				SecretKey: os.Getenv("SECRET_KEY"),
+			},
+		},
+		Messaging: config.MessagingConfig{
+			SQS: &config.SQSConfig{
+				QueueURL: os.Getenv("SQS_QUEUE_URL"),
+			},
+		},
 	}
 
-	if cfg.QueueURL == "" || cfg.Region == "" {
+	if cfg.Messaging.SQS.QueueURL == "" || cfg.AWS.Region == "" {
 		t.Fatal("SQS_QUEUE_URL y REGION no fueron seteados para los tests de integración")
 	}
 

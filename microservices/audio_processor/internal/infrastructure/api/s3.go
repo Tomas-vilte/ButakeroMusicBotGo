@@ -11,15 +11,15 @@ import (
 )
 
 func CheckS3(ctx context.Context, cfgApplication config.Config) error {
-	cfg, err := cfgAws.LoadDefaultConfig(ctx, cfgAws.WithRegion(cfgApplication.Region), cfgAws.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-		cfgApplication.AccessKey, cfgApplication.SecretKey, "")))
+	cfg, err := cfgAws.LoadDefaultConfig(ctx, cfgAws.WithRegion(cfgApplication.AWS.Region), cfgAws.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+		cfgApplication.AWS.Credentials.AccessKey, cfgApplication.AWS.Credentials.SecretKey, "")))
 	if err != nil {
 		return fmt.Errorf("error cargando configuración AWS: %w", err)
 	}
 
 	client := s3.NewFromConfig(cfg)
 
-	_, err = client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(cfgApplication.BucketName)})
+	_, err = client.HeadBucket(ctx, &s3.HeadBucketInput{Bucket: aws.String(cfgApplication.Storage.S3Config.BucketName)})
 	if err != nil {
 		return fmt.Errorf("error en encontrar el bucket: %w", err)
 	}

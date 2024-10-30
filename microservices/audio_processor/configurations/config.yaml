@@ -1,0 +1,47 @@
+environment: "${ENV}" # Puede ser 'local' o 'aws'. Define el entorno donde se ejecutará el servicio.
+
+service:
+  max_attempts: 3  # Número máximo de intentos para completar operaciones antes de un fallo definitivo.
+  timeout: "1m"    # Tiempo máximo de espera para una operación; se expresa en minutos.
+
+api:
+  youtube:
+    api_key: "${YOUTUBE_API_KEY}"  # Clave de API para acceder a la API de YouTube.
+  oauth2:
+    enabled: "${OAUTH2}"  # Activa o desactiva OAuth2. Utiliza OAuth2 si encuentras errores relacionados con la autenticación.
+
+aws:
+  region: "${REGION}"  # Región de AWS donde se desplegará el servicio.
+  credentials:
+    access_key: "${ACCESS_KEY}"  # Clave de acceso de AWS para autenticación.
+    secret_key: "${SECRET_KEY}"  # Clave secreta de AWS para autenticación.
+
+messaging:
+  type: "${MESSAGING_TYPE}"  # Tipo de servicio de mensajería. Puede ser 'kafka' o 'sqs'.
+  kafka:
+    brokers: ["${KAFKA_BROKERS}"]  # Lista de brokers para Kafka.
+    topic: "${TOPIC}"  # Tema de Kafka para la mensajería.
+  sqs:
+    queue_url: "${SQS_QUEUE_URL}"  # URL de la cola SQS.
+    topic: "${TOPIC}"  # Tema asociado a SQS.
+
+storage:
+  type: "${STORAGE_TYPE}"  # Tipo de almacenamiento; puede ser 's3' o 'local'.
+  s3:
+    bucket_name: "${BUCKET_NAME}"  # Nombre del bucket de S3 para almacenamiento de datos.
+
+database:
+  type: "${DB_TYPE}"  # Tipo de base de datos; puede ser 'mongodb' o 'dynamodb'.
+  mongodb:
+    host: "${MONGO_HOST}"  # Host de conexión a MongoDB.
+    port: "${MONGO_PORT}"  # Puerto para la conexión a MongoDB.
+    user: "${MONGO_USER}"  # Usuario de la base de datos MongoDB.
+    password: "${MONGO_PASSWORD}"  # Contraseña para MongoDB.
+    database: "${MONGO_DATABASE}"  # Nombre de la base de datos en MongoDB.
+    collections:
+      songs: "${MONGO_SONGS_COLLECTION}"  # Colección de canciones en MongoDB.
+      operations: "${MONGO_OPERATION_RESULTS_COLLECTION}"  # Colección de resultados de operaciones en MongoDB.
+  dynamodb:
+    tables:
+      songs: "${DYNAMODB_TABLE_NAME_SONGS}"  # Nombre de la tabla de canciones en DynamoDB.
+      operations: "${DYNAMODB_TABLE_NAME_OPERATION}"  # Nombre de la tabla de operaciones en DynamoDB.

@@ -36,8 +36,8 @@ type S3Storage struct {
 // NewS3Storage crea una nueva instancia de S3Storage.
 // Configura el cliente de S3 con las credenciales y la región especificadas en la configuración.
 func NewS3Storage(cfgApplication config.Config) (*S3Storage, error) {
-	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApplication.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-		cfgApplication.AccessKey, cfgApplication.SecretKey, "")))
+	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApplication.AWS.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+		cfgApplication.AWS.Credentials.AccessKey, cfgApplication.AWS.Credentials.SecretKey, "")))
 	if err != nil {
 		return nil, fmt.Errorf("error cargando configuración AWS: %w", err)
 	}
@@ -57,7 +57,7 @@ func (s *S3Storage) UploadFile(ctx context.Context, key string, body io.Reader) 
 		return fmt.Errorf("el cuerpo no puede ser nulo")
 	}
 	input := &s3.PutObjectInput{
-		Bucket: aws.String(s.Config.BucketName),
+		Bucket: aws.String(s.Config.Storage.S3Config.BucketName),
 		Key:    aws.String("audio/" + key),
 		Body:   body,
 	}
@@ -72,7 +72,7 @@ func (s *S3Storage) UploadFile(ctx context.Context, key string, body io.Reader) 
 // GetFileMetadata obtiene los metadatos del archivo subido a S3 y devuelve un model.FileData.
 func (s *S3Storage) GetFileMetadata(ctx context.Context, key string) (*model.FileData, error) {
 	headInput := &s3.HeadObjectInput{
-		Bucket: aws.String(s.Config.BucketName),
+		Bucket: aws.String(s.Config.Storage.S3Config.BucketName),
 		Key:    aws.String("audio/" + key),
 	}
 
@@ -87,7 +87,7 @@ func (s *S3Storage) GetFileMetadata(ctx context.Context, key string) (*model.Fil
 		FilePath:  "audio/" + key,
 		FileType:  *headResult.ContentType,
 		FileSize:  readableSize,
-		PublicURL: fmt.Sprintf("https://%s.s3.amazonaws.com/%s", s.Config.BucketName, key),
+		PublicURL: fmt.Sprintf("https://%s.s3.amazonaws.com/%s", s.Config.Storage.S3Config.BucketName, key),
 	}, nil
 }
 
