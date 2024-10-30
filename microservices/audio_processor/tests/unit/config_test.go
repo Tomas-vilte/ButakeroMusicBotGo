@@ -12,38 +12,38 @@ import (
 func TestLoadConfig_ValidConfig(t *testing.T) {
 	// Crear un archivo de configuración temporal
 	configContent := `environment: "local"
-			service:
-			  max_attempts: 3
-			  timeout: "4m"
-			api:
-			  youtube:
-				api_key: "test_api_key"
-			  oauth2:
-				enabled: "false"
-			aws:
-			  region: "us-east-1"
-			  credentials:
-				access_key: "test_access_key"
-				secret_key: "test_secret_key"
-			messaging:
-			  type: "kafka"
-			  kafka:
-				brokers: ["localhost:9092"]
-				topic: "audio-process-events"
-			storage:
-			  type: "local"
-			database:
-			  type: "mongodb"
-			  mongodb:
-				host: "localhost"
-				port: "27017"
-				user: "test_user"
-				password: "test_password"
-				database: "audio_processor"
-				collections:
-				  songs: "songs"
-				  operations: "operations"
-			`
+service:
+  max_attempts: 3
+  timeout: "4m"
+api:
+  youtube:
+    api_key: "test_api_key"
+  oauth2:
+    enabled: "false"
+aws:
+  region: "us-east-1"
+  credentials:
+    access_key: "test_access_key"
+    secret_key: "test_secret_key"
+messaging:
+  type: "kafka"
+  kafka:
+    brokers: ["localhost:9092"]
+    topic: "audio-process-events"
+storage:
+  type: "local"
+database:
+  type: "mongodb"
+  mongodb:
+    host: "localhost"
+    port: "27017"
+    user: "test_user"
+    password: "test_password"
+    database: "audio_processor"
+    collections:
+      songs: "songs"
+      operations: "operations"
+`
 
 	tempFile, err := os.CreateTemp("", "config.yaml")
 	require.NoError(t, err)
