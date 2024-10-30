@@ -1,4 +1,6 @@
 environment: "${ENV}" # Puede ser 'local' o 'aws'. Define el entorno donde se ejecutará el servicio.
+gin:
+  mode: "${GIN_MODE}" # Puede ser 'release' o 'aws'
 
 service:
   max_attempts: 3  # Número máximo de intentos para completar operaciones antes de un fallo definitivo.

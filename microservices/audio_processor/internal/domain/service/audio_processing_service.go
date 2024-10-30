@@ -35,8 +35,8 @@ type (
 		downloader     downloader.Downloader    // Interfaz para la descarga de audio.
 		operationStore port.OperationRepository // Interfaz para almacenar resultados de operaciones.
 		metadataStore  port.MetadataRepository  // Interfaz para almacenar metadatos del audio.
-		messaging      port.MessageQueue        // Interfaz
-		config         config.Config            // Configuración del servicio.
+		messaging      port.MessageQueue        // Interfaz para enviar mensajes a un message broker
+		config         *config.Config           // Configuración del servicio.
 	}
 
 	AudioProcessor interface {
@@ -51,7 +51,7 @@ func NewAudioProcessingService(log logger.Logger, storage port.Storage,
 	operationStore port.OperationRepository,
 	metadataStore port.MetadataRepository,
 	messaging port.MessageQueue,
-	config config.Config) *AudioProcessingService {
+	config *config.Config) *AudioProcessingService {
 
 	if config.Service.MaxAttempts == 0 {
 		config.Service.MaxAttempts = maxAttempts

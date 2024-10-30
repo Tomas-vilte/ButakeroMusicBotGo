@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
-func CheckDynamoDB(ctx context.Context, cfgApplication config.Config) error {
+func CheckDynamoDB(ctx context.Context, cfgApplication *config.Config) error {
 	cfg, err := cfgAws.LoadDefaultConfig(ctx, cfgAws.WithRegion(cfgApplication.AWS.Region), cfgAws.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
 		cfgApplication.AWS.Credentials.AccessKey, cfgApplication.AWS.Credentials.SecretKey, "")))
 	if err != nil {

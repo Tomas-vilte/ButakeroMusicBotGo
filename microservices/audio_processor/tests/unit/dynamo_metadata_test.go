@@ -20,7 +20,7 @@ func TestMetadataStore(t *testing.T) {
 			mockClient := new(MockDynamoDBAPI)
 			store := dynamodb2.DynamoMetadataRepository{
 				Client: mockClient,
-				Config: config.Config{
+				Config: &config.Config{
 					Database: config.DatabaseConfig{
 						DynamoDB: &config.DynamoDBConfig{
 							Tables: config.Tables{
@@ -51,7 +51,7 @@ func TestMetadataStore(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
 		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
-			Config: config.Config{
+			Config: &config.Config{
 				Database: config.DatabaseConfig{
 					DynamoDB: &config.DynamoDBConfig{
 						Tables: config.Tables{
@@ -80,7 +80,7 @@ func TestMetadataStore(t *testing.T) {
 	t.Run("NewMetadataStore", func(t *testing.T) {
 		t.Run("Successful creation", func(t *testing.T) {
 			// arrange
-			cfg := config.Config{
+			cfg := &config.Config{
 				AWS: &config.AWSConfig{
 					Region: "us-east-1",
 				},
@@ -108,7 +108,7 @@ func TestMetadataStore(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
 		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
-			Config: config.Config{
+			Config: &config.Config{
 				Database: config.DatabaseConfig{
 					DynamoDB: &config.DynamoDBConfig{
 						Tables: config.Tables{
@@ -137,7 +137,7 @@ func TestMetadataStore(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
 		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
-			Config: config.Config{
+			Config: &config.Config{
 				Database: config.DatabaseConfig{
 					DynamoDB: &config.DynamoDBConfig{
 						Tables: config.Tables{
@@ -160,7 +160,7 @@ func TestMetadataStore(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
 		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
-			Config: config.Config{
+			Config: &config.Config{
 				Database: config.DatabaseConfig{
 					DynamoDB: &config.DynamoDBConfig{
 						Tables: config.Tables{
@@ -188,7 +188,7 @@ func TestGetMetadata(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
 		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
-			Config: config.Config{
+			Config: &config.Config{
 				Database: config.DatabaseConfig{
 					DynamoDB: &config.DynamoDBConfig{
 						Tables: config.Tables{
@@ -210,7 +210,7 @@ func TestGetMetadata(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
 		store := &dynamodb2.DynamoMetadataRepository{
 			Client: mockClient,
-			Config: config.Config{
+			Config: &config.Config{
 				Database: config.DatabaseConfig{
 					DynamoDB: &config.DynamoDBConfig{
 						Tables: config.Tables{

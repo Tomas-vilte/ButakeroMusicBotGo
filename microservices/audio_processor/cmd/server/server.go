@@ -13,35 +13,12 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/usecase"
 	"github.com/gin-gonic/gin"
-	"os"
-	"time"
 )
 
 func StartServer() error {
-	cfg := config.Config{
-		MaxAttempts:           3,
-		Timeout:               4 * time.Minute,
-		BucketName:            os.Getenv("BUCKET_NAME"),
-		Region:                os.Getenv("REGION"),
-		YouTubeApiKey:         os.Getenv("YOUTUBE_API_KEY"),
-		SongsTable:            os.Getenv("DYNAMODB_TABLE_NAME_SONGS"),
-		OperationResultsTable: os.Getenv("DYNAMODB_TABLE_NAME_OPERATION"),
-		AccessKey:             os.Getenv("ACCESS_KEY"),
-		SecretKey:             os.Getenv("SECRET_KEY"),
-		QueueURL:              os.Getenv("SQS_QUEUE_URL"),
-		Topic:                 os.Getenv("TOPIC"),
-		Brokers:               []string{os.Getenv("KAFKA_BROKERS")},
-		Environment:           getGinMode(),
-		OAuth2:                os.Getenv("OAUTH2"),
-		Mongo: config.MongoConfig{
-			User:                       os.Getenv("MONGO_USER"),
-			Password:                   os.Getenv("MONGO_PASSWORD"),
-			Port:                       os.Getenv("MONGO_PORT"),
-			Host:                       os.Getenv("MONGO_HOST"),
-			Database:                   os.Getenv("MONGO_DATABASE"),
-			SongsCollection:            os.Getenv("MONGO_SONGS_COLLECTION"),
-			OperationResultsCollection: os.Getenv("MONGO_OPERATION_RESULTS_COLLECTION"),
-		},
+	cfg, err := config.LoadConfig("./configurations/config.yaml")
+	if err != nil {
+		return err
 	}
 
 	log, err := logger.NewZapLogger()
@@ -55,7 +32,7 @@ func StartServer() error {
 		return err
 	}
 
-	downloaderMusic := downloader.NewYTDLPDownloader(log, downloader.YTDLPOptions{UseOAuth2: cfg.ParseBool()})
+	downloaderMusic := downloader.NewYTDLPDownloader(log, downloader.YTDLPOptions{UseOAuth2: cfg.GinConfig.ParseBool()})
 	operationRepo, err := dynamodb.NewOperationStore(cfg)
 	if err != nil {
 		return err
@@ -97,7 +74,7 @@ func StartServer() error {
 	//	return err
 	//}
 
-	youtubeAPI := api.NewYouTubeClient(cfg.YouTubeApiKey)
+	youtubeAPI := api.NewYouTubeClient(cfg.API.YouTube.ApiKey)
 	audioProcessingService := service.NewAudioProcessingService(
 		log,
 		storageService,
@@ -115,11 +92,4 @@ func StartServer() error {
 	r := gin.New()
 	router.SetupRoutes(r, audioHandler, healthCheck, log)
 	return r.Run(":8080")
-}
-
-func getGinMode() string {
-	if mode := os.Getenv("GIN_MODE"); mode != "" {
-		return mode
-	}
-	return "debug"
 }

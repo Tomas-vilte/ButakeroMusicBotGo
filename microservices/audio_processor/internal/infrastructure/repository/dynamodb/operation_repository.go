@@ -17,11 +17,11 @@ import (
 // OperationStore implementa la interface repository.OperationRepository maneja el almacenamiento, recuperación y eliminación de resultados de operación en DynamoDB.
 type OperationStore struct {
 	Client DynamoDBAPI // Cliente para interactuar con DynamoDB.
-	Cfg    config.Config
+	Cfg    *config.Config
 }
 
 // NewOperationStore crea una nueva instancia de OperationStore con la configuración proporcionada.
-func NewOperationStore(cfgApplication config.Config) (*OperationStore, error) {
+func NewOperationStore(cfgApplication *config.Config) (*OperationStore, error) {
 	// Carga la configuración de AWS con la región especificada.
 	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApplication.AWS.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
 		cfgApplication.AWS.Credentials.AccessKey, cfgApplication.AWS.Credentials.SecretKey, "")))

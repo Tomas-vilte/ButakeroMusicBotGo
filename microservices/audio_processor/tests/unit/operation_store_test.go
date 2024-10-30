@@ -18,7 +18,7 @@ func TestSaveOperationResult(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
-			Cfg: config.Config{
+			Cfg: &config.Config{
 				Database: config.DatabaseConfig{
 					DynamoDB: &config.DynamoDBConfig{
 						Tables: config.Tables{
@@ -46,7 +46,7 @@ func TestSaveOperationResult(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
-			Cfg: config.Config{
+			Cfg: &config.Config{
 				Database: config.DatabaseConfig{
 					DynamoDB: &config.DynamoDBConfig{
 						Tables: config.Tables{
@@ -77,7 +77,7 @@ func TestGetOperationResult(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
-			Cfg: config.Config{
+			Cfg: &config.Config{
 				Database: config.DatabaseConfig{
 					DynamoDB: &config.DynamoDBConfig{
 						Tables: config.Tables{
@@ -111,7 +111,7 @@ func TestGetOperationResult(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
-			Cfg: config.Config{
+			Cfg: &config.Config{
 				Database: config.DatabaseConfig{
 					DynamoDB: &config.DynamoDBConfig{
 						Tables: config.Tables{
@@ -137,7 +137,7 @@ func TestGetOperationResult(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
-			Cfg: config.Config{
+			Cfg: &config.Config{
 				Database: config.DatabaseConfig{
 					DynamoDB: &config.DynamoDBConfig{
 						Tables: config.Tables{
@@ -165,7 +165,7 @@ func TestDeleteOperationResult(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
-			Cfg: config.Config{
+			Cfg: &config.Config{
 				Database: config.DatabaseConfig{
 					DynamoDB: &config.DynamoDBConfig{
 						Tables: config.Tables{
@@ -189,7 +189,7 @@ func TestDeleteOperationResult(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
-			Cfg: config.Config{
+			Cfg: &config.Config{
 				Database: config.DatabaseConfig{
 					DynamoDB: &config.DynamoDBConfig{
 						Tables: config.Tables{
@@ -216,7 +216,7 @@ func TestUpdateOperationStatus(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
-			Cfg: config.Config{
+			Cfg: &config.Config{
 				Database: config.DatabaseConfig{
 					DynamoDB: &config.DynamoDBConfig{
 						Tables: config.Tables{
@@ -240,7 +240,7 @@ func TestUpdateOperationStatus(t *testing.T) {
 		mockClient := new(MockDynamoDBAPI)
 		store := dynamodb2.OperationStore{
 			Client: mockClient,
-			Cfg: config.Config{
+			Cfg: &config.Config{
 				Database: config.DatabaseConfig{
 					DynamoDB: &config.DynamoDBConfig{
 						Tables: config.Tables{

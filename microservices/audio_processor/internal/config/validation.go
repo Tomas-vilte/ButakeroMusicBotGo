@@ -36,6 +36,10 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("api config error: %w", err)
 	}
 
+	if err := c.GinConfig.Validate(); err != nil {
+		return fmt.Errorf("gin config validation error: %w", err)
+	}
+
 	return nil
 }
 
@@ -222,6 +226,19 @@ func (ac *APIConfig) Validate() error {
 
 	if ac.YouTube.ApiKey == "" {
 		errors = append(errors, "YouTube API Key es necesaria")
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("%s", strings.Join(errors, "; "))
+	}
+	return nil
+}
+
+func (g *GinConfig) Validate() error {
+	var errors []string
+
+	if g.Mode == "" {
+		errors = append(errors, "mode es necesario")
 	}
 
 	if len(errors) > 0 {

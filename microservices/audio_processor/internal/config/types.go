@@ -12,12 +12,17 @@ type (
 		Storage     StorageConfig   `yaml:"storage"`
 		Database    DatabaseConfig  `yaml:"database"`
 		API         APIConfig       `yaml:"api"`
+		GinConfig   GinConfig       `yaml:"gin"`
 	}
 
 	// ServiceConfig contiene configuración general del servicio
 	ServiceConfig struct {
 		MaxAttempts int           `yaml:"max_attempts"`
 		Timeout     time.Duration `yaml:"timeout"`
+	}
+
+	GinConfig struct {
+		Mode string `yaml:"mode"`
 	}
 
 	// AWSConfig contiene todas las configuraciones relacionadas con AWS
