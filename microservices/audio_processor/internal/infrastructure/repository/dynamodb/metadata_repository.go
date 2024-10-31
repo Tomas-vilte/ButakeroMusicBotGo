@@ -18,7 +18,7 @@ type (
 	// DynamoMetadataRepository Implementa la interface repository.MetadataRepository proporciona operaciones para almacenar, recuperar y eliminar metadatos en DynamoDB.
 	DynamoMetadataRepository struct {
 		Client DynamoDBAPI // Cliente para interactuar con DynamoDB.
-		Config config.Config
+		Config *config.Config
 	}
 
 	// DynamoDBAPI define los métodos necesarios para interactuar con DynamoDB.
@@ -31,7 +31,7 @@ type (
 )
 
 // NewMetadataStore crea una nueva instancia de MetadataStore con la configuración proporcionada.
-func NewMetadataStore(cfgApplication config.Config) (*DynamoMetadataRepository, error) {
+func NewMetadataStore(cfgApplication *config.Config) (*DynamoMetadataRepository, error) {
 	// Carga la configuración de AWS con la región especificada.
 
 	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApplication.AWS.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(

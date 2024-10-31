@@ -23,7 +23,7 @@ func TestS3Storage_UploadFile(t *testing.T) {
 
 		storageS3 := cloud.S3Storage{
 			Client: mockClient,
-			Config: config.Config{
+			Config: &config.Config{
 				Storage: config.StorageConfig{
 					S3Config: &config.S3Config{
 						BucketName: "test-bucket",
@@ -51,7 +51,7 @@ func TestS3Storage_UploadFile(t *testing.T) {
 
 		storageS3 := cloud.S3Storage{
 			Client: mockClient,
-			Config: config.Config{
+			Config: &config.Config{
 				Storage: config.StorageConfig{
 					S3Config: &config.S3Config{
 						BucketName: "test-bucket",
@@ -81,7 +81,7 @@ func TestS3Storage_UploadFile(t *testing.T) {
 
 		storageS3 := cloud.S3Storage{
 			Client: mockClient,
-			Config: config.Config{
+			Config: &config.Config{
 				Storage: config.StorageConfig{
 					S3Config: &config.S3Config{
 						BucketName: "test-bucket",
@@ -123,7 +123,7 @@ func TestS3Storage_GetFileMetadata(t *testing.T) {
 
 		s3Storage := cloud.S3Storage{
 			Client: mockClient,
-			Config: config.Config{
+			Config: &config.Config{
 				Storage: config.StorageConfig{
 					S3Config: &config.S3Config{
 						BucketName: "test-bucket",
@@ -159,7 +159,7 @@ func TestS3Storage_GetFileMetadata(t *testing.T) {
 
 		s3Storage := cloud.S3Storage{
 			Client: mockClient,
-			Config: config.Config{
+			Config: &config.Config{
 				Storage: config.StorageConfig{
 					S3Config: &config.S3Config{
 						BucketName: "test-bucket",
@@ -183,7 +183,7 @@ func TestS3Storage_GetFileMetadata(t *testing.T) {
 func TestNewS3Storage(t *testing.T) {
 	t.Run("Successful creation", func(t *testing.T) {
 		// act
-		cfg := config.Config{
+		cfg := &config.Config{
 			Storage: config.StorageConfig{
 				S3Config: &config.S3Config{
 					BucketName: "test-bucket",

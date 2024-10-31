@@ -30,12 +30,12 @@ type S3Storage struct {
 	// Client es el cliente de S3 utilizado para interactuar con el servicio.
 	Client S3Client
 	// Config es la configuración de la aplicación.
-	Config config.Config
+	Config *config.Config
 }
 
 // NewS3Storage crea una nueva instancia de S3Storage.
 // Configura el cliente de S3 con las credenciales y la región especificadas en la configuración.
-func NewS3Storage(cfgApplication config.Config) (*S3Storage, error) {
+func NewS3Storage(cfgApplication *config.Config) (*S3Storage, error) {
 	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApplication.AWS.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
 		cfgApplication.AWS.Credentials.AccessKey, cfgApplication.AWS.Credentials.SecretKey, "")))
 	if err != nil {

@@ -1,10 +1,12 @@
 package config
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
@@ -62,6 +64,13 @@ func (c *Config) setDefaults() {
 	c.setMessagingDefaults()
 	c.setStorageDefaults()
 	c.setDatabaseDefaults()
+	c.setGinDefaults()
+}
+
+func (c *Config) setGinDefaults() {
+	if c.GinConfig.Mode == "" {
+		c.GinConfig.Mode = gin.DebugMode
+	}
 }
 
 func (c *Config) setServiceDefaults() {
@@ -90,6 +99,10 @@ func (c *Config) setStorageDefaults() {
 			c.Storage.Type = "local"
 		}
 	}
+
+	if c.Storage.LocalConfig.BasePath == "" {
+		c.Storage.LocalConfig.BasePath = "data/audio-files"
+	}
 }
 
 func (c *Config) setDatabaseDefaults() {
@@ -112,6 +125,14 @@ func (c *Config) setDatabaseDefaults() {
 			}
 		}
 	}
+}
+
+func (g *GinConfig) ParseBool() bool {
+	oauth2Enabled, err := strconv.ParseBool(g.Mode)
+	if err != nil {
+		return false
+	}
+	return oauth2Enabled
 }
 
 func LoadConfig(configPath string) (*Config, error) {

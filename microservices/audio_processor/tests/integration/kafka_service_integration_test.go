@@ -32,7 +32,7 @@ func TestKafkaIntegration_SendAndReceiveMessage(t *testing.T) {
 	brokers, err := kafkaContainer.Brokers(ctx)
 	assert.NoError(t, err)
 
-	cfg := config.Config{
+	cfg := &config.Config{
 		Messaging: config.MessagingConfig{
 			Kafka: &config.KafkaConfig{
 				Brokers: brokers,

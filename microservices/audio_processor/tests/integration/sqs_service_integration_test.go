@@ -26,7 +26,7 @@ func TestSQSServiceIntegration(t *testing.T) {
 		t.Skip("Saltando test de integración en modo corto")
 	}
 
-	cfg := config.Config{
+	cfg := &config.Config{
 		AWS: &config.AWSConfig{
 			Region: os.Getenv("REGION"),
 			Credentials: config.CredentialsConfig{

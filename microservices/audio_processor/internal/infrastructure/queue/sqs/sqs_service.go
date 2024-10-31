@@ -24,11 +24,11 @@ const (
 
 type SQSService struct {
 	Client port.SQSClientInterface
-	Config config.Config
+	Config *config.Config
 	Log    logger.Logger
 }
 
-func NewSQSService(cfgApplication config.Config, log logger.Logger) (*SQSService, error) {
+func NewSQSService(cfgApplication *config.Config, log logger.Logger) (*SQSService, error) {
 	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(),
 		awsCfg.WithRegion(cfgApplication.AWS.Region),
 		awsCfg.WithCredentialsProvider(

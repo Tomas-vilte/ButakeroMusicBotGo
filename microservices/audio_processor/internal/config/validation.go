@@ -36,6 +36,10 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("api config error: %w", err)
 	}
 
+	if err := c.GinConfig.Validate(); err != nil {
+		return fmt.Errorf("gin config validation error: %w", err)
+	}
+
 	return nil
 }
 
@@ -131,10 +135,6 @@ func (sc *SQSConfig) Validate() error {
 		errors = append(errors, "queue_url es necesario")
 	}
 
-	if sc.Topic == "" {
-		errors = append(errors, "topic es necesario")
-	}
-
 	if len(errors) > 0 {
 		return fmt.Errorf("%s", strings.Join(errors, "; "))
 	}
@@ -149,7 +149,10 @@ func (sc *StorageConfig) Validate() error {
 		}
 		return sc.S3Config.Validate()
 	case "local":
-		return nil
+		if sc.LocalConfig == nil {
+			return fmt.Errorf("configuracion local necesaria para el tipo local")
+		}
+		return sc.LocalConfig.Validate()
 	default:
 		return fmt.Errorf("tipo de storage invalido: %s", sc.Type)
 	}
@@ -222,6 +225,32 @@ func (ac *APIConfig) Validate() error {
 
 	if ac.YouTube.ApiKey == "" {
 		errors = append(errors, "YouTube API Key es necesaria")
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("%s", strings.Join(errors, "; "))
+	}
+	return nil
+}
+
+func (g *GinConfig) Validate() error {
+	var errors []string
+
+	if g.Mode == "" {
+		errors = append(errors, "mode es necesario")
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("%s", strings.Join(errors, "; "))
+	}
+	return nil
+}
+
+func (l *LocalConfig) Validate() error {
+	var errors []string
+
+	if l.BasePath == "" {
+		errors = append(errors, "el base_path es necesario")
 	}
 
 	if len(errors) > 0 {

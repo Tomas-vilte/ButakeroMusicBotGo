@@ -1,4 +1,6 @@
 environment: "${ENV}" # Puede ser 'local' o 'aws'. Define el entorno donde se ejecutará el servicio.
+gin:
+  mode: "${GIN_MODE}" # Puede ser 'release' o 'aws'
 
 service:
   max_attempts: 3  # Número máximo de intentos para completar operaciones antes de un fallo definitivo.
@@ -23,12 +25,13 @@ messaging:
     topic: "${TOPIC}"  # Tema de Kafka para la mensajería.
   sqs:
     queue_url: "${SQS_QUEUE_URL}"  # URL de la cola SQS.
-    topic: "${TOPIC}"  # Tema asociado a SQS.
 
 storage:
   type: "${STORAGE_TYPE}"  # Tipo de almacenamiento; puede ser 's3' o 'local'.
   s3:
-    bucket_name: "${BUCKET_NAME}"  # Nombre del bucket de S3 para almacenamiento de datos.
+    bucket_name: "${BUCKET_NAME}"  # Nombre del bucket de S3 para almacenamiento de los archivos .dca.
+  local:
+    base_path: "${BASE_PATH}" # Directorio donde se almeca los archivos .dca.
 
 database:
   type: "${DB_TYPE}"  # Tipo de base de datos; puede ser 'mongodb' o 'dynamodb'.

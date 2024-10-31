@@ -13,7 +13,7 @@ import (
 )
 
 func TestKafkaService(t *testing.T) {
-	cfg := config.Config{
+	cfg := &config.Config{
 		Messaging: config.MessagingConfig{
 			Kafka: &config.KafkaConfig{
 				Brokers: []string{"localhost:9092"},

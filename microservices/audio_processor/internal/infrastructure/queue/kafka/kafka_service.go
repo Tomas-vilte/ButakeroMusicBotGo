@@ -12,13 +12,13 @@ import (
 )
 
 type KafkaService struct {
-	Config   config.Config
+	Config   *config.Config
 	Producer sarama.SyncProducer
 	Consumer sarama.Consumer
 	Log      logger.Logger
 }
 
-func NewKafkaService(cfgApplication config.Config, log logger.Logger) (*KafkaService, error) {
+func NewKafkaService(cfgApplication *config.Config, log logger.Logger) (*KafkaService, error) {
 	cfg := sarama.NewConfig()
 	cfg.Producer.Return.Successes = true
 	cfg.Consumer.Return.Errors = true

@@ -10,10 +10,10 @@ import (
 )
 
 type HealthHandler struct {
-	cfg config.Config
+	cfg *config.Config
 }
 
-func NewHealthHandler(cfg config.Config) *HealthHandler {
+func NewHealthHandler(cfg *config.Config) *HealthHandler {
 	return &HealthHandler{
 		cfg: cfg,
 	}

@@ -17,7 +17,7 @@ func TestIntegrationOperationStore(t *testing.T) {
 		t.Skip("Saltando test de integración en modo corto")
 	}
 
-	cfg := config.Config{
+	cfg := &config.Config{
 		AWS: &config.AWSConfig{
 			Region: os.Getenv("REGION"),
 			Credentials: config.CredentialsConfig{
@@ -117,7 +117,7 @@ func TestIntegrationOperationStore(t *testing.T) {
 		require.NoError(t, err)
 
 		// act UpdateOperationStatus
-		newStatus := "completed"
+		newStatus := "complete"
 		err = store.UpdateOperationStatus(context.Background(), result.ID, result.SK, newStatus)
 		require.NoError(t, err)
 

@@ -21,7 +21,7 @@ func TestS3StorageIntegration(t *testing.T) {
 		t.Skip("Saltando test de integración en modo corto")
 	}
 
-	cfgApp := config.Config{
+	cfgApp := &config.Config{
 		AWS: &config.AWSConfig{
 			Region: os.Getenv("REGION"),
 			Credentials: config.CredentialsConfig{
