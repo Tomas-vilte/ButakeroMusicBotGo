@@ -135,10 +135,6 @@ func (sc *SQSConfig) Validate() error {
 		errors = append(errors, "queue_url es necesario")
 	}
 
-	if sc.Topic == "" {
-		errors = append(errors, "topic es necesario")
-	}
-
 	if len(errors) > 0 {
 		return fmt.Errorf("%s", strings.Join(errors, "; "))
 	}
@@ -153,7 +149,10 @@ func (sc *StorageConfig) Validate() error {
 		}
 		return sc.S3Config.Validate()
 	case "local":
-		return nil
+		if sc.LocalConfig == nil {
+			return fmt.Errorf("configuracion local necesaria para el tipo local")
+		}
+		return sc.LocalConfig.Validate()
 	default:
 		return fmt.Errorf("tipo de storage invalido: %s", sc.Type)
 	}
@@ -239,6 +238,19 @@ func (g *GinConfig) Validate() error {
 
 	if g.Mode == "" {
 		errors = append(errors, "mode es necesario")
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("%s", strings.Join(errors, "; "))
+	}
+	return nil
+}
+
+func (l *LocalConfig) Validate() error {
+	var errors []string
+
+	if l.BasePath == "" {
+		errors = append(errors, "el base_path es necesario")
 	}
 
 	if len(errors) > 0 {

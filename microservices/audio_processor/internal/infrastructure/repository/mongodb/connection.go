@@ -15,12 +15,12 @@ import (
 type (
 	MongoDB struct {
 		client *mongo.Client
-		config config.Config
+		config *config.Config
 		log    logger.Logger
 	}
 
 	MongoOptions struct {
-		Config config.Config
+		Config *config.Config
 		Log    logger.Logger
 	}
 )
@@ -61,7 +61,7 @@ func (db *MongoDB) Close(ctx context.Context) error {
 	return db.client.Disconnect(ctx)
 }
 
-func buildMongoURI(cfg config.Config) string {
+func buildMongoURI(cfg *config.Config) string {
 	return fmt.Sprintf("mongodb://%s:%s@%s:%s",
 		cfg.Database.Mongo.User,
 		cfg.Database.Mongo.Password,

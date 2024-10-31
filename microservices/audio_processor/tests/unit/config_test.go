@@ -34,6 +34,10 @@ messaging:
     topic: "audio-process-events"
 storage:
   type: "local"
+  s3:
+   bucket_name: "test-bucket"
+  local:
+   base_path: "data/audio-files"
 database:
   type: "mongodb"
   mongodb:
@@ -70,6 +74,8 @@ database:
 	assert.Equal(t, "localhost:9092", cfg.Messaging.Kafka.Brokers[0])
 	assert.Equal(t, "audio-process-events", cfg.Messaging.Kafka.Topic)
 	assert.Equal(t, "local", cfg.Storage.Type)
+	assert.Equal(t, "data/audio-files", cfg.Storage.LocalConfig.BasePath)
+	assert.Equal(t, "test-bucket", cfg.Storage.S3Config.BucketName)
 	assert.Equal(t, "mongodb", cfg.Database.Type)
 	assert.Equal(t, "localhost", cfg.Database.Mongo.Host)
 	assert.Equal(t, "27017", cfg.Database.Mongo.Port)
@@ -81,6 +87,9 @@ func TestValidate_ValidConfig(t *testing.T) {
 		Service: config.ServiceConfig{
 			MaxAttempts: 3,
 			Timeout:     4 * time.Minute,
+		},
+		GinConfig: config.GinConfig{
+			Mode: "release",
 		},
 		AWS: &config.AWSConfig{
 			Region: "us-east-1",
@@ -98,6 +107,9 @@ func TestValidate_ValidConfig(t *testing.T) {
 		},
 		Storage: config.StorageConfig{
 			Type: "local",
+			LocalConfig: &config.LocalConfig{
+				BasePath: "data/audio-files",
+			},
 		},
 		Database: config.DatabaseConfig{
 			Type: "mongodb",

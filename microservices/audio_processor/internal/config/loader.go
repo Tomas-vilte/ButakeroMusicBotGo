@@ -99,6 +99,10 @@ func (c *Config) setStorageDefaults() {
 			c.Storage.Type = "local"
 		}
 	}
+
+	if c.Storage.LocalConfig.BasePath == "" {
+		c.Storage.LocalConfig.BasePath = "data/audio-files"
+	}
 }
 
 func (c *Config) setDatabaseDefaults() {

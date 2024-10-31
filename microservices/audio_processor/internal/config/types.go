@@ -1,6 +1,9 @@
 package config
 
-import "time"
+import (
+	"strconv"
+	"time"
+)
 
 type (
 	// Config es la estructura principal que agrupa todas las configuraciones
@@ -53,13 +56,17 @@ type (
 	// SQSConfig configuración específica de SQS
 	SQSConfig struct {
 		QueueURL string `yaml:"queue_url"`
-		Topic    string `yaml:"topic"`
 	}
 
 	// StorageConfig maneja la configuración de almacenamiento
 	StorageConfig struct {
-		Type     string    `yaml:"type"` // s3 o local
-		S3Config *S3Config `yaml:"s3,omitempty"`
+		Type        string       `yaml:"type"` // s3 o local
+		S3Config    *S3Config    `yaml:"s3,omitempty"`
+		LocalConfig *LocalConfig `yaml:"local,omitempty"`
+	}
+
+	LocalConfig struct {
+		BasePath string `yaml:"base_path"`
 	}
 
 	// S3Config configuración específica de S3
@@ -117,3 +124,11 @@ type (
 		Enabled string `yaml:"enabled"`
 	}
 )
+
+func (c OAuth2Config) ParseBool() bool {
+	oAuthEnabled, err := strconv.ParseBool(c.Enabled)
+	if err != nil {
+		return false
+	}
+	return oAuthEnabled
+}

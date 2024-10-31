@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"io"
 	"os"
@@ -11,15 +12,15 @@ import (
 )
 
 type LocalStorage struct {
-	BasePath string
+	config *config.Config
 }
 
-func NewLocalStorage(basePath string) (*LocalStorage, error) {
-	if err := os.MkdirAll(basePath, 0755); err != nil {
-		return nil, fmt.Errorf("error creando directorio base %s:%w", basePath, err)
+func NewLocalStorage(cfg *config.Config) (*LocalStorage, error) {
+	if err := os.MkdirAll(cfg.Storage.LocalConfig.BasePath, 0777); err != nil {
+		return nil, fmt.Errorf("error creando directorio base %s:%w", cfg.Storage.LocalConfig.BasePath, err)
 	}
 
-	testFile := filepath.Join(basePath, ".write_test")
+	testFile := filepath.Join(cfg.Storage.LocalConfig.BasePath, ".write_test")
 	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
 		return nil, fmt.Errorf("el directorio %s no es escribible: %w", testFile, err)
 	}
@@ -30,7 +31,7 @@ func NewLocalStorage(basePath string) (*LocalStorage, error) {
 		}
 	}()
 
-	return &LocalStorage{BasePath: basePath}, nil
+	return &LocalStorage{config: cfg}, nil
 }
 
 func (l *LocalStorage) UploadFile(ctx context.Context, key string, body io.Reader) error {
@@ -48,7 +49,7 @@ func (l *LocalStorage) UploadFile(ctx context.Context, key string, body io.Reade
 		key += ".dca"
 	}
 
-	fullPath := filepath.Join(l.BasePath, "audio", key)
+	fullPath := filepath.Join(l.config.Storage.LocalConfig.BasePath, "audio", key)
 
 	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
 		return fmt.Errorf("error creando directorio para %s: %w", fullPath, err)
@@ -84,7 +85,7 @@ func (l *LocalStorage) GetFileMetadata(ctx context.Context, key string) (*model.
 		key += ".dca"
 	}
 
-	fullPath := filepath.Join(l.BasePath, "audio", key)
+	fullPath := filepath.Join(l.config.Storage.LocalConfig.BasePath, "audio", key)
 
 	fileInfo, err := os.Stat(fullPath)
 	if err != nil {
