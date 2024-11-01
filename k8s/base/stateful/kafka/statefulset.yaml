@@ -22,26 +22,42 @@ spec:
         - containerPort: 29092
           name: internal
         env:
-        - name: KAFKA_BROKER_ID
+        - name: POD_IP
           valueFrom:
             fieldRef:
-              fieldPath: metadata.name
+              fieldPath: status.podIP
+        - name: KAFKA_HEAP_OPTS
+          value: "-Xmx1G -Xms1G"
         - name: KAFKA_ZOOKEEPER_CONNECT
-          value: "zookeeper-headless:2181"
+          value: "zookeeper-0.zookeeper-headless:2181,zookeeper-1.zookeeper-headless:2181,zookeeper-2.zookeeper-headless:2181"
         - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
           value: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
         - name: KAFKA_LISTENERS
           value: "INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092"
         - name: KAFKA_ADVERTISED_LISTENERS
-          value: "INTERNAL://$(POD_NAME).kafka-headless:29092,EXTERNAL://$(POD_NAME).kafka-headless:9092"
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
+          value: "INTERNAL://$(POD_IP):29092,EXTERNAL://$(POD_IP):9092"
         - name: KAFKA_INTER_BROKER_LISTENER_NAME
           value: "INTERNAL"
         - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
           value: "3"
+        - name: KAFKA_DEFAULT_REPLICATION_FACTOR
+          value: "3"
+        - name: KAFKA_MIN_INSYNC_REPLICAS
+          value: "2"
+        - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+          value: "false"
+        command:
+        - sh
+        - -c
+        - |
+          HOSTNAME=$(hostname -s)
+          if [[ $HOSTNAME =~ (.*)-([0-9]+)$ ]]; then
+            export KAFKA_BROKER_ID=${BASH_REMATCH[2]}
+          else
+            echo "No se pudo extraer la identificación del broker del nombre de host $HOST"
+            exit 1
+          fi
+          exec /etc/confluent/docker/run
         volumeMounts:
         - name: data
           mountPath: /var/lib/kafka/data
