@@ -35,13 +35,16 @@ messaging:
 storage:
   type: "local"
   s3:
-   bucket_name: "test-bucket"
+    bucket_name: "test-bucket"
   local:
-   base_path: "data/audio-files"
+    base_path: "data/audio-files"
 database:
   type: "mongodb"
   mongodb:
-    host: "localhost"
+    hosts:
+      - "mongo_host01"
+      - "mongo_host02"
+      - "mongo_host03"
     port: "27017"
     user: "test_user"
     password: "test_password"
@@ -65,6 +68,7 @@ database:
 
 	// Verificar la configuración cargada
 	assert.Equal(t, "local", cfg.Environment)
+	assert.Equal(t, "release", cfg.GinConfig.Mode)
 	assert.Equal(t, 3, cfg.Service.MaxAttempts)
 	assert.Equal(t, "4m0s", cfg.Service.Timeout.String())
 	assert.Equal(t, "us-east-1", cfg.AWS.Region)
@@ -74,11 +78,16 @@ database:
 	assert.Equal(t, "localhost:9092", cfg.Messaging.Kafka.Brokers[0])
 	assert.Equal(t, "audio-process-events", cfg.Messaging.Kafka.Topic)
 	assert.Equal(t, "local", cfg.Storage.Type)
-	assert.Equal(t, "data/audio-files", cfg.Storage.LocalConfig.BasePath)
 	assert.Equal(t, "test-bucket", cfg.Storage.S3Config.BucketName)
+	assert.Equal(t, "data/audio-files", cfg.Storage.LocalConfig.BasePath)
 	assert.Equal(t, "mongodb", cfg.Database.Type)
-	assert.Equal(t, "localhost", cfg.Database.Mongo.Host)
+	assert.Equal(t, "mongo_host01", cfg.Database.Mongo.Host[0])
 	assert.Equal(t, "27017", cfg.Database.Mongo.Port)
+	assert.Equal(t, "test_user", cfg.Database.Mongo.User)
+	assert.Equal(t, "test_password", cfg.Database.Mongo.Password)
+	assert.Equal(t, "audio_processor", cfg.Database.Mongo.Database)
+	assert.Equal(t, "songs", cfg.Database.Mongo.Collections.Songs)
+	assert.Equal(t, "operations", cfg.Database.Mongo.Collections.Operations)
 }
 
 func TestValidate_ValidConfig(t *testing.T) {
@@ -114,7 +123,7 @@ func TestValidate_ValidConfig(t *testing.T) {
 		Database: config.DatabaseConfig{
 			Type: "mongodb",
 			Mongo: &config.MongoConfig{
-				Host:     "localhost",
+				Host:     []string{"localhost"},
 				Port:     "27017",
 				User:     "test_user",
 				Password: "test_password",

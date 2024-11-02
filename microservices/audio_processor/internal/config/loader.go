@@ -6,7 +6,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 )
 
@@ -106,33 +105,33 @@ func (c *Config) setStorageDefaults() {
 }
 
 func (c *Config) setDatabaseDefaults() {
-	if c.Environment == "local" {
-		if c.Database.Type == "" {
-			c.Database.Type = "mongodb"
-		}
-		if c.Database.Mongo != nil {
-			if c.Database.Mongo.Host == "" {
-				c.Database.Mongo.Host = "localhost"
-			}
-			if c.Database.Mongo.Port == "" {
-				c.Database.Mongo.Port = "27017"
-			}
-			if c.Database.Mongo.Collections.Songs == "" {
-				c.Database.Mongo.Collections.Songs = "songs"
-			}
-			if c.Database.Mongo.Collections.Operations == "" {
-				c.Database.Mongo.Collections.Operations = "operations"
-			}
-		}
+	if c.Environment != "local" {
+		return
 	}
-}
 
-func (g *GinConfig) ParseBool() bool {
-	oauth2Enabled, err := strconv.ParseBool(g.Mode)
-	if err != nil {
-		return false
+	if c.Database.Type == "" {
+		c.Database.Type = "mongodb"
 	}
-	return oauth2Enabled
+
+	if c.Database.Mongo == nil {
+		return
+	}
+
+	if len(c.Database.Mongo.Host) == 0 {
+		c.Database.Mongo.Host = []string{"localhost"}
+	}
+
+	if c.Database.Mongo.Port == "" {
+		c.Database.Mongo.Port = "27017"
+	}
+
+	if c.Database.Mongo.Collections.Songs == "" {
+		c.Database.Mongo.Collections.Songs = "songs"
+	}
+
+	if c.Database.Mongo.Collections.Operations == "" {
+		c.Database.Mongo.Collections.Operations = "operations"
+	}
 }
 
 func LoadConfig(configPath string) (*Config, error) {
