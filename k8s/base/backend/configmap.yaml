@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  environment: "local"
+  GIN_MODE: "release"
+  MESSAGING_TYPE: "kafka"
+  STORAGE_TYPE: "local"
+  DB_TYPE: "mongodb"
+  MONGO_PORT: "27017"
+  MONGO_DATABASE: "audio_service_db"
+  MONGO_SONGS_COLLECTION: "songs"
+  MONGO_OPERATION_RESULTS_COLLECTION: "operations"
+  BASE_PATH: "/data/audio"
+  TOPIC: "notification"
+  OAUTH2: "false"
+  config.yaml: |
+    environment: ${ENV}
+    gin:
+      mode: ${GIN_MODE}
+
+    service:
+      max_attempts: 3
+      timeout: "1m"
+
+    api:
+      youtube:
+        api_key: ${YOUTUBE_API_KEY}
+      oauth2:
+        enabled: ${OAUTH2}
+
+    messaging:
+      type: ${MESSAGING_TYPE}
+      kafka:
+        brokers: [${KAFKA_BROKERS}]
+        topic: ${TOPIC}
+
+    storage:
+      type: ${STORAGE_TYPE}
+      local:
+        base_path: ${BASE_PATH}
+
+    database:
+      type: ${DB_TYPE}
+      mongodb:
+        hosts:
+          - "${MONGO_HOST_0}"  
+          - "${MONGO_HOST_1}" 
+          - "${MONGO_HOST_2}"
+        port: ${MONGO_PORT}
+        user: ${MONGO_USER}
+        password: ${MONGO_PASSWORD}
+        database: ${MONGO_DATABASE}
+        collections:
+          songs: ${MONGO_SONGS_COLLECTION}
+          operations: ${MONGO_OPERATION_RESULTS_COLLECTION}
