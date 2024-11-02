@@ -3,13 +3,15 @@ package mongodb
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.uber.org/zap"
-	"time"
 )
 
 type (
@@ -34,6 +36,7 @@ func NewMongoDB(opts MongoOptions) (*MongoDB, error) {
 	defer cancel()
 
 	uri := buildMongoURI(opts.Config)
+	fmt.Printf("URL DE MONDONGO: %s", uri)
 	clientOptions := options.Client().ApplyURI(uri)
 
 	client, err := mongo.Connect(ctx, clientOptions)
@@ -46,6 +49,7 @@ func NewMongoDB(opts MongoOptions) (*MongoDB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error al hacer ping a MongoDB: %w", err)
 	}
+	fmt.Println("Conexion exitosa")
 	return &MongoDB{
 		client: client,
 		config: opts.Config,
@@ -62,9 +66,9 @@ func (db *MongoDB) Close(ctx context.Context) error {
 }
 
 func buildMongoURI(cfg *config.Config) string {
-	return fmt.Sprintf("mongodb://%s:%s@%s:%s",
+	hostList := strings.Join(cfg.Database.Mongo.Host, ",")
+	return fmt.Sprintf("mongodb://%s:%s@%s/?replicaSet=rs0",
 		cfg.Database.Mongo.User,
 		cfg.Database.Mongo.Password,
-		cfg.Database.Mongo.Host,
-		cfg.Database.Mongo.Port)
+		hostList)
 }

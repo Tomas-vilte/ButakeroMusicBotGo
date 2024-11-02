@@ -36,7 +36,10 @@ storage:
 database:
   type: "${DB_TYPE}"  # Tipo de base de datos; puede ser 'mongodb' o 'dynamodb'.
   mongodb:
-    host: "${MONGO_HOST}"  # Host de conexión a MongoDB.
+    hosts:
+      - "${MONGO_HOST_0}"  # Host del primer nodo de MongoDB.
+      - "${MONGO_HOST_1}"  # Host del segundo nodo de MongoDB.
+      - "${MONGO_HOST_2}"  # Host del tercer nodo de MongoDB.
     port: "${MONGO_PORT}"  # Puerto para la conexión a MongoDB.
     user: "${MONGO_USER}"  # Usuario de la base de datos MongoDB.
     password: "${MONGO_PASSWORD}"  # Contraseña para MongoDB.

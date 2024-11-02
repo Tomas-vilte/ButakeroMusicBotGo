@@ -197,6 +197,12 @@ func (mc *MongoConfig) Validate() error {
 		errors = append(errors, "operations es necesario")
 	}
 
+	for _, host := range mc.Host {
+		if host == "" {
+			errors = append(errors, "host es necesario")
+		}
+	}
+
 	if len(errors) > 0 {
 		return fmt.Errorf("%s", strings.Join(errors, "; "))
 	}
