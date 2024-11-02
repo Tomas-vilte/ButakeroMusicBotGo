@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  labels:
+    app: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: tomasvilte/music-downloader-service:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ENV
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: environment
+        - name: GIN_MODE
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: GIN_MODE
+        - name: MONGO_HOST
+          value: "mongodb-headless"
+        - name: MONGO_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: MONGO_PORT
+        - name: MONGO_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: MONGO_DATABASE
+        - name: MONGO_SONGS_COLLECTION
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: MONGO_SONGS_COLLECTION
+        - name: MONGO_OPERATION_RESULTS_COLLECTION
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: MONGO_OPERATION_RESULTS_COLLECTION
+        - name: KAFKA_BROKERS
+          value: "kafka-headless:29092"
+        - name: TOPIC
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: TOPIC
+        - name: MESSAGING_TYPE
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: MESSAGING_TYPE
+        - name: STORAGE_TYPE
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: STORAGE_TYPE
+        - name: BASE_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: BASE_PATH
+        - name: MONGO_USER 
+          valueFrom:
+            secretKeyRef:
+              name: backend-secret
+              key: MONGO_USER
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: backend-secret
+              key: MONGO_PASSWORD
+        - name: YOUTUBE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: backend-secret
+              key: YOUTUBE_API_KEY
+        - name: MONGO_HOST_0
+          value: "mongo-0.mongodb-service-cluster"
+        - name: MONGO_HOST_1
+          value: "mongo-1.mongodb-service-cluster"
+        - name: MONGO_HOST_2
+          value: "mongo-2.mongodb-service-cluster"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /root/config.yaml
+          subPath: config.yaml
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: config-volume
+        configMap:
+          name: app-config
