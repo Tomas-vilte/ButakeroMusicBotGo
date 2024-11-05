@@ -37,8 +37,9 @@ services:
       - test-application
 
   mongodb:
-    image: mongo:6
+    image: mongo:8
     container_name: mongodb
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017", "--keyFile", "/etc/mongodb/pki/keyfile"]
     environment:
       MONGO_INITDB_DATABASE: audio_service_db
       MONGO_INITDB_ROOT_USERNAME: root
@@ -47,14 +48,15 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+      - ${PWD}/rs_keyfile:/etc/mongodb/pki/keyfile
     networks:
       - test-application
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]}) }"| mongosh --port 27017 -u root -p root --authenticationDatabase admin
+      interval: 5s
+      timeout: 15s
+      retries: 7
+      start_period: 15s
 
   backend:
     build:
@@ -67,13 +69,13 @@ services:
         condition: service_healthy
     container_name: backend-application
     env_file:
-      - ./credentials_aws.env
+      - ./test_local.env
     ports:
       - "8080:8080"
     networks:
       - test-application
     volumes:
-      - ./configurations/config.yaml:/root/config.yaml
+      - ./configurations/config.yaml:/root/configurations/config.yaml
     
 volumes:
   mongo_data:
