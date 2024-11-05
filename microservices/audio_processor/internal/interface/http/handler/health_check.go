@@ -21,29 +21,19 @@ func NewHealthHandler(cfg *config.Config) *HealthHandler {
 
 func (h *HealthHandler) HealthCheckHandler(c *gin.Context) {
 	var wg sync.WaitGroup
-	wg.Add(2)
-
 	var mu sync.Mutex
-
 	results := make(map[string]string)
 	allHealthy := true
 
-	services := map[string]func(ctx context.Context) error{
-		"DynamoDB": func(ctx context.Context) error {
-			defer wg.Done()
-			return api.CheckDynamoDB(ctx, h.cfg)
-		},
-		"S3": func(ctx context.Context) error {
-			defer wg.Done()
-			return api.CheckS3(ctx, h.cfg)
-		},
-	}
+	services := h.getServiceChecks()
+	wg.Add(len(services))
 
 	for name, check := range services {
 		go func(name string, check func(ctx context.Context) error) {
+			defer wg.Done()
 			if err := check(c.Request.Context()); err != nil {
 				mu.Lock()
-				results[name] = "indisponible: " + err.Error()
+				results[name] = "indisponible " + err.Error()
 				allHealthy = false
 				mu.Unlock()
 			} else {
@@ -53,18 +43,40 @@ func (h *HealthHandler) HealthCheckHandler(c *gin.Context) {
 			}
 		}(name, check)
 	}
-
 	wg.Wait()
 
 	status := http.StatusOK
-	message := "Todos los servicios son saludables."
+	message := "Todos los servicios son saludables"
 	if !allHealthy {
 		status = http.StatusInternalServerError
-		message = "Uno o más servicios no están saludables"
+		message = "Uno o mas servicios no estan saludables"
 	}
 
 	c.JSON(status, gin.H{
-		"status":   message,
-		"services": results,
+		"status":      message,
+		"services":    results,
+		"environment": h.cfg.Environment,
 	})
+}
+
+func (h *HealthHandler) getServiceChecks() map[string]func(ctx context.Context) error {
+	switch h.cfg.Environment {
+	case "local":
+		return map[string]func(ctx context.Context) error{
+			"MongoDB": func(ctx context.Context) error {
+				return api.CheckMongoDB(ctx, h.cfg)
+			},
+		}
+	case "aws":
+		return map[string]func(ctx context.Context) error{
+			"DynamoDB": func(ctx context.Context) error {
+				return api.CheckDynamoDB(ctx, h.cfg)
+			},
+			"S3": func(ctx context.Context) error {
+				return api.CheckS3(ctx, h.cfg)
+			},
+		}
+	default:
+		return nil
+	}
 }

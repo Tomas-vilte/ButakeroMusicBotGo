@@ -197,10 +197,16 @@ func (mc *MongoConfig) Validate() error {
 		errors = append(errors, "operations es necesario")
 	}
 
+	validHost := false
 	for _, host := range mc.Host {
-		if host == "" {
-			errors = append(errors, "host es necesario")
+		if host != "" {
+			validHost = true
+			break
 		}
+	}
+
+	if !validHost {
+		errors = append(errors, "al menos un host es necesario")
 	}
 
 	if len(errors) > 0 {

@@ -10,3 +10,4 @@
 /microservices/audio_processor/credentials.env
 /microservices/audio_processor/credentials_aws.env
 /microservices/audio_processor/test_local.env
+/microservices/audio_processor/rs_keyfile
