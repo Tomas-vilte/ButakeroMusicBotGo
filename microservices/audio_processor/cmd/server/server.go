@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/factory"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/service"
@@ -21,7 +20,6 @@ func StartServer() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(cfg.Database.Mongo.Host)
 
 	var envFactory factory.EnvironmentFactory
 	if cfg.Environment == "aws" {

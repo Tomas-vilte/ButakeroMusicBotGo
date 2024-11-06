@@ -36,7 +36,6 @@ func NewMongoDB(opts MongoOptions) (*MongoDB, error) {
 	defer cancel()
 
 	uri := buildMongoURI(opts.Config)
-	fmt.Printf("URL DE MONDONGO: %s", uri)
 	clientOptions := options.Client().ApplyURI(uri)
 
 	client, err := mongo.Connect(ctx, clientOptions)
@@ -49,7 +48,7 @@ func NewMongoDB(opts MongoOptions) (*MongoDB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error al hacer ping a MongoDB: %w", err)
 	}
-	fmt.Println("Conexion exitosa")
+	opts.Log.Info("Conexion exitosa a MongoDB")
 	return &MongoDB{
 		client: client,
 		config: opts.Config,

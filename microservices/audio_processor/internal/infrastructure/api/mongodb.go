@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"strings"
 	"time"
 )
@@ -26,7 +27,7 @@ func CheckMongoDB(ctx context.Context, cfgApplication *config.Config) error {
 	}
 	defer client.Disconnect(ctx)
 
-	err = client.Ping(ctx, nil)
+	err = client.Ping(ctx, readpref.PrimaryPreferred())
 	if err != nil {
 		return fmt.Errorf("error al hacer ping a MongoDB: %w", err)
 	}
@@ -54,17 +55,6 @@ func CheckMongoDB(ctx context.Context, cfgApplication *config.Config) error {
 
 	if !hasPrimary {
 		return fmt.Errorf("no se encontró un nodo primario en el replica set")
-	}
-
-	db := client.Database(cfgApplication.Database.Mongo.Database)
-
-	collections, err := db.ListCollectionNames(ctx, bson.D{{"name", cfgApplication.Database.Mongo.Collections.Operations}})
-	if err != nil {
-		return fmt.Errorf("error al listar colecciones: %w", err)
-	}
-
-	if len(collections) == 0 {
-		return fmt.Errorf("la colección %s no existe", cfgApplication.Database.Mongo.Collections.Operations)
 	}
 
 	return nil

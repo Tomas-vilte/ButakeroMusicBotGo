@@ -36,7 +36,7 @@ func LoggingMiddleware(l logger.Logger) gin.HandlerFunc {
 
 		// Obtener información adicional del contexto
 		statusCode := c.Writer.Status()
-		errorMessage := c.Errors.ByType(gin.ErrorTypePrivate).String()
+		errorMessage := c.Errors.ByType(gin.ErrorTypePublic).String()
 
 		// Logging después de procesar la solicitud
 		l.Info("Respuesta enviada",
