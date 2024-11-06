@@ -14,8 +14,12 @@ resources:
   - stateful/mongodb/mongo-persistentvolume.yaml
   - stateful/mongodb/service.yaml
   - stateful/mongodb/statefulset.yaml
+  - stateful/mongodb/mongodb-job-init.yaml
+  - stateful/mongodb/mongodb-auth-enable.yaml
+
 
   # Backend services
   - backend/configmap.yaml
   - backend/service.yaml
   - backend/deployment.yaml
+  - backend/ingress.yaml

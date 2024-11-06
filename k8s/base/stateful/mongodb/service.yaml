@@ -3,10 +3,10 @@ kind: Service
 metadata:
   name: mongodb-service-cluster
 spec:
+  clusterIP: None
   selector:
     app: mongo
   ports:
-    - protocol: TCP
-      port: 27017
+    - port: 27017
       targetPort: 27017
-  type: ClusterIP
+  publishNotReadyAddresses: true
