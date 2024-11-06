@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongo-auth-enable
+spec:
+  template:
+    spec:
+      containers:
+      - name: mongo-auth-enable
+        image: mongo:8
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Habilitando autenticacion..."
+          mongosh --host mongo-0.mongodb-service-cluster:27017 -u ${MONGO_INITDB_ROOT_USERNAME} -p ${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin <<EOF
+          use admin;
+          db.adminCommand({ setParameter: 1, authenticationMechanisms: ["SCRAM-SHA-1", "SCRAM-SHA-256"] });
+          EOF
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secrets
+              key: MONGO_USER
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-secrets
+              key: MONGO_PASSWORD
+      restartPolicy: OnFailure
