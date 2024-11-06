@@ -22,4 +22,3 @@ resources:
   - backend/configmap.yaml
   - backend/service.yaml
   - backend/deployment.yaml
-  - backend/ingress.yaml

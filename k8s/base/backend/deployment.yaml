@@ -1,21 +1,46 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend
+  name: backend-processing-audio
   labels:
-    app: backend
+    app: backend-processing-audio
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: backend
+      app: backend-processing-audio
   template:
     metadata:
       labels:
-        app: backend
+        app: backend-processing-audio
     spec:
+      initContainers:
+      - name: wait-for-mongodb
+        image: busybox:1.28
+        command: ['sh', '-c', '
+          until nc -z mongodb-service-cluster 27017; 
+          do 
+            echo waiting for mongodb;
+            sleep 2; 
+          done;']
+      - name: wait-for-kafka
+        image: busybox:1.28
+        command: ['sh', '-c', '
+          until nc -z kafka-headless 29092; 
+          do 
+            echo waiting for kafka;
+            sleep 2; 
+          done;']
+      - name: wait-for-zookeeper
+        image: busybox:1.28
+        command: ['sh', '-c', '
+          until nc -z zookeeper-headless 2181; 
+          do 
+            echo waiting for zookeeper;
+            sleep 2; 
+          done;']
       containers:
-      - name: backend
+      - name: backend-processing-audio
         image: tomasvilte/music-downloader-service:latest
         ports:
         - containerPort: 8080
@@ -30,8 +55,6 @@ spec:
             configMapKeyRef:
               name: app-config
               key: GIN_MODE
-        - name: MONGO_HOST
-          value: "mongodb-headless"
         - name: MONGO_PORT
           valueFrom:
             configMapKeyRef:
@@ -97,7 +120,7 @@ spec:
           value: "mongo-2.mongodb-service-cluster"
         volumeMounts:
         - name: config-volume
-          mountPath: /root/config.yaml
+          mountPath: /root/configurations/config.yaml
           subPath: config.yaml
         resources:
           requests:
