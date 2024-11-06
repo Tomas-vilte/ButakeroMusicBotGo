@@ -18,28 +18,17 @@ spec:
         image: mongo:8
         command:
           - mongod
-          - '--bind_ip_all'
-          - '--replSet'
+          - "--replSet"
           - rs0
+          - "--bind_ip_all"
         ports:
         - containerPort: 27017
-        env:
-        - name: MONGO_INITDB_ROOT_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: mongodb-secrets
-              key: MONGO_USER
-        - name: MONGO_INITDB_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mongodb-secrets
-              key: MONGO_PASSWORD
         resources:
           requests:
             memory: "1Gi"
             cpu: "0.5"
         volumeMounts:
-        - name: mongo-data  
+        - name: mongo-data
           mountPath: /data/db
   volumeClaimTemplates:
   - metadata:
