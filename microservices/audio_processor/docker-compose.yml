@@ -1,6 +1,6 @@
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:7.7.1
     container_name: zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -11,7 +11,7 @@ services:
       - test-application
 
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.7.1
     depends_on:
       - zookeeper
     container_name: kafka
@@ -39,7 +39,7 @@ services:
   mongodb:
     image: mongo:8
     container_name: mongodb
-    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017", "--keyFile", "/etc/mongodb/pki/keyfile"]
+    command: ["bash", "/etc/mongodb/pki/init.sh", "--replSet", "rs0", "--bind_ip_all", "--port", "27017", "--keyFile", "/etc/mongodb/pki/keyfile"]
     environment:
       MONGO_INITDB_DATABASE: audio_service_db
       MONGO_INITDB_ROOT_USERNAME: root
@@ -48,7 +48,7 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
-      - ${PWD}/rs_keyfile:/etc/mongodb/pki/keyfile
+      - ${PWD}/init.sh:/etc/mongodb/pki/init.sh  
     networks:
       - test-application
     healthcheck:
@@ -57,6 +57,7 @@ services:
       timeout: 15s
       retries: 7
       start_period: 15s
+    restart: always
 
   backend:
     build:
