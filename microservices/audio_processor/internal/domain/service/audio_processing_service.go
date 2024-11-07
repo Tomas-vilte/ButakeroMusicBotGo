@@ -143,9 +143,21 @@ func (a *AudioProcessingService) processAudioAttempt(ctx context.Context, operat
 		return fmt.Errorf("error al guardar resultado de operación: %w", err)
 	}
 
-	message := port.Message{
+	message := model.Message{
 		ID:      operationID,
-		Content: "hola desde el service",
+		Content: "Procesamiento de audio exitoso",
+		Status: model.Status{
+			ID:             operationID,
+			SK:             metadata.VideoID,
+			Status:         statusSuccess,
+			Message:        "Procesamiento exitoso",
+			Metadata:       metadata,
+			FileData:       fileMetadata,
+			ProcessingDate: time.Now().UTC(),
+			Success:        true,
+			Attempts:       attempt,
+			Failures:       0,
+		},
 	}
 
 	if err := a.messaging.SendMessage(ctx, message); err != nil {
@@ -203,9 +215,26 @@ func (a *AudioProcessingService) handleFailedProcessing(ctx context.Context, ope
 		a.log.Error("Error al guardar resultado de operación fallida", zap.Error(err))
 	}
 
-	message := port.Message{
+	message := model.Message{
 		ID:      operationID,
-		Content: "hola desde el service 1",
+		Content: "Procesamiento de audio fallido después de varios intentos",
+		Status: model.Status{
+			ID:       operationID,
+			SK:       metadata.VideoID,
+			Status:   statusFailed,
+			Message:  result.Message,
+			Metadata: result.Metadata,
+			FileData: &model.FileData{
+				FilePath:  "",
+				FileSize:  "",
+				FileType:  "",
+				PublicURL: "",
+			},
+			ProcessingDate: time.Now().UTC(),
+			Success:        false,
+			Attempts:       a.config.Service.MaxAttempts,
+			Failures:       a.config.Service.MaxAttempts,
+		},
 	}
 
 	if err := a.messaging.SendMessage(ctx, message); err != nil {
