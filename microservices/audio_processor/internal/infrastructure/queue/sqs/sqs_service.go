@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/port"
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"time"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
@@ -19,8 +20,10 @@ import (
 )
 
 const (
-	maxRetries     = 3
-	retryBaseDelay = time.Second
+	maxRetries          = 3
+	retryBaseDelay      = time.Second
+	maxNumberOfMessages = 10
+	waitTimeSeconds     = 20
 )
 
 type SQSService struct {
@@ -30,6 +33,14 @@ type SQSService struct {
 }
 
 func NewSQSService(cfgApplication *config.Config, log logger.Logger) (*SQSService, error) {
+	if cfgApplication == nil {
+		return nil, errors.New("config no puede ser nil")
+	}
+
+	if log == nil {
+		return nil, errors.New("logger no puede ser nil")
+	}
+
 	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(),
 		awsCfg.WithRegion(cfgApplication.AWS.Region),
 		awsCfg.WithCredentialsProvider(
@@ -54,13 +65,7 @@ func NewSQSService(cfgApplication *config.Config, log logger.Logger) (*SQSServic
 }
 
 func (s *SQSService) SendMessage(ctx context.Context, message model.Message) error {
-	// Convertimos Message a MessageBody para la serialización
-	messageBody := model.MessageBody{
-		ID:      message.ID,
-		Content: message.Content,
-	}
-
-	body, err := json.Marshal(messageBody)
+	body, err := json.Marshal(message)
 	if err != nil {
 		return errors.Wrap(err, "error al serializar mensaje")
 	}
@@ -70,77 +75,135 @@ func (s *SQSService) SendMessage(ctx context.Context, message model.Message) err
 		MessageBody: aws.String(string(body)),
 	}
 
-	var result *sqs.SendMessageOutput
-	for i := 0; i < maxRetries; i++ {
-		result, err = s.Client.SendMessage(ctx, input)
+	return s.sendMessageWithRetry(ctx, input, message.ID)
+}
+
+// sendMessageWithRetry implementa la lógica de reintento para enviar mensajes
+func (s *SQSService) sendMessageWithRetry(ctx context.Context, input *sqs.SendMessageInput, messageID string) error {
+	var lastErr error
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		result, err := s.Client.SendMessage(ctx, input)
 		if err == nil {
-			s.Log.Info("Mensaje enviado exitosamente",
-				zap.String("messageID", message.ID),
+			s.Log.Info("Message enviado con exito",
+				zap.String("messageID", messageID),
 				zap.String("sqsMessageID", *result.MessageId))
 			return nil
 		}
-		s.Log.Warn("Error al enviar mensaje, reintentando",
+
+		lastErr = err
+		backoff := time.Duration(attempt+1) * retryBaseDelay
+
+		s.Log.Warn("No se pudo enviar el mensaje, reintentando",
 			zap.Error(err),
-			zap.Int("retry", i+1))
-		time.Sleep(retryBaseDelay * time.Duration(i+1))
+			zap.Int("attempt", attempt+1),
+			zap.Duration("backoff", backoff))
+
+		select {
+		case <-ctx.Done():
+			return errors.Wrap(ctx.Err(), "contexto cancelado al reintentar")
+		case <-time.After(backoff):
+			continue
+		}
 	}
 
-	return errors.Wrap(err, "error al enviar mensaje a SQS después de varios intentos")
+	return errors.Wrap(lastErr, "No se pudo enviar el mensaje a SQS después de todos los reintentos.")
 }
 
 func (s *SQSService) ReceiveMessage(ctx context.Context) ([]model.Message, error) {
 	input := &sqs.ReceiveMessageInput{
-		QueueUrl:            aws.String(s.Config.Messaging.SQS.QueueURL),
-		MaxNumberOfMessages: 10,
-		WaitTimeSeconds:     1,
+		QueueUrl:              aws.String(s.Config.Messaging.SQS.QueueURL),
+		MaxNumberOfMessages:   maxNumberOfMessages,
+		WaitTimeSeconds:       waitTimeSeconds,
+		AttributeNames:        []types.QueueAttributeName{types.QueueAttributeNameAll},
+		MessageAttributeNames: []string{"All"},
 	}
 
-	result, err := s.Client.ReceiveMessage(ctx, input)
-	if err != nil {
-		s.Log.Error("Error al recibir mensajes de SQS", zap.Error(err))
-		return nil, errors.Wrap(err, "error al recibir mensaje de SQS")
-	}
+	var messages []model.Message
+	var lastErr error
 
-	messages := make([]model.Message, 0, len(result.Messages))
-	for _, msg := range result.Messages {
-		var messageBody model.MessageBody
-		if err := json.Unmarshal([]byte(*msg.Body), &messageBody); err != nil {
-			s.Log.Error("Error al deserializar mensaje",
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		result, err := s.Client.ReceiveMessage(ctx, input)
+		if err == nil {
+			messages, err = s.processReceivedMessages(result.Messages)
+			if err == nil {
+				s.Log.Info("Message recibido con exito",
+					zap.Int("count", len(result.Messages)))
+				return messages, nil
+			}
+		}
+
+		lastErr = err
+		backoff := time.Duration(attempt+1) * retryBaseDelay
+
+		s.Log.Warn("Error al recibir los mensajes, reintentando",
+			zap.Error(err),
+			zap.Int("attempt", attempt+1),
+			zap.Duration("backoff", backoff))
+
+		select {
+		case <-ctx.Done():
+			return nil, errors.Wrap(ctx.Err(), "contexto cancelado al recibir mensajes")
+		case <-time.After(backoff):
+			continue
+		}
+	}
+	return nil, errors.Wrap(lastErr, "No se pudieron recibir mensajes de SQS después de todos los reintentos.")
+}
+
+func (s *SQSService) processReceivedMessages(sqsMessages []types.Message) ([]model.Message, error) {
+	messages := make([]model.Message, 0, len(sqsMessages))
+
+	for _, sqsMsg := range sqsMessages {
+		var msg model.Message
+		err := json.Unmarshal([]byte(*sqsMsg.Body), &msg)
+		if err != nil {
+			s.Log.Error("No se pudo deserializar el mensaje",
 				zap.Error(err),
-				zap.String("messageBody", *msg.Body))
+				zap.String("messageID", *sqsMsg.MessageId))
 			continue
 		}
 
-		message := model.Message{
-			ID:            messageBody.ID,
-			Content:       messageBody.Content,
-			ReceiptHandle: *msg.ReceiptHandle,
-		}
-
-		messages = append(messages, message)
-
-		s.Log.Debug("Mensaje recibido",
-			zap.String("ID", message.ID),
-			zap.String("Content", message.Content),
-			zap.String("ReceiptHandle", message.ReceiptHandle))
+		msg.ReceiptHandle = *sqsMsg.ReceiptHandle
+		messages = append(messages, msg)
 	}
 
-	s.Log.Info("Mensajes recibidos exitosamente", zap.Int("count", len(messages)))
 	return messages, nil
 }
 
 func (s *SQSService) DeleteMessage(ctx context.Context, receiptHandle string) error {
+	if receiptHandle == "" {
+		return errors.New("receipt handle no puede estar vacio")
+	}
+
 	input := &sqs.DeleteMessageInput{
 		QueueUrl:      aws.String(s.Config.Messaging.SQS.QueueURL),
 		ReceiptHandle: aws.String(receiptHandle),
 	}
 
-	_, err := s.Client.DeleteMessage(ctx, input)
-	if err != nil {
-		s.Log.Error("Error al eliminar el mensaje de SQS", zap.Error(err))
-		return errors.Wrap(err, "error al eliminar el mensaje de SQS")
-	}
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		_, err := s.Client.DeleteMessage(ctx, input)
+		if err == nil {
+			s.Log.Info("Mensaje eliminado con exito",
+				zap.String("receiptHandle", receiptHandle))
+			return nil
+		}
+		lastErr = err
+		backoff := time.Duration(attempt+1) * retryBaseDelay
 
-	s.Log.Info("Mensaje eliminado exitosamente", zap.String("receiptHandle", receiptHandle))
-	return nil
+		s.Log.Warn("Error al eliminar el mensaje, reintentando",
+			zap.Error(err),
+			zap.String("receiptHandle", receiptHandle),
+			zap.Int("attempt", attempt+1),
+			zap.Duration("backoff", backoff))
+
+		select {
+		case <-ctx.Done():
+			return errors.Wrap(ctx.Err(), "contexto cancelado mientras eliminaba el mensaje")
+		case <-time.After(backoff):
+			continue
+		}
+	}
+	return errors.Wrap(lastErr, "No se pudo eliminar el mensaje de SQS después de todos los reintentos.")
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/mock"
 	"go.uber.org/zap/zapcore"
 	"io"
@@ -55,10 +54,6 @@ type (
 	}
 
 	MockDynamoDBAPI struct {
-		mock.Mock
-	}
-
-	MockSQSClient struct {
 		mock.Mock
 	}
 
@@ -206,21 +201,6 @@ func (m *MockSyncProducer) SendMessages(msgs []*sarama.ProducerMessage) error {
 func (m *MockSyncProducer) Close() error {
 	args := m.Called()
 	return args.Error(0)
-}
-
-func (m *MockSQSClient) SendMessage(ctx context.Context, params *sqs.SendMessageInput, optFns ...func(*sqs.Options)) (*sqs.SendMessageOutput, error) {
-	args := m.Called(ctx, params, optFns)
-	return args.Get(0).(*sqs.SendMessageOutput), args.Error(1)
-}
-
-func (m *MockSQSClient) ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
-	args := m.Called(ctx, params, optFns)
-	return args.Get(0).(*sqs.ReceiveMessageOutput), args.Error(1)
-}
-
-func (m *MockSQSClient) DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
-	args := m.Called(ctx, params, optFns)
-	return args.Get(0).(*sqs.DeleteMessageOutput), args.Error(1)
 }
 
 func (m *MockStorageS3API) HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {

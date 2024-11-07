@@ -11,11 +11,6 @@ type (
 		ReceiptHandle string
 	}
 
-	MessageBody struct {
-		ID      string `json:"id"`
-		Content string `json:"content"`
-	}
-
 	Status struct {
 		ID             string    `json:"id"`
 		SK             string    `json:"sk"`
