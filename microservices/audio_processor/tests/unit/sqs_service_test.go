@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/port"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	sqsService "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue/sqs"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -58,13 +58,13 @@ func TestSendMessage(t *testing.T) {
 			Log:    mockLogger,
 		}
 
-		message := port.Message{
+		message := model.Message{
 			ID:      "test-message-id",
 			Content: "test-content",
 		}
 
 		// Crear MessageBody para serialización
-		messageBody := port.MessageBody{
+		messageBody := model.MessageBody{
 			ID:      message.ID,
 			Content: message.Content,
 		}
@@ -104,12 +104,12 @@ func TestSendMessage(t *testing.T) {
 			Log:    mockLogger,
 		}
 
-		message := port.Message{
+		message := model.Message{
 			ID:      "test-message-id",
 			Content: "test-content",
 		}
 
-		messageBody := port.MessageBody{
+		messageBody := model.MessageBody{
 			ID:      message.ID,
 			Content: message.Content,
 		}
@@ -150,7 +150,7 @@ func TestReceiveMessage(t *testing.T) {
 			Log:    mockLogger,
 		}
 
-		messageBody := port.MessageBody{
+		messageBody := model.MessageBody{
 			ID:      "test-id",
 			Content: "test content",
 		}

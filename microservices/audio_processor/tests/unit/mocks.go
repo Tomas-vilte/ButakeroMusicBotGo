@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/IBM/sarama"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/port"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -80,14 +79,14 @@ type (
 	}
 )
 
-func (m *MockMessagingQueue) SendMessage(ctx context.Context, message port.Message) error {
+func (m *MockMessagingQueue) SendMessage(ctx context.Context, message model.Message) error {
 	args := m.Called(ctx, message)
 	return args.Error(0)
 }
 
-func (m *MockMessagingQueue) ReceiveMessage(ctx context.Context) ([]port.Message, error) {
+func (m *MockMessagingQueue) ReceiveMessage(ctx context.Context) ([]model.Message, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]port.Message), args.Error(1)
+	return args.Get(0).([]model.Message), args.Error(1)
 }
 
 func (m *MockMessagingQueue) DeleteMessage(ctx context.Context, receiptHandle string) error {

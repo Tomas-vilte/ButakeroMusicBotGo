@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/port"
 	"time"
 
@@ -52,9 +53,9 @@ func NewSQSService(cfgApplication *config.Config, log logger.Logger) (*SQSServic
 	}, nil
 }
 
-func (s *SQSService) SendMessage(ctx context.Context, message port.Message) error {
+func (s *SQSService) SendMessage(ctx context.Context, message model.Message) error {
 	// Convertimos Message a MessageBody para la serialización
-	messageBody := port.MessageBody{
+	messageBody := model.MessageBody{
 		ID:      message.ID,
 		Content: message.Content,
 	}
@@ -87,7 +88,7 @@ func (s *SQSService) SendMessage(ctx context.Context, message port.Message) erro
 	return errors.Wrap(err, "error al enviar mensaje a SQS después de varios intentos")
 }
 
-func (s *SQSService) ReceiveMessage(ctx context.Context) ([]port.Message, error) {
+func (s *SQSService) ReceiveMessage(ctx context.Context) ([]model.Message, error) {
 	input := &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(s.Config.Messaging.SQS.QueueURL),
 		MaxNumberOfMessages: 10,
@@ -100,9 +101,9 @@ func (s *SQSService) ReceiveMessage(ctx context.Context) ([]port.Message, error)
 		return nil, errors.Wrap(err, "error al recibir mensaje de SQS")
 	}
 
-	messages := make([]port.Message, 0, len(result.Messages))
+	messages := make([]model.Message, 0, len(result.Messages))
 	for _, msg := range result.Messages {
-		var messageBody port.MessageBody
+		var messageBody model.MessageBody
 		if err := json.Unmarshal([]byte(*msg.Body), &messageBody); err != nil {
 			s.Log.Error("Error al deserializar mensaje",
 				zap.Error(err),
@@ -110,7 +111,7 @@ func (s *SQSService) ReceiveMessage(ctx context.Context) ([]port.Message, error)
 			continue
 		}
 
-		message := port.Message{
+		message := model.Message{
 			ID:            messageBody.ID,
 			Content:       messageBody.Content,
 			ReceiptHandle: *msg.ReceiptHandle,
