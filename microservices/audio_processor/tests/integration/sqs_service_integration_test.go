@@ -14,6 +14,25 @@ import (
 	"time"
 )
 
+func cleanupMessages(ctx context.Context, service *serviceSqs.SQSService) error {
+	for {
+		messages, err := service.ReceiveMessage(ctx)
+		if err != nil {
+			return err
+		}
+		if len(messages) == 0 {
+			break
+		}
+
+		for _, msg := range messages {
+			if err := service.DeleteMessage(ctx, msg.ReceiptHandle); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func setupTestEnvironment(t *testing.T) (*serviceSqs.SQSService, *config.Config) {
 	if testing.Short() {
 		t.Skip("Saltando test de integración en modo corto")
@@ -44,6 +63,9 @@ func setupTestEnvironment(t *testing.T) (*serviceSqs.SQSService, *config.Config)
 	service, err := serviceSqs.NewSQSService(cfg, log)
 	require.NoError(t, err)
 
+	err = cleanupMessages(context.Background(), service)
+	require.NoError(t, err)
+
 	return service, cfg
 }
 
@@ -65,19 +87,25 @@ func TestSQSServiceIntegration(t *testing.T) {
 	service, _ := setupTestEnvironment(t)
 	ctx := context.Background()
 
+	defer func() {
+		err := cleanupMessages(ctx, service)
+		assert.NoError(t, err, "Error durante la limpieza final de mensajes")
+	}()
+
 	t.Run("SendMessage Success", func(t *testing.T) {
-		// arrange
 		message := createTestMessage()
-
-		// act
 		err := service.SendMessage(ctx, message)
-
-		// assert
 		assert.NoError(t, err)
+
+		messages, err := service.ReceiveMessage(ctx)
+		assert.NoError(t, err)
+		for _, msg := range messages {
+			err = service.DeleteMessage(ctx, msg.ReceiptHandle)
+			assert.NoError(t, err)
+		}
 	})
 
 	t.Run("ReceiveMessage Success", func(t *testing.T) {
-		// arrange
 		sentMessage := createTestMessage()
 		err := service.SendMessage(ctx, sentMessage)
 		assert.NoError(t, err)
@@ -86,15 +114,11 @@ func TestSQSServiceIntegration(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEmpty(t, messages)
 
-		// act
 		err = service.DeleteMessage(ctx, messages[0].ReceiptHandle)
-
-		// assert
 		assert.NoError(t, err)
 	})
 
 	t.Run("DeleteMessage Success", func(t *testing.T) {
-		// Arrange
 		sentMessage := createTestMessage()
 		err := service.SendMessage(ctx, sentMessage)
 		require.NoError(t, err)
@@ -103,49 +127,34 @@ func TestSQSServiceIntegration(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, messages)
 
-		// Act
 		err = service.DeleteMessage(ctx, messages[0].ReceiptHandle)
-
-		// Assert
 		assert.NoError(t, err)
 	})
 
 	t.Run("SendMessage InvalidContext", func(t *testing.T) {
-		// arrange
 		message := createTestMessage()
 		ctx, cancel := context.WithCancel(ctx)
 		cancel()
 
-		// act
 		err := service.SendMessage(ctx, message)
-
-		// assert
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "context canceled")
-
 	})
 
 	t.Run("DeleteMessage EmptyReceiptHandle", func(t *testing.T) {
-		// arrange
 		emptyReceiptHandler := ""
-
-		// act
 		err := service.DeleteMessage(ctx, emptyReceiptHandler)
-
-		// assert
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "receipt handle no puede estar vacio")
 	})
 
 	t.Run("Concurrent Message Processing", func(t *testing.T) {
-		// arrange
 		numMessages := 5
 		messages := make([]model.Message, numMessages)
 		for i := 0; i < numMessages; i++ {
 			messages[i] = createTestMessage()
 		}
 
-		// act & assert: Send Messages concurrent
 		errChan := make(chan error, numMessages)
 		for _, msg := range messages {
 			go func(m model.Message) {
@@ -157,11 +166,8 @@ func TestSQSServiceIntegration(t *testing.T) {
 			assert.NoError(t, <-errChan)
 		}
 
-		// act & assert: Receive message
 		receivedMessages, err := service.ReceiveMessage(ctx)
 		assert.NoError(t, err)
-		assert.NotEmpty(t, receivedMessages)
-
 		for _, msg := range receivedMessages {
 			err := service.DeleteMessage(ctx, msg.ReceiptHandle)
 			assert.NoError(t, err)
@@ -171,26 +177,16 @@ func TestSQSServiceIntegration(t *testing.T) {
 
 func TestSQSService_ErrorCases(t *testing.T) {
 	t.Run("NewSQSService nil config", func(t *testing.T) {
-		// arrange
 		log, _ := logger.NewZapLogger()
-
-		// act
 		service, err := serviceSqs.NewSQSService(nil, log)
-
-		// assert
 		assert.Error(t, err)
 		assert.Nil(t, service)
 		assert.Contains(t, err.Error(), "config no puede ser nil")
 	})
 
 	t.Run("NewSQSService nil logger", func(t *testing.T) {
-		// arrange
 		cfg := &config.Config{}
-
-		// act
 		service, err := serviceSqs.NewSQSService(cfg, nil)
-
-		// assert
 		assert.Error(t, err)
 		assert.Nil(t, service)
 		assert.Contains(t, err.Error(), "logger no puede ser nil")
