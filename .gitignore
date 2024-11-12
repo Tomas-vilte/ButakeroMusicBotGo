@@ -11,3 +11,5 @@
 /microservices/audio_processor/credentials_aws.env
 /microservices/audio_processor/test_local.env
 /microservices/audio_processor/rs_keyfile
+/microservices/audio_processor/song-downloader-infra/.terraform/
+/microservices/audio_processor/song-downloader-infra/.terraform.lock.hcl
