@@ -41,6 +41,10 @@ func setupTestEnvironment(t *testing.T) (*serviceSqs.SQSService, *config.Config)
 	cfg := &config.Config{
 		AWS: config.AWSConfig{
 			Region: os.Getenv("REGION"),
+			Credentials: &config.CredentialsConfig{
+				AccessKey: os.Getenv("ACCESS_KEY"),
+				SecretKey: os.Getenv("SECRET_KEY"),
+			},
 		},
 		Messaging: config.MessagingConfig{
 			SQS: &config.SQSConfig{

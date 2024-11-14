@@ -23,6 +23,10 @@ func TestS3StorageIntegration(t *testing.T) {
 	cfgApp := &config.Config{
 		AWS: config.AWSConfig{
 			Region: os.Getenv("REGION"),
+			Credentials: &config.CredentialsConfig{
+				AccessKey: os.Getenv("ACCESS_KEY"),
+				SecretKey: os.Getenv("SECRET_KEY"),
+			},
 		},
 		Storage: config.StorageConfig{
 			S3Config: &config.S3Config{
