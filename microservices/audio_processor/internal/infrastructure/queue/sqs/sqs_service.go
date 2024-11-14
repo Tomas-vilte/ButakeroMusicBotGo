@@ -13,7 +13,6 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -42,15 +41,7 @@ func NewSQSService(cfgApplication *config.Config, log logger.Logger) (*SQSServic
 	}
 
 	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(),
-		awsCfg.WithRegion(cfgApplication.AWS.Region),
-		awsCfg.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(
-				cfgApplication.AWS.Credentials.AccessKey,
-				cfgApplication.AWS.Credentials.SecretKey,
-				"",
-			),
-		),
-	)
+		awsCfg.WithRegion(cfgApplication.AWS.Region))
 	if err != nil {
 		return nil, fmt.Errorf("error cargando configuración AWS: %w", err)
 	}

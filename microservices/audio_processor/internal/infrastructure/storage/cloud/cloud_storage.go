@@ -7,7 +7,6 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"io"
 )
@@ -36,8 +35,7 @@ type S3Storage struct {
 // NewS3Storage crea una nueva instancia de S3Storage.
 // Configura el cliente de S3 con las credenciales y la región especificadas en la configuración.
 func NewS3Storage(cfgApplication *config.Config) (*S3Storage, error) {
-	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApplication.AWS.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-		cfgApplication.AWS.Credentials.AccessKey, cfgApplication.AWS.Credentials.SecretKey, "")))
+	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApplication.AWS.Region))
 	if err != nil {
 		return nil, fmt.Errorf("error cargando configuración AWS: %w", err)
 	}

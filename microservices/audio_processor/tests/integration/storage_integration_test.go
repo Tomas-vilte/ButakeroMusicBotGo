@@ -7,7 +7,6 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/storage/cloud"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"io"
 	"os"
@@ -22,12 +21,8 @@ func TestS3StorageIntegration(t *testing.T) {
 	}
 
 	cfgApp := &config.Config{
-		AWS: &config.AWSConfig{
-			Region: os.Getenv("REGION"),
-			Credentials: config.CredentialsConfig{
-				AccessKey: os.Getenv("ACCESS_KEY"),
-				SecretKey: os.Getenv("SECRET_KEY"),
-			},
+		AWS: config.AWSConfig{
+			Region: os.Getenv("AWS_REGION"),
 		},
 		Storage: config.StorageConfig{
 			S3Config: &config.S3Config{
@@ -46,8 +41,7 @@ func TestS3StorageIntegration(t *testing.T) {
 		t.Fatalf("Error al crear S3Storage: %v", err)
 	}
 
-	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApp.AWS.Region), awsCfg.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-		cfgApp.AWS.Credentials.AccessKey, cfgApp.AWS.Credentials.SecretKey, "")))
+	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApp.AWS.Region))
 	if err != nil {
 		t.Fatalf("Error al cargar la configuración de AWS: %v", err)
 	}

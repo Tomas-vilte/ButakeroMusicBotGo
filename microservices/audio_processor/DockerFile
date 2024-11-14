@@ -12,8 +12,7 @@ FROM alpine:latest
 RUN apk --no-cache add ca-certificates ffmpeg python3 py3-pip curl \
     && python3 -m venv /venv \
     && /venv/bin/pip install --upgrade pip \
-    && /venv/bin/pip install yt-dlp \
-    && /venv/bin/pip install -U https://github.com/coletdjnz/yt-dlp-youtube-oauth2/archive/refs/heads/master.zip
+    && /venv/bin/pip install yt-dlp
 
 WORKDIR /root/
 COPY --from=builder /app/main .
