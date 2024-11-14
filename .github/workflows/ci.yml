@@ -47,6 +47,12 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEV_GITHUB_ACTION_ROLE }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Install dependencies
         run: |
@@ -89,6 +95,9 @@ jobs:
 
   integration-tests:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -128,16 +137,3 @@ jobs:
         with:
           name: integration-coverage-report
           path: integration-coverage.html
-
-  notify:
-    needs: [lint, unit-tests, integration-tests]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Notify success or failure
-        run: |
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "All tests and lint checks passed successfully!"
-          else
-            echo "Some tests or lint checks failed. Please check the logs for more details."
-            exit 1
-          fi
