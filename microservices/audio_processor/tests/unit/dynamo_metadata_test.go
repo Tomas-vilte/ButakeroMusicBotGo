@@ -81,7 +81,7 @@ func TestMetadataStore(t *testing.T) {
 		t.Run("Successful creation", func(t *testing.T) {
 			// arrange
 			cfg := &config.Config{
-				AWS: &config.AWSConfig{
+				AWS: config.AWSConfig{
 					Region: "us-east-1",
 				},
 				Database: config.DatabaseConfig{

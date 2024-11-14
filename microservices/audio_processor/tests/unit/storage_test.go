@@ -189,7 +189,7 @@ func TestNewS3Storage(t *testing.T) {
 					BucketName: "test-bucket",
 				},
 			},
-			AWS: &config.AWSConfig{
+			AWS: config.AWSConfig{
 				Region: "us-east-1",
 			},
 		}
