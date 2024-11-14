@@ -121,15 +121,15 @@ func (a *AudioProcessingService) processAudioAttempt(ctx context.Context, operat
 		return fmt.Errorf("error al leer los frames: %w", err)
 	}
 
-	keyS3 := fmt.Sprintf("%s%s", metadata.Title, audioFileExtension)
-	err = a.storage.UploadFile(ctx, keyS3, frames)
+	keyName := fmt.Sprintf("%s%s", metadata.Title, audioFileExtension)
+	err = a.storage.UploadFile(ctx, keyName, frames)
 	if err != nil {
-		return fmt.Errorf("error al subir archivo a S3: %w", err)
+		return fmt.Errorf("error en guardar el archivo: %w", err)
 	}
 
-	fileMetadata, err := a.storage.GetFileMetadata(ctx, keyS3)
+	fileMetadata, err := a.storage.GetFileMetadata(ctx, keyName)
 	if err != nil {
-		return fmt.Errorf("error al obtener metadata del archivo en S3: %w", err)
+		return fmt.Errorf("error al obtener metadata del archivo: %w", err)
 	}
 
 	err = a.metadataStore.SaveMetadata(ctx, metadata)

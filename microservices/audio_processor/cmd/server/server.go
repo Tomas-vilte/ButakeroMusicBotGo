@@ -13,13 +13,11 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/usecase"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"os"
 )
 
 func StartServer() error {
-	cfg, err := config.LoadConfig("./configurations/config.yaml")
-	if err != nil {
-		return err
-	}
+	cfg := config.LoadConfig(os.Getenv("ENVIRONMENT"))
 
 	var envFactory factory.EnvironmentFactory
 	if cfg.Environment == "aws" {

@@ -54,7 +54,7 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 	}
 
 	if d.useOAuth2 {
-		ytArgs = append(ytArgs, "--username", "oauth2", "--password", "''")
+		ytArgs = append(ytArgs, "--username", "oauth", "--password", "''")
 	}
 
 	ytArgs = append(ytArgs, url)

@@ -6,13 +6,11 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	cfgAws "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 func CheckS3(ctx context.Context, cfgApplication *config.Config) error {
-	cfg, err := cfgAws.LoadDefaultConfig(ctx, cfgAws.WithRegion(cfgApplication.AWS.Region), cfgAws.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-		cfgApplication.AWS.Credentials.AccessKey, cfgApplication.AWS.Credentials.SecretKey, "")))
+	cfg, err := cfgAws.LoadDefaultConfig(ctx, cfgAws.WithRegion(cfgApplication.AWS.Region))
 	if err != nil {
 		return fmt.Errorf("error cargando configuración AWS: %w", err)
 	}
