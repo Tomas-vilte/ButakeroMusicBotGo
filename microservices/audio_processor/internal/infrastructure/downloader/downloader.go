@@ -50,7 +50,7 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 		"--audio-quality", "0",
 		"-o", "-",
 		"--force-overwrites",
-		"--http-chunk-size", "100K",
+		"--http-chunk-size", "10M",
 	}
 
 	if d.useOAuth2 {
