@@ -18,12 +18,8 @@ func TestIntegrationOperationStore(t *testing.T) {
 	}
 
 	cfg := &config.Config{
-		AWS: &config.AWSConfig{
+		AWS: config.AWSConfig{
 			Region: os.Getenv("REGION"),
-			Credentials: config.CredentialsConfig{
-				AccessKey: os.Getenv("ACCESS_KEY"),
-				SecretKey: os.Getenv("SECRET_KEY"),
-			},
 		},
 		Database: config.DatabaseConfig{
 			DynamoDB: &config.DynamoDBConfig{
