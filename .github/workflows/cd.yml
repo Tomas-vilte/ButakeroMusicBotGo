@@ -12,6 +12,9 @@ jobs:
   build:
     name: Build Docker Image
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Check out code
@@ -20,13 +23,12 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          role-to-assume: ${{ secrets.AWS_DEV_GITHUB_ACTION_ROLE }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Log in to Amazon ECR
         run: |
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ECR_REPOSITORY }}
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ECR_REPOSITORY }}
 
       - name: Build and Push Docker Image to ECR
         run: |
@@ -43,6 +45,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           AWS_ECR_REPOSITORY: ${{ secrets.AWS_ECR_REPOSITORY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
         with:
           host: ${{ secrets.EC2_HOST_IP }}
           username: ${{ secrets.EC2_USER }}
@@ -53,7 +56,7 @@ jobs:
             cd /opt/app/ButakeroMusicBotGo
             git pull
             # Autenticarse en ECR
-            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $AWS_ECR_REPOSITORY
+            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ECR_REPOSITORY
             docker-compose -f production-docker-compose.yml down
             docker-compose -f production-docker-compose.yml pull
             docker-compose -f production-docker-compose.yml up -d --build

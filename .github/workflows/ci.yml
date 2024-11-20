@@ -68,7 +68,7 @@ jobs:
 
           sudo cp venv/bin/yt-dlp /usr/local/bin/
           sudo chmod +x /usr/local/bin/yt-dlp
-                
+          
           # Instalar yt-dlp y el paquete oauth2 dentro del entorno virtual
           pip install -U yt-dlp
           pip install -U https://github.com/coletdjnz/yt-dlp-youtube-oauth2/archive/refs/heads/master.zip
@@ -108,7 +108,7 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-    
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
