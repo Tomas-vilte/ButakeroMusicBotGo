@@ -13,3 +13,4 @@
 /microservices/audio_processor/rs_keyfile
 /microservices/audio_processor/song-downloader-infra/.terraform/
 /microservices/audio_processor/song-downloader-infra/.terraform.lock.hcl
+/microservices/audio_processor/song-downloader-infra/terraform.tfvars

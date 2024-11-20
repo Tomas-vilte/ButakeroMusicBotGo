@@ -41,10 +41,7 @@ resource "aws_dynamodb_table" "songs" {
     write_capacity = 5
   }
 
-  tags = {
-    Environment = var.environment
-    Project = var.project_name
-  }
+  tags = var.dynamodb_table_songs_tag
 }
 
 resource "aws_dynamodb_table" "operations" {
@@ -76,8 +73,5 @@ resource "aws_dynamodb_table" "operations" {
     write_capacity = 5
   }
 
-  tags = {
-    Environment = var.environment
-    Project = var.project_name
-  }
+  tags = var.dynamodb_table_operations_tags
 }
