@@ -20,7 +20,7 @@ func StartServer() error {
 	cfg := config.LoadConfig(os.Getenv("ENVIRONMENT"))
 
 	var envFactory factory.EnvironmentFactory
-	if cfg.Environment == "aws" {
+	if cfg.Environment == "prod" {
 		envFactory = &infrastructure.AWSFactory{}
 	} else {
 		envFactory = &infrastructure.LocalFactory{}

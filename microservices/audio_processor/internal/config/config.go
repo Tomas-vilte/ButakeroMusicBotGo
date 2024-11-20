@@ -60,7 +60,7 @@ func LoadConfig(environment string) *Config {
 			},
 		}
 
-	case "aws":
+	case "prod":
 		region := os.Getenv("AWS_REGION")
 		secretName := os.Getenv("AWS_SECRET_NAME")
 
@@ -75,10 +75,10 @@ func LoadConfig(environment string) *Config {
 		}
 
 		config = Config{
-			Environment: "aws",
+			Environment: "prod",
 			Service: ServiceConfig{
 				MaxAttempts: getSecretAsInt(secrets, "SERVICE_MAX_ATTEMPTS", 5),
-				Timeout:     time.Duration(getSecretAsInt(secrets, "SERVICE_TIMEOUT", 10)) * time.Second,
+				Timeout:     time.Duration(getSecretAsInt(secrets, "SERVICE_TIMEOUT", 1)) * time.Minute,
 			},
 			AWS: AWSConfig{
 				Region: region,
@@ -116,7 +116,6 @@ func LoadConfig(environment string) *Config {
 				},
 			},
 		}
-
 	default:
 		panic("Entorno desconocido: " + environment)
 	}
