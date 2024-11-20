@@ -62,7 +62,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: ./DockerFile
+      dockerfile: dockerfile
     depends_on:
       kafka:
         condition: service_healthy

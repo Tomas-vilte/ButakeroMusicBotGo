@@ -67,7 +67,7 @@ func (h *HealthHandler) getServiceChecks() map[string]func(ctx context.Context) 
 				return api.CheckMongoDB(ctx, h.cfg)
 			},
 		}
-	case "aws":
+	case "prod":
 		return map[string]func(ctx context.Context) error{
 			"DynamoDB": func(ctx context.Context) error {
 				return api.CheckDynamoDB(ctx, h.cfg)
