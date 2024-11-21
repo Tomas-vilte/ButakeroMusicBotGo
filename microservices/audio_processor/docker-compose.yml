@@ -69,6 +69,8 @@ services:
       mongodb:
         condition: service_healthy
     container_name: backend-application
+    volumes:
+      - ./yt-cookies.txt:/root/yt-cookies.txt
     env_file:
       - ./test_local.env
     ports:

@@ -29,6 +29,7 @@ module "secret_manager" {
     "DYNAMODB_TABLE_OPERATIONS": module.database.operations_table_name
     "SERVICE_MAX_ATTEMPTS": var.service_max_attempts
     "SERVICE_TIMEOUT": var.service_timeout
+    "COOKIES_YOUTUBE": file("../yt-cookies.txt")
   }
   tags = var.sm_tags
   secret_name = var.secret_name
