@@ -22,11 +22,13 @@ type (
 	YTDLPDownloader struct {
 		log       logger.Logger
 		useOAuth2 bool
+		cookies   string
 	}
 
 	// YTDLPOptions contiene las opciones de configuración para YTDLPDownloader.
 	YTDLPOptions struct {
 		UseOAuth2 bool
+		Cookies   string
 	}
 )
 
@@ -35,6 +37,7 @@ func NewYTDLPDownloader(log logger.Logger, options YTDLPOptions) *YTDLPDownloade
 	return &YTDLPDownloader{
 		log:       log,
 		useOAuth2: options.UseOAuth2,
+		cookies:   options.Cookies,
 	}
 }
 
@@ -51,11 +54,13 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 		"-o", "-",
 		"--force-overwrites",
 		"--http-chunk-size", "10M",
+		"--cookies", fmt.Sprintf(d.cookies),
 	}
 
-	if d.useOAuth2 {
-		ytArgs = append(ytArgs, "--username", "oauth", "--password", "''")
-	}
+	// Debido a las nuevas restricciones impuestas por youtube, el inicio de session con oauth, ya no funca
+	//if d.useOAuth2 {
+	//	ytArgs = append(ytArgs, "--username", "oauth", "--password", "''")
+	//}
 
 	ytArgs = append(ytArgs, url)
 

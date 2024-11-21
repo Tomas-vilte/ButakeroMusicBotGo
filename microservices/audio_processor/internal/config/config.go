@@ -32,7 +32,8 @@ func LoadConfig(environment string) *Config {
 			},
 			API: APIConfig{
 				YouTube: YouTubeConfig{
-					ApiKey: os.Getenv("YOUTUBE_API_KEY"),
+					Cookies: os.Getenv("COOKIES_YOUTUBE"),
+					ApiKey:  os.Getenv("YOUTUBE_API_KEY"),
 				},
 				OAuth2: OAuth2Config{
 					Enabled: os.Getenv("OAUTH2"),
@@ -94,7 +95,8 @@ func LoadConfig(environment string) *Config {
 			},
 			API: APIConfig{
 				YouTube: YouTubeConfig{
-					ApiKey: secrets["YOUTUBE_API_KEY"],
+					ApiKey:  secrets["YOUTUBE_API_KEY"],
+					Cookies: secrets["COOKIES_YOUTUBE"],
 				},
 				OAuth2: OAuth2Config{
 					Enabled: secrets["OAUTH2"],

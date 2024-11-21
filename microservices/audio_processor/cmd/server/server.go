@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/factory"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/service"
@@ -19,7 +18,6 @@ import (
 
 func StartServer() error {
 	cfg := config.LoadConfig(os.Getenv("ENVIRONMENT"))
-	fmt.Println("TEST OIDC")
 
 	var envFactory factory.EnvironmentFactory
 	if cfg.Environment == "prod" {
@@ -38,25 +36,51 @@ func StartServer() error {
 
 	storageService, err := envFactory.CreateStorage(cfg)
 	if err != nil {
+		log.Error("Error al crear el storage", zap.Error(err))
 		return err
 	}
+	file, err := os.CreateTemp("", "cookies.txt")
+	if err != nil {
+		log.Error("Error al crear el archivo temp", zap.Error(err))
+		return err
+	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Error("Error al cerrar el archivo: ", zap.Error(err))
+		}
 
+		if err := os.Remove(file.Name()); err != nil {
+			log.Error("Error al eliminar el archivo: ", zap.Error(err))
+		}
+	}()
+
+	err = os.WriteFile(file.Name(), []byte(cfg.API.YouTube.Cookies), 0666)
+	if err != nil {
+		log.Error("Error en escribir en el archivo: ", zap.Error(err))
+		return err
+	}
 	messaging, err := envFactory.CreateQueue(cfg, log)
 	if err != nil {
+		log.Error("Error al crear queue", zap.Error(err))
 		return err
 	}
 
 	metadataRepo, err := envFactory.CreateMetadataRepository(cfg, log)
 	if err != nil {
+		log.Error("Error al crear metadata repository", zap.Error(err))
 		return err
 	}
 
 	operationRepo, err := envFactory.CreateOperationRepository(cfg, log)
 	if err != nil {
+		log.Error("Error al crear operation repository", zap.Error(err))
 		return err
 	}
 
-	downloaderMusic := downloader.NewYTDLPDownloader(log, downloader.YTDLPOptions{UseOAuth2: cfg.API.OAuth2.ParseBool()})
+	downloaderMusic := downloader.NewYTDLPDownloader(log, downloader.YTDLPOptions{
+		UseOAuth2: cfg.API.OAuth2.ParseBool(),
+		Cookies:   file.Name(),
+	})
 	youtubeAPI := api.NewYouTubeClient(cfg.API.YouTube.ApiKey)
 
 	audioProcessingService := service.NewAudioProcessingService(

@@ -15,7 +15,7 @@ output "dynamodb_operations_table" {
 
 output "s3_bucket_name" {
   description = "Nombre del bucket S3"
-  value       = aws_s3_bucket.storage.id
+  value       = module.storage.bucket_name
 }
 
 output "dns_alb" {

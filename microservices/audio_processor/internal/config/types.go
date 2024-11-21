@@ -109,7 +109,8 @@ type (
 
 	// YouTubeConfig configuración específica de YouTube API
 	YouTubeConfig struct {
-		ApiKey string
+		ApiKey  string
+		Cookies string
 	}
 
 	// OAuth2Config configuración de OAuth2
