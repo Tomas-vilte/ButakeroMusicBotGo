@@ -39,26 +39,7 @@ func StartServer() error {
 		log.Error("Error al crear el storage", zap.Error(err))
 		return err
 	}
-	file, err := os.CreateTemp("", "cookies.txt")
-	if err != nil {
-		log.Error("Error al crear el archivo temp", zap.Error(err))
-		return err
-	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			log.Error("Error al cerrar el archivo: ", zap.Error(err))
-		}
 
-		if err := os.Remove(file.Name()); err != nil {
-			log.Error("Error al eliminar el archivo: ", zap.Error(err))
-		}
-	}()
-
-	err = os.WriteFile(file.Name(), []byte(cfg.API.YouTube.Cookies), 0666)
-	if err != nil {
-		log.Error("Error en escribir en el archivo: ", zap.Error(err))
-		return err
-	}
 	messaging, err := envFactory.CreateQueue(cfg, log)
 	if err != nil {
 		log.Error("Error al crear queue", zap.Error(err))
@@ -79,7 +60,7 @@ func StartServer() error {
 
 	downloaderMusic := downloader.NewYTDLPDownloader(log, downloader.YTDLPOptions{
 		UseOAuth2: cfg.API.OAuth2.ParseBool(),
-		Cookies:   file.Name(),
+		Cookies:   cfg.API.YouTube.Cookies,
 	})
 	youtubeAPI := api.NewYouTubeClient(cfg.API.YouTube.ApiKey)
 
