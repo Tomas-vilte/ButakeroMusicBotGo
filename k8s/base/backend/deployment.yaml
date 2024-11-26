@@ -45,11 +45,11 @@ spec:
         ports:
         - containerPort: 8080
         env:
-        - name: ENV
+        - name: ENVIRONMENT
           valueFrom:
             configMapKeyRef:
               name: app-config
-              key: environment
+              key: ENVIRONMENT
         - name: GIN_MODE
           valueFrom:
             configMapKeyRef:
@@ -65,38 +65,28 @@ spec:
             configMapKeyRef:
               name: app-config
               key: MONGO_DATABASE
-        - name: MONGO_SONGS_COLLECTION
+        - name: MONGO_COLLECTION_SONGS
           valueFrom:
             configMapKeyRef:
               name: app-config
-              key: MONGO_SONGS_COLLECTION
-        - name: MONGO_OPERATION_RESULTS_COLLECTION
+              key: MONGO_COLLECTION_SONGS
+        - name: MONGO_COLLECTION_OPERATIONS
           valueFrom:
             configMapKeyRef:
               name: app-config
-              key: MONGO_OPERATION_RESULTS_COLLECTION
+              key: MONGO_COLLECTION_OPERATIONS
         - name: KAFKA_BROKERS
           value: "kafka-headless:29092"
-        - name: TOPIC
+        - name: KAFKA_TOPIC
           valueFrom:
             configMapKeyRef:
               name: app-config
-              key: TOPIC
-        - name: MESSAGING_TYPE
+              key: KAFKA_TOPIC
+        - name: LOCAL_STORAGE_PATH
           valueFrom:
             configMapKeyRef:
               name: app-config
-              key: MESSAGING_TYPE
-        - name: STORAGE_TYPE
-          valueFrom:
-            configMapKeyRef:
-              name: app-config
-              key: STORAGE_TYPE
-        - name: BASE_PATH
-          valueFrom:
-            configMapKeyRef:
-              name: app-config
-              key: BASE_PATH
+              key: LOCAL_STORAGE_PATH
         - name: MONGO_USER 
           valueFrom:
             secretKeyRef:
@@ -112,16 +102,15 @@ spec:
             secretKeyRef:
               name: backend-secret
               key: YOUTUBE_API_KEY
-        - name: MONGO_HOST_0
-          value: "mongo-0.mongodb-service-cluster"
-        - name: MONGO_HOST_1
-          value: "mongo-1.mongodb-service-cluster"
-        - name: MONGO_HOST_2
-          value: "mongo-2.mongodb-service-cluster"
+        - name: MONGO_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: MONGO_HOST
         volumeMounts:
-        - name: config-volume
-          mountPath: /root/configurations/config.yaml
-          subPath: config.yaml
+        - name: yt-cookies-volume
+          mountPath: /root/configurations/yt-cookies.txt
+          subPath: yt-cookies.txt
         resources:
           requests:
             cpu: 200m
@@ -142,6 +131,9 @@ spec:
           initialDelaySeconds: 30
           periodSeconds: 10
       volumes:
-      - name: config-volume
-        configMap:
-          name: app-config
+      - name: yt-cookies-volume
+        secret:
+          secretName: backend-secret
+          items:
+          - key: YT_COOKIES
+            path: yt-cookies.txt

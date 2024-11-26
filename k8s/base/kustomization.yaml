@@ -13,9 +13,8 @@ resources:
   - stateful/kafka/statefulset.yaml
   - stateful/mongodb/mongo-persistentvolume.yaml
   - stateful/mongodb/service.yaml
+  - stateful/mongodb/mongo-configmap.yaml
   - stateful/mongodb/statefulset.yaml
-  - stateful/mongodb/mongodb-job-init.yaml
-  - stateful/mongodb/mongodb-auth-enable.yaml
 
 
   # Backend services

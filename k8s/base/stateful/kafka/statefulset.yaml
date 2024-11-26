@@ -13,6 +13,21 @@ spec:
       labels:
         app: kafka
     spec:
+      initContainers:
+      - name: wait-for-zookeeper
+        image: busybox
+        command:
+        - sh
+        - -c
+        - |
+          echo "Esperando a que zookepeer este ready..."
+          until nc -z zookeeper-0.zookeeper-headless 2181 && \
+                nc -z zookeeper-1.zookeeper-headless 2181 && \
+                nc -z zookeeper-2.zookeeper-headless 2181; do
+            echo "Esperando a zookeeper..."
+            sleep 3
+          done
+          echo "Zookeeper esta corriendo!"
       containers:
       - name: kafka
         image: confluentinc/cp-kafka:7.7.1
