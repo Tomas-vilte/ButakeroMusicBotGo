@@ -5,25 +5,36 @@ metadata:
 data:
   init.sh: |
     #!/bin/bash
-    
+
+    # Esperar hasta que MongoDB esté disponible
     until mongosh --eval "print('waiting...')" &>/dev/null; do
       sleep 2
     done
 
-    mongosh --eval 'rs.initiate({
-      _id: "rs0",
-      members: [
-        {_id: 0, host: "mongo-0.mongodb-service-cluster:27017"},
-        {_id: 1, host: "mongo-1.mongodb-service-cluster:27017"},
-        {_id: 2, host: "mongo-2.mongodb-service-cluster:27017"}
-      ]
-    })'
-
-    sleep 10
-
+    # Crear el usuario admin primero
     mongosh --eval 'admin = db.getSiblingDB("admin");
     admin.createUser({
       user: "root",
       pwd: "root",
       roles: [{ role: "root", db: "admin" }]
     });'
+
+    # Habilitar mecanismos de autenticación
+    mongosh --host mongo-0.mongodb-service-cluster:27017 -u root -p root --authenticationDatabase admin <<EOF
+    use admin;
+    db.adminCommand({ setParameter: 1, authenticationMechanisms: ["SCRAM-SHA-1", "SCRAM-SHA-256"] });
+    EOF
+
+    # Inicializar el Replica Set
+    mongosh --host mongo-0.mongodb-service-cluster:27017 -u root -p root --authenticationDatabase admin <<EOF
+    rs.initiate({
+      _id: "rs0",
+      members: [
+        {_id: 0, host: "mongo-0.mongodb-service-cluster:27017"},
+        {_id: 1, host: "mongo-1.mongodb-service-cluster:27017"},
+        {_id: 2, host: "mongo-2.mongodb-service-cluster:27017"}
+      ]
+    });
+    EOF
+
+    sleep 10
