@@ -1,0 +1,20 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kafka-server-cert
+  namespace: kafka
+spec:
+  commonName: my-cluster-kafka-bootstrap.kafka.svc
+  dnsNames:
+    - my-cluster-kafka-bootstrap.kafka.svc
+    - my-cluster-kafka-bootstrap.kafka.svc.cluster.local
+    - my-cluster-kafka-0.my-cluster-kafka-brokers.kafka.svc
+    - my-cluster-kafka-1.my-cluster-kafka-brokers.kafka.svc
+    - my-cluster-kafka-2.my-cluster-kafka-brokers.kafka.svc
+    - my-cluster-kafka-0.my-cluster-kafka-brokers.kafka.svc.cluster.local
+    - my-cluster-kafka-1.my-cluster-kafka-brokers.kafka.svc.cluster.local
+    - my-cluster-kafka-2.my-cluster-kafka-brokers.kafka.svc.cluster.local
+  issuerRef:
+    name: kafka-ca-issuer
+    kind: Issuer
+  secretName: kafka-server-cert
