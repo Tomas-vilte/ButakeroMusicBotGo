@@ -1,0 +1,41 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: my-kafka-user
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  authentication:
+    type: tls
+  authorization:
+    type: simple
+    acls:
+      # Permisos para producir mensajes
+      - resource:
+          type: topic
+          name: notifications
+          patternType: literal
+        operations:
+          - Write
+          - Create
+        host: "*"
+      
+      # Permisos para consumir mensajes
+      - resource:
+          type: topic
+          name: notifications
+          patternType: literal
+        operations:
+          - Read
+          - Describe
+        host: "*"
+      
+      # Permisos para grupos de consumo
+      - resource:
+          type: group
+          name: "*"
+          patternType: literal
+        operations:
+          - Read
+        host: "*"
