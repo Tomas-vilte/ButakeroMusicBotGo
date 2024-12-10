@@ -70,6 +70,7 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: kafka-metrics
+  namespace: kafka
   labels:
     app: strimzi 
 data:
