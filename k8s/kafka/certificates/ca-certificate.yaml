@@ -2,11 +2,11 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: kafka-ca
-  namespace: kafka
+  namespace: cert-manager
 spec:
   isCA: true
   commonName: kafka-ca
   secretName: kafka-ca-tls
   issuerRef:
     name: kafka-ca-issuer
-    kind: Issuer
+    kind: ClusterIssuer

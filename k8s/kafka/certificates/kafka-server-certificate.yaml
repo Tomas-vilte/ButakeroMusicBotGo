@@ -16,5 +16,5 @@ spec:
     - my-cluster-kafka-2.my-cluster-kafka-brokers.kafka.svc.cluster.local
   issuerRef:
     name: kafka-ca-issuer
-    kind: Issuer
+    kind: ClusterIssuer
   secretName: kafka-server-cert
