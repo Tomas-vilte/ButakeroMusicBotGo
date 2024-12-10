@@ -7,10 +7,52 @@ spec:
   containers:
   - name: kafka-client
     image: quay.io/strimzi/kafka:0.44.0-kafka-3.8.0
-    command: ["/bin/bash", "-c", "while true; do sleep 3600; done"]
-    env:
-    - name: KAFKA_OPTS
-      value: "-Xmx512M -client"
+    command: ["/bin/bash", "-c"]
+    args:
+      - |
+        #!/bin/bash
+        set -e
+        echo "Iniciando generación de credenciales..."
+        TRUSTSTORE_PASSWORD=123456
+        USER_ALIAS=my-user
+
+        # Directorios y archivos
+        SECRETS_DIR=/mnt/secrets
+        OUTPUT_DIR=/mnt/output
+        TRUSTSTORE_FILE=$OUTPUT_DIR/truststore.jks
+        USER_P12_FILE=$OUTPUT_DIR/user.p12
+        CLIENT_PROPERTIES_FILE=$OUTPUT_DIR/client.properties
+        TEMP_CA=$SECRETS_DIR/ca.crt
+        TEMP_USER_CERT=$SECRETS_DIR/user.crt
+        TEMP_USER_KEY=$SECRETS_DIR/user.key
+
+        # Crear directorio de salida
+        mkdir -p $OUTPUT_DIR
+
+        # Importar el certificado de la CA en el truststore
+        echo "Importando certificado de la CA en el truststore..."
+        echo "yes" | keytool -import -trustcacerts -file "$TEMP_CA" -keystore "$TRUSTSTORE_FILE" -storepass "$TRUSTSTORE_PASSWORD" -noprompt
+
+        # Crear archivo PKCS12 con el certificado y clave privada del usuario
+        echo "Generando archivo PKCS12 del usuario..."
+        RANDFILE=/tmp/.rnd openssl pkcs12 -export -in "$TEMP_USER_CERT" -inkey "$TEMP_USER_KEY" -name "$USER_ALIAS" -password pass:"$TRUSTSTORE_PASSWORD" -out "$USER_P12_FILE"
+
+        echo "Creando archivo client.properties..."
+        cat <<EOF > "$CLIENT_PROPERTIES_FILE"
+        security.protocol=SSL
+        ssl.truststore.location=$TRUSTSTORE_FILE
+        ssl.truststore.password=$TRUSTSTORE_PASSWORD
+        ssl.keystore.location=$USER_P12_FILE
+        ssl.keystore.password=$TRUSTSTORE_PASSWORD
+        EOF
+
+        echo "Archivos generados exitosamente en $OUTPUT_DIR:"
+        echo " - $TRUSTSTORE_FILE"
+        echo " - $USER_P12_FILE"
+        echo " - $CLIENT_PROPERTIES_FILE"
+        
+        # Mantener el contenedor corriendo
+        exec sleep infinity
     resources:
       requests:
         memory: "256Mi"  
@@ -18,3 +60,27 @@ spec:
       limits:
         memory: "512Mi"  
         cpu: "500m"
+    volumeMounts:
+      - name: ca-secret
+        mountPath: /mnt/secrets/ca.crt
+        subPath: ca.crt
+        readOnly: true
+      - name: user-secret
+        mountPath: /mnt/secrets/user.crt
+        subPath: user.crt
+        readOnly: true
+      - name: user-secret
+        mountPath: /mnt/secrets/user.key
+        subPath: user.key
+        readOnly: true
+      - name: output-dir
+        mountPath: /mnt/output
+  volumes:
+    - name: ca-secret
+      secret:
+        secretName: kafka-server-cert
+    - name: user-secret
+      secret:
+        secretName: my-kafka-user
+    - name: output-dir
+      emptyDir: {}
