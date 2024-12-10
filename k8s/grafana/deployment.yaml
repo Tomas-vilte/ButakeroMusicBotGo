@@ -67,6 +67,9 @@ spec:
         - name: cert-manager-dashboard
           mountPath: "/var/lib/grafana/dashboards/kubernetes/cert-manager.json"
           subPath: cert-manager.json
+        - name: kafka-dashboard
+          mountPath: "/var/lib/grafana/dashboards/kubernetes/kafka.json"
+          subPath: kafka.json
         ports:
         - name: grafana
           containerPort: 3000
@@ -128,3 +131,6 @@ spec:
       - name: mongodb-dashboard
         configMap:
           name: mongodb-db-dashboard
+      - name: kafka-dashboard
+        configMap:
+          name: kafka-monitoring

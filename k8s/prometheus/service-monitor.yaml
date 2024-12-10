@@ -5,7 +5,7 @@ metadata:
   name: prometheus
   namespace: monitoring
   labels:
-    monitoring: prometheus
+    prometheus: monitored
 spec:
   endpoints:
   - port: web

@@ -4,4 +4,4 @@ prometheus:
   enabled: true
   servicemonitor:
     enabled: true
-    prometheusInstance: default
+    prometheusInstance: monitored
