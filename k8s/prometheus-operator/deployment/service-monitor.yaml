@@ -5,7 +5,7 @@ metadata:
   name: prometheus-operator
   namespace: monitoring
   labels:
-    prometheus: default
+    monitoring: prometheus
 spec:
   endpoints:
   - port: http
