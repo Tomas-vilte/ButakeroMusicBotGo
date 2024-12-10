@@ -5,7 +5,7 @@ metadata:
   name: grafana
   namespace: monitoring
   labels:
-    prometheus: default
+    monitoring: prometheus
 spec:
   endpoints:
   - port: service
