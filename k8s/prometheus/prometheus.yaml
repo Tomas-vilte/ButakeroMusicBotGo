@@ -10,10 +10,16 @@ spec:
   serviceAccountName: prometheus
   serviceMonitorNamespaceSelector:
     matchLabels:
-      monitoring: prometheus
+      monitoring: prometheus  
   serviceMonitorSelector:
+    matchExpressions:
+      - key: prometheus
+        operator: In
+        values:
+          - monitored
+  podMonitorSelector:
     matchLabels:
-      prometheus: default
+      app: strimzi
   securityContext:
     fsGroup: 65534
     runAsGroup: 65534
