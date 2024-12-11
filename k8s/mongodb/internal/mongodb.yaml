@@ -5,16 +5,16 @@ metadata:
   name: my-mongodb
   namespace: mongodb
 spec:
-  members: 2
+  members: 1
   type: ReplicaSet
   version: "5.0.5"
   security:
     tls:
       enabled: true
       certificateKeySecretRef:
-        name: mongodb-key-pair
+        name: mongodb-cert
       caCertificateSecretRef:
-        name: mongodb-key-pair
+        name: mongodb-cert
       # optional: true
     authentication:
       modes:
