@@ -2,7 +2,7 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: mongodb
+  name: mongodb-certificate
   namespace: mongodb
 spec:
   isCA: false
@@ -12,12 +12,12 @@ spec:
   - my-mongodb-0.my-mongodb-svc.mongodb.svc.cluster.local
   - my-mongodb-1.my-mongodb-svc.mongodb.svc.cluster.local
   - my-mongodb-2.my-mongodb-svc.mongodb.svc.cluster.local
-  secretName: mongodb-key-pair
+  secretName: mongodb-cert
   privateKey:
     algorithm: RSA
     encoding: PKCS1
     size: 4096
   issuerRef:
-    name: cluster-ca
+    name: mongodb-cluster-issuer
     kind: ClusterIssuer
     group: cert-manager.io

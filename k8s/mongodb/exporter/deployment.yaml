@@ -14,6 +14,20 @@ spec:
       labels:
         app: mongodb-exporter
     spec:
+      initContainers:
+      - name: cert-prep
+        image: busybox
+        command: 
+        - sh
+        - -c
+        - |
+          cp /var/lib/tls/server-orig/*.pem /var/lib/tls/server/certificateKey.pem
+        volumeMounts:
+        - mountPath: /var/lib/tls/server-orig/
+          name: tls-secret
+          readOnly: true
+        - mountPath: /var/lib/tls/server/
+          name: cert-temp
       containers:
       - name: mongodb-exporter
         image: percona/mongodb_exporter:0.42.0
@@ -38,15 +52,17 @@ spec:
           name: tls-ca
           readOnly: true
         - mountPath: /var/lib/tls/server/certificateKey.pem
-          name: tls-secret
-          subPathExpr: 9b50678c8fb7fa76e22e0232605573cb1812688d38c3bd6378ffdbe6dbe3dd2c.pem
+          name: cert-temp
+          subPath: certificateKey.pem
           readOnly: true
       volumes:
       - name: tls-ca
         secret:
           defaultMode: 416
-          secretName: mongodb-key-pair
+          secretName: mongodb-cert
       - name: tls-secret
         secret:
           defaultMode: 416
           secretName: my-mongodb-server-certificate-key
+      - name: cert-temp
+        emptyDir: {}
