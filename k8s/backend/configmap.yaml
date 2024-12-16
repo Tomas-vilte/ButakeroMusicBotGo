@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: app-config
+  namespace: backend
 data:
   ENVIRONMENT: "local"
   GIN_MODE: "release"
@@ -15,5 +16,11 @@ data:
   COOKIES_YOUTUBE: "/configurations/yt-cookies.txt"
   SERVICE_MAX_ATTEMPTS: "5"
   SERVICE_TIMEOUT: "2"
-  MONGO_HOST: "mongo-0.mongodb-service-cluster,mongo-1.mongodb-service-cluster,mongo-2.mongodb-service-cluster"
-    
+  MONGO_HOST: "my-mongodb-0.my-mongodb-svc.mongodb.svc.cluster.local,my-mongodb-1.my-mongodb-svc.mongodb.svc.cluster.local,my-mongodb-2.my-mongodb-svc.mongodb.svc.cluster.local"
+  KAFKA_CA_FILE: "/etc/kafka/ca-certs/ca.crt"
+  KAFKA_CERT_FILE: "/etc/kafka/user-certs/user.crt"
+  KAFKA_KEY_FILE: "/etc/kafka/user-certs/user.key"
+  KAFKA_BROKERS: "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9093"
+  MONGO_CA_FILE: "/etc/mongodb/certs/ca.crt"
+  MONGO_CERT_FILE: "/etc/mongodb/certs/tls.crt"
+  MONGO_KEY_FILE: "/etc/mongodb/certs/tls.key"
