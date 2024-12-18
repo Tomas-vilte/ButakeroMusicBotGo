@@ -2,10 +2,9 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
   name: my-cluster
-  namespace: kafka
 spec:
   kafka:
-    version: 3.8.0
+    version: 3.6.0
     replicas: 3
     listeners:
       - name: plain
@@ -33,7 +32,7 @@ spec:
       transaction.state.log.min.isr: 2
       default.replication.factor: 3
       min.insync.replicas: 2
-      inter.broker.protocol.version: "3.8"
+      inter.broker.protocol.version: "3.6"
     storage:
       type: jbod
       volumes:
@@ -70,7 +69,6 @@ kind: ConfigMap
 apiVersion: v1
 metadata:
   name: kafka-metrics
-  namespace: kafka
   labels:
     app: strimzi 
 data:

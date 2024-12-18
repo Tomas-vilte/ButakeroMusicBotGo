@@ -76,6 +76,11 @@ spec:
             configMapKeyRef:
               name: app-config
               key: KAFKA_KEY_FILE
+        - name: KAFKA_ENABLE_TLS
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: KAFKA_ENABLE_TLS
         - name: LOCAL_STORAGE_PATH
           valueFrom:
             configMapKeyRef:
@@ -116,6 +121,11 @@ spec:
             configMapKeyRef:
               name: app-config
               key: MONGO_KEY_FILE
+        - name: MONGO_ENABLE_TLS
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: MONGO_ENABLE_TLS
         volumeMounts:
         - name: yt-cookies-volume
           mountPath: /root/configurations/yt-cookies.txt
