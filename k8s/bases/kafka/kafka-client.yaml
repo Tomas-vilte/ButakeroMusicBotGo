@@ -6,7 +6,7 @@ metadata:
 spec:
   containers:
   - name: kafka-client
-    image: quay.io/strimzi/kafka:0.44.0-kafka-3.8.0
+    image: quay.io/strimzi/kafka:0.42.0-kafka-3.6.0
     command: ["/bin/bash", "-c"]
     args:
       - |
