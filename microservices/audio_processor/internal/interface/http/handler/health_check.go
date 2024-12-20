@@ -2,11 +2,12 @@ package handler
 
 import (
 	"context"
+	"net/http"
+	"sync"
+
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
 	"github.com/gin-gonic/gin"
-	"net/http"
-	"sync"
 )
 
 type HealthHandler struct {
@@ -22,23 +23,29 @@ func NewHealthHandler(cfg *config.Config) *HealthHandler {
 func (h *HealthHandler) HealthCheckHandler(c *gin.Context) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	results := make(map[string]string)
+	results := make(map[string]interface{})
 	allHealthy := true
 
 	services := h.getServiceChecks()
 	wg.Add(len(services))
 
 	for name, check := range services {
-		go func(name string, check func(ctx context.Context) error) {
+		go func(name string, check func(ctx context.Context) (*api.HealthCheckMetadata, error)) {
 			defer wg.Done()
-			if err := check(c.Request.Context()); err != nil {
+			if metadata, err := check(c.Request.Context()); err != nil {
 				mu.Lock()
-				results[name] = "indisponible " + err.Error()
+				results[name] = map[string]interface{}{
+					"status": "indisponible",
+					"error":  err.Error(),
+				}
 				allHealthy = false
 				mu.Unlock()
 			} else {
 				mu.Lock()
-				results[name] = "saludable"
+				results[name] = map[string]interface{}{
+					"status":   "saludable",
+					"metadata": metadata,
+				}
 				mu.Unlock()
 			}
 		}(name, check)
@@ -59,21 +66,48 @@ func (h *HealthHandler) HealthCheckHandler(c *gin.Context) {
 	})
 }
 
-func (h *HealthHandler) getServiceChecks() map[string]func(ctx context.Context) error {
+func (h *HealthHandler) getServiceChecks() map[string]func(ctx context.Context) (*api.HealthCheckMetadata, error) {
 	switch h.cfg.Environment {
 	case "local":
-		return map[string]func(ctx context.Context) error{
-			"MongoDB": func(ctx context.Context) error {
-				return api.CheckMongoDB(ctx, h.cfg)
+		return map[string]func(ctx context.Context) (*api.HealthCheckMetadata, error){
+			"MongoDB": func(ctx context.Context) (*api.HealthCheckMetadata, error) {
+				metadata, err := api.CheckMongoDB(ctx, h.cfg)
+				if err != nil {
+					return nil, err
+				}
+				return &api.HealthCheckMetadata{
+					Mongo: metadata,
+				}, nil
+			},
+			"Kafka": func(ctx context.Context) (*api.HealthCheckMetadata, error) {
+				metadata, err := api.CheckKafka(h.cfg)
+				if err != nil {
+					return nil, err
+				}
+				return &api.HealthCheckMetadata{
+					Kafka: metadata,
+				}, nil
 			},
 		}
 	case "prod":
-		return map[string]func(ctx context.Context) error{
-			"DynamoDB": func(ctx context.Context) error {
-				return api.CheckDynamoDB(ctx, h.cfg)
+		return map[string]func(ctx context.Context) (*api.HealthCheckMetadata, error){
+			"DynamoDB": func(ctx context.Context) (*api.HealthCheckMetadata, error) {
+				metadata, err := api.CheckDynamoDB(ctx, h.cfg)
+				if err != nil {
+					return nil, err
+				}
+				return &api.HealthCheckMetadata{
+					DynamoDB: metadata,
+				}, nil
 			},
-			"S3": func(ctx context.Context) error {
-				return api.CheckS3(ctx, h.cfg)
+			"S3": func(ctx context.Context) (*api.HealthCheckMetadata, error) {
+				metadata, err := api.CheckS3(ctx, h.cfg)
+				if err != nil {
+					return nil, err
+				}
+				return &api.HealthCheckMetadata{
+					S3: metadata,
+				}, nil
 			},
 		}
 	default:
