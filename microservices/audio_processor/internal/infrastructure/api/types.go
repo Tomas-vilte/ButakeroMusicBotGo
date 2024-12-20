@@ -36,7 +36,6 @@ type (
 		Version          string           `json:"version"`            // Versión de MongoDB.
 		Connections      ConnectionStatus `json:"connections"`        // Estado de las conexiones de MongoDB.
 		Performance      PerformanceStats `json:"performance"`        // Estadísticas de rendimiento de MongoDB.
-		Storage          StorageStats     `json:"storage"`            // Estadísticas de almacenamiento de MongoDB.
 	}
 
 	// ReplicaSetStatus contiene información de estado para un conjunto de réplicas de MongoDB.
@@ -62,12 +61,5 @@ type (
 		LatencyMs     float64 `json:"latency_ms"`      // Latencia en milisegundos.
 		OpsPerSec     int64   `json:"ops_per_sec"`     // Operaciones por segundo.
 		MemoryUsageMB int32   `json:"memory_usage_mb"` // Uso de memoria en megabytes.
-	}
-
-	// StorageStats contiene estadísticas de almacenamiento para MongoDB.
-	StorageStats struct {
-		DatabaseSizeMB float64 `json:"database_size_mb"` // Tamaño de la base de datos en megabytes.
-		DataSizeMB     float64 `json:"data_size_mb"`     // Tamaño de los datos en megabytes.
-		IndexSizeMB    float64 `json:"index_size_mb"`    // Tamaño de los índices en megabytes.
 	}
 )
