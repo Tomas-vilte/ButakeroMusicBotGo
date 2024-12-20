@@ -35,8 +35,9 @@ func TestKafkaIntegration_SendAndReceiveMessage(t *testing.T) {
 	cfg := &config.Config{
 		Messaging: config.MessagingConfig{
 			Kafka: &config.KafkaConfig{
-				Brokers: brokers,
-				Topic:   "test-topic",
+				Brokers:   brokers,
+				Topic:     "test-topic",
+				EnableTLS: false,
 			},
 		},
 	}

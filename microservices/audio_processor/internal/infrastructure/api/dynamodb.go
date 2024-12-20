@@ -9,17 +9,19 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
-func CheckDynamoDB(ctx context.Context, cfgApplication *config.Config) error {
+func CheckDynamoDB(ctx context.Context, cfgApplication *config.Config) (*DynamoDBMetadata, error) {
 	cfg, err := cfgAws.LoadDefaultConfig(ctx, cfgAws.WithRegion(cfgApplication.AWS.Region))
 	if err != nil {
-		return fmt.Errorf("error cargando configuración AWS: %w", err)
+		return nil, fmt.Errorf("error cargando configuración AWS: %w", err)
 	}
 
 	client := dynamodb.NewFromConfig(cfg)
 
 	_, err = client.DescribeTable(ctx, &dynamodb.DescribeTableInput{TableName: aws.String(cfgApplication.Database.DynamoDB.Tables.Operations)})
 	if err != nil {
-		return fmt.Errorf("error al obtener info de la tabla: %w", err)
+		return nil, fmt.Errorf("error al obtener info de la tabla: %w", err)
 	}
-	return nil
+	return &DynamoDBMetadata{
+		TableName: cfgApplication.Database.DynamoDB.Tables.Operations,
+	}, nil
 }

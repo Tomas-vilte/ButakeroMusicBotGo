@@ -26,3 +26,4 @@ data:
   MONGO_CERT_FILE: "/etc/mongodb/certs/tls.crt"
   MONGO_KEY_FILE: "/etc/mongodb/certs/tls.key"
   MONGO_ENABLE_TLS: "true"
+  MONGO_REPLICA_SET_NAME: "my-mongodb"
