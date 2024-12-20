@@ -26,8 +26,12 @@ func LoadConfig(environment string) *Config {
 			Messaging: MessagingConfig{
 				Type: "kafka",
 				Kafka: &KafkaConfig{
-					Brokers: []string{os.Getenv("KAFKA_BROKERS")},
-					Topic:   os.Getenv("KAFKA_TOPIC"),
+					Brokers:   []string{os.Getenv("KAFKA_BROKERS")},
+					Topic:     os.Getenv("KAFKA_TOPIC"),
+					CaFile:    os.Getenv("KAFKA_CA_FILE"),
+					CertFile:  os.Getenv("KAFKA_CERT_FILE"),
+					KeyFile:   os.Getenv("KAFKA_KEY_FILE"),
+					EnableTLS: os.Getenv("KAFKA_ENABLE_TLS") == "true",
 				},
 			},
 			API: APIConfig{
@@ -48,11 +52,16 @@ func LoadConfig(environment string) *Config {
 			Database: DatabaseConfig{
 				Type: "mongodb",
 				Mongo: &MongoConfig{
-					User:     os.Getenv("MONGO_USER"),
-					Password: os.Getenv("MONGO_PASSWORD"),
-					Port:     os.Getenv("MONGO_PORT"),
-					Host:     []string{os.Getenv("MONGO_HOST")},
-					Database: os.Getenv("MONGO_DATABASE"),
+					User:           os.Getenv("MONGO_USER"),
+					Password:       os.Getenv("MONGO_PASSWORD"),
+					Port:           os.Getenv("MONGO_PORT"),
+					Host:           []string{os.Getenv("MONGO_HOST")},
+					CaFile:         os.Getenv("MONGO_CA_FILE"),
+					CertFile:       os.Getenv("MONGO_CERT_FILE"),
+					KeyFile:        os.Getenv("MONGO_KEY_FILE"),
+					Database:       os.Getenv("MONGO_DATABASE"),
+					ReplicaSetName: os.Getenv("MONGO_REPLICA_SET_NAME"),
+					EnableTLS:      os.Getenv("MONGO_ENABLE_TLS") == "true",
 					Collections: Collections{
 						Songs:      os.Getenv("MONGO_COLLECTION_SONGS"),
 						Operations: os.Getenv("MONGO_COLLECTION_OPERATIONS"),
