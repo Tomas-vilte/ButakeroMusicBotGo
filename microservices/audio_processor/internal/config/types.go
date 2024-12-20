@@ -42,8 +42,12 @@ type (
 
 	// KafkaConfig configuración específica de Kafka
 	KafkaConfig struct {
-		Brokers []string
-		Topic   string
+		Brokers   []string
+		Topic     string
+		CaFile    string
+		CertFile  string
+		KeyFile   string
+		EnableTLS bool
 	}
 
 	// SQSConfig configuración específica de SQS
@@ -76,12 +80,17 @@ type (
 
 	// MongoConfig configuración específica de MongoDB
 	MongoConfig struct {
-		User        string
-		Password    string
-		Port        string
-		Host        []string
-		Database    string
-		Collections Collections
+		User           string
+		Password       string
+		Port           string
+		Host           []string
+		Database       string
+		Collections    Collections
+		CaFile         string
+		CertFile       string
+		KeyFile        string
+		EnableTLS      bool
+		ReplicaSetName string
 	}
 
 	// DynamoDBConfig configuración específica de DynamoDB
