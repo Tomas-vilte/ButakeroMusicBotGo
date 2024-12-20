@@ -126,6 +126,11 @@ spec:
             configMapKeyRef:
               name: app-config
               key: MONGO_ENABLE_TLS
+        - name: MONGO_REPLICA_SET_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: MONGO_REPLICA_SET_NAME
         volumeMounts:
         - name: yt-cookies-volume
           mountPath: /root/configurations/yt-cookies.txt
