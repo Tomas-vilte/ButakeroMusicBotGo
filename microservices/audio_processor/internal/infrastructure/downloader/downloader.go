@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
-	"go.uber.org/zap"
 	"io"
 	"os/exec"
 	"strings"
 	"sync"
+
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
+	"go.uber.org/zap"
 )
 
 type (
@@ -54,7 +55,7 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 		"-o", "-",
 		"--force-overwrites",
 		"--http-chunk-size", "10M",
-		"--cookies", fmt.Sprintf(d.cookies),
+		"--cookies", d.cookies,
 	}
 
 	// Debido a las nuevas restricciones impuestas por youtube, el inicio de session con oauth, ya no funca
