@@ -101,6 +101,11 @@ spec:
             secretKeyRef:
               name: backend-secret
               key: YOUTUBE_API_KEY
+        - name: COOKIES_YOUTUBE
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: COOKIES_YOUTUBE
         - name: MONGO_HOST
           valueFrom:
             configMapKeyRef:

@@ -2,10 +2,11 @@ package config
 
 import (
 	"context"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/secretmanager"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/secretmanager"
 )
 
 // LoadConfig carga la configuración específica para el entorno (local o AWS)
