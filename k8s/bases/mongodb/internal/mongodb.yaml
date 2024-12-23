@@ -43,6 +43,12 @@ spec:
       db: admin
     - name: enableSharding
       db: admin
+    - name: readWrite
+      db: audio_service_db
+    - name: dbOwner
+      db: audio_service_db
+    - name: dbAdmin
+      db: audio_service_db
     scramCredentialsSecretName: my-scram
   additionalMongodConfig:
     storage.wiredTiger.engineConfig.journalCompressor: zlib
