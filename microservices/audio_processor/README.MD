@@ -1,45 +1,387 @@
 # ButakeroMusicBot
 
-**ButakeroMusicBot** es un microservicio que permite la descarga, procesamiento y subida de audios desde videos de YouTube a un bucket de Amazon S3. Está diseñado para funcionar en la nube, utilizando DynamoDB para guardar el estado de las operaciones y los metadatos de las canciones procesadas.
+**ButakeroMusicBot** es un microservicio diseñado para la descarga, procesamiento y subida de audios desde videos de YouTube a Amazon S3. Utiliza tecnologías modernas y está preparado para ser desplegado en la nube, Kubernetes o localmente con Docker Compose.
 
-## Funcionalidades
 
-- Búsqueda de videos en YouTube por nombre o URL.
-- Descarga y procesamiento de audio.
-- Subida de archivos de audio a Amazon S3.
-- Registro de operaciones y metadatos en DynamoDB.
-- Sistema de reintentos en caso de fallos en el procesamiento.
+## Tabla de Contenidos 📋
 
-## Requisitos
+- [Características Principales](#características-principales)
+- [Requisitos Previos](#requisitos-previos)
+- [Formas de Despliegue](#formas-de-despliegue)
+  - [1. Docker Compose](#1-docker-compose)
+  - [2. Kubernetes](#2-kubernetes)
+  - [3. AWS ECS con Terraform](#3-aws-ecs-con-terraform)
+- [Endpoints del API](#endpoints-del-api)
+- [Pruebas](#pruebas)
+- [Explicación de diagramas de Arquitectura](#explicación-de-diagramas-de-arquitectura)
+  - [1. Arquitectura de la Aplicación en AWS ECS](#arquitectura-de-la-aplicación-en-aws-ecs)
+  - [2. Arquitectura en Kubernetes](#arquitectura-en-kubernetes)
+---
 
-Este microservicio depende de los siguientes servicios externos:
+## Características Principales
 
-- **Amazon S3**: Para almacenar los archivos de audio procesados.
-- **Amazon DynamoDB**: Para registrar los metadatos de las canciones y los resultados de las operaciones.
-- **YouTube API**: Para obtener los detalles de los videos de YouTube.
+- 🔍 Búsqueda de videos en YouTube por nombre o URL.
+- 🎧 Descarga y procesamiento de audio.
+- ☁️ Subida de archivos de audio a Amazon S3.
+- 🗃️ Registro de operaciones y metadatos en DynamoDB.
+- 🔄 Sistema de reintentos en caso de fallos.
+- 📊 Monitoreo y métricas con Prometheus/Grafana
+- 🔒 Seguridad y autenticación integrada
 
-En el futuro, se implementará una versión que funcionará en memoria, eliminando la dependencia de servicios externos, lo que permitirá correr el microservicio sin conexión a AWS.
+## Requisitos Previos
 
-## Futuras Implementaciones
+### Requisitos Generales
 
-Próximamente se agregarán las siguientes funcionalidades:
+- Go 1.21 o superior
+- Docker y Docker Compose
+- Cuenta de AWS con acceso programático
+- API Key de YouTube
+- Git
+---
 
-- **WebSockets**: Para notificar al usuario el estado de sus operaciones en tiempo real.
-- **Implementación en memoria**: Una versión que no dependa de servicios externos como AWS, permitiendo la ejecución local.
+### Para Despliegue en AWS
 
-## Ejecución
+- AWS CLI configurado
+- Terraform >= 1.0
+- Cuenta de AWS con permisos para:
+  - ECS
+  - ECR
+  - S3
+  - DynamoDB
+  - IAM
+  - VPC
+  - CloudWatch
 
-Para ejecutar el microservicio:
+---
 
-1. Clonar el repositorio.
-2. Configurar las variables de entorno.
-3. Ejecutar el servicio utilizando `go run`:
+### Para Despliegue en Kubernetes
 
-```bash
-go run cmd/main.go
+- Kubernetes Cluster (1.24+)
+- kubectl configurado
+- Helm v3
+- Minikube (para desarrollo local)
+
+---
+
+## Formas de Despliegue
+
+El microservicio puede ser desplegado de distintas maneras, dependiendo del entorno en el que se desee correr. A continuación, se detallan las tres formas principales de despliegue:
+
+### 1. Docker Compose
+
+El despliegue con Docker Compose levanta los siguientes servicios:
+
+- Zookeeper
+- Kafka
+- MongoDB
+- Backend (usando el Dockerfile del proyecto)
+
+### Configuración Inicial
+
+1. Docker y Docker Compose instalados en tu máquina.
+
+2. Configurar el archivo `test_local.env`. Este archivo contiene todas las variables necesarias para ejecutar el servicio localmente. Lo principal que necesitas modificar es la variable `YOUTUBE_API_KEY`:
+
+```env
+# Environment
+ENVIRONMENT=local
+LOCAL_STORAGE_PATH=data/audio-files
+SERVICE_MAX_ATTEMPTS=7
+SERVICE_TIMEOUT=2
+YOUTUBE_API_KEY=TU_API_KEY_AQUI  # Modificar esto con tu API key
+GIN_MODE=release
+
+# Kafka Configuration
+KAFKA_TOPIC=notification
+KAFKA_BROKERS=kafka:29092
+KAFKA_ENABLE_TLS=false
+
+# Authentication
+OAUTH2=false
+
+# MongoDB Configuration
+MONGO_USER=root
+MONGO_PASSWORD=root
+MONGO_PORT=27017
+MONGO_HOST=mongodb
+MONGO_DATABASE=audio_service_db
+MONGO_COLLECTION_SONGS=Songs
+MONGO_COLLECTION_OPERATIONS=Operations
+MONGO_ENABLE_TLS=false
+MONGO_REPLICA_SET_NAME=rs0
+
+# YouTube Cookies
+COOKIES_YOUTUBE=/root/yt-cookies.txt
 ```
 
-El servicio correrá en el puerto 8080 y estará listo para recibir solicitudes de procesamiento de canciones.
+#### Obtener YouTube API Key
+
+Para obtener tu YouTube API Key, sigue estos pasos:
+
+1. Ve a la [Google Cloud Console](https://console.cloud.google.com/)
+2. Crea un nuevo proyecto o selecciona uno existente
+3. Habilita la YouTube Data API v3 para tu proyecto
+4. Ve a "Credenciales"
+5. Crea una nueva credencial de tipo "API Key"
+6. Copia la API Key generada y colócala en la variable `YOUTUBE_API_KEY` del archivo `test_local.env`
+
+3. Script de cookies de YouTube (opcional): Si encontras problemas con YouTube, como el error "Sign in to confirm your age", podes generar un archivo de cookies para evitar el bloqueo. Para ello, tenes que ejecutar previamente el script `filter_youtube_cookies.sh` que generará el archivo `yt-cookies.txt`.
+
+```bash
+bash filter_youtube_cookies.sh
+```
+
+#### Ejecutar con Docker Compose
+El proyecto incluye un `docker-compose.yml` que levanta todos los servicios necesarios:
+- Zookeeper
+- Kafka
+- MongoDB
+- Backend (usando el Dockerfile del proyecto)
+
+Para iniciar todos los servicios:
+```bash
+docker compose up -d
+```
+
+Para ver los logs de los servicios:
+```bash
+# Ver todos los logs
+docker compose logs -f
+
+# Ver logs de un servicio específico
+docker compose logs -f backend-application
+```
+
+Para detener los servicios:
+```bash
+docker compose down
+```
+
+### 2. Kubernetes
+
+#### Prerrequisitos
+- Kubernetes Cluster (1.24+)
+- kubectl configurado
+- Helm v3
+- Minikube (para desarrollo local)
+
+#### Configuración de Credenciales
+Antes de ejecutar el despliegue, debes configurar las credenciales en el archivo `secret.yaml`:
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backend-secret
+  namespace: backend
+type: Opaque
+stringData:
+  YOUTUBE_API_KEY: "${YOUTUBE_API_KEY}"  # Tu API key de YouTube
+  MONGO_USER: "admin-user"     
+  MONGO_PASSWORD: "root"
+  YT_COOKIES: "${YT_COOKIES}"   # Cookies de YouTube (opcional)
+```
+
+#### Obtener Cookies de YouTube (Opcional)
+Para evitar errores de autorización en YouTube ("Sign in to confirm your age"), puedes configurar cookies:
+1. Ejecuta el script:
+```bash
+bash filter_youtube_cookies.sh
+```
+
+2. Copia el contenido generado al campo YT_COOKIES del secret.
+
+#### Despliegue Automatizado
+
+El proyecto incluye un script `deploy.sh` que automatiza todo el proceso de despliegue. Este script:
+
+1. Crea los namespaces necesarios:
+   - Kafka
+   - MongoDB
+   - Prometheus
+   - Backend
+   - Otros servicios
+
+2. Configura RBAC y permisos para:
+   - Prometheus
+   - MongoDB
+
+3. Instala y configura componentes esenciales:
+   - Cert-Manager para gestión de certificados SSL/TLS
+   - Operador de MongoDB
+   - Kafka con Strimzi
+   - Prometheus & Grafana para monitorización
+   - Backend de la aplicación
+
+Para ejecutar el despliegue completo, simplemente ejecuta:
+
+```bash
+bash deploy.sh
+```
+
+El script se encargará de:
+- Verificar los prerrequisitos
+- Crear todos los recursos necesarios
+- Esperar a que los pods estén listos
+- Verificar el estado final del despliegue
+
+#### Acceso Local a los Endpoints
+
+Una vez completado el despliegue, puedes acceder a los endpoints localmente:
+
+```bash
+kubectl port-forward svc/backend-service 8080 -n backend
+```
+
+Esto te permitirá acceder al servicio en http://localhost:8080/api/v1/health
+
+#### Verificar el Estado del Despliegue
+
+Para verificar el estado de los pods:
+
+```bash
+# Ver pods en el namespace backend
+kubectl get pods -n backend
+
+# Ver pods en todos los namespaces
+kubectl get pods --all-namespaces
+```
+
+#### Logs y Monitoreo
+
+Para ver los logs del backend:
+
+```bash
+# Obtener el nombre del pod
+kubectl get pods -n backend
+
+# Ver logs
+kubectl logs -f <nombre-del-pod> -n backend
+```
+
+Para acceder a Grafana:
+
+```bash
+kubectl port-forward svc/grafana 3000 -n monitoring
+```
+
+### 3. AWS ECS con Terraform
+
+#### Prerrequisitos
+- Terraform >= 1.0
+- AWS CLI configurado
+- Cuenta de AWS con permisos necesarios
+
+#### Configuración
+1. Movete al directorio donde se encuentra los archivos .tfs:
+```bash
+microservices/audio_processor/song-downloader-infra
+```
+
+2. Edita el archivo `terraform.example.tfvars` con tus configuraciones:
+```hcl
+# Configuración básica
+aws_region = "us-east-1"
+project_name = "butakero-music-download"
+environment = "prod"
+
+# Configuración del servicio
+gin_mode = "release"
+service_max_attempts = 5
+service_timeout = 2
+youtube_api_key = "TU_API_KEY_AQUI"  # Modifica esto con tu API key de YouTube
+oauth2_enabled = "true"
+container_port = 8080
+secret_name = "butakero-audio-service-secrets"
+
+# Tags para recursos AWS
+alb_tags = {
+  Project     = "music-downloader"
+  Environment = "production"
+}
+ecs_tags = {
+  Project     = "music-downloader"
+  Environment = "production"
+}
+storage_s3_tags = {
+  Project     = "music-downloader"
+  Environment = "production"
+}
+dynamodb_table_operations_tags = {
+  Project     = "music-downloader"
+  Environment = "production"
+}
+dynamodb_table_songs_tag = {
+  Project     = "music-downloader"
+  Environment = "production"
+}
+sqs_queue_tag = {
+  Project     = "music-downloader"
+  Environment = "production"
+}
+ecr_tags = {
+  Project     = "music-downloader"
+  Environment = "production"
+}
+networking_tags = {
+  Project     = "music-downloader"
+  Environment = "production"
+}
+cloudwatch_tags = {
+  Project     = "music-downloader"
+  Environment = "production"
+}
+iam_tags = {
+  Project     = "music-downloader"
+  Environment = "production"
+}
+security_group_tags = {
+  Project     = "music-downloader"
+  Environment = "production"
+}
+sm_tags = {
+  Project     = "music-downloader"
+  Environment = "production"
+}
+```
+
+#### Pasos de Despliegue
+
+1. Inicializa Terraform:
+```bash
+terraform init
+```
+
+2. Verifica los cambios que se realizarán:
+```bash
+terraform plan -var-file="terraform.example.tfvars"
+```
+
+3. Aplica la infraestructura:
+```bash
+terraform apply
+```
+#### Recursos Desplegados
+El despliegue creará los siguientes recursos en AWS:
+
+- **ECS Cluster** con Fargate
+- **Application Load Balancer**
+- **S3 Bucket** para almacenamiento de archivos
+- **DynamoDB Tables** para operaciones y canciones
+- **SQS Queue** para mensajería
+- **ECR Repository** para imágenes de contenedor
+- **CloudWatch** para logs y monitoreo
+- **IAM Roles** y políticas necesarias
+- **Security Groups** para control de acceso
+- **VPC** y recursos de networking
+- **Secrets Manager** para gestión de secretos
+
+#### Destruir la Infraestructura
+
+Para eliminar todos los recursos creados:
+```bash
+terraform destroy
+```
+
 
 ## Endpoints del API
 
@@ -54,15 +396,15 @@ El servicio correrá en el puerto 8080 y estará listo para recibir solicitudes 
 Ejemplo de solicitud:
 
 ```bash
-curl -X POST "http://localhost:8080/api/audio/start?song=Never+Gonna+Give+You+Up"
+curl -X POST "http://localhost:8080/api/v1/audio/start?song=linkin+park+the+emptiness+machine"
 ```
 
 Respuesta:
 
 ```json
 {
-  "operation_id": "unique-operation-id",
-  "song_id": "unique-song-id"
+  "operation_id": "19f6c66f-26f3-4ccf-bfc7-967449a95ad4",
+  "song_id": "SRXH9AbT280"
 }
 ```
 
@@ -78,7 +420,7 @@ Respuesta:
 Ejemplo de solicitud:
 
 ```bash
-curl -X GET "http://localhost:8080/api/audio/status?operation_id=unique-operation-id&song_id=unique-song-id"
+curl -X GET "http://localhost:8080/api/v1/audio/status?operation_id=19f6c66f-26f3-4ccf-bfc7-967449a95ad4&song_id=SRXH9AbT280"
 ```
 
 Respuesta (ejemplo de operación en curso):
@@ -86,15 +428,16 @@ Respuesta (ejemplo de operación en curso):
 ```json
 {
   "status": {
-    "id": "unique-operation-id",
-    "song_id": "unique-song-id",
-    "status": "iniciando",
-    "message": "",
-    "data": "",
-    "processing_date": "",
-    "success": false,
-    "attempts": 0,
-    "failures": 0
+      "id": "19f6c66f-26f3-4ccf-bfc7-967449a95ad4",
+      "sk": "SRXH9AbT280",
+      "status": "iniciando",
+      "message": "",
+      "metadata": null,
+      "file_data": null,
+      "processing_date": "",
+      "success": false,
+      "attempts": 0,
+      "failures": 0
   }
 }
 ```
@@ -103,16 +446,30 @@ Respuesta (ejemplo de operación finalizada):
 
 ```json
 {
-  "status": {
-    "id": "unique-operation-id",
-    "song_id": "unique-song-id",
-    "status": "success",
-    "message": "Procesamiento exitoso",
-    "data": "Archivo guardado en S3: s3://bucket/Rick Astley - Never Gonna Give You Up (Official Music Video).dca",
-    "processing_date": "2024-10-02T14:21:41-03:00",
-    "success": true,
-    "attempts": 1,
-    "failures": 0
+    "status": {
+      "id": "19f6c66f-26f3-4ccf-bfc7-967449a95ad4",
+      "sk": "SRXH9AbT280",
+      "status": "success",
+      "message": "Procesamiento exitoso",
+      "metadata": {
+          "id": "63f48016-78cd-4387-99b9-c38af46e8e90",
+          "video_id": "SRXH9AbT280",
+          "title": "The Emptiness Machine (Official Music Video) - Linkin Park",
+          "duration": "PT3M21S",
+          "url_youtube": "https://youtube.com/watch?v=SRXH9AbT280",
+          "thumbnail": "https://i.ytimg.com/vi/SRXH9AbT280/default.jpg",
+          "platform": "Youtube"
+      },
+      "file_data": {
+          "file_path": "audio/The Emptiness Machine (Official Music Video) - Linkin Park.dca",
+          "file_size": "1.44MB",
+          "file_type": "audio/dca",
+          "public_url": "file://data/audio-files/audio/The Emptiness Machine (Official Music Video) - Linkin Park.dca"
+      },
+      "processing_date": "2024-12-24T05:39:58Z",
+      "success": true,
+      "attempts": 1,
+      "failures": 0
   }
 }
 ```
@@ -121,42 +478,11 @@ Respuesta (ejemplo de operación fallida):
 
 ```json
 {
-  "operation_id": "unique-operation-id",
+  "operation_id": "19f6c66f-26f3-4ccf-bfc7-967449a95ad4",
   "status": "failed",
   "error": "Descripción del error ocurrido"
 }
 ```
-
-## Detalles Técnicos
-
-### Configuración del microservicio
-
-El microservicio se configura utilizando un archivo de configuración (cfg) que se construye con los siguientes parámetros:
-
-```go
-cfg := config.Config{
-    MaxAttempts:           3,
-    Timeout:               4 * time.Minute,
-    BucketName:            os.Getenv("BUCKET_NAME"),
-    Region:                os.Getenv("REGION"),
-    YouTubeApiKey:         os.Getenv("YOUTUBE_API_KEY"),
-    SongsTable:            os.Getenv("DYNAMODB_TABLE_NAME_SONGS"),
-    OperationResultsTable: os.Getenv("DYNAMODB_TABLE_NAME_OPERATION"),
-    AccessKey:             os.Getenv("ACCESS_KEY"),
-    SecretKey:             os.Getenv("SECRET_KEY"),
-    Environment:           os.Getenv("GIN_MODE"), 
-}
-```
-
-Asegurate de tener configuradas las siguientes variables de entorno:
-
-- `BUCKET_NAME`: El nombre del bucket en S3 donde se almacenarán los audios procesados.
-- `REGION`: La región de AWS.
-- `YOUTUBE_API_KEY`: La clave de API de YouTube.
-- `DYNAMODB_TABLE_NAME_SONGS`: El nombre de la tabla de DynamoDB para los metadatos de canciones.
-- `DYNAMODB_TABLE_NAME_OPERATION`: El nombre de la tabla de DynamoDB para los resultados de operaciones.
-- `ACCESS_KEY` y `SECRET_KEY` : Credenciales de AWS necesarias para acceder a los servicios.
-- `GIN_MODE`: Modo de ejecuccion de la applicacion de Gin. Puede ser `release` o `debug`, por default esta en `default`.
 
 ## Pruebas
 
@@ -167,7 +493,7 @@ go test ./...
 ```
 
 
-## Explicación de los Diagramas de Secuencia y Arquitectura
+## Explicación de diagramas de Arquitectura
 
 ## Diagrama de Secuencia
 
@@ -226,3 +552,62 @@ Cada tarea de ECS tiene asociado un **IAM Role** que le permite acceder a servic
 3. **Target Group**: Este grupo enruta el tráfico a las tareas de ECS corriendo en Fargate.
 4. **ECS Tasks**: Las tareas procesan la solicitud y, si necesitan, acceden a S3 y DynamoDB para manejar los datos.
 5. **CloudWatch**: Monitorea el rendimiento y activa políticas de escalado si se detectan problemas de capacidad.
+---
+
+## Arquitectura en Kubernetes
+
+![image](/images/arquitectura-k8s.png)
+
+Nuestra aplicación está desplegada en Kubernetes utilizando una arquitectura de microservicios que consta de varios componentes clave:
+
+### Componentes Core
+
+1. **Servicio Backend**
+   - Punto de entrada para todas las solicitudes de clientes
+   - Desplegado como un servicio de Kubernetes con capacidades de balanceo de carga
+
+2. **Capa de Aplicación**
+   - Contiene los nodos de Backend en tiempo real
+   - Desplegado como StatefulSet para mantener el orden de procesamiento
+   - Escala horizontalmente según la demanda
+
+3. **Procesamiento de Mensajes**
+   - Servicios de Kafka y MongoDB para el manejo y almacenamiento de mensajes
+   - Utiliza PVC (Persistent Volume Claims) para persistencia de datos
+   - Desplegado usando operadores de Kubernetes para gestión automatizada
+
+### Operadores de Kubernetes
+
+El sistema utiliza operadores especializados para gestionar aplicaciones con estado:
+
+- **Operador Strimzi**: Gestiona los clusters de Kafka
+- **Operador MongoDB**: Maneja los despliegues y escalado de MongoDB
+
+### Stack de Monitoreo
+
+- **Prometheus**: Recolecta métricas de los servicios
+- **Grafana**: Visualiza datos de monitoreo
+- **Colectores de Métricas**:
+  - Node exporter para métricas del sistema
+  - Service monitor para métricas de aplicación
+
+### Almacenamiento y Gestión de Estado
+
+- Almacenamiento persistente usando PVC para:
+  - Datos de MongoDB
+  - Logs de Kafka
+  - Metadatos de operaciones
+  - Almacenamiento de canciones
+
+### Seguridad
+
+- **Cert-manager**: Gestión de certificados TLS
+- Comunicación segura entre servicios usando TLS
+- Políticas de red para control de comunicación interna
+
+### Escalabilidad y Confiabilidad
+
+- Componentes replicados para alta disponibilidad:
+  - Clusters de Kafka con múltiples réplicas
+  - ReplicaSets de MongoDB
+  - Múltiples instancias del Backend en tiempo real
