@@ -271,6 +271,60 @@ kubectl port-forward svc/grafana 3000 -n monitoring
 - AWS CLI configurado
 - Cuenta de AWS con permisos necesarios
 
+#### Configuración del Backend Remoto
+
+Antes de iniciar el despliegue, necesitas configurar el backend remoto en AWS para almacenar el estado de Terraform de forma segura:
+
+1. Crear el bucket S3:
+```bash
+aws s3api create-bucket \
+    --bucket song-download-tf-state \
+    --region us-east-1
+```
+
+2. Habilitar el versionado del bucket:
+```bash
+aws s3api put-bucket-versioning \
+    --bucket song-download-tf-state \
+    --versioning-configuration Status=Enabled
+```
+
+3. Crear la tabla DynamoDB para el bloqueo del estado:
+```bash
+aws dynamodb create-table \
+    --table-name terraform-lock-table \
+    --attribute-definitions AttributeName=LockID,AttributeType=S \
+    --key-schema AttributeName=LockID,KeyType=HASH \
+    --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 \
+    --region us-east-1
+```
+
+#### Configuración del Provider y Backend
+
+El archivo `provider.tf` debe contener:
+
+```hcl
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+  backend "s3" {
+    bucket         = "song-download-tf-state"
+    key            = "prod/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-lock-table"
+    encrypt        = true
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+```
+
 #### Configuración
 1. Movete al directorio donde se encuentra los archivos .tfs:
 ```bash
