@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/cmd/server"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/cmd/local/server"
 	"log"
 )
 
