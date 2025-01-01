@@ -50,4 +50,13 @@ resource "aws_s3_bucket_policy" "storage_policy" {
 POLICY
 }
 
+resource "aws_s3_object" "cookie_file" {
+  bucket = aws_s3_bucket.storage.id
+  key = "yt-cookies.txt"
+  source = "../yt-cookies.txt"
+  content_type = "text/plain"
+
+  etag = filemd5("../yt-cookies.txt")
+}
+
 data "aws_caller_identity" "current" {}
