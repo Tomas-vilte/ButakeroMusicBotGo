@@ -6,7 +6,7 @@ YT_COOKIES_FILE="yt-cookies.txt"
 
 
 echo "Extrayendo cookies desde el navegador '$BROWSER'..."
-yt-dlp --cookies $COOKIES_FILE --skip-download https://www.youtube.com/watch?v=E2Rj2gQAyPA
+yt-dlp --cookies-from-browser $BROWSER --cookies $COOKIES_FILE --skip-download https://www.youtube.com/watch?v=E2Rj2gQAyPA
 
 if [[ $? -ne 0 || ! -f "$COOKIES_FILE" ]]; then
   echo "Error: No se pudieron extraer las cookies desde el navegador."
