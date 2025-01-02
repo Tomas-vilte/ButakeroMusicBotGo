@@ -54,9 +54,12 @@ resource "aws_iam_role_policy" "ecs_task_role_policy" {
           "s3:PutObject",
           "s3:GetObject",
           "s3:DeleteObject",
-          "s3:ListBucket"
+          "s3:ListBucket",
         ]
-        Resource = var.s3_bucket_arns
+        Resource = flatten([
+          var.s3_bucket_arns,
+          [for bucket in var.s3_bucket_arns : "${bucket}/*"]
+        ])
       },
       {
         Effect = "Allow"
@@ -66,7 +69,9 @@ resource "aws_iam_role_policy" "ecs_task_role_policy" {
           "dynamodb:UpdateItem",
           "dynamodb:DeleteItem",
           "dynamodb:Query",
-          "dynamodb:Scan"
+          "dynamodb:Scan",
+          "dynamodb:DescribeTable"
+
         ]
         Resource = var.dynamodb_table_arns
       },

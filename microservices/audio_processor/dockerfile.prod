@@ -6,7 +6,7 @@ COPY cmd/ cmd/
 COPY internal/ internal/
 ARG TARGETARCH
 ARG TARGETOS
-RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o main cmd/main.go
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o main cmd/aws/main.go
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates ffmpeg python3 py3-pip curl \
