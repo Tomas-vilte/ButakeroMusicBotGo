@@ -1,6 +1,8 @@
 package server
 
 import (
+	"context"
+	"io"
 	"os"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
@@ -57,28 +59,29 @@ func StartServer() error {
 		return err
 	}
 
-	tempFile, err := os.Create("cookies.txt")
+	cookiesContent, err := storageService.GetFileContent(context.Background(), "", "yt-cookies.txt")
 	if err != nil {
-		log.Error("Error al crear archivo temporal", zap.Error(err))
-		return err
-	}
-	defer os.Remove(tempFile.Name())
-
-	if _, err := tempFile.WriteString(cfg.API.YouTube.Cookies); err != nil {
-		log.Error("Error al escribir en archivo temporal", zap.Error(err))
-		tempFile.Close()
+		log.Error("Error al obtener contenido de archivo", zap.Error(err))
 		return err
 	}
 
-	if err := tempFile.Close(); err != nil {
-		log.Error("Error al cerrar archivo temporal", zap.Error(err))
+	file, err := os.Create("yt-cookies.txt")
+	if err != nil {
+		log.Error("Error al crear archivo", zap.Error(err))
 		return err
 	}
-	log.Info("Archivo temporal creado", zap.String("path", tempFile.Name()))
+	defer file.Close()
+
+	_, err = io.Copy(file, cookiesContent)
+	if err != nil {
+		log.Error("Error al copiar contenido a archivo", zap.Error(err))
+		return err
+	}
+	log.Info("Archivo temporal creado", zap.String("path", file.Name()))
 
 	downloaderMusic := downloader.NewYTDLPDownloader(log, downloader.YTDLPOptions{
 		UseOAuth2: cfg.API.OAuth2.ParseBool(),
-		Cookies:   tempFile.Name(),
+		Cookies:   file.Name(),
 	})
 	youtubeAPI := api.NewYouTubeClient(cfg.API.YouTube.ApiKey)
 
