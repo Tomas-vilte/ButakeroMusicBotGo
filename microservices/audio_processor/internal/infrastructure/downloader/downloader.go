@@ -45,10 +45,10 @@ func NewYTDLPDownloader(log logger.Logger, options YTDLPOptions) *YTDLPDownloade
 // DownloadAudio implementa la interfaz Downloader para YTDLPDownloader.
 // Descarga el audio de la URL proporcionada usando yt-dlp y devuelve un io.Reader para acceder al contenido.
 func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Reader, error) {
-	// Creamos un pipe para pasar el audio descargado
+	// Crea un pipe para pasar el audio descargado
 	pr, pw := io.Pipe()
 
-	// Configuramos los argumentos para yt-dlp
+	// Configura los argumentos para yt-dlp
 	ytArgs := []string{
 		"-f", "bestaudio[ext=m4a]",
 		"--audio-quality", "0",
@@ -56,22 +56,16 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 		"--force-overwrites",
 		"--http-chunk-size", "10M",
 		"--cookies", d.cookies,
+		url,
 	}
 
-	// Debido a las nuevas restricciones impuestas por youtube, el inicio de session con oauth, ya no funca
-	//if d.useOAuth2 {
-	//	ytArgs = append(ytArgs, "--username", "oauth", "--password", "''")
-	//}
-
-	ytArgs = append(ytArgs, url)
-
-	// Registramos el comando que se va a ejecutar
+	// Registra el comando que se va a ejecutar
 	d.log.Info("Ejecutando comando yt-dlp", zap.String("comando", fmt.Sprintf("yt-dlp %s", strings.Join(ytArgs, " "))))
 
-	// Preparamos el comando con el contexto proporcionado
+	// Prepara el comando con el contexto proporcionado
 	cmd := exec.CommandContext(ctx, "yt-dlp", ytArgs...)
 
-	// Configuramos los pipes para stdout y stderr
+	// Configura los pipes para stdout y stderr
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, fmt.Errorf("error al crear el pipe de stdout: %w", err)
@@ -82,18 +76,18 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 		return nil, fmt.Errorf("error al crear el pipe de stderr: %w", err)
 	}
 
-	// Conectamos la salida del comando al pipe de escritura
+	// Conecta la salida del comando al pipe de escritura
 	cmd.Stdout = pw
 
-	// Usamos un WaitGroup para sincronizar las goroutines de procesamiento de salida
+	// Usa un WaitGroup para sincronizar las goroutines de procesamiento de salida
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	// Iniciamos goroutines para procesar stdout y stderr
+	// Inicia goroutines para procesar stdout y stderr
 	go d.processOutput(&wg, stdoutPipe, "stdout")
 	go d.processOutput(&wg, stderrPipe, "stderr")
 
-	// Iniciamos el comando
+	// Inicia el comando
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("error al iniciar el comando: %w", err)
 	}
