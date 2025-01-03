@@ -102,6 +102,27 @@ func (l *LocalStorage) GetFileMetadata(ctx context.Context, key string) (*model.
 	}, nil
 }
 
+// GetFileContent obtiene el contenido del archivo con la clave especificada.
+func (l *LocalStorage) GetFileContent(ctx context.Context, path string, key string) (io.ReadCloser, error) {
+	select {
+	case <-ctx.Done():
+		return nil, fmt.Errorf("contexto cancelado durante la obtención del contenido del archivo: %w", ctx.Err())
+	default:
+	}
+
+	fullPath := filepath.Join(path, key)
+
+	file, err := os.Open(fullPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("archivo %s no encontrado: %w", fullPath, err)
+		}
+		return nil, fmt.Errorf("error abriendo archivo %s: %w", fullPath, err)
+	}
+	return file, nil
+}
+
+// FormatFileSize formatea el tamaño del archivo en una representación legible.
 func FormatFileSize(sizeBytes int64) string {
 	const (
 		KB = 1024

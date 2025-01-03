@@ -176,4 +176,43 @@ func TestS3StorageIntegration(t *testing.T) {
 			t.Errorf("Mensaje de error inesperado. Obtenido: %s, Esperado que contenga: 'error obteniendo metadata del archivo de S3'", err.Error())
 		}
 	})
+
+	t.Run("Get file content for existing file", func(t *testing.T) {
+		// arrange
+		fileName := fmt.Sprintf("test-content-%d.txt", time.Now().UnixNano())
+		content := "Este es un archivo de prueba para obtener el contenido"
+
+		err := s3Storage.UploadFile(context.Background(), fileName, strings.NewReader(content))
+		if err != nil {
+			t.Fatalf("Error al subir el archivo: %v", err)
+		}
+
+		// act
+		fileContent, err := s3Storage.GetFileContent(context.Background(), "audio/", fileName)
+		if err != nil {
+			t.Fatalf("Error al obtener el contenido del archivo: %v", err)
+		}
+		defer fileContent.Close()
+
+		downloadedContent, err := io.ReadAll(fileContent)
+		if err != nil {
+			t.Fatalf("Error al leer el contenido del archivo: %v", err)
+		}
+
+		// assert
+		if string(downloadedContent) != content {
+			t.Errorf("El contenido descargado no coincide. Obtenido: %s, Esperado: %s", string(downloadedContent), content)
+		}
+
+		// clear
+		deleteObjectInput := &s3.DeleteObjectInput{
+			Bucket: aws.String(cfgApp.Storage.S3Config.BucketName),
+			Key:    aws.String("audio/" + fileName),
+		}
+
+		_, err = s3Client.DeleteObject(context.Background(), deleteObjectInput)
+		if err != nil {
+			t.Fatalf("Error al eliminar el archivo: %v", err)
+		}
+	})
 }

@@ -80,7 +80,7 @@ El despliegue con Docker Compose levanta los siguientes servicios:
 
 1. Docker y Docker Compose instalados en tu máquina.
 
-2. Configurar el archivo `test_local.env`. Este archivo contiene todas las variables necesarias para ejecutar el servicio localmente. Lo principal que necesitas modificar es la variable `YOUTUBE_API_KEY`:
+2. Crea un archivo llamado `test_local.env`, en el directorio donde se encuentra el [docker compose](./docker-compose.yml). Este archivo tiene que tener estas variables necesarias para ejecutar el servicio localmente. Lo principal que necesitas modificar es la variable `YOUTUBE_API_KEY`:
 
 ```env
 # Environment
@@ -125,14 +125,14 @@ Para obtener tu YouTube API Key, sigue estos pasos:
 5. Crea una nueva credencial de tipo "API Key"
 6. Copia la API Key generada y colócala en la variable `YOUTUBE_API_KEY` del archivo `test_local.env`
 
-3. Script de cookies de YouTube (opcional): Si encontras problemas con YouTube, como el error "Sign in to confirm your age", podes generar un archivo de cookies para evitar el bloqueo. Para ello, tenes que ejecutar previamente el script `filter_youtube_cookies.sh` que generará el archivo `yt-cookies.txt`.
+3. Script de cookies de YouTube (opcional): Si encontras problemas con YouTube, como el error "Sign in to confirm your age", podes generar un archivo de cookies para evitar el bloqueo. Para ello, tenes que ejecutar previamente el script [filter_youtube_cookies.sh](./filter_youtube_cookies.sh) que generará el archivo `yt-cookies.txt`.
 
 ```bash
 bash filter_youtube_cookies.sh
 ```
 
 #### Ejecutar con Docker Compose
-El proyecto incluye un `docker-compose.yml` que levanta todos los servicios necesarios:
+El proyecto incluye un [docker-compose.yml](./docker-compose.yml) que levanta todos los servicios necesarios:
 - Zookeeper
 - Kafka
 - MongoDB
@@ -166,7 +166,7 @@ docker compose down
 - Minikube (para desarrollo local)
 
 #### Configuración de Credenciales
-Antes de ejecutar el despliegue, debes configurar las credenciales en el archivo `secret.yaml`:
+Antes de ejecutar el despliegue, debes configurar las credenciales en el archivo [secret.yaml](/k8s/bases/backend/secret.yaml):
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -192,7 +192,7 @@ bash filter_youtube_cookies.sh
 
 #### Despliegue Automatizado
 
-El proyecto incluye un script `deploy.sh` que automatiza todo el proceso de despliegue. Este script:
+El proyecto incluye un script [deploy.sh](/deploy.sh) que automatiza todo el proceso de despliegue. Este script:
 
 1. Crea los namespaces necesarios:
    - Kafka
@@ -255,7 +255,7 @@ Para ver los logs del backend:
 kubectl get pods -n backend
 
 # Ver logs
-kubectl logs -f <nombre-del-pod> -n backend
+kubectl logs -f backend-application-hash -n backend
 ```
 
 Para acceder a Grafana:
@@ -273,7 +273,8 @@ kubectl port-forward svc/grafana 3000 -n monitoring
 
 #### Configuración del Backend Remoto
 
-Antes de iniciar el despliegue, necesitas configurar el backend remoto en AWS para almacenar el estado de Terraform de forma segura:
+> **Advertencia:**  
+> Antes de seguir, es **obligatorio** generar las cookies con el script [filter_youtube_cookies.sh](./filter_youtube_cookies.sh). Muchas IPs de las instancias de AWS están **baneadas o bloqueadas** por YouTube, así que vas a tener que usar cookies válidas para evitar problemas de conexión. Si vas a desplegarlo en ECS, asegurate de hacer este paso antes.
 
 1. Crear el bucket S3:
 ```bash
@@ -301,7 +302,7 @@ aws dynamodb create-table \
 
 #### Configuración del Provider y Backend
 
-El archivo `provider.tf` debe contener:
+El archivo [provider.tf](./song-downloader-infra/providers.tf) debe contener:
 
 ```hcl
 terraform {
@@ -331,7 +332,7 @@ provider "aws" {
 microservices/audio_processor/song-downloader-infra
 ```
 
-2. Edita el archivo `terraform.example.tfvars` con tus configuraciones:
+2. Edita el archivo [terraform.example.tfvars](./song-downloader-infra/terraform.example.tfvars) con tus configuraciones:
 ```hcl
 # Configuración básica
 aws_region = "us-east-1"
