@@ -20,6 +20,9 @@ type (
 
 		// HeadObject obtiene la información del encabezado del objeto de S3.
 		HeadObject(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error)
+
+		// GetObject obtiene el contenido del objeto de S3.
+		GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error)
 	}
 )
 
@@ -106,4 +109,19 @@ func formatFileSize(sizeBytes int64) string {
 	default:
 		return fmt.Sprintf("%dB", sizeBytes)
 	}
+}
+
+// GetFileContent obtiene el contenido del archivo con la clave especificada.
+func (s *S3Storage) GetFileContent(ctx context.Context, path string, key string) (io.ReadCloser, error) {
+	getInput := &s3.GetObjectInput{
+		Bucket: aws.String(s.Config.Storage.S3Config.BucketName),
+		Key:    aws.String(path + key),
+	}
+
+	getResult, err := s.Client.GetObject(ctx, getInput)
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo contenido del archivo %s de S3: %w", key, err)
+	}
+
+	return getResult.Body, nil
 }
