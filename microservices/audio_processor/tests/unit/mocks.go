@@ -213,6 +213,11 @@ func (m *MockStorageS3API) PutObject(ctx context.Context, params *s3.PutObjectIn
 	return args.Get(0).(*s3.PutObjectOutput), args.Error(1)
 }
 
+func (m *MockStorageS3API) GetObject(ctx context.Context, params *s3.GetObjectInput, optFns ...func(*s3.Options)) (*s3.GetObjectOutput, error) {
+	args := m.Called(ctx, params, optFns)
+	return args.Get(0).(*s3.GetObjectOutput), args.Error(1)
+}
+
 func (m *MockOperationRepository) SaveOperationsResult(ctx context.Context, result *model.OperationResult) error {
 	args := m.Called(ctx, result)
 	return args.Error(0)
@@ -266,6 +271,12 @@ func (m *MockStorage) UploadFile(ctx context.Context, key string, body io.Reader
 func (m *MockStorage) GetFileMetadata(ctx context.Context, key string) (*model.FileData, error) {
 	args := m.Called(ctx, key)
 	return args.Get(0).(*model.FileData), args.Error(1)
+}
+
+func (m *MockStorage) GetFileContent(ctx context.Context, path string, key string) (io.ReadCloser, error) {
+	args := m.Called(ctx, path, key)
+	return args.Get(0).(io.ReadCloser), args.Error(1)
+
 }
 
 func (m *MockLogger) Info(msg string, fields ...zapcore.Field) {
