@@ -79,10 +79,14 @@ func StartServer() error {
 	}
 	log.Info("Archivo temporal creado", zap.String("path", file.Name()))
 
-	downloaderMusic := downloader.NewYTDLPDownloader(log, downloader.YTDLPOptions{
+	downloaderMusic, err := downloader.NewYTDLPDownloader(log, downloader.YTDLPOptions{
 		UseOAuth2: cfg.API.OAuth2.ParseBool(),
 		Cookies:   file.Name(),
 	})
+	if err != nil {
+		log.Error("Error al crear downloader", zap.Error(err))
+		return err
+	}
 	youtubeAPI := api.NewYouTubeClient(cfg.API.YouTube.ApiKey)
 
 	audioProcessingService := service.NewAudioProcessingService(
