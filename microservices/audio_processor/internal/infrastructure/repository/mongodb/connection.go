@@ -49,7 +49,7 @@ func NewMongoDB(opts MongoOptions) (*MongoDB, error) {
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	uri := buildMongoURI(opts.Config)
@@ -92,10 +92,11 @@ func (db *MongoDB) Close(ctx context.Context) error {
 
 func buildMongoURI(cfg *config.Config) string {
 	hostList := strings.Join(cfg.Database.Mongo.Host, ",")
-	return fmt.Sprintf("mongodb://%s:%s@%s/?replicaSet=%s&tls=%v",
+	return fmt.Sprintf("mongodb://%s:%s@%s:%s/?replicaSet=%s&tls=%v",
 		cfg.Database.Mongo.User,
 		cfg.Database.Mongo.Password,
 		hostList,
+		cfg.Database.Mongo.Port,
 		cfg.Database.Mongo.ReplicaSetName,
 		cfg.Database.Mongo.EnableTLS,
 	)
