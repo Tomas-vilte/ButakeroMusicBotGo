@@ -59,10 +59,14 @@ func StartServer() error {
 		return err
 	}
 
-	downloaderMusic := downloader.NewYTDLPDownloader(log, downloader.YTDLPOptions{
+	downloaderMusic, err := downloader.NewYTDLPDownloader(log, downloader.YTDLPOptions{
 		UseOAuth2: cfg.API.OAuth2.ParseBool(),
 		Cookies:   cfg.API.YouTube.Cookies,
 	})
+	if err != nil {
+		log.Error("Error al crear downloader", zap.Error(err))
+		return err
+	}
 	youtubeAPI := api.NewYouTubeClient(cfg.API.YouTube.ApiKey)
 
 	audioProcessingService := service.NewAudioProcessingService(

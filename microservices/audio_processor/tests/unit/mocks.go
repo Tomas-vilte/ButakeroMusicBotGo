@@ -258,9 +258,9 @@ func (m *MockMetadataRepository) DeleteMetadata(ctx context.Context, id string) 
 	return args.Error(0)
 }
 
-func (m *MockDownloader) DownloadAudio(ctx context.Context, url string) (io.Reader, error) {
+func (m *MockDownloader) DownloadAudio(ctx context.Context, url string) (io.ReadCloser, error) {
 	args := m.Called(ctx, url)
-	return args.Get(0).(io.Reader), args.Error(1)
+	return args.Get(0).(io.ReadCloser), args.Error(1)
 }
 
 func (m *MockStorage) UploadFile(ctx context.Context, key string, body io.Reader) error {
