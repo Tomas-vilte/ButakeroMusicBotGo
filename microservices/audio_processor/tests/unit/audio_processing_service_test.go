@@ -10,6 +10,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"io"
 	"testing"
 	"time"
 )
@@ -183,7 +184,7 @@ func TestAudioProcessingService(t *testing.T) {
 			URLYouTube: "https://youtube.com/watch?v=test-video-id",
 			Thumbnail:  "https://img.youtube.com/vi/test-video-id/0.jpg",
 		}
-		mockAudioContent := bytes.NewBufferString("fake audio content")
+		mockAudioContent := io.NopCloser(bytes.NewBufferString("fake audio content"))
 
 		mockDownloader.On("DownloadAudio", mock.Anything, mock.AnythingOfType("string")).Return(mockAudioContent, errors.New("download error"))
 		mockMessagingQueue.On("SendMessage", mock.Anything, mock.Anything).Return(nil)
@@ -229,7 +230,9 @@ func TestAudioProcessingService(t *testing.T) {
 			Thumbnail:  "https://img.youtube.com/vi/test-video-id/0.jpg",
 		}
 
-		mockDownloader.On("DownloadAudio", mock.Anything, mock.AnythingOfType("string")).Return(bytes.NewReader([]byte("test audio data")), nil)
+		mockAudioContent := io.NopCloser(bytes.NewBufferString("fake audio content"))
+
+		mockDownloader.On("DownloadAudio", mock.Anything, mock.AnythingOfType("string")).Return(mockAudioContent, nil)
 		mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil)
 		mockStorage.On("GetFileMetadata", mock.Anything, mock.Anything).Return(&model.FileData{}, nil)
 		mockMetadataRepo.On("SaveMetadata", mock.Anything, mock.AnythingOfType("*model.Metadata")).Return(errors.New("metadata save error"))
@@ -279,7 +282,9 @@ func TestAudioProcessingService(t *testing.T) {
 			Thumbnail:  "https://img.youtube.com/vi/test-video-id/0.jpg",
 		}
 
-		mockDownloader.On("DownloadAudio", mock.Anything, mock.AnythingOfType("string")).Return(bytes.NewReader([]byte("test audio data")), nil)
+		mockAudioContent := io.NopCloser(bytes.NewBufferString("fake audio content"))
+
+		mockDownloader.On("DownloadAudio", mock.Anything, mock.AnythingOfType("string")).Return(mockAudioContent, nil)
 		mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil)
 		mockStorage.On("GetFileMetadata", mock.Anything, mock.Anything).Return(&model.FileData{}, nil)
 		mockMetadataRepo.On("SaveMetadata", mock.Anything, mock.AnythingOfType("*model.Metadata")).Return(errors.New("metadata save error"))
