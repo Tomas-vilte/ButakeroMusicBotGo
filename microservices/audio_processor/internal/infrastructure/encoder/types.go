@@ -45,8 +45,8 @@ type (
 		Speed    float32       // Velocidad de procesamiento en fps (frames por segundo)
 	}
 
-	// EncodeSession representa una sesión de codificación de audio.
-	EncodeSession struct {
+	// encodeSessionImpl representa una sesión de codificación de audio.
+	encodeSessionImpl struct {
 		sync.Mutex                  // Mutex para sincronización concurrente
 		options      *EncodeOptions // Opciones de codificación
 		pipeReader   io.Reader      // Lector para el pipe
