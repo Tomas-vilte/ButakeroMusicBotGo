@@ -92,7 +92,7 @@ func (db *MongoDB) Close(ctx context.Context) error {
 
 func buildMongoURI(cfg *config.Config) string {
 	hostList := strings.Join(cfg.Database.Mongo.Host, ",")
-	return fmt.Sprintf("mongodb://%s:%s@%s:%s/?replicaSet=%s&tls=%v",
+	return fmt.Sprintf("mongodb://%s:%s@%s:%s/?replicaSet=%s&directConnection=true&tls=%v",
 		cfg.Database.Mongo.User,
 		cfg.Database.Mongo.Password,
 		hostList,
