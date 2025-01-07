@@ -5,6 +5,7 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/encoder"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/mock"
@@ -72,7 +73,40 @@ type (
 	MockMessagingQueue struct {
 		mock.Mock
 	}
+
+	MockEncoder struct {
+		mock.Mock
+	}
+
+	MockEncodeSession struct {
+		mock.Mock
+	}
 )
+
+func (m *MockEncodeSession) ReadFrame() ([]byte, error) {
+	args := m.Called()
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (m *MockEncodeSession) Read(p []byte) (n int, err error) {
+	args := m.Called(p)
+	return args.Int(0), args.Error(1)
+}
+
+func (m *MockEncodeSession) Stop() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *MockEncodeSession) FFMPEGMessages() string {
+	args := m.Called()
+	return args.String(0)
+}
+
+func (m *MockEncoder) Encode(ctx context.Context, r io.Reader, options *encoder.EncodeOptions) (encoder.EncodeSession, error) {
+	args := m.Called(ctx, r, options)
+	return args.Get(0).(encoder.EncodeSession), args.Error(1)
+}
 
 func (m *MockMessagingQueue) SendMessage(ctx context.Context, message model.Message) error {
 	args := m.Called(ctx, message)
