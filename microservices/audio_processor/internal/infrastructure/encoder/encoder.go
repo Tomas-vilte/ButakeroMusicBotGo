@@ -19,6 +19,29 @@ import (
 	"time"
 )
 
+type (
+	AudioEncoder interface {
+		Encode(ctx context.Context, r io.Reader, options *EncodeOptions) (EncodeSession, error)
+	}
+
+	EncodeSession interface {
+		ReadFrame() ([]byte, error)
+		Read(p []byte) (n int, err error)
+		Stop() error
+		FFMPEGMessages() string
+	}
+
+	FFmpegEncoder struct {
+		log logger.Logger
+	}
+)
+
+func NewFFmpegEncoder(log logger.Logger) *FFmpegEncoder {
+	return &FFmpegEncoder{
+		log: log,
+	}
+}
+
 var (
 	AudioApplicationVoip     AudioApplication = "voip"     // Aplicación de audio para voz sobre IP (VoIP)
 	AudioApplicationAudio    AudioApplication = "audio"    // Aplicación de audio general
@@ -82,22 +105,21 @@ func (e *EncodeOptions) Validate() error {
 	return nil
 }
 
-// EncodeMem crea una nueva sesión de codificación en memoria usando las opciones proporcionadas.
+// Encode crea una nueva sesión de codificación en memoria usando las opciones proporcionadas.
 // Valida las opciones antes de iniciar la sesión. Devuelve la sesión de codificación o un error si las opciones son inválidas.
-func EncodeMem(r io.Reader, options *EncodeOptions, ctx context.Context, logging logger.Logger) (session *EncodeSession, err error) {
-	err = options.Validate()
-	if err != nil {
-		return
+func (f *FFmpegEncoder) Encode(ctx context.Context, r io.Reader, options *EncodeOptions) (EncodeSession, error) {
+	if err := options.Validate(); err != nil {
+		return nil, err
 	}
 
-	session = &EncodeSession{
+	session := &encodeSessionImpl{
 		options:      options,
 		pipeReader:   r,
 		frameChannel: make(chan *Frame, options.BufferedFrames),
-		logging:      logging,
+		logging:      f.log,
 	}
 	go session.run(ctx)
-	return
+	return session, nil
 }
 
 // run ejecuta el proceso de codificación de audio utilizando ffmpeg.
@@ -114,7 +136,7 @@ func EncodeMem(r io.Reader, options *EncodeOptions, ctx context.Context, logging
 // - Lee la salida estándar y los errores del proceso ffmpeg.
 // - Utiliza un grupo de espera para sincronizar la lectura de stderr.
 // - Maneja el estado de la sesión y actualiza los logs con información relevante.
-func (e *EncodeSession) run(ctx context.Context) {
+func (e *encodeSessionImpl) run(ctx context.Context) {
 	// Asegura que se marque la sesión como no en ejecución al finalizar.
 	defer func() {
 		e.Lock()
@@ -247,7 +269,7 @@ func boolToStr(b bool) string {
 // - Solo asigna el error si no se ha registrado ningún otro error previamente.
 //
 // Este método asegura que solo se registre un error, evitando sobrescribir errores anteriores.
-func (e *EncodeSession) setError(err error) {
+func (e *encodeSessionImpl) setError(err error) {
 	e.Lock()          // Adquiere el mutex para acceso exclusivo.
 	defer e.Unlock()  // Libera el mutex al finalizar.
 	if e.err == nil { // Verifica si ya hay un error registrado.
@@ -268,7 +290,7 @@ func (e *EncodeSession) setError(err error) {
 // - Cuando se encuentra un retorno de carro ('\r'), maneja la línea acumulada y la limpia.
 // - Cuando se encuentra una nueva línea ('\n'), agrega la línea al búfer de salida de ffmpeg y la limpia.
 // - Registra errores si ocurren durante la lectura, excepto cuando se alcanza el final del archivo (EOF).
-func (e *EncodeSession) readStderr(stderr io.ReadCloser, wg *sync.WaitGroup) {
+func (e *encodeSessionImpl) readStderr(stderr io.ReadCloser, wg *sync.WaitGroup) {
 	defer wg.Done() // Señala que la goroutine ha terminado cuando se sale de la función.
 
 	bufReader := bufio.NewReader(stderr) // Crea un lector de búfer para leer de stderr.
@@ -313,7 +335,7 @@ func (e *EncodeSession) readStderr(stderr io.ReadCloser, wg *sync.WaitGroup) {
 // - Calcula la duración total en base a las horas, minutos y segundos extraídos.
 // - Crea una instancia de EncodeStats con la información extraída y la almacena en el campo lastStats de la sesión.
 // - Utiliza un mutex para garantizar que el acceso a lastStats sea seguro en un entorno concurrente.
-func (e *EncodeSession) handleStderrLine(line string) {
+func (e *encodeSessionImpl) handleStderrLine(line string) {
 	if strings.Index(line, "size=") != 0 { // Verifica si la línea contiene información relevante.
 		return
 	}
@@ -362,7 +384,7 @@ func (e *EncodeSession) handleStderrLine(line string) {
 // - Si ocurre un error durante la decodificación, se registra el error y se detiene la lectura, excepto en el caso de EOF.
 // - Escribe los paquetes decodificados en el formato Opus utilizando el método `writeOpusFrame`.
 // - Registra errores si ocurren durante la escritura de los frames Opus y detiene el procesamiento si es necesario.
-func (e *EncodeSession) readStdout(stdout io.ReadCloser) {
+func (e *encodeSessionImpl) readStdout(stdout io.ReadCloser) {
 	decoder := NewPacketDecoder(ogg.NewDecoder(stdout)) // Crea un decodificador para los paquetes OGG desde stdout.
 
 	skipPackets := 2 // Número de paquetes a omitir al inicio.
@@ -403,7 +425,7 @@ func (e *EncodeSession) readStdout(stdout io.ReadCloser) {
 // - Envía el búfer con los datos del frame a través del canal de frames.
 // - Incrementa el contador de frames procesados de manera segura utilizando un mutex.
 // - Registra errores si ocurren durante la escritura de los datos del frame y devuelve el error.
-func (e *EncodeSession) writeOpusFrame(opusFrame []byte) error {
+func (e *encodeSessionImpl) writeOpusFrame(opusFrame []byte) error {
 	var dcaBuf bytes.Buffer // Búfer para almacenar los datos en formato DCA.
 
 	// Escribe el tamaño del frame Opus como un entero de 16 bits en el búfer.
@@ -440,7 +462,7 @@ func (e *EncodeSession) writeOpusFrame(opusFrame []byte) error {
 // - Escribe un encabezado "DCA1" seguido de la longitud del JSON en formato Little Endian y luego el JSON serializado en un búfer.
 // - Envía el búfer que contiene el frame de metadatos al canal de frames.
 // - Registra errores si ocurren durante la codificación de JSON o la escritura de datos y retorna sin enviar el frame en caso de error.
-func (e *EncodeSession) writeMetadataFrame() {
+func (e *encodeSessionImpl) writeMetadataFrame() {
 	// Crea los metadatos de la codificación Opus y el origen del archivo.
 	metadata := Metadata{
 		Opus: &OpusMetadata{
@@ -492,7 +514,7 @@ func (e *EncodeSession) writeMetadataFrame() {
 //   - Lee un frame del canal de frames. Si el frame es nil, indica que el canal ha sido cerrado y no hay más datos disponibles,
 //     en cuyo caso retorna io.EOF.
 //   - Devuelve los datos del frame como un slice de bytes si la operación es exitosa.
-func (e *EncodeSession) ReadFrame() (frame []byte, err error) {
+func (e *encodeSessionImpl) ReadFrame() (frame []byte, err error) {
 	f := <-e.frameChannel // Lee un frame del canal de frames.
 	if f == nil {
 		return nil, io.EOF // Retorna io.EOF si el canal está cerrado y no hay más frames.
@@ -518,7 +540,7 @@ func (e *EncodeSession) ReadFrame() (frame []byte, err error) {
 // - Si se encuentra con un error al leer un frame, se registra el error y se retorna el error.
 // - Cuando se alcanza el final del archivo (io.EOF), el método deja de leer más frames y continúa con los datos disponibles en el búfer.
 // - Finalmente, lee los datos del búfer interno y los copia en el slice p.
-func (e *EncodeSession) Read(p []byte) (n int, err error) {
+func (e *encodeSessionImpl) Read(p []byte) (n int, err error) {
 	if e.buf.Len() >= len(p) {
 		// Si el búfer tiene suficientes datos, lee directamente desde el búfer.
 		return e.buf.Read(p)
@@ -550,7 +572,7 @@ func (e *EncodeSession) Read(p []byte) (n int, err error) {
 // - Copia el contenido de la variable de salida de ffmpeg a una variable local.
 // - Libera el bloqueo en el mutex.
 // - Devuelve el contenido de los mensajes de salida de ffmpeg.
-func (e *EncodeSession) FFMPEGMessages() string {
+func (e *encodeSessionImpl) FFMPEGMessages() string {
 	e.Lock()                 // Adquiere el mutex para acceso seguro a la variable de salida de ffmpeg.
 	output := e.ffmpegOutput // Copia el contenido de los mensajes de salida de ffmpeg.
 	e.Unlock()               // Libera el mutex.
@@ -570,7 +592,7 @@ func (e *EncodeSession) FFMPEGMessages() string {
 //     Si ocurre un error durante esta operación, lo registra y lo retorna.
 //   - Actualiza el estado de la sesión para indicar que ya no está en ejecución.
 //   - Libera el bloqueo en el mutex antes de retornar.
-func (e *EncodeSession) Stop() error {
+func (e *encodeSessionImpl) Stop() error {
 	e.Lock()         // Adquiere el mutex para acceso seguro a los atributos de la sesión.
 	defer e.Unlock() // Libera el mutex al finalizar la función.
 
