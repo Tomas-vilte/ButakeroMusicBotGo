@@ -106,9 +106,12 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 
 	var downloadErr error
 	var errBuf bytes.Buffer
+	var downloadComplete bool
 
 	var wg sync.WaitGroup
 	wg.Add(2)
+
+	done := make(chan struct{})
 
 	go d.processOutput(&wg, stdoutPipe, "stdout", cancel)
 	go func() {
@@ -118,17 +121,25 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 			line := scanner.Text()
 			errBuf.WriteString(line)
 			d.logOutput("stderr", line)
+
+			if strings.Contains(line, "ERROR") {
+				downloadErr = fmt.Errorf("error de yt-dlp: %s", line)
+				cancel()
+				return
+			}
 		}
 	}()
 
 	if err := cmd.Start(); err != nil {
 		cancel()
+		pw.Close()
 		return nil, fmt.Errorf("error al iniciar yt-dlp: %w", err)
 	}
 
 	go func() {
+		defer close(done)
 		defer func() {
-			if downloadErr != nil {
+			if downloadErr != nil || downloadComplete {
 				pw.CloseWithError(downloadErr)
 			} else {
 				pw.Close()
@@ -138,6 +149,11 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 
 		wg.Wait()
 		cmdErr := cmd.Wait()
+
+		if cmdErr != nil {
+			downloadErr = fmt.Errorf("el comando yt-dlp falló: %w", cmdErr)
+			return
+		}
 
 		size := int64(buf.Len())
 		if size < minValidFileSize {
@@ -151,16 +167,30 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 			return
 		}
 
-		if strings.Contains(errBuf.String(), "ERROR") {
-			downloadErr = fmt.Errorf("yt-dlp se mando una cagada: %s", errBuf.String())
-			return
-		}
+		downloadComplete = true
 
-		if cmdErr != nil {
-			downloadErr = fmt.Errorf("el comando yt-dlp falló: %w", cmdErr)
-			return
-		}
+		//if strings.Contains(errBuf.String(), "ERROR") {
+		//	downloadErr = fmt.Errorf("yt-dlp se mando una cagada: %s", errBuf.String())
+		//	return
+		//}
+
+		//if cmdErr != nil {
+		//	downloadErr = fmt.Errorf("el comando yt-dlp falló: %w", cmdErr)
+		//	return
+		//}
 	}()
+
+	select {
+	case <-done:
+		if downloadErr != nil {
+			return nil, downloadErr
+		}
+		if !downloadComplete {
+			return nil, fmt.Errorf("la descarga no se completo correctamente")
+		}
+	case <-ctx.Done():
+		return nil, fmt.Errorf("contexto cancelado durante la descarga: %w", ctx.Err())
+	}
 
 	return &closeableReader{
 		Reader: pr,

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/port"
+	"github.com/cenkalti/backoff/v4"
 	"io"
 	"time"
 
@@ -25,6 +26,7 @@ const (
 	statusFailed       = "failed"    // Estado de la operación cuando falla después de intentos.
 	platformYoutube    = "Youtube"   // Plataforma de origen del audio.
 	audioFileExtension = ".dca"      // Extensión de archivo para los audios procesados.
+	maxBackoff         = 30 * time.Second
 )
 
 // AudioProcessingService es un servicio que maneja la descarga, codificación y almacenamiento de audio.
@@ -34,9 +36,10 @@ type (
 		storage        port.Storage             // Interfaz para el almacenamiento en S3.
 		downloader     downloader.Downloader    // Interfaz para la descarga de audio.
 		operationStore port.OperationRepository // Interfaz para almacenar resultados de operaciones.
-		metadataStore  port.MetadataRepository  // Interfaz para almacenar metadatos del audio.
-		messaging      port.MessageQueue        // Interfaz para enviar mensajes a un message broker
-		config         *config.Config           // Configuración del servicio.
+		encoder        encoder.AudioEncoder
+		metadataStore  port.MetadataRepository // Interfaz para almacenar metadatos del audio.
+		messaging      port.MessageQueue       // Interfaz para enviar mensajes a un message broker
+		config         *config.Config          // Configuración del servicio.
 	}
 
 	AudioProcessor interface {
@@ -51,6 +54,7 @@ func NewAudioProcessingService(log logger.Logger, storage port.Storage,
 	operationStore port.OperationRepository,
 	metadataStore port.MetadataRepository,
 	messaging port.MessageQueue,
+	encoder encoder.AudioEncoder,
 	config *config.Config) *AudioProcessingService {
 
 	if config.Service.MaxAttempts == 0 {
@@ -67,6 +71,7 @@ func NewAudioProcessingService(log logger.Logger, storage port.Storage,
 		operationStore: operationStore,
 		metadataStore:  metadataStore,
 		messaging:      messaging,
+		encoder:        encoder,
 		config:         config,
 	}
 }
@@ -79,9 +84,8 @@ func (a *AudioProcessingService) StartOperation(ctx context.Context, songID stri
 		Status: statusInitiating,
 	}
 
-	err := a.operationStore.SaveOperationsResult(ctx, operationResult)
-	if err != nil {
-		return "", "", fmt.Errorf("error al guardar operación: %w", err)
+	if err := a.operationStore.SaveOperationsResult(ctx, operationResult); err != nil {
+		return "", "", fmt.Errorf("error al guardar resultado de operacion: %w", err)
 	}
 	return operationResult.ID, operationResult.SK, nil
 }
@@ -93,37 +97,59 @@ func (a *AudioProcessingService) ProcessAudio(ctx context.Context, operationID s
 
 	metadata := a.createMetadata(youtubeMetadata)
 
-	for attempts := 1; attempts <= a.config.Service.MaxAttempts; attempts++ {
-		err := a.processAudioAttempt(ctx, operationID, metadata, attempts)
-		if err == nil {
-			return nil
-		}
-		a.log.Error("Attempt failed", zap.Int("attempt", attempts), zap.Error(err))
+	operation := func() error {
+		return a.processAudioAttempt(ctx, operationID, metadata)
 	}
 
-	return a.handleFailedProcessing(ctx, operationID, metadata)
+	bo := backoff.NewExponentialBackOff()
+	bo.MaxElapsedTime = a.config.Service.Timeout
+	bo.MaxInterval = maxBackoff
+
+	if err := backoff.Retry(operation, bo); err != nil {
+		a.log.Error("Fallo despues de varios intentos", zap.Error(err))
+		return a.handleFailedProcessing(ctx, operationID, metadata)
+	}
+	return nil
 }
 
 // processAudioAttempt intenta procesar el audio una vez, manejando la descarga, codificación y almacenamiento.
-func (a *AudioProcessingService) processAudioAttempt(ctx context.Context, operationID string, metadata *model.Metadata, attempt int) error {
+func (a *AudioProcessingService) processAudioAttempt(ctx context.Context, operationID string, metadata *model.Metadata) error {
 	reader, err := a.downloader.DownloadAudio(ctx, metadata.URLYouTube)
 	if err != nil {
+		a.log.Error("Error al descargar audio",
+			zap.String("operationID", operationID),
+			zap.Error(err))
 		return fmt.Errorf("error al descargar audio: %w", err)
 	}
+	defer reader.Close()
 
-	session, err := encoder.EncodeMem(reader, encoder.StdEncodeOptions, ctx, a.log)
+	session, err := a.encoder.Encode(ctx, reader, encoder.StdEncodeOptions)
 	if err != nil {
+		a.log.Error("Error al codificar audio",
+			zap.String("operationID", operationID),
+			zap.Error(err))
 		return fmt.Errorf("error al codificar audio: %w", err)
 	}
+	defer session.Stop()
 
 	frames, err := a.readAudioFramesToBuffer(session)
 	if err != nil {
+		a.log.Error("Error al leer frames de audio",
+			zap.String("operationID", operationID),
+			zap.Error(err))
 		return fmt.Errorf("error al leer los frames: %w", err)
+	}
+
+	if frames.Len() == 0 {
+		return fmt.Errorf("buffer de audio vacio")
 	}
 
 	keyName := fmt.Sprintf("%s%s", metadata.Title, audioFileExtension)
 	err = a.storage.UploadFile(ctx, keyName, frames)
 	if err != nil {
+		a.log.Error("Error al subir archivo",
+			zap.String("operationID", operationID),
+			zap.Error(err))
 		return fmt.Errorf("error en guardar el archivo: %w", err)
 	}
 
@@ -137,7 +163,7 @@ func (a *AudioProcessingService) processAudioAttempt(ctx context.Context, operat
 		return fmt.Errorf("error al guardar metadata: %w", err)
 	}
 
-	result := a.createSuccessResult(operationID, metadata, fileMetadata, attempt)
+	result := a.createSuccessResult(operationID, metadata, fileMetadata)
 	err = a.operationStore.UpdateOperationResult(ctx, operationID, result)
 	if err != nil {
 		return fmt.Errorf("error al guardar resultado de operación: %w", err)
@@ -155,16 +181,17 @@ func (a *AudioProcessingService) processAudioAttempt(ctx context.Context, operat
 			FileData:       fileMetadata,
 			ProcessingDate: time.Now().UTC(),
 			Success:        true,
-			Attempts:       attempt,
+			Attempts:       1,
 			Failures:       0,
 		},
 	}
 
 	if err := a.messaging.SendMessage(ctx, message); err != nil {
 		a.log.Error("Error al enviar el mensaje de exito", zap.Error(err))
+		return err
 	}
 
-	a.log.Info("Procesamiento exitoso", zap.Int("attempts", attempt))
+	a.log.Info("Procesamiento exitoso")
 	return nil
 }
 
@@ -182,7 +209,7 @@ func (a *AudioProcessingService) createMetadata(youtubeMetadata *api.VideoDetail
 }
 
 // createSuccessResult crea un resultado de operación exitoso después del procesamiento de audio.
-func (a *AudioProcessingService) createSuccessResult(operationID string, metadata *model.Metadata, fileData *model.FileData, attempts int) *model.OperationResult {
+func (a *AudioProcessingService) createSuccessResult(operationID string, metadata *model.Metadata, fileData *model.FileData) *model.OperationResult {
 	return &model.OperationResult{
 		ID:             operationID,
 		SK:             metadata.VideoID,
@@ -192,8 +219,8 @@ func (a *AudioProcessingService) createSuccessResult(operationID string, metadat
 		FileData:       fileData,
 		ProcessingDate: time.Now().Format(time.RFC3339),
 		Success:        true,
-		Attempts:       attempts,
-		Failures:       attempts - 1,
+		Attempts:       1,
+		Failures:       0,
 	}
 }
 
@@ -203,33 +230,27 @@ func (a *AudioProcessingService) handleFailedProcessing(ctx context.Context, ope
 		ID:             operationID,
 		SK:             metadata.VideoID,
 		Status:         statusFailed,
+		Metadata:       metadata,
 		Message:        fmt.Sprintf("Fallo en el procesamiento después de varios intentos: %d", a.config.Service.MaxAttempts),
 		ProcessingDate: time.Now().Format(time.RFC3339),
 		Success:        false,
-		Attempts:       a.config.Service.MaxAttempts,
-		Failures:       a.config.Service.MaxAttempts,
+		Attempts:       maxAttempts,
+		Failures:       maxAttempts,
 	}
 
-	err := a.operationStore.SaveOperationsResult(ctx, result)
-	if err != nil {
-		a.log.Error("Error al guardar resultado de operación fallida", zap.Error(err))
+	if err := a.operationStore.UpdateOperationResult(ctx, operationID, result); err != nil {
+		return fmt.Errorf("error al guardar resultado de operación fallida: %w", err)
 	}
 
 	message := model.Message{
 		ID:      operationID,
-		Content: "Procesamiento de audio fallido después de varios intentos",
+		Content: "Procesamiento fallido",
 		Status: model.Status{
-			ID:       operationID,
-			SK:       metadata.VideoID,
-			Status:   statusFailed,
-			Message:  result.Message,
-			Metadata: result.Metadata,
-			FileData: &model.FileData{
-				FilePath:  "",
-				FileSize:  "",
-				FileType:  "",
-				PublicURL: "",
-			},
+			ID:             operationID,
+			SK:             metadata.VideoID,
+			Status:         statusFailed,
+			Message:        "El procesamiento falló después de varios intentos",
+			Metadata:       metadata,
 			ProcessingDate: time.Now().UTC(),
 			Success:        false,
 			Attempts:       a.config.Service.MaxAttempts,
@@ -239,14 +260,15 @@ func (a *AudioProcessingService) handleFailedProcessing(ctx context.Context, ope
 
 	if err := a.messaging.SendMessage(ctx, message); err != nil {
 		a.log.Error("Error al enviar el mensaje de fallo", zap.Error(err))
+		return err
 	}
 
-	a.log.Error("El procesamiento falló después de varios intentos", zap.Int("attempts", a.config.Service.MaxAttempts))
-	return fmt.Errorf("el procesamiento falló después de %d intentos", a.config.Service.MaxAttempts)
+	a.log.Error("Procesamiento fallido después de varios intentos")
+	return fmt.Errorf("procesamiento fallido después de varios intentos")
 }
 
 // readAudioFramesToBuffer lee los frames de audio de la sesión de codificación y los almacena en un buffer.
-func (a *AudioProcessingService) readAudioFramesToBuffer(session *encoder.EncodeSession) (*bytes.Buffer, error) {
+func (a *AudioProcessingService) readAudioFramesToBuffer(session encoder.EncodeSession) (*bytes.Buffer, error) {
 	var buffer bytes.Buffer
 
 	for {

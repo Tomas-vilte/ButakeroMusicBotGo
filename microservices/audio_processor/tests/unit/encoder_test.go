@@ -22,8 +22,10 @@ func TestEncoder(t *testing.T) {
 	}
 	defer inputFile.Close()
 
+	sessionEncoder := encoder.NewFFmpegEncoder(logging)
+
 	// Crear la sesión de codificación
-	session, err := encoder.EncodeMem(inputFile, encoder.StdEncodeOptions, ctx, logging)
+	session, err := sessionEncoder.Encode(ctx, inputFile, encoder.StdEncodeOptions)
 	if err != nil {
 		t.Fatalf("Error al crear la sesión de codificación: %v", err)
 	}
