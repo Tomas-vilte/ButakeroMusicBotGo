@@ -18,8 +18,9 @@ func LoadConfig(environment string) *Config {
 		config = Config{
 			Environment: "local",
 			Service: ServiceConfig{
-				MaxAttempts: getEnvAsInt("SERVICE_MAX_ATTEMPTS", 3),
-				Timeout:     time.Duration(getEnvAsInt("SERVICE_TIMEOUT", 1)) * time.Minute,
+				MaxAttempts:          getEnvAsInt("SERVICE_MAX_ATTEMPTS", 1),
+				Timeout:              time.Duration(getEnvAsInt("SERVICE_TIMEOUT", 1)) * time.Minute,
+				TimeoutAudioDownload: time.Duration(getEnvAsInt("SERVICE_AUDIO_TIMEOUT", 1)) * time.Minute,
 			},
 			GinConfig: GinConfig{
 				Mode: os.Getenv("GIN_MODE"),
@@ -88,8 +89,9 @@ func LoadConfig(environment string) *Config {
 		config = Config{
 			Environment: "prod",
 			Service: ServiceConfig{
-				MaxAttempts: getSecretAsInt(secrets, "SERVICE_MAX_ATTEMPTS", 5),
-				Timeout:     time.Duration(getSecretAsInt(secrets, "SERVICE_TIMEOUT", 1)) * time.Minute,
+				MaxAttempts:          getSecretAsInt(secrets, "SERVICE_MAX_ATTEMPTS", 5),
+				Timeout:              time.Duration(getSecretAsInt(secrets, "SERVICE_TIMEOUT", 1)) * time.Minute,
+				TimeoutAudioDownload: time.Duration(getSecretAsInt(secrets, "SERVICE_AUDIO_TIMEOUT", 2)) * time.Minute,
 			},
 			AWS: AWSConfig{
 				Region: region,
