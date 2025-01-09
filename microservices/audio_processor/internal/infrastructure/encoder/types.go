@@ -29,6 +29,7 @@ type (
 		VBR              bool             // Si se utiliza VBR (tasa de bits variable) o no
 		Threads          int              // Número de hilos a utilizar (0 para automático)
 		StartTime        int              // Tiempo de inicio de la secuencia de entrada en segundos
+		AudioFilter      string
 	}
 
 	// Frame representa un marco de audio.
@@ -45,8 +46,8 @@ type (
 		Speed    float32       // Velocidad de procesamiento en fps (frames por segundo)
 	}
 
-	// encodeSessionImpl representa una sesión de codificación de audio.
-	encodeSessionImpl struct {
+	// encodeSessionimpl representa una sesión de codificación de audio.
+	encodeSessionimpl struct {
 		sync.Mutex                  // Mutex para sincronización concurrente
 		options      *EncodeOptions // Opciones de codificación
 		pipeReader   io.Reader      // Lector para el pipe
@@ -59,9 +60,8 @@ type (
 		lastFrame    int            // Último marco procesado
 		err          error          // Error que ocurrió durante la codificación
 		ffmpegOutput string         // Salida del proceso ffmpeg
-		logging      logger.Logger  // Logger para registros
 		buf          bytes.Buffer   // Búfer para almacenar bytes no leídos (cuadros incompletos), utilizado para implementar io.Reader
-
+		log          logger.Logger
 	}
 
 	Metadata struct {
