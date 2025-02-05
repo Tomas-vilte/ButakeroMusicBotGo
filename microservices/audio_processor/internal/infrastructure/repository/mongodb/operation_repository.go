@@ -47,13 +47,19 @@ func isValidUUID(id string) bool {
 }
 
 // createSafeFilter crea un filtro BSON para las consultas, usando IDs válidos
-func createSafeFilter(pk string) (bson.D, error) {
-	// solo validar `pk` como UUID
-	if !isValidUUID(pk) {
+func createSafeFilter(id, sk string) (bson.D, error) {
+	// solo validar `id` como UUID
+	if !isValidUUID(id) {
 		return nil, ErrInvalidUUID
 	}
+
+	if sk == "" {
+		return nil, errors.New("sk no puede estar vacio")
+	}
+
 	return bson.D{
-		{Key: "_id", Value: pk},
+		{Key: "_id", Value: id},
+		{Key: "sk", Value: sk},
 	}, nil
 }
 
@@ -95,9 +101,13 @@ func (s *OperationRepository) SaveOperationsResult(ctx context.Context, result *
 	return nil
 }
 
-// GetOperationResult obtiene el resultado de una operación a partir de su ID y songID.
-func (s *OperationRepository) GetOperationResult(ctx context.Context, id, songID string) (*model.OperationResult, error) {
-	filter, err := createSafeFilter(id)
+// GetOperationResult obtiene el resultado de una operación a partir de su ID y sk.
+func (s *OperationRepository) GetOperationResult(ctx context.Context, id, sk string) (*model.OperationResult, error) {
+	if sk == "" {
+		return nil, fmt.Errorf("sk no puede estar vacia")
+	}
+
+	filter, err := createSafeFilter(id, sk)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +116,9 @@ func (s *OperationRepository) GetOperationResult(ctx context.Context, id, songID
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, ErrOperationNotFound
 		}
-		s.log.Error("Error al recuperar operación:", zap.Error(err))
+		s.log.Error("Error al recuperar operación:",
+			zap.String("id", id),
+			zap.String("sk", sk))
 		return nil, fmt.Errorf("error al recuperar operación: %w", err)
 	}
 
@@ -115,14 +127,20 @@ func (s *OperationRepository) GetOperationResult(ctx context.Context, id, songID
 
 // DeleteOperationResult elimina el resultado de una operación específica en MongoDB.
 func (s *OperationRepository) DeleteOperationResult(ctx context.Context, id, songID string) error {
-	filter, err := createSafeFilter(id)
+	if songID == "" {
+		return fmt.Errorf("songID no puede estar vacio")
+	}
+	filter, err := createSafeFilter(id, songID)
 	if err != nil {
 		return err
 	}
 
 	result, err := s.collection.DeleteOne(ctx, filter)
 	if err != nil {
-		s.log.Error("Error al eliminar la operacion:", zap.Error(err))
+		s.log.Error("Error al eliminar la operacion:",
+			zap.Error(err),
+			zap.String("id", id),
+			zap.String("songID", songID))
 		return fmt.Errorf("error al eliminar el resultado de operacion desde MongoDB: %w", err)
 	}
 
@@ -135,12 +153,12 @@ func (s *OperationRepository) DeleteOperationResult(ctx context.Context, id, son
 }
 
 // UpdateOperationStatus actualiza el estado de una operación, si el estado es válido.
-func (s *OperationRepository) UpdateOperationStatus(ctx context.Context, operationID string, songID string, status string) error {
+func (s *OperationRepository) UpdateOperationStatus(ctx context.Context, operationID string, sk string, status string) error {
 	if !ValidStatus[status] {
 		return ErrInvalidStatus
 	}
 
-	filter, err := createSafeFilter(operationID)
+	filter, err := createSafeFilter(operationID, sk)
 	if err != nil {
 		return err
 	}
@@ -153,7 +171,10 @@ func (s *OperationRepository) UpdateOperationStatus(ctx context.Context, operati
 
 	result, err := s.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		s.log.Error("Error al actualizar estado de operacion:", zap.Error(err))
+		s.log.Error("Error al actualizar estado de operacion:",
+			zap.Error(err),
+			zap.String("id", operationID),
+			zap.String("sk", sk))
 		return fmt.Errorf("error al actualizar el estado de la operacion en MongoDB: %w", err)
 	}
 
@@ -163,12 +184,21 @@ func (s *OperationRepository) UpdateOperationStatus(ctx context.Context, operati
 
 	s.log.Info("Estado de operacion actualizado exitosamente",
 		zap.String("id", operationID),
+		zap.String("sk", sk),
 		zap.String("status", status))
 	return nil
 }
 
 func (s *OperationRepository) UpdateOperationResult(ctx context.Context, operationID string, operationResult *model.OperationResult) error {
-	filter, err := createSafeFilter(operationID)
+	if operationResult == nil {
+		return errors.New("operationResult no puede ser nil")
+	}
+
+	if operationResult.SK == "" {
+		return errors.New("sk no puede estar vacio")
+	}
+
+	filter, err := createSafeFilter(operationID, operationResult.SK)
 	if err != nil {
 		return err
 	}
@@ -176,6 +206,7 @@ func (s *OperationRepository) UpdateOperationResult(ctx context.Context, operati
 	update := bson.D{
 		{Key: "$set", Value: bson.D{
 			{Key: "status", Value: operationResult.Status},
+			{Key: "sk", Value: operationResult.SK},
 			{Key: "message", Value: operationResult.Message},
 			{Key: "metadata", Value: operationResult.Metadata},
 			{Key: "file_data", Value: operationResult.FileData},
@@ -188,7 +219,10 @@ func (s *OperationRepository) UpdateOperationResult(ctx context.Context, operati
 
 	result, err := s.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		s.log.Error("Error al actualizar el resultado de la operacion:", zap.Error(err))
+		s.log.Error("Error al actualizar el resultado de la operacion:",
+			zap.Error(err),
+			zap.String("id", operationID),
+			zap.String("sk", operationResult.SK))
 		return fmt.Errorf("error al actualizar resultado de operacion: %w", err)
 	}
 
@@ -196,6 +230,8 @@ func (s *OperationRepository) UpdateOperationResult(ctx context.Context, operati
 		return ErrOperationNotFound
 	}
 
-	s.log.Info("Resultado de operacion actualizado con exito", zap.String("id", operationID))
+	s.log.Info("Resultado de operacion actualizado con exito",
+		zap.String("id", operationID),
+		zap.String("sk", operationResult.SK))
 	return nil
 }

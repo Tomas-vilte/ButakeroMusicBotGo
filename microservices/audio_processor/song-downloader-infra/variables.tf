@@ -154,6 +154,10 @@ variable "service_timeout" {
   type = number
 }
 
+variable "service_audio_timeout" {
+  type = number
+}
+
 variable "sm_tags" {
   description = "Tags especificos para el Secret Manager"
   type = map(string)

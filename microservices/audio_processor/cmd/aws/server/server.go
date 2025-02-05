@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/encoder"
 	"io"
 	"os"
 
@@ -89,6 +90,8 @@ func StartServer() error {
 	}
 	youtubeAPI := api.NewYouTubeClient(cfg.API.YouTube.ApiKey)
 
+	encoderAudio := encoder.NewFFmpegEncoder(log)
+
 	audioProcessingService := service.NewAudioProcessingService(
 		log,
 		storageService,
@@ -96,6 +99,7 @@ func StartServer() error {
 		operationRepo,
 		metadataRepo,
 		messaging,
+		encoderAudio,
 		cfg,
 	)
 

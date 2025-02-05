@@ -25,7 +25,6 @@ func setupTestDownloader(t *testing.T) (*downloader.YTDLPDownloader, logger.Logg
 
 	downloaderAudio, err := downloader.NewYTDLPDownloader(testLogger, downloader.YTDLPOptions{
 		UseOAuth2: false,
-		Timeout:   testTimeout,
 	})
 	require.NoError(t, err, "Error creando el downloader")
 
@@ -51,7 +50,6 @@ func TestDownloadAudio(t *testing.T) {
 
 			_, err = downloader.NewYTDLPDownloader(testLogger, downloader.YTDLPOptions{
 				UseOAuth2: false,
-				Timeout:   5 * time.Second,
 			})
 			assert.NoError(t, err)
 		})
@@ -65,7 +63,6 @@ func TestDownloadAudio(t *testing.T) {
 
 			reader, err := downloaderAudio.DownloadAudio(ctx, validURL)
 			require.NoError(t, err)
-			defer reader.Close()
 
 			validateDownloadedContent(t, reader)
 		})
@@ -99,7 +96,6 @@ func TestDownloadAudio(t *testing.T) {
 				assert.Contains(t, err.Error(), "el archivo es muy chiquito")
 				return
 			}
-			defer reader.Close()
 
 			buf := make([]byte, 1024)
 			n, _ := reader.Read(buf)
@@ -142,7 +138,6 @@ func TestDownloadAudio(t *testing.T) {
 						errChan <- err
 						return
 					}
-					defer reader.Close()
 
 					buf := make([]byte, 1024)
 					_, err = reader.Read(buf)

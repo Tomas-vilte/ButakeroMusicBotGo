@@ -20,9 +20,8 @@ type (
 
 	// ServiceConfig contiene configuración general del servicio
 	ServiceConfig struct {
-		MaxAttempts          int
-		Timeout              time.Duration
-		TimeoutAudioDownload time.Duration
+		MaxAttempts int
+		Timeout     time.Duration
 	}
 
 	GinConfig struct {
