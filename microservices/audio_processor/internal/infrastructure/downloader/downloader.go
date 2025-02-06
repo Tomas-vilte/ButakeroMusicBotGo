@@ -2,31 +2,21 @@ package downloader
 
 import (
 	"bufio"
-	"bytes"
 	"context"
+	"errors" // Importamos el paquete errors
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
+	"go.uber.org/zap"
 	"io"
 	"os/exec"
 	"strings"
 	"sync"
-	"time"
-
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
-	"go.uber.org/zap"
-)
-
-const (
-	defaultTimeout   = 2 * time.Minute
-	defaultChunkSize = "10M"
-	audioFormat      = "bestaudio[ext=m4a]"
-	audioQuality     = "0"
-	minValidFileSize = 1024 * 10
 )
 
 type (
 	// Downloader es una interfaz que define el contrato para descargar audio.
 	Downloader interface {
-		DownloadAudio(ctx context.Context, url string) (io.ReadCloser, error)
+		DownloadAudio(ctx context.Context, url string) (io.Reader, error)
 	}
 
 	// YTDLPDownloader es una implementación de Downloader que usa yt-dlp para descargar audio.
@@ -34,248 +24,188 @@ type (
 		log       logger.Logger
 		useOAuth2 bool
 		cookies   string
-		timeout   time.Duration
+		errorChan chan error // Canal para comunicar errores desde el stderr
 	}
 
 	// YTDLPOptions contiene las opciones de configuración para YTDLPDownloader.
 	YTDLPOptions struct {
 		UseOAuth2 bool
 		Cookies   string
-		Timeout   time.Duration
-	}
-
-	downloadError struct {
-		msg string
-		err error
-	}
-
-	ValidationError struct {
-		msg  string
-		size int64
-	}
-
-	closeableReader struct {
-		io.Reader
-		closer func() error
 	}
 )
 
 // NewYTDLPDownloader crea y devuelve una nueva instancia de YTDLPDownloader.
 func NewYTDLPDownloader(log logger.Logger, options YTDLPOptions) (*YTDLPDownloader, error) {
 	if log == nil {
-		return nil, fmt.Errorf("el logger no puede ser nil")
+		return nil, fmt.Errorf("el logger no puede estar vacio")
 	}
-
-	if options.Timeout == 0 {
-		options.Timeout = defaultTimeout
-	}
-
 	return &YTDLPDownloader{
 		log:       log,
 		useOAuth2: options.UseOAuth2,
 		cookies:   options.Cookies,
-		timeout:   options.Timeout,
+		errorChan: make(chan error, 1), // Canal con buffer para evitar bloqueos
 	}, nil
 }
 
 // DownloadAudio implementa la interfaz Downloader para YTDLPDownloader.
 // Descarga el audio de la URL proporcionada usando yt-dlp y devuelve un io.Reader para acceder al contenido.
-func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.ReadCloser, error) {
-	if url == "" {
-		return nil, fmt.Errorf("la URL no puede ser vacía")
-	}
+func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Reader, error) {
+	d.log.Info("Iniciando descarga de audio", zap.String("url", url))
 
-	ctx, cancel := context.WithTimeout(ctx, d.timeout)
-
-	var buf bytes.Buffer
+	// Creamos un pipe para pasar el audio descargado
 	pr, pw := io.Pipe()
 
-	ytArgs := d.buildYTDLPArgs(url)
-	d.log.Info("Arrancando yt-dlp", zap.Strings("args", ytArgs))
-
-	cmd := exec.CommandContext(ctx, "yt-dlp", ytArgs...)
-
-	stdoutPipe, stderrPipe, err := d.setupPipes(cmd)
-	if err != nil {
-		cancel()
-		return nil, err
-	}
-
-	mw := io.MultiWriter(&buf, pw)
-	cmd.Stdout = mw
-
-	var downloadErr error
-	var errBuf bytes.Buffer
-	var downloadComplete bool
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	done := make(chan struct{})
-
-	go d.processOutput(&wg, stdoutPipe, "stdout", cancel)
-	go func() {
-		defer wg.Done()
-		scanner := bufio.NewScanner(stderrPipe)
-		for scanner.Scan() {
-			line := scanner.Text()
-			errBuf.WriteString(line)
-			d.logOutput("stderr", line)
-
-			if strings.Contains(line, "ERROR") {
-				downloadErr = fmt.Errorf("error de yt-dlp: %s", line)
-				cancel()
-				return
-			}
-		}
-	}()
-
-	if err := cmd.Start(); err != nil {
-		cancel()
-		pw.Close()
-		return nil, fmt.Errorf("error al iniciar yt-dlp: %w", err)
-	}
-
-	go func() {
-		defer close(done)
-		defer func() {
-			if downloadErr != nil || downloadComplete {
-				pw.CloseWithError(downloadErr)
-			} else {
-				pw.Close()
-			}
-			cancel()
-		}()
-
-		wg.Wait()
-		cmdErr := cmd.Wait()
-
-		if cmdErr != nil {
-			downloadErr = fmt.Errorf("el comando yt-dlp falló: %w", cmdErr)
-			return
-		}
-
-		size := int64(buf.Len())
-		if size < minValidFileSize {
-			downloadErr = &ValidationError{
-				msg:  "El archivo es muy chiquito, capaz que falló la descarga",
-				size: size,
-			}
-			d.log.Error("La descarga falló mal",
-				zap.Int64("Tamaño", size),
-				zap.String("Error", errBuf.String()))
-			return
-		}
-
-		downloadComplete = true
-
-		//if strings.Contains(errBuf.String(), "ERROR") {
-		//	downloadErr = fmt.Errorf("yt-dlp se mando una cagada: %s", errBuf.String())
-		//	return
-		//}
-
-		//if cmdErr != nil {
-		//	downloadErr = fmt.Errorf("el comando yt-dlp falló: %w", cmdErr)
-		//	return
-		//}
-	}()
-
-	select {
-	case <-done:
-		if downloadErr != nil {
-			return nil, downloadErr
-		}
-		if !downloadComplete {
-			return nil, fmt.Errorf("la descarga no se completo correctamente")
-		}
-	case <-ctx.Done():
-		return nil, fmt.Errorf("contexto cancelado durante la descarga: %w", ctx.Err())
-	}
-
-	return &closeableReader{
-		Reader: pr,
-		closer: func() error {
-			cancel()
-			return pr.Close()
-		},
-	}, nil
-}
-
-func (d *YTDLPDownloader) buildYTDLPArgs(url string) []string {
-	args := []string{
-		"-f", audioFormat,
-		"--audio-quality", audioQuality,
+	// Configuramos los argumentos para yt-dlp
+	ytArgs := []string{
+		"-f", "bestaudio",
+		"--audio-quality", "0",
 		"-o", "-",
 		"--force-overwrites",
-		"--http-chunk-size", defaultChunkSize,
+		"--http-chunk-size", "20M",
+		"--newline",
 	}
 
 	if d.cookies != "" {
-		args = append(args, "--cookies", d.cookies)
+		ytArgs = append(ytArgs, "--cookies", d.cookies)
 	}
 
-	args = append(args, url)
-	return args
-}
+	ytArgs = append(ytArgs, url)
 
-func (d *YTDLPDownloader) setupPipes(cmd *exec.Cmd) (io.ReadCloser, io.ReadCloser, error) {
+	d.log.Info("Ejecutando comando yt-dlp", zap.String("comando", fmt.Sprintf("yt-dlp %s", strings.Join(ytArgs, " "))))
+
+	cmd := exec.CommandContext(ctx, "yt-dlp", ytArgs...)
+
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, nil, fmt.Errorf("error al crear el pipe de stdout: %w", err)
+		return nil, fmt.Errorf("error al crear el pipe de stdout: %w", err)
 	}
 
 	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
-		return nil, nil, fmt.Errorf("error al crear el pipe de stderr: %w", err)
+		return nil, fmt.Errorf("error al crear el pipe de stderr: %w", err)
 	}
 
-	return stdoutPipe, stderrPipe, nil
+	cmd.Stdout = pw
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go d.processOutput(&wg, stdoutPipe, "stdout")
+	go d.processOutput(&wg, stderrPipe, "stderr")
+
+	var cmdError error
+
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("error al iniciar el comando: %w", err)
+	}
+
+	go func() {
+		defer func() {
+			d.log.Debug("Cerrando el pipe de escritura pw")
+			if err := pw.Close(); err != nil {
+				d.errorChan <- fmt.Errorf("error al close pw: %w", err)
+			}
+		}()
+
+		d.log.Debug("Esperando a que terminen las goroutines de procesamiento")
+		wg.Wait() // Esperar a que terminen las goroutines de processOutput
+		d.log.Debug("Goroutines de procesamiento terminadas")
+
+		d.log.Debug("Esperando a que termine el comando")
+		cmdError = cmd.Wait()
+		if cmdError != nil {
+			d.log.Error("Error al esperar el comando", zap.Error(cmdError))
+		} else {
+			d.log.Debug("El comando termino correctamente")
+		}
+
+		// Obtenemos el error del canal (si lo hay)
+		select {
+		case stderrErr := <-d.errorChan:
+			d.log.Debug("Error recibido del errorChan", zap.Error(stderrErr))
+			// Si hay un error en stderr, lo retornamos primero.
+			if stderrErr != nil {
+				d.log.Error("Error detectado en stderr", zap.Error(stderrErr))
+				// Cerramos el reader
+				if err := pr.CloseWithError(stderrErr); err != nil {
+					d.errorChan <- fmt.Errorf("error al close pr: %w", err)
+				}
+				return
+			}
+		default:
+			d.log.Debug("No se recibio ningun error del errorChan")
+			// No hubo error en stderr.
+		}
+		if cmdError != nil {
+			d.log.Error("cmdError detectado", zap.Error(cmdError))
+			if err := pr.CloseWithError(cmdError); err != nil {
+				d.errorChan <- fmt.Errorf("error al close pr: %w", err)
+			}
+		}
+
+	}()
+
+	return readAllAndReturnReader(pr, d.log)
+}
+
+func readAllAndReturnReader(r io.Reader, log logger.Logger) (io.Reader, error) {
+	log.Debug("Iniciando readAllAndReturnReader")
+	data, err := io.ReadAll(r)
+	if err != nil {
+		if errors.Is(err, io.ErrClosedPipe) {
+			log.Debug("Error io.ErrClosedPipe detectado en readAllAndReturnReader", zap.Error(err))
+			return nil, err
+		}
+		log.Error("Error al leer reader en readAllAndReturnReader", zap.Error(err))
+		return nil, fmt.Errorf("error al leer el reader: %w", err)
+	}
+
+	log.Debug("Creando nuevo io.Reader en readAllAndReturnReader")
+	return strings.NewReader(string(data)), nil
 }
 
 // processOutput maneja la salida de stdout o stderr del comando yt-dlp.
 // Registra la salida usando el logger apropiado según el tipo y contenido del mensaje.
-func (d *YTDLPDownloader) processOutput(wg *sync.WaitGroup, pipe io.ReadCloser, pipeType string, cancel context.CancelFunc) {
+func (d *YTDLPDownloader) processOutput(wg *sync.WaitGroup, pipe io.ReadCloser, pipeType string) {
 	defer wg.Done()
-	reader := bufio.NewReader(pipe)
+	d.log.Debug("Iniciando processOutput", zap.String("pipeType", pipeType))
 
-	for {
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			if err != io.EOF {
-				d.log.Error("Hubo un error letyendo la salida del comando", zap.Error(err))
-				cancel()
-			}
-			break
-		}
+	// Usamos un scanner para leer línea por línea
+	scanner := bufio.NewScanner(pipe)
+	var stderrLines []string // Para acumular el stderr en caso de error.
+
+	for scanner.Scan() {
+		line := scanner.Text()
 		line = strings.TrimSpace(line)
-		d.logOutput(pipeType, line)
+
+		if pipeType == "stdout" {
+			if strings.Contains(line, "Downloading") || strings.Contains(line, "Progress:") {
+				d.log.Info("yt-dlp progreso", zap.String("output", line))
+			} else {
+				d.log.Debug("yt-dlp stdout", zap.String("output", line))
+			}
+		} else if pipeType == "stderr" {
+			if strings.Contains(line, "WARNING") || strings.Contains(line, "ERROR") {
+				d.log.Error("yt-dlp stderr", zap.String("error", line))
+				stderrLines = append(stderrLines, line)
+			} else {
+				d.log.Info("yt-dlp stderr", zap.String("output", line))
+			}
+		}
 	}
-}
 
-func (d *YTDLPDownloader) logOutput(pipeType, line string) {
-	switch {
-	case pipeType == "stdout" && (strings.Contains(line, "Downloading") || strings.Contains(line, "Progress:")):
-		d.log.Info("Bajando cancion", zap.String("progreso", line))
-	case pipeType == "stdout":
-		d.log.Debug("Salida de yt-dlp", zap.String("info", line))
-	case strings.Contains(line, "WARINIG"):
-		d.log.Info("Advertencia de yt-dlp", zap.String("warning", line))
-	case strings.Contains(line, "ERROR"):
-		d.log.Error("Error de yt-dlp", zap.String("error", line))
-	default:
-		d.log.Info("Info de yt-dlp", zap.String("mensaje", line))
+	// Manejo de errores del scanner
+	if err := scanner.Err(); err != nil {
+		d.log.Error(fmt.Sprintf("error leyendo %s", pipeType), zap.Error(err))
 	}
-}
 
-func (e *downloadError) Error() string {
-	return fmt.Sprintf("%s: %v", e.msg, e.err)
-}
+	// Si se acumularon errores en stderr, enviar al canal de errores.
+	if pipeType == "stderr" && len(stderrLines) > 0 {
+		errorString := strings.Join(stderrLines, "\n")
+		err := errors.New(errorString)
+		d.log.Debug("Enviando error al errorChan", zap.Error(err))
+		d.errorChan <- err
+	}
 
-func (e *ValidationError) Error() string {
-	return fmt.Sprintf("%s (tamaño: %d bytes)", e.msg, e.size)
-}
-
-func (c *closeableReader) Close() error {
-	return c.closer()
-
+	d.log.Debug("Finalizando processOutput", zap.String("pipeType", pipeType))
 }

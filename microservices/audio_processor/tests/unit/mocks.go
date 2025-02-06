@@ -103,6 +103,10 @@ func (m *MockEncodeSession) FFMPEGMessages() string {
 	return args.String(0)
 }
 
+func (m *MockEncodeSession) Cleanup() {
+	m.Called()
+}
+
 func (m *MockEncoder) Encode(ctx context.Context, r io.Reader, options *encoder.EncodeOptions) (encoder.EncodeSession, error) {
 	args := m.Called(ctx, r, options)
 	return args.Get(0).(encoder.EncodeSession), args.Error(1)
@@ -292,9 +296,9 @@ func (m *MockMetadataRepository) DeleteMetadata(ctx context.Context, id string) 
 	return args.Error(0)
 }
 
-func (m *MockDownloader) DownloadAudio(ctx context.Context, url string) (io.ReadCloser, error) {
+func (m *MockDownloader) DownloadAudio(ctx context.Context, url string) (io.Reader, error) {
 	args := m.Called(ctx, url)
-	return args.Get(0).(io.ReadCloser), args.Error(1)
+	return args.Get(0).(io.Reader), args.Error(1)
 }
 
 func (m *MockStorage) UploadFile(ctx context.Context, key string, body io.Reader) error {

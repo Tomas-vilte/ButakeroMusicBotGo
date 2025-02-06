@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	maxAttempts        = 3           // Número máximo de intentos permitidos para procesar audio.
+	maxAttempts        = 1           // Número máximo de intentos permitidos para procesar audio.
 	statusInitiating   = "iniciando" // Estado inicial de la operación.
 	statusSuccess      = "success"   // Estado de la operación cuando se procesa con éxito.
 	statusFailed       = "failed"    // Estado de la operación cuando falla después de intentos.
@@ -57,13 +57,6 @@ func NewAudioProcessingService(log logger.Logger, storage port.Storage,
 	encoder encoder.AudioEncoder,
 	config *config.Config) *AudioProcessingService {
 
-	if config.Service.MaxAttempts == 0 {
-		config.Service.MaxAttempts = maxAttempts
-	}
-	if config.Service.Timeout == 0 {
-		config.Service.Timeout = 5 * time.Minute
-	}
-
 	return &AudioProcessingService{
 		log:            log,
 		storage:        storage,
@@ -96,9 +89,108 @@ func (a *AudioProcessingService) ProcessAudio(ctx context.Context, operationID s
 	defer cancel()
 
 	metadata := a.createMetadata(youtubeMetadata)
+	var reader io.Reader
+	attempts := 0
 
+	// Función que ejecuta todo el proceso y maneja los errores
 	operation := func() error {
-		return a.processAudioAttempt(ctx, operationID, metadata)
+		attempts++
+		var err error
+
+		reader, err = a.downloader.DownloadAudio(ctx, youtubeMetadata.URLYouTube)
+		if err != nil {
+			a.log.Error("Error en la descarga de audio", zap.Error(err))
+			// Guardar el estado del error de descarga
+			if saveErr := a.saveErrorState(ctx, operationID, metadata, "Error en descarga", attempts, err); saveErr != nil {
+				a.log.Error("Error al guardar estado de error de descarga", zap.Error(saveErr))
+			}
+			return err
+		}
+
+		session, err := a.encoder.Encode(ctx, reader, encoder.StdEncodeOptions)
+		if err != nil {
+			if saveErr := a.saveErrorState(ctx, operationID, metadata, "Error en codificación", attempts, err); saveErr != nil {
+				a.log.Error("Error al guardar estado de error de codificación", zap.Error(saveErr))
+			}
+			return err
+		}
+		if session != nil {
+			defer session.Cleanup()
+		}
+
+		frames, err := a.readAudioFramesToBuffer(session)
+		if err != nil {
+			if saveErr := a.saveErrorState(ctx, operationID, metadata, "Error en lectura de frames", attempts, err); saveErr != nil {
+				a.log.Error("Error al guardar estado de error de lectura", zap.Error(saveErr))
+			}
+			return err
+		}
+
+		if frames.Len() == 0 {
+			err = fmt.Errorf("buffer de audio vacío")
+			if saveErr := a.saveErrorState(ctx, operationID, metadata, "Buffer vacío", attempts, err); saveErr != nil {
+				a.log.Error("Error al guardar estado de buffer vacío", zap.Error(saveErr))
+			}
+			return err
+		}
+
+		keyName := fmt.Sprintf("%s%s", metadata.Title, audioFileExtension)
+		err = a.storage.UploadFile(ctx, keyName, frames)
+		if err != nil {
+			if saveErr := a.saveErrorState(ctx, operationID, metadata, "Error en subida a S3", attempts, err); saveErr != nil {
+				a.log.Error("Error al guardar estado de error de subida", zap.Error(saveErr))
+			}
+			return err
+		}
+
+		fileMetadata, err := a.storage.GetFileMetadata(ctx, keyName)
+		if err != nil {
+			if saveErr := a.saveErrorState(ctx, operationID, metadata, "Error al obtener metadata", attempts, err); saveErr != nil {
+				a.log.Error("Error al guardar estado de error de metadata", zap.Error(saveErr))
+			}
+			return err
+		}
+
+		if err = a.metadataStore.SaveMetadata(ctx, metadata); err != nil {
+			if saveErr := a.saveErrorState(ctx, operationID, metadata, "Error al guardar metadata", attempts, err); saveErr != nil {
+				a.log.Error("Error al guardar estado de error de guardado de metadata", zap.Error(saveErr))
+			}
+			return err
+		}
+
+		result := a.createSuccessResult(operationID, metadata, fileMetadata)
+		if err = a.operationStore.UpdateOperationResult(ctx, operationID, result); err != nil {
+			if saveErr := a.saveErrorState(ctx, operationID, metadata, "Error al actualizar resultado", attempts, err); saveErr != nil {
+				a.log.Error("Error al guardar estado de error de actualización", zap.Error(saveErr))
+			}
+			return err
+		}
+
+		message := model.Message{
+			ID:      operationID,
+			Content: "Procesamiento de audio exitoso",
+			Status: model.Status{
+				ID:             operationID,
+				SK:             metadata.VideoID,
+				Status:         statusSuccess,
+				Message:        "Procesamiento exitoso",
+				Metadata:       metadata,
+				FileData:       fileMetadata,
+				ProcessingDate: time.Now().UTC(),
+				Success:        true,
+				Attempts:       attempts,
+				Failures:       attempts - 1,
+			},
+		}
+
+		if err = a.messaging.SendMessage(ctx, message); err != nil {
+			if saveErr := a.saveErrorState(ctx, operationID, metadata, "Error al enviar mensaje", attempts, err); saveErr != nil {
+				a.log.Error("Error al guardar estado de error de envío", zap.Error(saveErr))
+			}
+			return err
+		}
+
+		return nil
 	}
 
 	bo := backoff.NewExponentialBackOff()
@@ -106,93 +198,22 @@ func (a *AudioProcessingService) ProcessAudio(ctx context.Context, operationID s
 	bo.MaxInterval = maxBackoff
 
 	if err := backoff.Retry(operation, bo); err != nil {
-		a.log.Error("Fallo despues de varios intentos", zap.Error(err))
+		a.log.Error("Fallo después de varios intentos", zap.Error(err))
 		return a.handleFailedProcessing(ctx, operationID, metadata)
 	}
+
 	return nil
 }
 
-// processAudioAttempt intenta procesar el audio una vez, manejando la descarga, codificación y almacenamiento.
-func (a *AudioProcessingService) processAudioAttempt(ctx context.Context, operationID string, metadata *model.Metadata) error {
+func (a *AudioProcessingService) processAudioAttemptDownload(ctx context.Context, operationID string, metadata *model.Metadata) (io.Reader, error) {
 	reader, err := a.downloader.DownloadAudio(ctx, metadata.URLYouTube)
 	if err != nil {
 		a.log.Error("Error al descargar audio",
 			zap.String("operationID", operationID),
 			zap.Error(err))
-		return fmt.Errorf("error al descargar audio: %w", err)
+		return nil, fmt.Errorf("error al descargar audio: %w", err)
 	}
-	defer reader.Close()
-
-	session, err := a.encoder.Encode(ctx, reader, encoder.StdEncodeOptions)
-	if err != nil {
-		a.log.Error("Error al codificar audio",
-			zap.String("operationID", operationID),
-			zap.Error(err))
-		return fmt.Errorf("error al codificar audio: %w", err)
-	}
-	defer session.Stop()
-
-	frames, err := a.readAudioFramesToBuffer(session)
-	if err != nil {
-		a.log.Error("Error al leer frames de audio",
-			zap.String("operationID", operationID),
-			zap.Error(err))
-		return fmt.Errorf("error al leer los frames: %w", err)
-	}
-
-	if frames.Len() == 0 {
-		return fmt.Errorf("buffer de audio vacio")
-	}
-
-	keyName := fmt.Sprintf("%s%s", metadata.Title, audioFileExtension)
-	err = a.storage.UploadFile(ctx, keyName, frames)
-	if err != nil {
-		a.log.Error("Error al subir archivo",
-			zap.String("operationID", operationID),
-			zap.Error(err))
-		return fmt.Errorf("error en guardar el archivo: %w", err)
-	}
-
-	fileMetadata, err := a.storage.GetFileMetadata(ctx, keyName)
-	if err != nil {
-		return fmt.Errorf("error al obtener metadata del archivo: %w", err)
-	}
-
-	err = a.metadataStore.SaveMetadata(ctx, metadata)
-	if err != nil {
-		return fmt.Errorf("error al guardar metadata: %w", err)
-	}
-
-	result := a.createSuccessResult(operationID, metadata, fileMetadata)
-	err = a.operationStore.UpdateOperationResult(ctx, operationID, result)
-	if err != nil {
-		return fmt.Errorf("error al guardar resultado de operación: %w", err)
-	}
-
-	message := model.Message{
-		ID:      operationID,
-		Content: "Procesamiento de audio exitoso",
-		Status: model.Status{
-			ID:             operationID,
-			SK:             metadata.VideoID,
-			Status:         statusSuccess,
-			Message:        "Procesamiento exitoso",
-			Metadata:       metadata,
-			FileData:       fileMetadata,
-			ProcessingDate: time.Now().UTC(),
-			Success:        true,
-			Attempts:       1,
-			Failures:       0,
-		},
-	}
-
-	if err := a.messaging.SendMessage(ctx, message); err != nil {
-		a.log.Error("Error al enviar el mensaje de exito", zap.Error(err))
-		return err
-	}
-
-	a.log.Info("Procesamiento exitoso")
-	return nil
+	return reader, nil
 }
 
 // createMetadata genera metadatos a partir de los detalles de un video de YouTube.
@@ -286,4 +307,42 @@ func (a *AudioProcessingService) readAudioFramesToBuffer(session encoder.EncodeS
 		}
 	}
 	return &buffer, nil
+}
+
+func (a *AudioProcessingService) saveErrorState(ctx context.Context, operationID string, metadata *model.Metadata, errorMsg string, attempts int, originalErr error) error {
+	result := &model.OperationResult{
+		ID:             operationID,
+		SK:             metadata.VideoID,
+		Status:         "error",
+		Message:        fmt.Sprintf("%s: %v", errorMsg, originalErr),
+		Metadata:       metadata,
+		ProcessingDate: time.Now().Format(time.RFC3339),
+		Success:        false,
+		Attempts:       attempts,
+		Failures:       attempts,
+	}
+
+	// Guardar el resultado de la operación
+	if err := a.operationStore.UpdateOperationResult(ctx, operationID, result); err != nil {
+		return err
+	}
+
+	// Enviar mensaje de error
+	message := model.Message{
+		ID:      operationID,
+		Content: "Error en procesamiento",
+		Status: model.Status{
+			ID:             operationID,
+			SK:             metadata.VideoID,
+			Status:         "error",
+			Message:        fmt.Sprintf("%s: %v", errorMsg, originalErr),
+			Metadata:       metadata,
+			ProcessingDate: time.Now().UTC(),
+			Success:        false,
+			Attempts:       attempts,
+			Failures:       attempts,
+		},
+	}
+
+	return a.messaging.SendMessage(ctx, message)
 }

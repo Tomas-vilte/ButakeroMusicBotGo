@@ -18,7 +18,7 @@ func LoadConfig(environment string) *Config {
 		config = Config{
 			Environment: "local",
 			Service: ServiceConfig{
-				MaxAttempts: getEnvAsInt("SERVICE_MAX_ATTEMPTS", 3),
+				MaxAttempts: getEnvAsInt("SERVICE_MAX_ATTEMPTS", 1),
 				Timeout:     time.Duration(getEnvAsInt("SERVICE_TIMEOUT", 1)) * time.Minute,
 			},
 			GinConfig: GinConfig{

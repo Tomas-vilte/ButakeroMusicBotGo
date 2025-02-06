@@ -29,16 +29,16 @@ var (
 		Store: config.StoreConfig{
 			Type: "memory",
 		},
-		BucketName: os.Getenv("BUCKET_NAME"),
-		Region:     os.Getenv("REGION"),
-		AccessKey:  os.Getenv("ACCESS_KEY"),
-		SecretKey:  os.Getenv("SECRET_KEY"),
+		BucketName: os.Getenv("AWS_BUCKET_NAME"),
+		Region:     os.Getenv("AWS_REGION"),
+		AccessKey:  os.Getenv("AWS_ACCESS_KEY"),
+		SecretKey:  os.Getenv("AWS_SECRET_KEY"),
 	}
 )
 
 func main() {
 	// Crear un nuevo logger usando la librería zap.
-	logger, err := logging.NewZapLogger(true)
+	logger, err := logging.NewZapLogger(false)
 	if err != nil {
 		panic("Error creando el logger: " + err.Error())
 	}

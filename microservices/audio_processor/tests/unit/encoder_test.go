@@ -16,7 +16,7 @@ func TestEncoder(t *testing.T) {
 	logging, _ := logger.NewZapLogger()
 
 	// Abrir el archivo de entrada .ogg
-	inputFile, err := os.Open("./deadpool-bye-bye.ogg")
+	inputFile, err := os.Open("./Twenty One Pilots - The Line (from Arcane Season 2) [Official Music Video].ogg")
 	if err != nil {
 		t.Fatalf("Error al abrir el archivo de entrada: %v", err)
 	}
@@ -29,8 +29,15 @@ func TestEncoder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error al crear la sesión de codificación: %v", err)
 	}
+	defer session.Cleanup()
+
+	currentDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Error al obtener el directorio actual: %v", err)
+	}
+
 	// Crear el archivo de salida
-	outPath := filepath.Join(t.TempDir(), "output.dca")
+	outPath := filepath.Join(currentDir, "test-song.dca")
 	outFile, err := os.Create(outPath)
 	if err != nil {
 		t.Fatalf("Error al crear el archivo de salida: %v", err)
@@ -69,7 +76,7 @@ func TestEncoder(t *testing.T) {
 	if outInfo.Size() == 0 {
 		t.Error("El archivo de salida está vacío")
 	}
+	t.Logf("Archivo DCA generado en: %s", outPath)
 
-	// Imprimir mensajes de FFmpeg para depuración
 	t.Logf("Mensajes de FFmpeg: %v", session.FFMPEGMessages())
 }

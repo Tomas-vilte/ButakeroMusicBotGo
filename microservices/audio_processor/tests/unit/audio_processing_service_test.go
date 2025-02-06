@@ -50,31 +50,7 @@ func TestAudioProcessingService(t *testing.T) {
 	t.Run("StartOperation", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			// Arrange
-			mockLogger := new(MockLogger)
-			mockStorage := new(MockStorage)
-			mockDownloader := new(MockDownloader)
-			mockOperationRepo := new(MockOperationRepository)
-			mockMetadataRepo := new(MockMetadataRepository)
-			mockMessagingQueue := new(MockMessagingQueue)
-			mockEncoder := new(MockEncoder)
-
-			configService := &config.Config{
-				Service: config.ServiceConfig{
-					MaxAttempts: 1,
-					Timeout:     2 * time.Second,
-				},
-			}
-
-			serviceAudio := service.NewAudioProcessingService(
-				mockLogger,
-				mockStorage,
-				mockDownloader,
-				mockOperationRepo,
-				mockMetadataRepo,
-				mockMessagingQueue,
-				mockEncoder,
-				configService,
-			)
+			serviceAudio, _, _, _, mockOperationRepo, _, _, _, _ := setupTestAudioService()
 
 			ctx := context.Background()
 			songID := "test-song-id"
@@ -94,22 +70,7 @@ func TestAudioProcessingService(t *testing.T) {
 
 	t.Run("FailureToSaveOperation", func(t *testing.T) {
 		// Arrange
-		mockLogger := new(MockLogger)
-		mockStorage := new(MockStorage)
-		mockDownloader := new(MockDownloader)
-		mockOperationRepo := new(MockOperationRepository)
-		mockMetadataRepo := new(MockMetadataRepository)
-		mockMessagingQueue := new(MockMessagingQueue)
-		mockEncoder := new(MockEncoder)
-
-		configService := &config.Config{
-			Service: config.ServiceConfig{
-				MaxAttempts: 1,
-				Timeout:     2 * time.Second,
-			},
-		}
-
-		serviceAudio := service.NewAudioProcessingService(mockLogger, mockStorage, mockDownloader, mockOperationRepo, mockMetadataRepo, mockMessagingQueue, mockEncoder, configService)
+		serviceAudio, _, _, _, mockOperationRepo, _, _, _, _ := setupTestAudioService()
 
 		ctx := context.Background()
 		songID := "test-song-id"
@@ -130,23 +91,7 @@ func TestAudioProcessingService(t *testing.T) {
 	t.Run("ProcessAudio", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			// arrange
-			mockLogger := new(MockLogger)
-			mockStorage := new(MockStorage)
-			mockDownloader := new(MockDownloader)
-			mockOperationRepo := new(MockOperationRepository)
-			mockMetadataRepo := new(MockMetadataRepository)
-			mockMessagingQueue := new(MockMessagingQueue)
-			mockEncodeSession := new(MockEncodeSession)
-			mockEncoder := new(MockEncoder)
-
-			configService := &config.Config{
-				Service: config.ServiceConfig{
-					MaxAttempts: 1,
-					Timeout:     2 * time.Second,
-				},
-			}
-
-			serviceAudio := service.NewAudioProcessingService(mockLogger, mockStorage, mockDownloader, mockOperationRepo, mockMetadataRepo, mockMessagingQueue, mockEncoder, configService)
+			serviceAudio, mockLogger, mockStorage, mockDownloader, mockOperationRepo, mockMetadataRepo, mockMessagingQueue, mockEncoder, mockEncodeSession := setupTestAudioService()
 
 			ctx := context.Background()
 			operationID := "test-operation-id"
@@ -158,7 +103,7 @@ func TestAudioProcessingService(t *testing.T) {
 				Thumbnail:  "https://img.youtube.com/vi/test-video-id/0.jpg",
 			}
 
-			mockAudioContent := io.NopCloser(bytes.NewReader([]byte("fake audio data")))
+			mockAudioContent := bytes.NewReader([]byte("fake audio data"))
 			audioFrame := []byte("mocked frame")
 
 			mockDownloader.On("DownloadAudio", mock.Anything, mock.AnythingOfType("string")).Return(mockAudioContent, nil)
@@ -166,7 +111,7 @@ func TestAudioProcessingService(t *testing.T) {
 
 			mockEncodeSession.On("ReadFrame").Return(audioFrame, nil).Once()
 			mockEncodeSession.On("ReadFrame").Return([]byte(nil), io.EOF)
-			mockEncodeSession.On("Stop").Return(nil)
+			mockEncodeSession.On("Cleanup").Return()
 
 			mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil)
 			mockStorage.On("GetFileMetadata", mock.Anything, mock.Anything).Return(&model.FileData{
@@ -176,7 +121,6 @@ func TestAudioProcessingService(t *testing.T) {
 			mockMetadataRepo.On("SaveMetadata", mock.Anything, mock.AnythingOfType("*model.Metadata")).Return(nil)
 			mockOperationRepo.On("UpdateOperationResult", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 			mockMessagingQueue.On("SendMessage", mock.Anything, mock.Anything).Return(nil)
-			mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
 			// Act
 			err := serviceAudio.ProcessAudio(ctx, operationID, youtubeMetadata)
@@ -240,7 +184,7 @@ func TestAudioProcessingService(t *testing.T) {
 			mockDownloader.On("DownloadAudio", mock.Anything, mock.AnythingOfType("string")).Return(mockAudioContent, nil)
 			mockEncoder.On("Encode", mock.Anything, mockAudioContent, mock.Anything).Return(mockEncodeSession, nil)
 			mockEncodeSession.On("ReadFrame").Return([]byte("frame error"), errors.New("frame read error"))
-			mockEncodeSession.On("Stop").Return(nil)
+			mockEncodeSession.On("Cleanup").Return()
 			mockOperationRepo.On("UpdateOperationResult", mock.Anything, operationID, mock.AnythingOfType("*model.OperationResult")).Return(nil)
 			mockMessagingQueue.On("SendMessage", mock.Anything, mock.Anything).Return(nil)
 			mockLogger.On("Error", mock.Anything, mock.Anything).Return()
@@ -272,7 +216,7 @@ func TestAudioProcessingService(t *testing.T) {
 			mockEncoder.On("Encode", mock.Anything, mockAudioContent, mock.Anything).Return(mockEncodeSession, nil)
 			mockEncodeSession.On("ReadFrame").Return([]byte("fake frame data"), nil).Once()
 			mockEncodeSession.On("ReadFrame").Return([]byte(nil), io.EOF)
-			mockEncodeSession.On("Stop").Return(nil)
+			mockEncodeSession.On("Cleanup").Return()
 			mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil)
 			mockStorage.On("GetFileMetadata", mock.Anything, mock.Anything).Return(&model.FileData{}, errors.New("error al obtener metadata"))
 			mockOperationRepo.On("UpdateOperationResult", mock.Anything, operationID, mock.AnythingOfType("*model.OperationResult")).Return(nil)
@@ -306,7 +250,7 @@ func TestAudioProcessingService(t *testing.T) {
 			mockEncoder.On("Encode", mock.Anything, mockAudioContent, mock.Anything).Return(mockEncodeSession, nil)
 			mockEncodeSession.On("ReadFrame").Return([]byte("mocked frame"), nil).Once()
 			mockEncodeSession.On("ReadFrame").Return([]byte(nil), io.EOF)
-			mockEncodeSession.On("Stop").Return(nil)
+			mockEncodeSession.On("Cleanup").Return()
 			mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil)
 			mockStorage.On("GetFileMetadata", mock.Anything, mock.Anything).Return(&model.FileData{}, nil)
 			mockMetadataRepo.On("SaveMetadata", mock.Anything, mock.AnythingOfType("*model.Metadata")).Return(nil)
@@ -318,7 +262,7 @@ func TestAudioProcessingService(t *testing.T) {
 
 			// assert
 			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "error al guardar resultado de operación fallida")
+			assert.Contains(t, err.Error(), "error al guardar resultado de operación")
 		})
 
 		t.Run("SendMessageError", func(t *testing.T) {
@@ -340,7 +284,7 @@ func TestAudioProcessingService(t *testing.T) {
 			mockEncoder.On("Encode", mock.Anything, mockAudioContent, mock.Anything).Return(mockEncodeSession, nil)
 			mockEncodeSession.On("ReadFrame").Return([]byte("mocked frame"), nil).Once()
 			mockEncodeSession.On("ReadFrame").Return([]byte(nil), io.EOF)
-			mockEncodeSession.On("Stop").Return(nil)
+			mockEncodeSession.On("Cleanup").Return()
 			mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil)
 			mockStorage.On("GetFileMetadata", mock.Anything, mock.Anything).Return(&model.FileData{}, nil)
 			mockMetadataRepo.On("SaveMetadata", mock.Anything, mock.AnythingOfType("*model.Metadata")).Return(nil)
@@ -359,22 +303,7 @@ func TestAudioProcessingService(t *testing.T) {
 
 	t.Run("DownloadError", func(t *testing.T) {
 		// Arrange
-		mockLogger := new(MockLogger)
-		mockStorage := new(MockStorage)
-		mockDownloader := new(MockDownloader)
-		mockOperationRepo := new(MockOperationRepository)
-		mockMetadataRepo := new(MockMetadataRepository)
-		mockMessagingQueue := new(MockMessagingQueue)
-		mockEncoder := new(MockEncoder)
-
-		configService := &config.Config{
-			Service: config.ServiceConfig{
-				MaxAttempts: 1,
-				Timeout:     2 * time.Second,
-			},
-		}
-
-		serviceAudio := service.NewAudioProcessingService(mockLogger, mockStorage, mockDownloader, mockOperationRepo, mockMetadataRepo, mockMessagingQueue, mockEncoder, configService)
+		serviceAudio, mockLogger, _, mockDownloader, mockOperationRepo, _, mockMessagingQueue, _, _ := setupTestAudioService()
 
 		ctx := context.Background()
 		operationID := "test-operation-id"
@@ -405,23 +334,7 @@ func TestAudioProcessingService(t *testing.T) {
 
 	t.Run("UploadError", func(t *testing.T) {
 		// Arrange
-		mockLogger := new(MockLogger)
-		mockStorage := new(MockStorage)
-		mockDownloader := new(MockDownloader)
-		mockOperationRepo := new(MockOperationRepository)
-		mockMetadataRepo := new(MockMetadataRepository)
-		mockMessagingQueue := new(MockMessagingQueue)
-		mockEncoder := new(MockEncoder)
-		mockEncodeSession := new(MockEncodeSession)
-
-		configService := &config.Config{
-			Service: config.ServiceConfig{
-				MaxAttempts: 1,
-				Timeout:     2 * time.Second,
-			},
-		}
-
-		serviceAudio := service.NewAudioProcessingService(mockLogger, mockStorage, mockDownloader, mockOperationRepo, mockMetadataRepo, mockMessagingQueue, mockEncoder, configService)
+		serviceAudio, mockLogger, mockStorage, mockDownloader, mockOperationRepo, mockMetadataRepo, mockMessagingQueue, mockEncoder, mockEncodeSession := setupTestAudioService()
 
 		ctx := context.Background()
 		operationID := "test-operation-id"
@@ -440,7 +353,7 @@ func TestAudioProcessingService(t *testing.T) {
 		mockEncoder.On("Encode", mock.Anything, mockAudioContent, mock.Anything).Return(mockEncodeSession, nil)
 		mockEncodeSession.On("ReadFrame").Return(audioFrame, nil).Once()
 		mockEncodeSession.On("ReadFrame").Return([]byte(nil), io.EOF)
-		mockEncodeSession.On("Stop").Return(nil)
+		mockEncodeSession.On("Cleanup").Return()
 		mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(errors.New("error en subir el archivo"))
 		mockMessagingQueue.On("SendMessage", mock.Anything, mock.Anything).Return(nil)
 		mockOperationRepo.On("UpdateOperationResult", mock.Anything, operationID, mock.AnythingOfType("*model.OperationResult")).Return(nil)
@@ -461,23 +374,7 @@ func TestAudioProcessingService(t *testing.T) {
 
 	t.Run("SaveMetadataError", func(t *testing.T) {
 		// Arrange
-		mockLogger := new(MockLogger)
-		mockStorage := new(MockStorage)
-		mockDownloader := new(MockDownloader)
-		mockOperationRepo := new(MockOperationRepository)
-		mockMetadataRepo := new(MockMetadataRepository)
-		mockMessagingQueue := new(MockMessagingQueue)
-		mockEncodeSession := new(MockEncodeSession)
-		mockEncoder := new(MockEncoder)
-
-		configService := &config.Config{
-			Service: config.ServiceConfig{
-				MaxAttempts: 1,
-				Timeout:     2 * time.Second,
-			},
-		}
-
-		serviceAudio := service.NewAudioProcessingService(mockLogger, mockStorage, mockDownloader, mockOperationRepo, mockMetadataRepo, mockMessagingQueue, mockEncoder, configService)
+		serviceAudio, mockLogger, mockStorage, mockDownloader, mockOperationRepo, mockMetadataRepo, mockMessagingQueue, mockEncoder, mockEncodeSession := setupTestAudioService()
 
 		ctx := context.Background()
 		operationID := "test-operation-id"
@@ -496,7 +393,7 @@ func TestAudioProcessingService(t *testing.T) {
 		mockEncoder.On("Encode", mock.Anything, mockAudioContent, mock.Anything).Return(mockEncodeSession, nil)
 		mockEncodeSession.On("ReadFrame").Return(audioFrame, nil).Once()
 		mockEncodeSession.On("ReadFrame").Return([]byte(nil), io.EOF)
-		mockEncodeSession.On("Stop").Return(nil)
+		mockEncodeSession.On("Cleanup").Return()
 		mockStorage.On("UploadFile", mock.Anything, mock.AnythingOfType("string"), mock.Anything).Return(nil)
 		mockStorage.On("GetFileMetadata", mock.Anything, mock.Anything).Return(&model.FileData{}, nil)
 		mockMetadataRepo.On("SaveMetadata", mock.Anything, mock.AnythingOfType("*model.Metadata")).Return(errors.New("metadata save error"))

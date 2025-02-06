@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/encoder"
 	"os"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
@@ -21,9 +22,7 @@ func StartServer() error {
 	cfg := config.LoadConfig(os.Getenv("ENVIRONMENT"))
 
 	var envFactory factory.EnvironmentFactory
-	if cfg.Environment == "prod" {
-		envFactory = &infrastructure.AWSFactory{}
-	} else {
+	if cfg.Environment == "local" {
 		envFactory = &infrastructure.LocalFactory{}
 	}
 
@@ -62,12 +61,15 @@ func StartServer() error {
 	downloaderMusic, err := downloader.NewYTDLPDownloader(log, downloader.YTDLPOptions{
 		UseOAuth2: cfg.API.OAuth2.ParseBool(),
 		Cookies:   cfg.API.YouTube.Cookies,
+		//Timeout:   cfg.Service.TimeoutAudioDownload,
 	})
 	if err != nil {
 		log.Error("Error al crear downloader", zap.Error(err))
 		return err
 	}
 	youtubeAPI := api.NewYouTubeClient(cfg.API.YouTube.ApiKey)
+
+	encoderAudio := encoder.NewFFmpegEncoder(log)
 
 	audioProcessingService := service.NewAudioProcessingService(
 		log,
@@ -76,6 +78,7 @@ func StartServer() error {
 		operationRepo,
 		metadataRepo,
 		messaging,
+		encoderAudio,
 		cfg,
 	)
 
