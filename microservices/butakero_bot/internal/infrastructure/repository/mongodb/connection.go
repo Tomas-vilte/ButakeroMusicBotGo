@@ -96,7 +96,7 @@ func (cm *ConnectionManager) setupTLS() (*tls.Config, error) {
 // Connect establece la conexión con MongoDB
 func (cm *ConnectionManager) Connect(ctx context.Context) error {
 	uri := cm.buildConnectionString()
-	cm.logger.Info("Intentando conectar a MongoDB", zap.String("URI", uri))
+	cm.logger.Info("Intentando conectar a MongoDB...")
 
 	clientOptions := options.Client().
 		ApplyURI(uri).
