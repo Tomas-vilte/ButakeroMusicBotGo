@@ -6,5 +6,6 @@ import (
 )
 
 type SongRepository interface {
-	GetSongByID(ctx context.Context, id string) (*entity.Song, error)
+	GetSongByVideoID(ctx context.Context, videoID string) (*entity.Song, error)
+	SearchSongsByTitle(ctx context.Context, title string) ([]*entity.Song, error)
 }

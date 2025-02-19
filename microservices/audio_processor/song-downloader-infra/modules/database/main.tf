@@ -16,6 +16,11 @@ resource "aws_dynamodb_table" "songs" {
   }
 
   attribute {
+    name = "GSI2_PK"
+    type = "S"
+  }
+
+  attribute {
     name = "title"
     type = "S"
   }
@@ -24,21 +29,12 @@ resource "aws_dynamodb_table" "songs" {
     name = "url_youtube"
     type = "S"
   }
-
+  
   global_secondary_index {
-    name = "GSI2-title-index"
-    hash_key = "title"
-    projection_type = "ALL"
-    read_capacity = 5
-    write_capacity = 5
-  }
-
-  global_secondary_index {
-    name = "GSI1-url-youtube-index"
-    hash_key = "url_youtube"
-    projection_type = "ALL"
-    read_capacity = 5
-    write_capacity = 5
+    name               = "GSI2-title-index"
+    hash_key           = "GSI2_PK"
+    range_key          = "title"
+    projection_type    = "ALL"
   }
 
   tags = var.dynamodb_table_songs_tag
