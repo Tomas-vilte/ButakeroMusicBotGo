@@ -16,6 +16,8 @@ type Metadata struct {
 	// Representa el nombre de la canción tal como aparece en la fuente de origen.
 	Title string `bson:"title" json:"title" dynamodbav:"title"`
 
+	GSI2PK string `dynamodbav:"GSI2_PK"`
+
 	// Duration es la duración de la canción en segundos.
 	// Representa cuánto tiempo dura la canción desde el inicio hasta el final.
 	Duration string `bson:"duration" json:"duration" dynamodbav:"duration"`

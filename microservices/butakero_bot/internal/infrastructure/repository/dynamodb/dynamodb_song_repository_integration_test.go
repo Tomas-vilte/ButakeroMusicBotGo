@@ -23,7 +23,7 @@ const (
 	defaultPort  = "8000"
 )
 
-func createTestTable(ctx context.Context, client *dynamodb.Client) error {
+func createTestTableWithIndexes(ctx context.Context, client *dynamodb.Client) error {
 	input := &dynamodb.CreateTableInput{
 		TableName: aws.String(tableName),
 		AttributeDefinitions: []types.AttributeDefinition{
@@ -31,11 +31,53 @@ func createTestTable(ctx context.Context, client *dynamodb.Client) error {
 				AttributeName: aws.String(partitionKey),
 				AttributeType: types.ScalarAttributeTypeS,
 			},
+			{
+				AttributeName: aws.String("video_id"),
+				AttributeType: types.ScalarAttributeTypeS,
+			},
+			{
+				AttributeName: aws.String("title"),
+				AttributeType: types.ScalarAttributeTypeS,
+			},
+			{
+				AttributeName: aws.String("GSI2_PK"),
+				AttributeType: types.ScalarAttributeTypeS,
+			},
 		},
 		KeySchema: []types.KeySchemaElement{
 			{
 				AttributeName: aws.String(partitionKey),
 				KeyType:       types.KeyTypeHash,
+			},
+		},
+		GlobalSecondaryIndexes: []types.GlobalSecondaryIndex{
+			{
+				IndexName: aws.String("VideoIDIndex"),
+				KeySchema: []types.KeySchemaElement{
+					{
+						AttributeName: aws.String("video_id"),
+						KeyType:       types.KeyTypeHash,
+					},
+				},
+				Projection: &types.Projection{
+					ProjectionType: types.ProjectionTypeAll,
+				},
+			},
+			{
+				IndexName: aws.String("GSI2-title-index"),
+				KeySchema: []types.KeySchemaElement{
+					{
+						AttributeName: aws.String("GSI2_PK"),
+						KeyType:       types.KeyTypeHash,
+					},
+					{
+						AttributeName: aws.String("title"),
+						KeyType:       types.KeyTypeRange,
+					},
+				},
+				Projection: &types.Projection{
+					ProjectionType: types.ProjectionTypeAll,
+				},
 			},
 		},
 		BillingMode: types.BillingModePayPerRequest,
@@ -62,7 +104,7 @@ func TestDynamoSongRepositoryIntegration(t *testing.T) {
 	require.NoError(t, err)
 
 	dynamoContainer, err := dynamodbDocker.Run(ctx,
-		"amazon/dynamodb-local:2.2.1",
+		"amazon/dynamodb-local:2.5.4",
 	)
 	require.NoError(t, err)
 
@@ -86,7 +128,7 @@ func TestDynamoSongRepositoryIntegration(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = createTestTable(ctx, client)
+	err = createTestTableWithIndexes(ctx, client)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -105,16 +147,66 @@ func TestDynamoSongRepositoryIntegration(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	testSong := entity.Song{
-		ID:         "song1",
-		VideoID:    "video123",
-		Title:      "Test Song",
-		Duration:   "3:45",
-		URLYoutube: "https://youtube.com/video123",
+	testSongs := []entity.Song{
+		{
+			ID:         "song1",
+			VideoID:    "video1",
+			Title:      "bohemian rhapsody",
+			Duration:   "5:55",
+			URLYoutube: "https://youtube.com/video1",
+		},
+		{
+			ID:         "song2",
+			VideoID:    "video2",
+			Title:      "stairway to heaven",
+			Duration:   "8:02",
+			URLYoutube: "https://youtube.com/video2",
+		},
+		{
+			ID:         "song3",
+			VideoID:    "video3",
+			Title:      "hotel california",
+			Duration:   "6:30",
+			URLYoutube: "https://youtube.com/video3",
+		},
+		{
+			ID:         "song4",
+			VideoID:    "video4",
+			Title:      "sweet child o'mine",
+			Duration:   "5:56",
+			URLYoutube: "https://youtube.com/video4",
+		},
+		{
+			ID:         "song5",
+			VideoID:    "video5",
+			Title:      "smells like teen spirit",
+			Duration:   "4:38",
+			URLYoutube: "https://youtube.com/video5",
+		},
+		{
+			ID:         "song6",
+			VideoID:    "video6",
+			Title:      "love story",
+			Duration:   "3:55",
+			URLYoutube: "https://youtube.com/video6",
+		},
+		{
+			ID:         "song7",
+			VideoID:    "video7",
+			Title:      "lover",
+			Duration:   "3:41",
+			URLYoutube: "https://youtube.com/video7",
+		},
 	}
 
-	t.Run("Get Song Success", func(t *testing.T) {
-		item, err := attributevalue.MarshalMap(testSong)
+	for _, song := range testSongs {
+		item, err := attributevalue.MarshalMap(struct {
+			entity.Song
+			GSIPK string `dynamodbav:"GSI2_PK"`
+		}{
+			Song:  song,
+			GSIPK: "SEARCH#TITLE",
+		})
 		require.NoError(t, err)
 
 		_, err = client.PutItem(ctx, &dynamodb.PutItemInput{
@@ -122,34 +214,41 @@ func TestDynamoSongRepositoryIntegration(t *testing.T) {
 			Item:      item,
 		})
 		require.NoError(t, err)
+	}
 
-		result, err := repo.GetSongByID(ctx, testSong.ID)
+	t.Run("Buscar 'bohemian'", func(t *testing.T) {
+		results, err := repo.SearchSongsByTitle(ctx, "Bohemian")
 		require.NoError(t, err)
-		require.NotNil(t, result)
-		assert.Equal(t, testSong.ID, result.ID)
-		assert.Equal(t, testSong.Title, result.Title)
-		assert.Equal(t, testSong.VideoID, result.VideoID)
-		assert.Equal(t, testSong.Duration, result.Duration)
-		assert.Equal(t, testSong.URLYoutube, result.URLYoutube)
+		assert.Len(t, results, 1)
+		assert.Equal(t, "bohemian rhapsody", results[0].Title)
 	})
 
-	t.Run("Get Non-Existent Song", func(t *testing.T) {
-		result, err := repo.GetSongByID(ctx, "non-existent")
-		assert.NoError(t, err)
-		assert.Nil(t, result)
+	t.Run("Buscar 'love'", func(t *testing.T) {
+		results, err := repo.SearchSongsByTitle(ctx, "love")
+		require.NoError(t, err)
+		assert.Len(t, results, 2)
+		titles := []string{results[0].Title, results[1].Title}
+		assert.Contains(t, titles, "love story")
+		assert.Contains(t, titles, "lover")
 	})
 
-	t.Run("Handle Connection Error", func(t *testing.T) {
-		invalidRepo, err := dynamodb2.NewDynamoSongRepository(dynamodb2.Options{
-			TableName: tableName,
-			Logger:    logger,
-			Client: dynamodb.NewFromConfig(aws.Config{
-				Region: "invalid-region",
-			}),
-		})
+	t.Run("Buscar 'swee'", func(t *testing.T) {
+		results, err := repo.SearchSongsByTitle(ctx, "swee")
 		require.NoError(t, err)
+		assert.Len(t, results, 1)
+		assert.Equal(t, "sweet child o'mine", results[0].Title)
+	})
 
-		_, err = invalidRepo.GetSongByID(ctx, "song1")
-		assert.Error(t, err)
+	t.Run("Buscar 'z' (sin resultados)", func(t *testing.T) {
+		results, err := repo.SearchSongsByTitle(ctx, "z")
+		require.NoError(t, err)
+		assert.Empty(t, results)
+	})
+
+	t.Run("Buscar 'StAiRwAy' (case-insensitive)", func(t *testing.T) {
+		results, err := repo.SearchSongsByTitle(ctx, "StAiRwAy")
+		require.NoError(t, err)
+		assert.Len(t, results, 1)
+		assert.Equal(t, "stairway to heaven", results[0].Title)
 	})
 }

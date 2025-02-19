@@ -69,7 +69,6 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 	logger, err := logging.NewZapLogger()
 	assert.NoError(t, err)
 
-	// Arrange - Configurar Testcontainer
 	container, mongoURI, err := setupMongoContainer(ctx)
 	assert.NoError(t, err)
 	defer func() {
@@ -81,7 +80,6 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 	client, cleanup := createTestConnection(t, mongoURI)
 	defer cleanup()
 
-	// Configurar base de datos de prueba
 	db := client.Database("test_db")
 	collection := db.Collection("songs")
 	repo, err := mongodb.NewMongoDBSongRepository(mongodb.Options{
@@ -90,53 +88,102 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	// Test data
-	testSong := &entity.Song{
-		ID:         "song1",
-		VideoID:    "video123",
-		Title:      "Test Song",
-		Duration:   "3:45",
-		URLYoutube: "https://youtube.com/video123",
-	}
+	t.Run("SearchSongsByTitle", func(t *testing.T) {
+		testSongs := []*entity.Song{
+			{
+				ID:         "song1",
+				VideoID:    "video123",
+				Title:      "Test Song One",
+				Duration:   "3:45",
+				URLYoutube: "https://youtube.com/video123",
+			},
+			{
+				ID:         "song2",
+				VideoID:    "video456",
+				Title:      "Another Test Song",
+				Duration:   "4:30",
+				URLYoutube: "https://youtube.com/video456",
+			},
+			{
+				ID:         "song3",
+				VideoID:    "video789",
+				Title:      "Something Completely Different",
+				Duration:   "2:15",
+				URLYoutube: "https://youtube.com/video789",
+			},
+		}
 
-	t.Run("Obtener canción existente", func(t *testing.T) {
-		// Arrange - Insertar datos de prueba
-		_, err := collection.InsertOne(ctx, testSong)
-		assert.NoError(t, err)
+		for _, song := range testSongs {
+			_, err := collection.InsertOne(ctx, song)
+			assert.NoError(t, err)
+		}
+
 		defer func() {
-			if _, err := collection.DeleteOne(ctx, bson.M{"_id": testSong.ID}); err != nil {
-				return
-			}
+			_, err := collection.DeleteMany(ctx, bson.M{
+				"_id": bson.M{"$in": []string{"song1", "song2", "song3"}},
+			})
+			assert.NoError(t, err)
 		}()
 
 		// Act
-		result, err := repo.GetSongByID(ctx, "song1")
+		results, err := repo.SearchSongsByTitle(ctx, "Test")
 
 		// Assert
 		assert.NoError(t, err)
-		assert.Equal(t, testSong.ID, result.ID)
+		assert.Len(t, results, 2)
+		assert.Contains(t, []string{results[0].Title, results[1].Title}, "Test Song One")
+		assert.Contains(t, []string{results[0].Title, results[1].Title}, "Another Test Song")
+	})
+
+	t.Run("GetSongByVideoID", func(t *testing.T) {
+		// Arrange
+		testSong := &entity.Song{
+			ID:         "song4",
+			VideoID:    "videoXYZ",
+			Title:      "Video ID Test Song",
+			Duration:   "3:30",
+			URLYoutube: "https://youtube.com/videoXYZ",
+		}
+
+		_, err := collection.InsertOne(ctx, testSong)
+		assert.NoError(t, err)
+
+		defer func() {
+			_, err := collection.DeleteOne(ctx, bson.M{"_id": testSong.ID})
+			assert.NoError(t, err)
+		}()
+
+		// Act
+		result, err := repo.GetSongByVideoID(ctx, "videoXYZ")
+
+		// Assert
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, testSong.VideoID, result.VideoID)
 		assert.Equal(t, testSong.Title, result.Title)
 	})
 
-	t.Run("Obtener canción no existente", func(t *testing.T) {
+	t.Run("SearchSongsByTitle - No Results", func(t *testing.T) {
 		// Act
-		result, err := repo.GetSongByID(ctx, "nonexistent")
+		results, err := repo.SearchSongsByTitle(ctx, "NonexistentSong")
 
 		// Assert
+		assert.NoError(t, err)
+		assert.Len(t, results, 0)
+	})
+
+	t.Run("Obtener canción por VideoID no existente", func(t *testing.T) {
+		result, err := repo.GetSongByVideoID(ctx, "invalid_video")
 		assert.NoError(t, err)
 		assert.Nil(t, result)
 	})
 
-	t.Run("Manejo de errores de base de datos", func(t *testing.T) {
-		// Arrange - Forzar error cerrando la conexión
+	t.Run("Manejo de error en conexión", func(t *testing.T) {
 		cleanup()
-
-		// Act
-		_, err := repo.GetSongByID(ctx, "song1")
-
-		// Assert
+		_, err := repo.GetSongByVideoID(ctx, "video123")
 		assert.Error(t, err)
 	})
+
 }
 
 func TestConnectionManagerIntegration(t *testing.T) {

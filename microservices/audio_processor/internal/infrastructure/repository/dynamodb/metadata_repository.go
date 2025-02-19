@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
+	"strings"
 )
 
 type (
@@ -52,11 +53,14 @@ func (s *DynamoMetadataRepository) SaveMetadata(ctx context.Context, metadata *m
 		metadata.ID = uuid.New().String()
 	}
 
+	metadata.Title = strings.ToLower(metadata.Title)
+
 	_, err := s.Client.PutItem(ctx, &dynamodb.PutItemInput{
 		TableName: aws.String(s.Config.Database.DynamoDB.Tables.Songs),
 		Item: map[string]types.AttributeValue{
 			"PK":          &types.AttributeValueMemberS{Value: "METADATA#" + metadata.ID},
 			"SK":          &types.AttributeValueMemberS{Value: "METADATA#" + metadata.ID},
+			"GSI2_PK":     &types.AttributeValueMemberS{Value: "SEARCH#TITLE"},
 			"ID":          &types.AttributeValueMemberS{Value: metadata.ID},
 			"title":       &types.AttributeValueMemberS{Value: metadata.Title},
 			"url_youtube": &types.AttributeValueMemberS{Value: metadata.URLYouTube},
