@@ -211,7 +211,7 @@ func (s *YoutubeFetcher) GetDCAData(ctx context.Context, song *voice.Song) (io.R
 }
 
 func (s *YoutubeFetcher) downloadAndStreamAudio(ctx context.Context, song *voice.Song, writer io.Writer) error {
-	ytArgs := []string{"-f", "bestaudio[ext=m4a]", "--audio-quality", "0", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", "--username", "oauth2", "--password", "''", song.URL}
+	ytArgs := []string{"-f", "bestaudio[ext=m4a]", "--audio-quality", "0", "-o", "-", "--force-overwrites", "--http-chunk-size", "100K", song.URL}
 	ffmpegArgs := []string{"-i", "pipe:0", "-b:a", "192k", "-f", "s16le", "-ar", "48000", "-ac", "2", "pipe:1"}
 
 	cmd := s.CommandExecutor.ExecuteCommand(ctx, "sh", "-c", fmt.Sprintf("yt-dlp %s | ffmpeg %s | dca",
