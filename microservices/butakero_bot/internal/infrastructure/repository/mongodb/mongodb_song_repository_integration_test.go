@@ -91,25 +91,25 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 	t.Run("SearchSongsByTitle", func(t *testing.T) {
 		testSongs := []*entity.Song{
 			{
-				ID:         "song1",
-				VideoID:    "video123",
-				Title:      "Test Song One",
-				Duration:   "3:45",
-				URLYoutube: "https://youtube.com/video123",
+				ID:       "song1",
+				VideoID:  "video123",
+				Title:    "Test Song One",
+				Duration: time.Minute*3 + time.Second*41,
+				URL:      "https://youtube.com/video123",
 			},
 			{
-				ID:         "song2",
-				VideoID:    "video456",
-				Title:      "Another Test Song",
-				Duration:   "4:30",
-				URLYoutube: "https://youtube.com/video456",
+				ID:       "song2",
+				VideoID:  "video456",
+				Title:    "Another Test Song",
+				Duration: time.Minute*3 + time.Second*41,
+				URL:      "https://youtube.com/video456",
 			},
 			{
-				ID:         "song3",
-				VideoID:    "video789",
-				Title:      "Something Completely Different",
-				Duration:   "2:15",
-				URLYoutube: "https://youtube.com/video789",
+				ID:       "song3",
+				VideoID:  "video789",
+				Title:    "Something Completely Different",
+				Duration: time.Minute*3 + time.Second*41,
+				URL:      "https://youtube.com/video789",
 			},
 		}
 
@@ -138,11 +138,11 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 	t.Run("GetSongByVideoID", func(t *testing.T) {
 		// Arrange
 		testSong := &entity.Song{
-			ID:         "song4",
-			VideoID:    "videoXYZ",
-			Title:      "Video ID Test Song",
-			Duration:   "3:30",
-			URLYoutube: "https://youtube.com/videoXYZ",
+			ID:       "song4",
+			VideoID:  "videoXYZ",
+			Title:    "Video ID Test Song",
+			Duration: time.Minute*3 + time.Second*41,
+			URL:      "https://youtube.com/videoXYZ",
 		}
 
 		_, err := collection.InsertOne(ctx, testSong)

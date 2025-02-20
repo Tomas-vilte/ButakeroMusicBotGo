@@ -3,6 +3,7 @@ package inmemory
 import (
 	"errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"reflect"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestInmemorySongStorage_PrependSong(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	storage := NewInmemorySongStorage(mockLogger)
 	song := &entity.Song{Title: "Test Song"}
 
@@ -23,7 +24,7 @@ func TestInmemorySongStorage_PrependSong(t *testing.T) {
 }
 
 func TestInmemorySongStorage_AppendSong(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	storage := NewInmemorySongStorage(mockLogger)
 	song := &entity.Song{Title: "Test Song"}
 
@@ -36,7 +37,7 @@ func TestInmemorySongStorage_AppendSong(t *testing.T) {
 }
 
 func TestInmemorySongStorage_RemoveSong(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
 	storage := NewInmemorySongStorage(mockLogger)
@@ -83,7 +84,7 @@ func TestInmemorySongStorage_RemoveSong(t *testing.T) {
 }
 
 func TestInmemorySongStorage_GetSongs(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockLogger.On("Info", "Canción agregada al final de la lista de reproducción", mock.Anything).Return()
 	mockLogger.On("Info", "Obteniendo todas las canciones de la lista de reproducción", mock.Anything).Return()
 
@@ -121,7 +122,7 @@ func TestInmemorySongStorage_GetSongs(t *testing.T) {
 }
 
 func TestInmemorySongStorage_PopFirstSong(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockLogger.On("Info", "Canción agregada al final de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field")).Return()
 	mockLogger.On("Info", "No hay canciones para eliminar", mock.AnythingOfType("[]zapcore.Field")).Return()
 	mockLogger.On("Info", "Primera canción eliminada de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field")).Return()
@@ -154,7 +155,7 @@ func TestInmemorySongStorage_PopFirstSong(t *testing.T) {
 }
 
 func TestInmemorySongStorage_ClearPlaylist(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockLogger.On("Info", "Lista de reproducción borrada", mock.AnythingOfType("[]zapcore.Field")).Return()
 	mockLogger.On("Info", "Obteniendo todas las canciones de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field")).Return()
 	mockLogger.On("Info", "Canción agregada al final de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field")).Return()
