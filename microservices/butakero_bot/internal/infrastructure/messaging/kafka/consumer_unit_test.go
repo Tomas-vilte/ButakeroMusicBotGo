@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"github.com/IBM/sarama/mocks"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
@@ -28,17 +29,18 @@ func TestNewTLSConfig_Failure(t *testing.T) {
 func TestKafkaConsumer_Close(t *testing.T) {
 	config := sarama.NewConfig()
 	mockConsumer := mocks.NewConsumer(t, config)
-	logger, err := logging.NewZapLogger()
-	require.NoError(t, err)
+	mockLogger := new(logging.MockLogger)
 	consumer := &KafkaConsumer{
 		consumer:    mockConsumer,
 		brokers:     []string{"dummy"},
 		topic:       "test-topic",
-		logger:      logger,
+		logger:      mockLogger,
 		messageChan: make(chan *entity.StatusMessage, 1),
 	}
 
-	err = consumer.Close()
+	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+
+	err := consumer.Close()
 
 	// Assert
 	require.NoError(t, err, "El método Close() no debe retornar error")
@@ -73,17 +75,19 @@ func TestHandleSuccessMessage(t *testing.T) {
 			"failures": 0
 		}
 	}`
-	logger, err := logging.NewZapLogger()
-	require.NoError(t, err)
+	mockLogger := new(logging.MockLogger)
 	consumer := &KafkaConsumer{
 		messageChan: make(chan *entity.StatusMessage, 1),
-		logger:      logger,
+		logger:      mockLogger,
 	}
 
 	testMsg := &sarama.ConsumerMessage{
 		Offset: 1,
 		Value:  []byte(successJSON),
 	}
+
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
 	// Act
 	consumer.handleMessage(testMsg)
@@ -122,17 +126,19 @@ func TestHandleErrorMessage(t *testing.T) {
 			"failures": 8
 		}
 	}`
-	logger, err := logging.NewZapLogger()
-	require.NoError(t, err)
+	mockLogger := new(logging.MockLogger)
 	consumer := &KafkaConsumer{
 		messageChan: make(chan *entity.StatusMessage, 1),
-		logger:      logger,
+		logger:      mockLogger,
 	}
 
 	testMsg := &sarama.ConsumerMessage{
 		Offset: 2,
 		Value:  []byte(errorJSON),
 	}
+
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Warn", mock.Anything, mock.Anything).Return()
 
 	// Act
 	consumer.handleMessage(testMsg)

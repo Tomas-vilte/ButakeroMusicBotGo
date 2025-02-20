@@ -1,4 +1,4 @@
-package inmemory
+package logging
 
 import (
 	"github.com/stretchr/testify/mock"

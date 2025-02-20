@@ -3,22 +3,18 @@ package sqs
 import (
 	"context"
 	"errors"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"go.uber.org/zap/zapcore"
 	"sync"
 	"testing"
 	"time"
 )
 
 type MockSQSClient struct {
-	mock.Mock
-}
-
-type MockLogger struct {
 	mock.Mock
 }
 
@@ -33,30 +29,10 @@ func (m *MockSQSClient) ReceiveMessage(ctx context.Context, params *sqs.ReceiveM
 
 }
 
-func (m *MockLogger) Info(msg string, fields ...zapcore.Field) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Warn(msg string, fields ...zapcore.Field) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Error(msg string, fields ...zapcore.Field) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) Debug(msg string, fields ...zapcore.Field) {
-	m.Called(msg, fields)
-}
-
-func (m *MockLogger) With(fields ...zapcore.Field) {
-	m.Called(fields)
-}
-
 func TestNewSQSConsumer(t *testing.T) {
 	// Arrange
 	mockClient := new(MockSQSClient)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	config := SQSConfig{
 		QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
 		MaxMessages:     10,
@@ -77,7 +53,7 @@ func TestNewSQSConsumer(t *testing.T) {
 
 func TestSQSConsumer_ConsumeMessages(t *testing.T) {
 	mockClient := new(MockSQSClient)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
@@ -100,7 +76,7 @@ func TestSQSConsumer_ConsumeMessages(t *testing.T) {
 
 func TestSQSConsumer_receiveAndProcessMessages_Success(t *testing.T) {
 	mockClient := new(MockSQSClient)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 
 	ctx := context.Background()
 	msgID := "test-message-id"
@@ -161,7 +137,7 @@ func TestSQSConsumer_receiveAndProcessMessages_Success(t *testing.T) {
 
 func TestSQSConsumer_receiveAndProcessMessages_Error(t *testing.T) {
 	mockClient := new(MockSQSClient)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 
 	ctx := context.Background()
 
@@ -188,7 +164,7 @@ func TestSQSConsumer_receiveAndProcessMessages_Error(t *testing.T) {
 func TestSQSConsumer_handleMessage_Success(t *testing.T) {
 	// Arrange
 	mockClient := new(MockSQSClient)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 
 	ctx := context.Background()
 	msgID := "test-message-id"
@@ -235,7 +211,7 @@ func TestSQSConsumer_handleMessage_Success(t *testing.T) {
 func TestSQSConsumer_handleMessage_WarningStatus(t *testing.T) {
 	// Arrange
 	mockClient := new(MockSQSClient)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 
 	ctx := context.Background()
 	msgID := "test-message-id"
@@ -273,7 +249,7 @@ func TestSQSConsumer_handleMessage_WarningStatus(t *testing.T) {
 func TestSQSConsumer_handleMessage_UnmarshalError(t *testing.T) {
 	// Arrange
 	mockClient := new(MockSQSClient)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 
 	ctx := context.Background()
 	msgID := "test-message-id"
@@ -306,7 +282,7 @@ func TestSQSConsumer_handleMessage_UnmarshalError(t *testing.T) {
 
 func TestSQSConsumer_GetMessagesChannel(t *testing.T) {
 	mockClient := new(MockSQSClient)
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 
 	config := SQSConfig{
 		QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",

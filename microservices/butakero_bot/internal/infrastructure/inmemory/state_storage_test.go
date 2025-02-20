@@ -2,12 +2,13 @@ package inmemory
 
 import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/stretchr/testify/mock"
 	"testing"
 )
 
 func TestInmemoryStateStorage_GetCurrentSong(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	storage := NewInmemoryStateStorage(mockLogger)
 
 	currentSong := &entity.PlayedSong{Song: entity.Song{Title: "Test Song"}}
@@ -29,7 +30,7 @@ func TestInmemoryStateStorage_GetCurrentSong(t *testing.T) {
 }
 
 func TestInmemoryStateStorage_GetVoiceChannel(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockLogger.On("Info", "Obteniendo el canal de voz", mock.AnythingOfType("[]zapcore.Field")).Return()
 	mockLogger.On("Info", "Canal de voz establecido", mock.AnythingOfType("[]zapcore.Field")).Return()
 
@@ -54,7 +55,7 @@ func TestInmemoryStateStorage_GetVoiceChannel(t *testing.T) {
 }
 
 func TestInmemoryStateStorage_GetTextChannel(t *testing.T) {
-	mockLogger := new(MockLogger)
+	mockLogger := new(logging.MockLogger)
 	mockLogger.On("Info", "Obteniendo el canal de texto", mock.AnythingOfType("[]zapcore.Field")).Return()
 	mockLogger.On("Info", "Canal de texto establecido", mock.AnythingOfType("[]zapcore.Field")).Return()
 
