@@ -5,15 +5,14 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-// DiscordResponseHandler define cómo responder a interacciones de Discord.
-type DiscordResponseHandler interface {
-	Respond(interaction *discordgo.Interaction, response discordgo.InteractionResponse) error
-	RespondWithMessage(interaction *discordgo.Interaction, message string) error
-	CreateFollowupMessage(interaction *discordgo.Interaction, params discordgo.WebhookParams) error
-}
-
-// DiscordMessageService define cómo generar mensajes embebidos para Discord.
-type DiscordMessageService interface {
-	GenerateAddedSongEmbed(song *entity.Song, member *discordgo.Member) *discordgo.MessageEmbed
-	GenerateFailedToAddSongEmbed(input string, member *discordgo.Member) *discordgo.MessageEmbed
+// DiscordMessenger define todas las operaciones de mensajería relacionadas con Discord.
+type DiscordMessenger interface {
+	// RespondToInteraction Responde a una interacción (comando slash, botón, etc.) con un embed.
+	RespondToInteraction(interaction *discordgo.Interaction, embed *discordgo.MessageEmbed) error
+	// SendPlayStatus Envía un mensaje embed de estado de reproducción (ej: "Ahora sonando").
+	SendPlayStatus(channelID string, playMsg *entity.PlayedSong) (messageID string, err error)
+	// UpdatePlayStatus Actualiza un mensaje de estado de reproducción existente.
+	UpdatePlayStatus(channelID, messageID string, playMsg *entity.PlayedSong) error
+	// SendText Envía un mensaje de texto simple a un canal.
+	SendText(channelID, text string) error
 }
