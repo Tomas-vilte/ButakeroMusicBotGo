@@ -22,10 +22,7 @@ func NewDiscordMessengerService(session *discordgo.Session, logger logging.Logge
 }
 
 // RespondToInteraction Responde a una interacción con un embed.
-func (m *MessengerService) RespondToInteraction(
-	interaction *discordgo.Interaction,
-	embed *discordgo.MessageEmbed,
-) error {
+func (m *MessengerService) RespondToInteraction(interaction *discordgo.Interaction, embed *discordgo.MessageEmbed) error {
 	m.logger.Info("Respondiendo a interacción", zap.String("tipo", interaction.Type.String()))
 
 	err := m.session.InteractionRespond(interaction, &discordgo.InteractionResponse{
@@ -55,10 +52,7 @@ func (m *MessengerService) SendPlayStatus(channelID string, playMsg *entity.Play
 }
 
 // UpdatePlayStatus Actualiza un mensaje de estado existente.
-func (m *MessengerService) UpdatePlayStatus(
-	channelID, messageID string,
-	playMsg *entity.PlayedSong,
-) error {
+func (m *MessengerService) UpdatePlayStatus(channelID, messageID string, playMsg *entity.PlayedSong) error {
 	m.logger.Info("Actualizando estado de reproducción", zap.String("messageID", messageID))
 
 	embed := GeneratePlayingSongEmbed(playMsg)
