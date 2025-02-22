@@ -29,7 +29,7 @@ func TestAudioService_RequestDownload_Success(t *testing.T) {
 		zap.String("operationId", "op123"),
 	})
 
-	service := NewAudioService(mockDownloader, loggerMock)
+	service := NewExternalAudioService(mockDownloader, loggerMock)
 
 	// Act
 	resp, err := service.RequestDownload(context.Background(), "test-song")
@@ -53,7 +53,7 @@ func TestAudioService_RequestDownload_DownloadError(t *testing.T) {
 		zap.Error(expectedError),
 	})
 
-	service := NewAudioService(mockDownloader, loggerMock)
+	service := NewExternalAudioService(mockDownloader, loggerMock)
 
 	// Act
 	_, err := service.RequestDownload(context.Background(), "bad-song")
@@ -79,7 +79,7 @@ func TestAudioService_RequestDownload_LoggingVerification(t *testing.T) {
 			zap.Error(customError),
 		})
 
-		service := NewAudioService(mockDownloader, loggerMock)
+		service := NewExternalAudioService(mockDownloader, loggerMock)
 
 		// Act
 		_, err := service.RequestDownload(context.Background(), "specific-song")
