@@ -1,8 +1,20 @@
 package config
 
 type Config struct {
-	Storage StorageConfig
-	AWS     AWSConfig
+	Storage       StorageConfig
+	AWS           AWSConfig
+	CommandPrefix string
+	Discord       Discord
+	Kafka         Kafka
+}
+
+type Discord struct {
+	Token string
+}
+
+type Kafka struct {
+	Brokers []string
+	Topic   string
 }
 
 type StorageConfig struct {
