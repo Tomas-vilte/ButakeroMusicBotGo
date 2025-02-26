@@ -53,7 +53,6 @@ func (m *MessengerService) SendPlayStatus(channelID string, playMsg *entity.Play
 
 // UpdatePlayStatus Actualiza un mensaje de estado existente.
 func (m *MessengerService) UpdatePlayStatus(channelID, messageID string, playMsg *entity.PlayedSong) error {
-	m.logger.Info("Actualizando estado de reproducción", zap.String("messageID", messageID))
 
 	embed := GeneratePlayingSongEmbed(playMsg)
 	_, err := m.session.ChannelMessageEditEmbed(channelID, messageID, embed)
