@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"bufio"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -26,8 +27,15 @@ type OpusDecoder struct {
 func NewOpusDecoder(r io.ReadCloser) *OpusDecoder {
 	return &OpusDecoder{
 		reader: r,
-		closer: r,
 		closed: false,
+	}
+}
+
+func NewBufferedOpusDecoder(r io.ReadCloser) *OpusDecoder {
+	return &OpusDecoder{
+		reader:   bufio.NewReader(r),
+		closer:   r,
+		metadata: &Metadata{},
 	}
 }
 

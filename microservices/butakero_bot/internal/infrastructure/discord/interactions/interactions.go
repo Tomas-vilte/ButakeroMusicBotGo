@@ -12,7 +12,6 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
-	"io"
 )
 
 const (
@@ -31,7 +30,6 @@ type InteractionHandler struct {
 	logger           logging.Logger
 	discordMessenger ports.DiscordMessenger
 	storageAudio     ports.StorageAudio
-	decoderFactory   func(io.ReadCloser) ports.Decoder
 	presenceNotifier ports.PresenceSubject
 }
 
@@ -42,7 +40,6 @@ func NewInteractionHandler(
 	logger logging.Logger,
 	discordMessenger ports.DiscordMessenger,
 	storageAudio ports.StorageAudio,
-	decoderFactory func(io.ReadCloser) ports.Decoder,
 	presenceNotifier ports.PresenceSubject,
 ) *InteractionHandler {
 	return &InteractionHandler{
@@ -52,7 +49,6 @@ func NewInteractionHandler(
 		logger:           logger,
 		discordMessenger: discordMessenger,
 		storageAudio:     storageAudio,
-		decoderFactory:   decoderFactory,
 		presenceNotifier: presenceNotifier,
 	}
 }
@@ -357,7 +353,6 @@ func (handler *InteractionHandler) setupGuildPlayer(guildID GuildID, dg *discord
 		songStorage,
 		stateStorage,
 		handler.discordMessenger,
-		handler.decoderFactory,
 		handler.storageAudio,
 		handler.logger,
 	)

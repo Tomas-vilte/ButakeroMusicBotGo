@@ -43,7 +43,7 @@ type (
 	}
 
 	AudioProcessor interface {
-		StartOperation(ctx context.Context, song string) (string, string, error)
+		StartOperation(ctx context.Context, song string) (string, string, string, error)
 		ProcessAudio(ctx context.Context, operationID string, metadata *api.VideoDetails) error
 	}
 )
@@ -70,7 +70,7 @@ func NewAudioProcessingService(log logger.Logger, storage port.Storage,
 }
 
 // StartOperation inicia una nueva operación de procesamiento de audio y guarda su estado inicial.
-func (a *AudioProcessingService) StartOperation(ctx context.Context, songID string) (string, string, error) {
+func (a *AudioProcessingService) StartOperation(ctx context.Context, songID string) (string, string, string, error) {
 	operationResult := &model.OperationResult{
 		ID:     uuid.New().String(),
 		SK:     songID,
@@ -78,9 +78,9 @@ func (a *AudioProcessingService) StartOperation(ctx context.Context, songID stri
 	}
 
 	if err := a.operationStore.SaveOperationsResult(ctx, operationResult); err != nil {
-		return "", "", fmt.Errorf("error al guardar resultado de operacion: %w", err)
+		return "", "", "", fmt.Errorf("error al guardar resultado de operacion: %w", err)
 	}
-	return operationResult.ID, operationResult.SK, nil
+	return operationResult.ID, operationResult.SK, operationResult.Status, nil
 }
 
 // ProcessAudio procesa el audio descargando, codificando y almacenando en S3, con reintentos en caso de fallos.
