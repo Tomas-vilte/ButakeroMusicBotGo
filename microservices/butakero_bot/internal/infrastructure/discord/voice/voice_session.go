@@ -2,9 +2,13 @@ package voice
 
 import (
 	"context"
+	"errors"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/decoder"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
+	"io"
+	"time"
 )
 
 type DiscordVoiceSession struct {
@@ -35,24 +39,49 @@ func (d *DiscordVoiceSession) JoinVoiceChannel(channelID string) error {
 }
 
 // SendAudio envía frames de audio a la conexión de voz de Discord.
-func (d *DiscordVoiceSession) SendAudio(ctx context.Context, frames []byte) error {
-	if err := d.vc.Speaking(true); err != nil {
-		d.logger.Error("Error al comenzar a hablar: ", zap.Error(err))
-		return err
+func (d *DiscordVoiceSession) SendAudio(ctx context.Context, reader io.ReadCloser) error {
+	if d.vc == nil {
+		return errors.New("no hay conexión de voz activa")
 	}
 
+	if err := d.vc.Speaking(true); err != nil {
+		d.logger.Error("Error al comenzar a hablar", zap.Error(err))
+		return err
+	}
+	defer d.vc.Speaking(false)
+
+	decoderAudio := decoder.NewBufferedOpusDecoder(reader)
 	defer func() {
-		if err := d.vc.Speaking(false); err != nil {
-			d.logger.Error("Error al dejar de hablar: ", zap.Error(err))
-			return
+		if err := decoderAudio.Close(); err != nil {
+			d.logger.Error("Error al cerrar el decoder", zap.Error(err))
+		}
+		if err := d.vc.Disconnect(); err != nil {
+			d.logger.Error("Error al cerrar la conexión de voz", zap.Error(err))
 		}
 	}()
 
-	select {
-	case d.vc.OpusSend <- frames:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			frame, err := decoderAudio.OpusFrame()
+			if err != nil {
+				if err == io.EOF {
+					return nil
+				}
+				d.logger.Error("Error al decodificar frame", zap.Error(err))
+				return err
+			}
+
+			select {
+			case d.vc.OpusSend <- frame:
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(time.Second):
+				return errors.New("timeout al enviar frame de audio")
+			}
+		}
 	}
 }
 

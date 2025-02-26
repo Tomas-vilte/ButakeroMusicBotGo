@@ -168,8 +168,6 @@ package main
 
 import (
 	"context"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/decoder"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interactions"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/storage"
@@ -178,7 +176,6 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
-	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -216,10 +213,6 @@ func main() {
 
 	presenceNotifier := discord.NewDiscordPresenceNotifier()
 
-	decoderFactory := func(r io.ReadCloser) ports.Decoder {
-		return decoder.NewOpusDecoder(r)
-	}
-
 	// Crear el manejador de interacciones
 	handler := interactions.NewInteractionHandler(
 		interactionStorage,
@@ -227,7 +220,6 @@ func main() {
 		logger,
 		discordMessenger,
 		storageAudio,
-		decoderFactory,
 		presenceNotifier,
 	)
 

@@ -68,7 +68,7 @@ func (c *AudioAPIClient) DownloadSong(ctx context.Context, songName string) (*en
 	params.Add("song", songName)
 	endpoint.RawQuery = params.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("hubo un error al crear la request: %w", err)
 	}

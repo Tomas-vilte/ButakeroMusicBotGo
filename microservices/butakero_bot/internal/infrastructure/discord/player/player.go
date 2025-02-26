@@ -9,7 +9,6 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
-	"io"
 	"sync"
 	"time"
 )
@@ -39,7 +38,6 @@ type GuildPlayer struct {
 	voiceChannelMap map[string]VoiceChannelInfo
 	message         ports.DiscordMessenger
 	storageAudio    ports.StorageAudio
-	decoderFactory  func(io.ReadCloser) ports.Decoder
 	mu              sync.Mutex
 }
 
@@ -58,7 +56,7 @@ type VoiceChannelInfo struct {
 
 // NewGuildPlayer crea una nueva instancia de GuildPlayer con los parámetros proporcionados.
 func NewGuildPlayer(session ports.VoiceSession, songStorage ports.SongStorage, stateStorage ports.StateStorage,
-	message ports.DiscordMessenger, decoderFactory func(io.ReadCloser) ports.Decoder, storageAudio ports.StorageAudio, logger logging.Logger) *GuildPlayer {
+	message ports.DiscordMessenger, storageAudio ports.StorageAudio, logger logging.Logger) *GuildPlayer {
 	return &GuildPlayer{
 		songStorage:     songStorage,
 		stateStorage:    stateStorage,
@@ -67,7 +65,6 @@ func NewGuildPlayer(session ports.VoiceSession, songStorage ports.SongStorage, s
 		logger:          logger,
 		voiceChannelMap: make(map[string]VoiceChannelInfo),
 		message:         message,
-		decoderFactory:  decoderFactory,
 		storageAudio:    storageAudio,
 	}
 }
@@ -363,6 +360,7 @@ func (p *GuildPlayer) playPlaylist(ctx context.Context) error {
 
 		time.Sleep(250 * time.Millisecond)
 	}
+
 	p.logger.Info("playPlaylist finalizado")
 	return nil
 }
@@ -370,7 +368,7 @@ func (p *GuildPlayer) playPlaylist(ctx context.Context) error {
 // playSingleSong reproduce una única canción
 func (p *GuildPlayer) playSingleSong(ctx context.Context, song *entity.Song, textChannel string) error {
 	if err := p.stateStorage.SetCurrentSong(&entity.PlayedSong{Song: *song}); err != nil {
-		p.logger.Error("Error al establecer la cancion actual", zap.Error(err))
+		p.logger.Error("Error al establecer la canción actual", zap.Error(err))
 		return err
 	}
 
@@ -381,11 +379,9 @@ func (p *GuildPlayer) playSingleSong(ctx context.Context, song *entity.Song, tex
 	p.songCtxCancel = cancel
 	p.mu.Unlock()
 
-	p.logger.With(zap.String("título", song.Title), zap.String("URL", song.URL))
-
 	playMsgID, err := p.message.SendPlayStatus(textChannel, &entity.PlayedSong{Song: *song})
 	if err != nil {
-		p.logger.Error("Error al enviar el mensaje con el nombre de la cancion", zap.Error(err))
+		p.logger.Error("Error al enviar el mensaje con el nombre de la canción", zap.Error(err))
 		return err
 	}
 
@@ -396,31 +392,18 @@ func (p *GuildPlayer) playSingleSong(ctx context.Context, song *entity.Song, tex
 	}
 	defer audioData.Close()
 
-	decoder := p.decoderFactory(audioData)
-	defer decoder.Close()
-
 	startTime := time.Now()
-	for {
-		frame, err := decoder.OpusFrame()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			p.logger.Error("Error al decodificar frame", zap.Error(err))
-			return err
-		}
-
-		if err := p.session.SendAudio(songCtx, frame); err != nil {
-			p.logger.Error("Error al enviar datos de audio", zap.Error(err))
-			return err
-		}
-
-		position := time.Since(startTime)
-		p.updateSongPosition(song, position, textChannel, playMsgID)
+	if err := p.session.SendAudio(songCtx, audioData); err != nil {
+		p.logger.Error("Error al enviar datos de audio", zap.Error(err))
+		return err
 	}
 
+	// Actualizar estado final
+	position := time.Since(startTime)
+	p.updateSongPosition(song, position, textChannel, playMsgID)
+
 	if err := p.stateStorage.SetCurrentSong(nil); err != nil {
-		p.logger.Error("Error al establecer la cancion actual", zap.Error(err))
+		p.logger.Error("Error al limpiar la canción actual", zap.Error(err))
 		return err
 	}
 
