@@ -23,7 +23,8 @@ type (
 
 	PlayedSong struct {
 		Song
-		Position    time.Duration
-		RequestedBy string
+		Position      time.Duration
+		RequestedBy   string
+		StartPosition time.Duration
 	}
 )
