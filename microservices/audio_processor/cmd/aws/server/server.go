@@ -34,7 +34,7 @@ func StartServer() error {
 		}
 	}()
 
-	storageService, err := cloud.NewS3Storage(cfg)
+	storage, err := cloud.NewS3Storage(cfg)
 	if err != nil {
 		log.Error("Error al crear el storage", zap.Error(err))
 		return err
@@ -58,7 +58,7 @@ func StartServer() error {
 		return err
 	}
 
-	cookiesContent, err := storageService.GetFileContent(context.Background(), "", "yt-cookies.txt")
+	cookiesContent, err := storage.GetFileContent(context.Background(), "", "yt-cookies.txt")
 	if err != nil {
 		log.Error("Error al obtener contenido de archivo", zap.Error(err))
 		return err
@@ -93,9 +93,13 @@ func StartServer() error {
 	youtubeAPI := adapters.NewYouTubeClient(cfg.API.YouTube.ApiKey, log)
 
 	encoderAudio := encoder.NewFFmpegEncoder(log)
+	downloaderService := service.NewAudioDownloader(downloaderMusic, encoderAudio, log)
+	storageService := service.NewAudioStorage(storage, metadataRepo, log)
+	opsManager := service.NewOperationManager(operationRepo, log, cfg)
+	messageService := service.NewMessagingService(messaging, log)
+	errorHandler := service.NewErrorHandler(operationRepo, messaging, log, cfg)
 
-	audioProcessingService := service.NewAudioProcessingService(downloaderMusic, encoderAudio, storageService, metadataRepo,
-		operationRepo, messaging, log, cfg)
+	audioProcessingService := service.NewAudioProcessingService(downloaderService, storageService, opsManager, messageService, errorHandler, log, cfg)
 
 	operationUC := usecase.NewGetOperationStatusUseCase(operationRepo)
 

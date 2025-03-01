@@ -1,3 +1,5 @@
+//go:build !integration
+
 package local
 
 import (
@@ -156,7 +158,7 @@ func TestLocalStorage(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.NotNil(t, metadata)
-			assert.Equal(t, "audio/"+key, metadata.FilePath)
+			assert.Equal(t, storage.config.Storage.LocalConfig.BasePath+"/audio/"+key, metadata.FilePath)
 			assert.Equal(t, "audio/dca", metadata.FileType)
 			assert.Contains(t, metadata.FileSize, "B")
 		})
@@ -184,7 +186,7 @@ func TestLocalStorage(t *testing.T) {
 
 			assert.NoError(t, err)
 			assert.NotNil(t, metadata)
-			assert.Equal(t, "audio/test.dca", metadata.FilePath)
+			assert.Equal(t, storage.config.Storage.LocalConfig.BasePath+"/audio/test.dca", metadata.FilePath)
 		})
 
 		t.Run("should handle canceled context", func(t *testing.T) {

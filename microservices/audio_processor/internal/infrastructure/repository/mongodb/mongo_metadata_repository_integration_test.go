@@ -1,3 +1,5 @@
+//go:build integration
+
 package mongodb
 
 import (
@@ -59,7 +61,7 @@ func TestMongoMetadataRepository_Integration(t *testing.T) {
 		// assert
 		assert.NoError(t, err)
 		assert.Equal(t, metadata.Title, retrieved.Title)
-		assert.Equal(t, metadata.URL, retrieved.ThumbnailURL)
+		assert.Equal(t, metadata.URL, retrieved.URL)
 		assert.Equal(t, metadata.Platform, retrieved.Platform)
 
 		// cleanup

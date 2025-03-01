@@ -1,3 +1,5 @@
+//go:build integration
+
 package cloud
 
 import (
@@ -25,7 +27,7 @@ func TestS3StorageIntegration(t *testing.T) {
 		},
 		Storage: config.StorageConfig{
 			S3Config: &config.S3Config{
-				BucketName: os.Getenv("BUCKET_NAME"),
+				BucketName: os.Getenv("AWS_BUCKET_NAME"),
 			},
 		},
 	}
@@ -139,12 +141,6 @@ func TestS3StorageIntegration(t *testing.T) {
 		if fileData.FileSize == "" {
 			t.Error("FileSize está vacío, se esperaba un valor")
 		}
-
-		expectedPublicURL := fmt.Sprintf("https://%s.s3.amazonaws.com/%s", cfgApp.Storage.S3Config.BucketName, fileName)
-		if fileData.FileType != expectedPublicURL {
-			t.Errorf("PublicURL incorrecto. Obtenido: %s, Esperado: %s", fileData.FileType, expectedPublicURL)
-		}
-
 		// clear
 		deleteObjectInput := &s3.DeleteObjectInput{
 			Bucket: aws.String(cfgApp.Storage.S3Config.BucketName),

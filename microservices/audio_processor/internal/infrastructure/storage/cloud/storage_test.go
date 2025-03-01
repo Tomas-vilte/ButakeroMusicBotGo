@@ -1,9 +1,10 @@
+//go:build !integration
+
 package cloud
 
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -140,7 +141,6 @@ func TestS3Storage_GetFileMetadata(t *testing.T) {
 		assert.Equal(t, "audio/"+key, fileData.FilePath)
 		assert.Equal(t, contentType, fileData.FileType)
 		assert.Equal(t, "1.00MB", fileData.FileSize)
-		assert.Equal(t, fmt.Sprintf("https://%s.s3.amazonaws.com/%s", bucketName, key), fileData.FileType)
 
 		mockClient.AssertExpectations(t)
 	})
