@@ -4,6 +4,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"net/http"
 	"time"
 )
 
@@ -55,9 +56,14 @@ func LoggingMiddleware(l logger.Logger) gin.HandlerFunc {
 
 		// Logging de errores si los hay
 		if len(c.Errors) > 0 {
-			l.Error("Errores encontrados",
-				zap.String("errors", c.Errors.String()),
-			)
+			errMsgs := c.Errors.String()
+			if c.Writer.Status() >= http.StatusInternalServerError {
+				l.Error("Errores del servidor encontrados",
+					zap.String("errors", errMsgs))
+			} else {
+				l.Info("Errores del cliente encontrados",
+					zap.String("errors", errMsgs))
+			}
 		}
 
 		// Logging de advertencia para respuestas lentas

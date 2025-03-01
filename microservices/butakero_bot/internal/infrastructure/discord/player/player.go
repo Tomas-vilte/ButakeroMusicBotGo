@@ -385,7 +385,7 @@ func (p *GuildPlayer) playSingleSong(ctx context.Context, song *entity.Song, tex
 		return err
 	}
 
-	audioData, err := p.storageAudio.GetAudio(songCtx, "audio/Twenty One Pilots - “The Line” (from Arcane Season 2) [Official Music Video].dca")
+	audioData, err := p.storageAudio.GetAudio(songCtx, song.FilePath)
 	if err != nil {
 		p.logger.Error("Error al obtener datos de audio", zap.Any("Cancion", song), zap.Error(err))
 		return err
@@ -398,7 +398,6 @@ func (p *GuildPlayer) playSingleSong(ctx context.Context, song *entity.Song, tex
 		return err
 	}
 
-	// Actualizar estado final
 	position := time.Since(startTime)
 	p.updateSongPosition(song, position, textChannel, playMsgID)
 

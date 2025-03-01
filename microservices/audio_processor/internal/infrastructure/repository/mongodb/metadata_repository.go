@@ -166,14 +166,14 @@ func (m *MongoMetadataRepository) DeleteMetadata(ctx context.Context, id string)
 func createMetadataDocument(metadata *model.Metadata) bson.M {
 	now := time.Now()
 	return bson.M{
-		"_id":         metadata.ID,
-		"title":       metadata.Title,
-		"url_youtube": metadata.URLYouTube,
-		"thumbnail":   metadata.Thumbnail,
-		"platform":    metadata.Platform,
-		"duration":    metadata.Duration,
-		"createdAt":   now,
-		"updatedAt":   now,
+		"_id":           metadata.ID,
+		"title":         metadata.Title,
+		"url":           metadata.URL,
+		"thumbnail_url": metadata.ThumbnailURL,
+		"platform":      metadata.Platform,
+		"duration":      metadata.Duration,
+		"createdAt":     now,
+		"updatedAt":     now,
 	}
 }
 
@@ -182,7 +182,7 @@ func validateMetadata(metadata *model.Metadata) error {
 	if metadata.Title == "" {
 		return errors.New("título es requerido")
 	}
-	if metadata.URLYouTube == "" {
+	if metadata.URL == "" {
 		return errors.New("URL de YouTube es requerida")
 	}
 	if metadata.Platform == "" {

@@ -2,16 +2,17 @@ package server
 
 import (
 	"context"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/adapters"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/encoder"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue/sqs"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/repository/dynamodb"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/storage/cloud"
 	"io"
 	"os"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/factory"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/service"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/downloader"
-	infrastructure "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/factory"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/interface/http/handler"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/interface/router"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
@@ -21,40 +22,37 @@ import (
 )
 
 func StartServer() error {
-	cfg := config.LoadConfig(os.Getenv("ENVIRONMENT"))
-
-	var envFactory factory.EnvironmentFactory
-	if cfg.Environment == "prod" {
-		envFactory = &infrastructure.AWSFactory{}
-	}
+	cfg := config.LoadConfigAws()
 
 	log, err := logger.NewZapLogger()
 	if err != nil {
 		return err
 	}
-	defer log.Close()
+	defer func() {
+		if err := log.Close(); err != nil {
+			log.Error("Error al cerrar el logger", zap.Error(err))
+		}
+	}()
 
-	log.Info("Corriendo en un entorono", zap.String("ENV", cfg.Environment))
-
-	storageService, err := envFactory.CreateStorage(cfg)
+	storageService, err := cloud.NewS3Storage(cfg)
 	if err != nil {
 		log.Error("Error al crear el storage", zap.Error(err))
 		return err
 	}
 
-	messaging, err := envFactory.CreateQueue(cfg, log)
+	messaging, err := sqs.NewSQSService(cfg, log)
 	if err != nil {
 		log.Error("Error al crear queue", zap.Error(err))
 		return err
 	}
 
-	metadataRepo, err := envFactory.CreateMetadataRepository(cfg, log)
+	metadataRepo, err := dynamodb.NewMetadataStore(cfg)
 	if err != nil {
 		log.Error("Error al crear metadata repository", zap.Error(err))
 		return err
 	}
 
-	operationRepo, err := envFactory.CreateOperationRepository(cfg, log)
+	operationRepo, err := dynamodb.NewOperationStore(cfg)
 	if err != nil {
 		log.Error("Error al crear operation repository", zap.Error(err))
 		return err
@@ -71,7 +69,11 @@ func StartServer() error {
 		log.Error("Error al crear archivo", zap.Error(err))
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Error("Error al close archivo", zap.Error(err))
+		}
+	}()
 
 	_, err = io.Copy(file, cookiesContent)
 	if err != nil {
@@ -88,29 +90,26 @@ func StartServer() error {
 		log.Error("Error al crear downloader", zap.Error(err))
 		return err
 	}
-	youtubeAPI := api.NewYouTubeClient(cfg.API.YouTube.ApiKey)
+	youtubeAPI := adapters.NewYouTubeClient(cfg.API.YouTube.ApiKey, log)
 
 	encoderAudio := encoder.NewFFmpegEncoder(log)
 
-	audioProcessingService := service.NewAudioProcessingService(
-		log,
-		storageService,
-		downloaderMusic,
-		operationRepo,
-		metadataRepo,
-		messaging,
-		encoderAudio,
-		cfg,
-	)
+	audioProcessingService := service.NewAudioProcessingService(downloaderMusic, encoderAudio, storageService, metadataRepo,
+		operationRepo, messaging, log, cfg)
 
-	getOperationStatus := usecase.NewGetOperationStatusUseCase(operationRepo)
-	initiateDownloadUC := usecase.NewInitiateDownloadUseCase(audioProcessingService, youtubeAPI)
-	audioHandler := handler.NewAudioHandler(initiateDownloadUC, getOperationStatus)
+	operationUC := usecase.NewGetOperationStatusUseCase(operationRepo)
+
+	operationService := service.NewOperationService(operationRepo, log)
+
+	providerService := service.NewVideoService(youtubeAPI, nil, log)
+	initiateDownloadUC := usecase.NewInitiateDownloadUseCase(audioProcessingService, providerService, operationService)
+	audioHandler := handler.NewAudioHandler(initiateDownloadUC)
+	operationHandler := handler.NewOperationHandler(operationUC)
 	healthCheck := handler.NewHealthHandler(cfg)
 
 	gin.SetMode(cfg.GinConfig.Mode)
 	r := gin.New()
-	router.SetupRoutes(r, audioHandler, healthCheck, log)
+	router.SetupRoutes(r, audioHandler, operationHandler, healthCheck, log)
 
 	return r.Run(":8080")
 }
