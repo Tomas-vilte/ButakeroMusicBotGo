@@ -7,12 +7,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(router *gin.Engine, audioHandler *handler.AudioHandler, healthCheck *handler.HealthHandler, log logger.Logger) {
+func SetupRoutes(router *gin.Engine,
+	audioHandler *handler.AudioHandler,
+	operationHandler *handler.OperationHandler,
+	healthCheck *handler.HealthHandler,
+	log logger.Logger) {
+
 	router.Use(middleware.LoggingMiddleware(log))
+	router.Use(middleware.ErrorHandlerMiddleware(log))
+
 	api := router.Group("/api")
 	{
 		api.POST("/v1/audio/start", audioHandler.InitiateDownload)
-		api.GET("/v1/audio/status", audioHandler.GetOperationStatus)
+		api.GET("/v1/operations/status", operationHandler.GetOperationStatus)
 		api.GET("/v1/health", healthCheck.HealthCheckHandler)
 	}
 }

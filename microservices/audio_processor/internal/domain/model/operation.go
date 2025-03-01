@@ -59,17 +59,20 @@ type (
 
 		// FileType es el tipo de archivo de la canción procesada.
 		FileType string `bson:"file_type" json:"file_type" dynamodbav:"file_type"`
+	}
 
-		// PublicURL es la URL pública del archivo de la canción procesada.
-		PublicURL string `bson:"public_url" json:"public_url" dynamodbav:"public_url"`
+	OperationInitResult struct {
+		ID        string `json:"operation_id"`
+		SongID    string `json:"song_id"`
+		Status    string `json:"status"`
+		CreatedAt string `json:"created_at"`
 	}
 )
 
 func (f *FileData) ToAttributeValue() map[string]types.AttributeValue {
 	return map[string]types.AttributeValue{
-		"file_path":  &types.AttributeValueMemberS{Value: f.FilePath},
-		"file_size":  &types.AttributeValueMemberS{Value: f.FileSize},
-		"file_type":  &types.AttributeValueMemberS{Value: f.FileType},
-		"public_url": &types.AttributeValueMemberS{Value: f.PublicURL},
+		"file_path": &types.AttributeValueMemberS{Value: f.FilePath},
+		"file_size": &types.AttributeValueMemberS{Value: f.FileSize},
+		"file_type": &types.AttributeValueMemberS{Value: f.FileType},
 	}
 }

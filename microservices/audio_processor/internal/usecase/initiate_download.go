@@ -3,46 +3,43 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/service"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/api"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
 )
 
 type InitiateDownloadUseCase struct {
-	audioService service.AudioProcessor
-	youtubeAPI   api.YouTubeService
+	audioService     ports.AudioProcessor
+	providerService  ports.VideoService
+	operationService ports.OperationStarter
 }
 
-func NewInitiateDownloadUseCase(audioService service.AudioProcessor, youtubeAPI api.YouTubeService) *InitiateDownloadUseCase {
+func NewInitiateDownloadUseCase(audioService ports.AudioProcessor, providerAPI ports.VideoService,
+	operationService ports.OperationStarter) *InitiateDownloadUseCase {
 	return &InitiateDownloadUseCase{
-		audioService: audioService,
-		youtubeAPI:   youtubeAPI,
+		audioService:     audioService,
+		providerService:  providerAPI,
+		operationService: operationService,
 	}
 }
 
-func (uc *InitiateDownloadUseCase) Execute(ctx context.Context, song string) (string, string, error) {
-	videoID, err := uc.youtubeAPI.SearchVideoID(ctx, song)
+func (uc *InitiateDownloadUseCase) Execute(ctx context.Context, song string, providerType string) (*model.OperationInitResult, error) {
+	mediaDetails, err := uc.providerService.GetMediaDetails(ctx, song, providerType)
 	if err != nil {
-		return "", "", fmt.Errorf("error al buscar el ID de la cancion: %w", err)
+		return &model.OperationInitResult{}, fmt.Errorf("error al buscar el ID de la cancion: %w", err)
 	}
 
-	youtubeMetadata, err := uc.youtubeAPI.GetVideoDetails(ctx, videoID)
+	operationResult, err := uc.operationService.StartOperation(ctx, mediaDetails.ID)
 	if err != nil {
-		return "", "", fmt.Errorf("error al obtener metadata de YouTube: %w", err)
+		return &model.OperationInitResult{}, fmt.Errorf("error al iniciar la operación: %w", err)
 	}
 
-	operationID, songID, err := uc.audioService.StartOperation(ctx, videoID)
-	if err != nil {
-		return "", "", fmt.Errorf("error al iniciar la operación: %w", err)
-	}
-
-	// Procesar el audio de manera asíncrona
 	go func() {
 		backgroundCtx := context.Background()
-		err := uc.audioService.ProcessAudio(backgroundCtx, operationID, youtubeMetadata)
+		err := uc.audioService.ProcessAudio(backgroundCtx, operationResult.ID, mediaDetails)
 		if err != nil {
 			fmt.Printf("Error en el procesamiento: %v", err)
 		}
 	}()
 
-	return operationID, songID, nil
+	return operationResult, nil
 }

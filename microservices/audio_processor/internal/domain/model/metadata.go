@@ -16,19 +16,19 @@ type Metadata struct {
 	// Representa el nombre de la canción tal como aparece en la fuente de origen.
 	Title string `bson:"title" json:"title" dynamodbav:"title"`
 
-	GSI2PK string `dynamodbav:"GSI2_PK"`
+	GSI2PK string `bson:"-" json:"-" dynamodbav:"GSI2_PK"`
 
 	// Duration es la duración de la canción en segundos.
 	// Representa cuánto tiempo dura la canción desde el inicio hasta el final.
 	Duration string `bson:"duration" json:"duration" dynamodbav:"duration"`
 
-	// URLYouTube es la URL de la canción en YouTube.
+	// es la URL de la canción en YouTube.
 	// Permite localizar la canción en YouTube para referencias adicionales o reproducción.
-	URLYouTube string `bson:"url_youtube" json:"url_youtube" dynamodbav:"url_youtube"`
+	URL string `bson:"url" json:"url" dynamodbav:"url"`
 
 	// Thumbnail es la imagen en miniatura del contenido.
 	// Proporciona una vista previa visual de la canción, útil para interfaces de usuario y presentación.
-	Thumbnail string `bson:"thumbnail" json:"thumbnail" dynamodbav:"thumbnail"`
+	ThumbnailURL string `bson:"thumbnail_url" json:"thumbnail_url" dynamodbav:"thumbnail_url"`
 
 	// Platform indica la plataforma de origen de la canción (e.g., YouTube).
 	// Este campo identifica la fuente desde la cual se obtuvo la canción.
@@ -37,12 +37,12 @@ type Metadata struct {
 
 func (m *Metadata) ToAttributeValue() map[string]types.AttributeValue {
 	return map[string]types.AttributeValue{
-		"id":          &types.AttributeValueMemberS{Value: m.ID},
-		"video_id":    &types.AttributeValueMemberS{Value: m.VideoID},
-		"title":       &types.AttributeValueMemberS{Value: m.Title},
-		"duration":    &types.AttributeValueMemberS{Value: m.Duration},
-		"url_youtube": &types.AttributeValueMemberS{Value: m.URLYouTube},
-		"thumbnail":   &types.AttributeValueMemberS{Value: m.Thumbnail},
-		"platform":    &types.AttributeValueMemberS{Value: m.Platform},
+		"id":        &types.AttributeValueMemberS{Value: m.ID},
+		"video_id":  &types.AttributeValueMemberS{Value: m.VideoID},
+		"title":     &types.AttributeValueMemberS{Value: m.Title},
+		"duration":  &types.AttributeValueMemberS{Value: m.Duration},
+		"url":       &types.AttributeValueMemberS{Value: m.URL},
+		"thumbnail": &types.AttributeValueMemberS{Value: m.ThumbnailURL},
+		"platform":  &types.AttributeValueMemberS{Value: m.Platform},
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/port"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"time"
 
@@ -26,7 +26,7 @@ const (
 )
 
 type SQSService struct {
-	Client port.SQSClientInterface
+	Client ports.SQSClientInterface
 	Config *config.Config
 	Log    logger.Logger
 }

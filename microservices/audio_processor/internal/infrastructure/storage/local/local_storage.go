@@ -86,8 +86,9 @@ func (l *LocalStorage) GetFileMetadata(ctx context.Context, key string) (*model.
 	}
 
 	fullPath := filepath.Join(l.config.Storage.LocalConfig.BasePath, "audio", key)
+	cleanPath := filepath.Clean(fullPath)
 
-	fileInfo, err := os.Stat(fullPath)
+	fileInfo, err := os.Stat(cleanPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("archivo %s no encontrado: %w", key, err)
@@ -95,10 +96,9 @@ func (l *LocalStorage) GetFileMetadata(ctx context.Context, key string) (*model.
 		return nil, fmt.Errorf("error obteniendo información del archivo %s: %w", key, err)
 	}
 	return &model.FileData{
-		FilePath:  "audio/" + key,
-		FileType:  "audio/dca",
-		FileSize:  FormatFileSize(fileInfo.Size()),
-		PublicURL: fmt.Sprintf("file://%s", fullPath),
+		FilePath: cleanPath,
+		FileType: "audio/dca",
+		FileSize: FormatFileSize(fileInfo.Size()),
 	}, nil
 }
 

@@ -3,6 +3,7 @@ package interactions
 import (
 	"context"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/application/service"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/player"
@@ -31,6 +32,7 @@ type InteractionHandler struct {
 	discordMessenger ports.DiscordMessenger
 	storageAudio     ports.StorageAudio
 	presenceNotifier ports.PresenceSubject
+	songService      *service.SongService
 }
 
 // NewInteractionHandler crea una nueva instancia de InteractionHandler.
@@ -41,6 +43,7 @@ func NewInteractionHandler(
 	discordMessenger ports.DiscordMessenger,
 	storageAudio ports.StorageAudio,
 	presenceNotifier ports.PresenceSubject,
+	songService *service.SongService,
 ) *InteractionHandler {
 	return &InteractionHandler{
 		guildsPlayers:    make(map[GuildID]*player.GuildPlayer),
@@ -50,13 +53,8 @@ func NewInteractionHandler(
 		discordMessenger: discordMessenger,
 		storageAudio:     storageAudio,
 		presenceNotifier: presenceNotifier,
+		songService:      songService,
 	}
-}
-
-// WithLogger establece el logger para InteractionHandler.
-func (handler *InteractionHandler) WithLogger(l logging.Logger) *InteractionHandler {
-	handler.logger = l
-	return handler
 }
 
 // Ready se llama cuando el bot está listo para recibir interacciones.
@@ -117,13 +115,6 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 		return
 	}
 
-	guildPlayer := handler.getGuildPlayer(GuildID(g.ID), s)
-	optionMap := make(map[string]*discordgo.ApplicationCommandInteractionDataOption)
-	for _, opt := range opt.Options {
-		optionMap[opt.Name] = opt
-	}
-
-	input := optionMap["input"].StringValue()
 	vs := getUsersVoiceState(g, ic.Member.User)
 	if vs == nil {
 		if err := handler.discordMessenger.SendText(ic.ChannelID, ErrorMessageNotInVoiceChannel); err != nil {
@@ -132,16 +123,17 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 		return
 	}
 
-	song := &entity.Song{
-		URL:   input,
-		Title: input,
+	input := opt.Options[0].StringValue()
+	song, err := handler.songService.GetOrDownloadSong(context.Background(), input)
+	if err != nil {
+		handler.logger.Error("Error al obtener canción", zap.Error(err))
+		if err := handler.discordMessenger.SendText(ic.ChannelID, "❌ Error al obtener la canción"); err != nil {
+			handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+		}
+		return
 	}
 
-	currentList := handler.storage.GetSongList(ic.ChannelID)
-	currentList = append(currentList, song)
-
-	handler.storage.SaveSongList(ic.ChannelID, currentList)
-
+	guildPlayer := handler.getGuildPlayer(GuildID(g.ID), s)
 	if err := guildPlayer.AddSong(&ic.ChannelID, &vs.ChannelID, song); err != nil {
 		handler.logger.Error("Error al agregar la canción", zap.Error(err))
 		if err := handler.discordMessenger.SendText(ic.ChannelID, ErrorMessageFailedToAddSong); err != nil {

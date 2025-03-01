@@ -24,7 +24,7 @@ type (
 		log       logger.Logger
 		useOAuth2 bool
 		cookies   string
-		errorChan chan error // Canal para comunicar errores desde el stderr
+		errorChan chan error
 	}
 
 	// YTDLPOptions contiene las opciones de configuración para YTDLPDownloader.
@@ -43,7 +43,7 @@ func NewYTDLPDownloader(log logger.Logger, options YTDLPOptions) (*YTDLPDownload
 		log:       log,
 		useOAuth2: options.UseOAuth2,
 		cookies:   options.Cookies,
-		errorChan: make(chan error, 1), // Canal con buffer para evitar bloqueos
+		errorChan: make(chan error, 1),
 	}, nil
 }
 
@@ -52,10 +52,8 @@ func NewYTDLPDownloader(log logger.Logger, options YTDLPOptions) (*YTDLPDownload
 func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Reader, error) {
 	d.log.Info("Iniciando descarga de audio", zap.String("url", url))
 
-	// Creamos un pipe para pasar el audio descargado
 	pr, pw := io.Pipe()
 
-	// Configuramos los argumentos para yt-dlp
 	ytArgs := []string{
 		"-f", "bestaudio",
 		"--audio-quality", "0",
@@ -108,7 +106,7 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 		}()
 
 		d.log.Debug("Esperando a que terminen las goroutines de procesamiento")
-		wg.Wait() // Esperar a que terminen las goroutines de processOutput
+		wg.Wait()
 		d.log.Debug("Goroutines de procesamiento terminadas")
 
 		d.log.Debug("Esperando a que termine el comando")
@@ -119,14 +117,11 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 			d.log.Debug("El comando termino correctamente")
 		}
 
-		// Obtenemos el error del canal (si lo hay)
 		select {
 		case stderrErr := <-d.errorChan:
 			d.log.Debug("Error recibido del errorChan", zap.Error(stderrErr))
-			// Si hay un error en stderr, lo retornamos primero.
 			if stderrErr != nil {
 				d.log.Error("Error detectado en stderr", zap.Error(stderrErr))
-				// Cerramos el reader
 				if err := pr.CloseWithError(stderrErr); err != nil {
 					d.errorChan <- fmt.Errorf("error al close pr: %w", err)
 				}
@@ -134,7 +129,6 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 			}
 		default:
 			d.log.Debug("No se recibio ningun error del errorChan")
-			// No hubo error en stderr.
 		}
 		if cmdError != nil {
 			d.log.Error("cmdError detectado", zap.Error(cmdError))
@@ -170,9 +164,8 @@ func (d *YTDLPDownloader) processOutput(wg *sync.WaitGroup, pipe io.ReadCloser, 
 	defer wg.Done()
 	d.log.Debug("Iniciando processOutput", zap.String("pipeType", pipeType))
 
-	// Usamos un scanner para leer línea por línea
 	scanner := bufio.NewScanner(pipe)
-	var stderrLines []string // Para acumular el stderr en caso de error.
+	var stderrLines []string
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -194,12 +187,10 @@ func (d *YTDLPDownloader) processOutput(wg *sync.WaitGroup, pipe io.ReadCloser, 
 		}
 	}
 
-	// Manejo de errores del scanner
 	if err := scanner.Err(); err != nil {
 		d.log.Error(fmt.Sprintf("error leyendo %s", pipeType), zap.Error(err))
 	}
 
-	// Si se acumularon errores en stderr, enviar al canal de errores.
 	if pipeType == "stderr" && len(stderrLines) > 0 {
 		errorString := strings.Join(stderrLines, "\n")
 		err := errors.New(errorString)

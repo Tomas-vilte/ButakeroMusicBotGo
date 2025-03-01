@@ -134,8 +134,6 @@ func (k *KafkaConsumer) handleMessage(msg *sarama.ConsumerMessage) {
 	if statusMessage.Status.Status == "success" {
 		k.logger.Info("Mensaje procesado exitosamente", zap.String("status", statusMessage.Status.Status))
 		k.messageChan <- &statusMessage
-	} else {
-		k.logger.Warn("Mensaje recibido con estado de error", zap.Any("status", statusMessage))
 	}
 }
 

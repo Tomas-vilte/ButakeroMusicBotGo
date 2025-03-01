@@ -8,8 +8,8 @@ import (
 type (
 	// Config es la estructura principal que agrupa todas las configuraciones
 	Config struct {
-		Environment string
 		Service     ServiceConfig
+		Environment string
 		AWS         AWSConfig
 		Messaging   MessagingConfig
 		Storage     StorageConfig

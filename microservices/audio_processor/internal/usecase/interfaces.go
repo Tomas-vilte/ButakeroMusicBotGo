@@ -7,7 +7,7 @@ import (
 
 type (
 	InitialDownloadUseCase interface {
-		Execute(ctx context.Context, song string) (string, string, error)
+		Execute(ctx context.Context, song string, providerType string) (*model.OperationInitResult, error)
 	}
 
 	GetOperationStatusUseCase interface {
