@@ -40,23 +40,17 @@ var (
 	}
 )
 
-type (
-	AudioEncoder interface {
-		Encode(ctx context.Context, r io.Reader, options *EncodeOptions) (EncodeSession, error)
-	}
+type EncodeSession interface {
+	ReadFrame() ([]byte, error)
+	Read(p []byte) (n int, err error)
+	Stop() error
+	FFMPEGMessages() string
+	Cleanup()
+}
 
-	EncodeSession interface {
-		ReadFrame() ([]byte, error)
-		Read(p []byte) (n int, err error)
-		Stop() error
-		FFMPEGMessages() string
-		Cleanup()
-	}
-
-	FFmpegEncoder struct {
-		log logger.Logger
-	}
-)
+type FFmpegEncoder struct {
+	log logger.Logger
+}
 
 func NewFFmpegEncoder(log logger.Logger) *FFmpegEncoder {
 	return &FFmpegEncoder{

@@ -1,65 +1,52 @@
 package handler
 
 import (
+	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/usecase"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"net/http"
 )
 
 type AudioHandler struct {
-	initiateDownloadUC   usecase.InitialDownloadUseCase
-	getOperationStatusUC usecase.GetOperationStatusUseCase
+	initiateDownloadUC usecase.InitialDownloadUseCase
 }
 
-func NewAudioHandler(initiateDownloadUC usecase.InitialDownloadUseCase, getOperationStatusUC usecase.GetOperationStatusUseCase) *AudioHandler {
+func NewAudioHandler(initiateDownloadUC usecase.InitialDownloadUseCase) *AudioHandler {
 	return &AudioHandler{
-		initiateDownloadUC:   initiateDownloadUC,
-		getOperationStatusUC: getOperationStatusUC,
+		initiateDownloadUC: initiateDownloadUC,
 	}
 }
 
 func (h *AudioHandler) InitiateDownload(c *gin.Context) {
 	song := c.Query("song")
-	if song == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Falta el parametro 'song'",
-		})
+	providerType := c.Query("provider_type")
+
+	if song == "" || providerType == "" {
+		missingParams := make([]string, 0)
+		if song == "" {
+			missingParams = append(missingParams, "song")
+		}
+		if providerType == "" {
+			missingParams = append(missingParams, "provider_type")
+		}
+
+		c.Error(errors.ErrInvalidInput.WithMessage(
+			fmt.Sprintf("faltan parámetros requeridos: %v", missingParams),
+		))
 		return
 	}
 
-	operationID, songID, err := h.initiateDownloadUC.Execute(c.Request.Context(), song)
+	result, err := h.initiateDownloadUC.Execute(c.Request.Context(), song, providerType)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.Error(err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"operation_id": operationID,
-		"song_id":      songID})
-}
-
-func (h *AudioHandler) GetOperationStatus(c *gin.Context) {
-	operationID := c.Query("operation_id")
-	songID := c.Query("song_id")
-
-	if operationID == "" || songID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Faltan los parámetros 'operationID' y/o 'songID'",
-		})
-		return
-	}
-
-	if _, err := uuid.Parse(operationID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "operation_id invalido"})
-		return
-	}
-
-	status, err := h.getOperationStatusUC.Execute(c.Request.Context(), operationID, songID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"status": status})
+	c.JSON(200, gin.H{
+		"operation_id": result.ID,
+		"song_id":      result.SongID,
+		"provider":     providerType,
+		"status":       result.Status,
+		"created_at":   result.CreatedAt,
+	})
 }

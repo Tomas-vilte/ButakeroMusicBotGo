@@ -85,10 +85,9 @@ func (s *S3Storage) GetFileMetadata(ctx context.Context, key string) (*model.Fil
 	readableSize := formatFileSize(*headResult.ContentLength)
 
 	return &model.FileData{
-		FilePath:  "audio/" + key,
-		FileType:  *headResult.ContentType,
-		FileSize:  readableSize,
-		PublicURL: fmt.Sprintf("https://%s.s3.amazonaws.com/%s", s.Config.Storage.S3Config.BucketName, key),
+		FilePath: "audio/" + key,
+		FileType: *headResult.ContentType,
+		FileSize: readableSize,
 	}, nil
 }
 

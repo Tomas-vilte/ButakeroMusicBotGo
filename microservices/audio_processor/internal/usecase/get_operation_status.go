@@ -2,40 +2,35 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/port"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/google/uuid"
 )
 
-var (
-	ErrInvalidUUID = errors.New("UUID inválido")
-)
-
 type GetOperationStatusUseCaseImpl struct {
-	operationRepository port.OperationRepository
+	operationRepository ports.OperationRepository
 }
 
-func NewGetOperationStatusUseCase(operationRepository port.OperationRepository) *GetOperationStatusUseCaseImpl {
+func NewGetOperationStatusUseCase(operationRepository ports.OperationRepository) *GetOperationStatusUseCaseImpl {
 	return &GetOperationStatusUseCaseImpl{
 		operationRepository: operationRepository,
 	}
 }
 
 func (uc *GetOperationStatusUseCaseImpl) Execute(ctx context.Context, operationID, songID string) (*model.OperationResult, error) {
-	// Validación de entrada: comprobar que los IDs son UUIDs válidos
 	if !isValidUUID(operationID) {
-		return nil, ErrInvalidUUID
+		return nil, errors.ErrInvalidUUID.WithMessage(
+			fmt.Sprintf("ID de operación inválido: %s", operationID))
 	}
 
 	operation, err := uc.operationRepository.GetOperationResult(ctx, operationID, songID)
 	if err != nil {
-		return &model.OperationResult{}, fmt.Errorf("error al obtener la operación: %w", err)
+		return nil, errors.ErrOperationNotFound.WithMessage(
+			fmt.Sprintf("Operación no encontrada: %s", operationID))
 	}
-
 	return operation, nil
-
 }
 
 func isValidUUID(id string) bool {
