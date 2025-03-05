@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/service"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/adapters"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/downloader"
@@ -24,7 +25,11 @@ func StartServer() error {
 	if err != nil {
 		return err
 	}
-	defer log.Close()
+	defer func() {
+		if err := log.Close(); err != nil {
+			log.Error("Error al cerrar el logger", zap.Error(err))
+		}
+	}()
 
 	storage, err := local.NewLocalStorage(cfg)
 	if err != nil {
@@ -84,7 +89,11 @@ func StartServer() error {
 
 	operationService := service.NewOperationService(operationRepo, log)
 
-	providerService := service.NewVideoService(youtubeAPI, nil, log)
+	providers := map[string]ports.VideoProvider{
+		"youtube": youtubeAPI,
+	}
+
+	providerService := service.NewVideoService(providers, log)
 	initiateDownloadUC := usecase.NewInitiateDownloadUseCase(audioProcessingService, providerService, operationService)
 	audioHandler := handler.NewAudioHandler(initiateDownloadUC)
 	operationHandler := handler.NewOperationHandler(operationUC)

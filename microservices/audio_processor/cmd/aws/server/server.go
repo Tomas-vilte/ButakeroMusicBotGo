@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/adapters"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/encoder"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue/sqs"
@@ -105,7 +106,11 @@ func StartServer() error {
 
 	operationService := service.NewOperationService(operationRepo, log)
 
-	providerService := service.NewVideoService(youtubeAPI, nil, log)
+	providers := map[string]ports.VideoProvider{
+		"youtube": youtubeAPI,
+	}
+
+	providerService := service.NewVideoService(providers, log)
 	initiateDownloadUC := usecase.NewInitiateDownloadUseCase(audioProcessingService, providerService, operationService)
 	audioHandler := handler.NewAudioHandler(initiateDownloadUC)
 	operationHandler := handler.NewOperationHandler(operationUC)
