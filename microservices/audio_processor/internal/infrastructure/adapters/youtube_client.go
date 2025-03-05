@@ -16,9 +16,9 @@ import (
 
 // YouTubeClient es un cliente para interactuar con la API de YouTube.
 type YouTubeClient struct {
-	ApiKey     string       // Clave API para autenticar las solicitudes.
-	BaseURL    string       // URL base para las solicitudes a la API de YouTube.
-	HttpClient *http.Client // Cliente HTTP para hacer las solicitudes.
+	ApiKey     string
+	BaseURL    string
+	HttpClient *http.Client
 	log        logger.Logger
 }
 
@@ -45,6 +45,8 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*m
 
 	endpoint := fmt.Sprintf("%s/videos?part=snippet,contentDetails&id=%s&key=%s", c.BaseURL, videoID, c.ApiKey)
 
+	log.Debug("Solicitando detalles del video", zap.String("video_id", videoID))
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		log.Error("Error al crear la solicitud HTTP", zap.Error(err))
@@ -53,7 +55,7 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*m
 
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
-		log.Error("Error al ejecutar la solicitud HTTP", zap.Error(err), zap.String("endpoint", endpoint))
+		log.Error("Error al ejecutar la solicitud HTTP", zap.Error(err))
 		return nil, fmt.Errorf("error al hacer la solicitud a la API de YouTube: %w", err)
 	}
 	defer func() {
@@ -126,7 +128,6 @@ func (c *YouTubeClient) SearchVideoID(ctx context.Context, input string) (string
 	)
 	log.Info("Buscando ID del video")
 
-	// Verifica si la entrada es una URL completa
 	if strings.Contains(input, "youtube.com/watch") || strings.Contains(input, "youtu.be/") {
 		log.Debug("La entrada es una URL, extrayendo el ID")
 		videoID, err := ExtractVideoIDFromURL(input)
@@ -139,8 +140,6 @@ func (c *YouTubeClient) SearchVideoID(ctx context.Context, input string) (string
 	}
 	encodedQuery := url.QueryEscape(input)
 	endpoint := fmt.Sprintf("%s/search?part=id&q=%s&type=video&maxResults=1", c.BaseURL, encodedQuery)
-	log.Debug("Endpoint para la búsqueda de video", zap.String("endpoint", fmt.Sprintf("%s/search?part=id&q=%s&type=video&maxResults=1", c.BaseURL, encodedQuery)))
-
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		log.Error("Error al crear la solicitud HTTP", zap.Error(err))
@@ -157,7 +156,7 @@ func (c *YouTubeClient) SearchVideoID(ctx context.Context, input string) (string
 			log.Error("Error al cerrar el body de la respuesta", zap.Error(err))
 		}
 	}()
-	log.Debug("Respuesta recibida de la API de Youtube", zap.Int("status_code", resp.StatusCode)) // Log de depuración para la respuesta
+	log.Debug("Respuesta recibida de la API de Youtube", zap.Int("status_code", resp.StatusCode))
 
 	if resp.StatusCode != http.StatusOK {
 		log.Error("Error en la API de YouTube, código de estado", zap.Int("status_code", resp.StatusCode))
