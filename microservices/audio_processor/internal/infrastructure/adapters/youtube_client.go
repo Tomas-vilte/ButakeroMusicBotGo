@@ -138,8 +138,8 @@ func (c *YouTubeClient) SearchVideoID(ctx context.Context, input string) (string
 		return videoID, nil
 	}
 	encodedQuery := url.QueryEscape(input)
-	endpoint := fmt.Sprintf("%s/search?part=id&q=%s&key=%s&type=video&maxResults=1", c.BaseURL, encodedQuery, c.ApiKey)
-	log.Debug("Endpoint para la búsqueda de video", zap.String("endpoint", endpoint))
+	endpoint := fmt.Sprintf("%s/search?part=id&q=%s&type=video&maxResults=1", c.BaseURL, encodedQuery)
+	log.Debug("Endpoint para la búsqueda de video", zap.String("endpoint", fmt.Sprintf("%s/search?part=id&q=%s&type=video&maxResults=1", c.BaseURL, encodedQuery)))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
