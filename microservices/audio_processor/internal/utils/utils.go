@@ -39,10 +39,11 @@ func NewTLSConfig(params *TLSConfig) (*tls.Config, error) {
 
 func BuildMongoURI(cfg *config.Config) string {
 	hostList := strings.Join(cfg.Database.Mongo.Host, ",")
-	return fmt.Sprintf("mongodb://%s:%s@%s/?replicaSet=%s&tls=%v",
+	return fmt.Sprintf("mongodb://%s:%s@%s:%s/?replicaSet=%s&directConnection=true&tls=%v",
 		cfg.Database.Mongo.User,
 		cfg.Database.Mongo.Password,
 		hostList,
+		cfg.Database.Mongo.Port,
 		cfg.Database.Mongo.ReplicaSetName,
 		cfg.Database.Mongo.EnableTLS,
 	)

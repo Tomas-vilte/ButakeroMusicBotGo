@@ -8,7 +8,7 @@ type (
 		VideoID      string `bson:"video_id" dynamodbav:"video_id"`
 		Title        string `bson:"title" dynamodbav:"title"`
 		Duration     string `bson:"duration" dynamodbav:"duration"`
-		URL          string `bson:"url_youtube" dynamodbav:"url_youtube"`
+		URL          string `bson:"url" dynamodbav:"url"`
 		ThumbnailURL string `bson:"thumbnail" dynamodbav:"thumbnail"`
 		Platform     string `bson:"platform" dynamodbav:"platform"`
 		FilePath     string `bson:"file_path" dynamodbav:"file_path"`

@@ -36,30 +36,35 @@ func NewYouTubeClient(apiKey string, log logger.Logger) *YouTubeClient {
 
 // GetVideoDetails obtiene los detalles del video usando su ID.
 func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*model.MediaDetails, error) {
-	c.log.With(zap.String("component", "YouTubeClient"), zap.String("video_id", videoID), zap.String("method", "GetVideoDetails"))
-	c.log.Info("Obteniendo detalles del video")
+	log := c.log.With(
+		zap.String("component", "YouTubeClient"),
+		zap.String("video_id", videoID),
+		zap.String("method", "GetVideoDetails"),
+	)
+	log.Debug("Iniciando la obtención de detalles del video")
 
 	endpoint := fmt.Sprintf("%s/videos?part=snippet,contentDetails&id=%s&key=%s", c.BaseURL, videoID, c.ApiKey)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
-		c.log.Error("Error al crear la solicitud HTTP", zap.Error(err))
+		log.Error("Error al crear la solicitud HTTP", zap.Error(err))
 		return nil, fmt.Errorf("error al crear la solicitud: %w", err)
 	}
 
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
-		c.log.Error("Error al ejecutar la solicitud HTTP", zap.Error(err), zap.String("endpoint", endpoint))
+		log.Error("Error al ejecutar la solicitud HTTP", zap.Error(err), zap.String("endpoint", endpoint))
 		return nil, fmt.Errorf("error al hacer la solicitud a la API de YouTube: %w", err)
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			c.log.Error("Error al cerrar el body de la respuesta", zap.Error(err))
+			log.Error("Error al cerrar el body de la respuesta", zap.Error(err))
 		}
 	}()
+	log.Debug("Respuesta recibida de la API de Youtube", zap.Int("status_code", resp.StatusCode))
 
 	if resp.StatusCode != http.StatusOK {
-		c.log.Error("Error en la API de YouTube", zap.Int("status_code", resp.StatusCode))
+		log.Error("Error en la API de YouTube", zap.Int("status_code", resp.StatusCode))
 		return nil, fmt.Errorf("API respondió con código %d", resp.StatusCode)
 	}
 
@@ -86,12 +91,12 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*m
 
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
-		c.log.Error("Error al decodificar la respuesta de la API de YouTube", zap.Error(err))
+		log.Error("Error al decodificar la respuesta de la API de YouTube", zap.Error(err))
 		return nil, fmt.Errorf("error al decodificar la respuesta de la API de YouTube: %w", err)
 	}
 
 	if len(result.Items) == 0 {
-		c.log.Warn("No se encontró el video con el ID proporcionado")
+		log.Warn("No se encontró el video con el ID proporcionado")
 		return nil, fmt.Errorf("no se encontró el video con el ID proporcionado")
 	}
 
@@ -108,46 +113,54 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*m
 		PublishedAt: publishedAt,
 		URL:         urlVideo,
 	}
-
+	log.Debug("Detalles del video obtenidos correctamente", zap.String("video_title", videoDetails.Title))
 	return videoDetails, nil
 }
 
 // SearchVideoID busca el ID del video basado en la entrada proporcionada.
 func (c *YouTubeClient) SearchVideoID(ctx context.Context, input string) (string, error) {
-	c.log.With(zap.String("component", "YouTubeClient"), zap.String("input", input), zap.String("method", "SearchVideoID"))
-	c.log.Info("Buscando ID del video")
+	log := c.log.With(
+		zap.String("component", "YouTubeClient"),
+		zap.String("input", input),
+		zap.String("method", "SearchVideoID"),
+	)
+	log.Info("Buscando ID del video")
 
 	// Verifica si la entrada es una URL completa
 	if strings.Contains(input, "youtube.com/watch") || strings.Contains(input, "youtu.be/") {
+		log.Debug("La entrada es una URL, extrayendo el ID")
 		videoID, err := ExtractVideoIDFromURL(input)
 		if err != nil {
-			c.log.Error("Error al extraer ID del video de la URL", zap.Error(err), zap.String("url", input))
+			log.Error("Error al extraer ID del video de la URL", zap.Error(err), zap.String("url", input))
 			return "", err
 		}
+		log.Debug("ID del video extraído de la URL", zap.String("video_id", videoID))
 		return videoID, nil
 	}
 	encodedQuery := url.QueryEscape(input)
 	endpoint := fmt.Sprintf("%s/search?part=id&q=%s&key=%s&type=video&maxResults=1", c.BaseURL, encodedQuery, c.ApiKey)
+	log.Debug("Endpoint para la búsqueda de video", zap.String("endpoint", endpoint))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
-		c.log.Error("Error al crear la solicitud HTTP", zap.Error(err))
+		log.Error("Error al crear la solicitud HTTP", zap.Error(err))
 		return "", fmt.Errorf("error al crear la solicitud: %w", err)
 	}
 
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
-		c.log.Error("Error al ejecutar la solicitud HTTP", zap.Error(err))
+		log.Error("Error al ejecutar la solicitud HTTP", zap.Error(err))
 		return "", fmt.Errorf("error al hacer la solicitud a la API de YouTube: %w", err)
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			c.log.Error("Error al cerrar el body de la respuesta", zap.Error(err))
+			log.Error("Error al cerrar el body de la respuesta", zap.Error(err))
 		}
 	}()
+	log.Debug("Respuesta recibida de la API de Youtube", zap.Int("status_code", resp.StatusCode)) // Log de depuración para la respuesta
 
 	if resp.StatusCode != http.StatusOK {
-		c.log.Error("Error en la API de YouTube, código de estado", zap.Int("status_code", resp.StatusCode))
+		log.Error("Error en la API de YouTube, código de estado", zap.Int("status_code", resp.StatusCode))
 		return "", fmt.Errorf("error en la API de YouTube, código de estado: %d", resp.StatusCode)
 	}
 
@@ -160,15 +173,15 @@ func (c *YouTubeClient) SearchVideoID(ctx context.Context, input string) (string
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		c.log.Error("Error al decodificar la respuesta de la API de YouTube", zap.Error(err))
+		log.Error("Error al decodificar la respuesta de la API de YouTube", zap.Error(err))
 		return "", fmt.Errorf("error al decodificar la respuesta de la API de YouTube: %w", err)
 	}
 
 	if len(result.Items) == 0 {
-		c.log.Warn("No se encontraron videos para la consulta", zap.String("input", input))
+		log.Warn("No se encontraron videos para la consulta", zap.String("input", input))
 		return "", fmt.Errorf("no se encontraron videos para la consulta: %s", input)
 	}
-
+	log.Debug("Video encontrado", zap.String("video_id", result.Items[0].ID.VideoID))
 	return result.Items[0].ID.VideoID, nil
 }
 

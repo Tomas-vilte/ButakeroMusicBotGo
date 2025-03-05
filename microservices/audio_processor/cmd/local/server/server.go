@@ -21,7 +21,7 @@ import (
 func StartServer() error {
 	cfg := config.LoadConfigLocal()
 
-	log, err := logger.NewZapLogger()
+	log, err := logger.NewDevelopmentLogger()
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ func StartServer() error {
 		}
 	}()
 
-	storage, err := local.NewLocalStorage(cfg)
+	storage, err := local.NewLocalStorage(cfg, log)
 	if err != nil {
 		log.Error("Error al crear el storage", zap.Error(err))
 		return err
@@ -42,6 +42,12 @@ func StartServer() error {
 		log.Error("Error al crear queue", zap.Error(err))
 		return err
 	}
+
+	defer func() {
+		if err := messaging.Close(); err != nil {
+			log.Error("Error al cerrar el queue", zap.Error(err))
+		}
+	}()
 
 	conn, err := mongodb.NewMongoDB(mongodb.MongoOptions{
 		Log:    log,

@@ -54,7 +54,7 @@ func setupTestEnvironment(t *testing.T) (*SQSService, *config.Config) {
 		t.Fatal("SQS_QUEUE_URL y REGION no fueron seteados para los tests de integración")
 	}
 
-	log, err := logger.NewZapLogger()
+	log, err := logger.NewProductionLogger()
 	require.NoError(t, err)
 
 	service, err := NewSQSService(cfg, log)

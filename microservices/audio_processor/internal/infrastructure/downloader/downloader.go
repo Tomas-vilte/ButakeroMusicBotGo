@@ -3,7 +3,7 @@ package downloader
 import (
 	"bufio"
 	"context"
-	"errors" // Importamos el paquete errors
+	"errors"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"go.uber.org/zap"
@@ -14,11 +14,6 @@ import (
 )
 
 type (
-	// Downloader es una interfaz que define el contrato para descargar audio.
-	Downloader interface {
-		DownloadAudio(ctx context.Context, url string) (io.Reader, error)
-	}
-
 	// YTDLPDownloader es una implementación de Downloader que usa yt-dlp para descargar audio.
 	YTDLPDownloader struct {
 		log       logger.Logger
@@ -50,7 +45,16 @@ func NewYTDLPDownloader(log logger.Logger, options YTDLPOptions) (*YTDLPDownload
 // DownloadAudio implementa la interfaz Downloader para YTDLPDownloader.
 // Descarga el audio de la URL proporcionada usando yt-dlp y devuelve un io.Reader para acceder al contenido.
 func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Reader, error) {
-	d.log.Info("Iniciando descarga de audio", zap.String("url", url))
+	log := d.log.With(
+		zap.String("component", "YTDLPDownloader"),
+		zap.String("method", "DownloadAudio"),
+	)
+
+	log.Info("Iniciando descarga de audio",
+		zap.String("url", url),
+		zap.Bool("useOAuth2", d.useOAuth2),
+		zap.String("cookies", d.cookies),
+	)
 
 	pr, pw := io.Pipe()
 
@@ -69,7 +73,9 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 
 	ytArgs = append(ytArgs, url)
 
-	d.log.Info("Ejecutando comando yt-dlp", zap.String("comando", fmt.Sprintf("yt-dlp %s", strings.Join(ytArgs, " "))))
+	log.Debug("Ejecutando comando yt-dlp",
+		zap.String("comando", fmt.Sprintf("yt-dlp %s", strings.Join(ytArgs, " "))),
+	)
 
 	cmd := exec.CommandContext(ctx, "yt-dlp", ytArgs...)
 
@@ -99,44 +105,61 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 
 	go func() {
 		defer func() {
-			d.log.Debug("Cerrando el pipe de escritura pw")
+			log.Debug("Cerrando el pipe de escritura",
+				zap.String("pipeType", "pw"),
+			)
 			if err := pw.Close(); err != nil {
-				d.errorChan <- fmt.Errorf("error al close pw: %w", err)
+				log.Error("Error al cerrar el pipe de escritura",
+					zap.Error(err),
+				)
 			}
 		}()
 
-		d.log.Debug("Esperando a que terminen las goroutines de procesamiento")
+		log.Debug("Esperando a que terminen las goroutines de procesamiento")
 		wg.Wait()
-		d.log.Debug("Goroutines de procesamiento terminadas")
+		log.Debug("Goroutines de procesamiento terminadas")
 
-		d.log.Debug("Esperando a que termine el comando")
+		log.Debug("Esperando a que termine el comando")
 		cmdError = cmd.Wait()
 		if cmdError != nil {
-			d.log.Error("Error al esperar el comando", zap.Error(cmdError))
+			log.Error("Error al ejecutar el comando yt-dlp",
+				zap.Error(cmdError),
+				zap.String("comando", fmt.Sprintf("yt-dlp %s", strings.Join(ytArgs, " "))),
+			)
 		} else {
-			d.log.Debug("El comando termino correctamente")
+			log.Debug("El comando terminó correctamente")
 		}
 
 		select {
 		case stderrErr := <-d.errorChan:
-			d.log.Debug("Error recibido del errorChan", zap.Error(stderrErr))
+			log.Debug("Error recibido del errorChan",
+				zap.Error(stderrErr),
+			)
 			if stderrErr != nil {
-				d.log.Error("Error detectado en stderr", zap.Error(stderrErr))
+				log.Error("Error detectado en stderr",
+					zap.Error(stderrErr),
+				)
 				if err := pr.CloseWithError(stderrErr); err != nil {
-					d.errorChan <- fmt.Errorf("error al close pr: %w", err)
+					log.Error("Error al cerrar el pipe de lectura",
+						zap.Error(err),
+					)
 				}
 				return
 			}
 		default:
-			d.log.Debug("No se recibio ningun error del errorChan")
-		}
-		if cmdError != nil {
-			d.log.Error("cmdError detectado", zap.Error(cmdError))
-			if err := pr.CloseWithError(cmdError); err != nil {
-				d.errorChan <- fmt.Errorf("error al close pr: %w", err)
-			}
+			log.Debug("No se recibió ningún error del errorChan")
 		}
 
+		if cmdError != nil {
+			log.Error("Error en la ejecución del comando",
+				zap.Error(cmdError),
+			)
+			if err := pr.CloseWithError(cmdError); err != nil {
+				log.Error("Error al cerrar el pipe de lectura",
+					zap.Error(err),
+				)
+			}
+		}
 	}()
 
 	return readAllAndReturnReader(pr, d.log)
@@ -173,16 +196,28 @@ func (d *YTDLPDownloader) processOutput(wg *sync.WaitGroup, pipe io.ReadCloser, 
 
 		if pipeType == "stdout" {
 			if strings.Contains(line, "Downloading") || strings.Contains(line, "Progress:") {
-				d.log.Info("yt-dlp progreso", zap.String("output", line))
+				d.log.Info("Progreso de yt-dlp",
+					zap.String("pipeType", pipeType),
+					zap.String("output", line),
+				)
 			} else {
-				d.log.Debug("yt-dlp stdout", zap.String("output", line))
+				d.log.Debug("Salida de yt-dlp",
+					zap.String("pipeType", pipeType),
+					zap.String("output", line),
+				)
 			}
 		} else if pipeType == "stderr" {
 			if strings.Contains(line, "WARNING") || strings.Contains(line, "ERROR") {
-				d.log.Error("yt-dlp stderr", zap.String("error", line))
+				d.log.Error("Error en yt-dlp",
+					zap.String("pipeType", pipeType),
+					zap.String("error", line),
+				)
 				stderrLines = append(stderrLines, line)
 			} else {
-				d.log.Info("yt-dlp stderr", zap.String("output", line))
+				d.log.Info("Salida de yt-dlp",
+					zap.String("pipeType", pipeType),
+					zap.String("output", line),
+				)
 			}
 		}
 	}

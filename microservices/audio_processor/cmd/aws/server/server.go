@@ -25,7 +25,7 @@ import (
 func StartServer() error {
 	cfg := config.LoadConfigAws()
 
-	log, err := logger.NewZapLogger()
+	log, err := logger.NewProductionLogger()
 	if err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func StartServer() error {
 		}
 	}()
 
-	storage, err := cloud.NewS3Storage(cfg)
+	storage, err := cloud.NewS3Storage(cfg, log)
 	if err != nil {
 		log.Error("Error al crear el storage", zap.Error(err))
 		return err
@@ -47,13 +47,13 @@ func StartServer() error {
 		return err
 	}
 
-	metadataRepo, err := dynamodb.NewMetadataStore(cfg)
+	metadataRepo, err := dynamodb.NewMetadataStore(cfg, log)
 	if err != nil {
 		log.Error("Error al crear metadata repository", zap.Error(err))
 		return err
 	}
 
-	operationRepo, err := dynamodb.NewOperationStore(cfg)
+	operationRepo, err := dynamodb.NewOperationStore(cfg, log)
 	if err != nil {
 		log.Error("Error al crear operation repository", zap.Error(err))
 		return err

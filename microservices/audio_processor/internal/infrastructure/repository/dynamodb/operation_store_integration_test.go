@@ -6,6 +6,7 @@ import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,6 +18,8 @@ func TestIntegrationOperationStore(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Saltando test de integración en modo corto")
 	}
+	log, err := logger.NewProductionLogger()
+	require.NoError(t, err)
 	cfg := &config.Config{
 		AWS: config.AWSConfig{
 			Region: os.Getenv("AWS_REGION"),
@@ -34,7 +37,7 @@ func TestIntegrationOperationStore(t *testing.T) {
 		t.Fatal("DYNAMODB_TABLE_NAME_OPERATION y REGION no fueron seteados para los tests de integracion")
 	}
 
-	store, err := NewOperationStore(cfg)
+	store, err := NewOperationStore(cfg, log)
 	require.NoError(t, err)
 
 	t.Run("SaveAndRetrieveOperationResult", func(t *testing.T) {
@@ -141,9 +144,12 @@ func TestIntegrationOperationStore(t *testing.T) {
 
 func createTestOperationResult(songID string) *model.OperationResult {
 	return &model.OperationResult{
-		ID:      uuid.New().String(),
-		SK:      songID,
-		Status:  "starting",
+		ID:     uuid.New().String(),
+		SK:     songID,
+		Status: "starting",
+		Metadata: &model.Metadata{
+			VideoID: "test-video-id",
+		},
 		Message: "Operation is in progress",
 	}
 }

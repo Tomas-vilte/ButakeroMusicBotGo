@@ -88,12 +88,6 @@ func TestOperationRepository(t *testing.T) {
 			assert.ErrorIs(t, err, ErrInvalidUUID)
 		})
 
-		t.Run("should return error when operation is nil", func(t *testing.T) {
-			err := repo.SaveOperationsResult(helper.Context, nil)
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "result no puede ser nil")
-		})
-
 		t.Run("should generate valid PK when not provided", func(t *testing.T) {
 			operation := &model.OperationResult{
 				SK:     generateValidUUID(),

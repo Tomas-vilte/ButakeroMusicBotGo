@@ -35,7 +35,7 @@ func TestVideoService_GetMediaDetails(t *testing.T) {
 			Duration:    "120",
 		}
 
-		mockLogger.On("With", mock.Anything, mock.Anything).Return()
+		mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 		mockProvider.On("SearchVideoID", ctx, input).Return(videoID, nil)
 		mockProvider.On("GetVideoDetails", ctx, videoID).Return(mediaDetails, nil)
@@ -65,7 +65,7 @@ func TestVideoService_GetMediaDetails(t *testing.T) {
 		input := "test_video"
 		providerType := "youtube"
 
-		mockLogger.On("With", mock.Anything, mock.Anything).Return()
+		mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 		mockProvider.On("SearchVideoID", ctx, input).Return("", errors.New("search failed"))
@@ -95,7 +95,7 @@ func TestVideoService_GetMediaDetails(t *testing.T) {
 		input := "test_video"
 		providerType := "youtube"
 
-		mockLogger.On("With", mock.Anything, mock.Anything).Return()
+		mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 		mockProvider.On("SearchVideoID", ctx, input).Return("", errors.New("search failed"))
@@ -126,7 +126,7 @@ func TestVideoService_GetMediaDetails(t *testing.T) {
 		providerType := "youtube"
 		videoID := "12345"
 
-		mockLogger.On("With", mock.Anything, mock.Anything).Return()
+		mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 		mockProvider.On("SearchVideoID", ctx, input).Return(videoID, nil)

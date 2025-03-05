@@ -12,11 +12,10 @@ import (
 	"go.uber.org/zap"
 )
 
-// Errores predefinidos para condiciones específicas
 var (
-	ErrOperationNotFound = errors.New("operación no encontrada") // Error si la operación no se encuentra
-	ErrInvalidUUID       = errors.New("UUID inválido")           // Error si un UUID no es válido
-	ErrInvalidStatus     = errors.New("estado inválido")         // Error si el estado es inválido
+	ErrOperationNotFound = errors.New("operación no encontrada")
+	ErrInvalidUUID       = errors.New("UUID inválido")
+	ErrInvalidStatus     = errors.New("estado inválido")
 )
 
 // ValidStatus define los estados permitidos para una operación.
@@ -26,17 +25,17 @@ var ValidStatus = map[string]bool{
 	"success":  true,
 }
 
-// OperationRepository define el repositorio de operaciones con MongoDB.
 type (
+	// OperationRepository define el repositorio de operaciones con MongoDB.
 	OperationRepository struct {
-		collection *mongo.Collection // Colección de MongoDB para almacenar operaciones
-		log        logger.Logger     // Interfaz de logging
+		collection *mongo.Collection
+		log        logger.Logger
 	}
 
 	// OperationOptions agrupa las opciones necesarias para inicializar OperationRepository.
 	OperationOptions struct {
-		Collection *mongo.Collection // Colección de MongoDB
-		Log        logger.Logger     // Logger para registrar eventos
+		Collection *mongo.Collection
+		Log        logger.Logger
 	}
 )
 
@@ -80,86 +79,114 @@ func NewOperationRepository(opts OperationOptions) (*OperationRepository, error)
 
 // SaveOperationsResult guarda un resultado de operación en la colección MongoDB.
 func (s *OperationRepository) SaveOperationsResult(ctx context.Context, result *model.OperationResult) error {
-	if result == nil {
-		return errors.New("result no puede ser nil")
-	}
+	log := s.log.With(
+		zap.String("component", "OperationRepository"),
+		zap.String("method", "SaveOperationsResult"),
+		zap.String("operation_id", result.ID),
+	)
+
 	if result.ID == "" {
-		result.ID = uuid.New().String() // Genera un UUID si PK está vacío
+		result.ID = uuid.New().String()
+		log.Info("Generando nuevo ID para la operación", zap.String("new_id", result.ID))
+
 	}
 
-	// Validar UUIDs
 	if !isValidUUID(result.ID) {
+		log.Error("UUID inválido", zap.String("operation_id", result.ID))
 		return ErrInvalidUUID
 	}
 
-	// Intento de inserción en MongoDB y manejo de errores
 	if _, err := s.collection.InsertOne(ctx, result); err != nil {
-		s.log.Error("Error al guardar resultado de operación:", zap.Error(err))
+		log.Error("Error al guardar resultado de operación", zap.Error(err))
 		return fmt.Errorf("error al guardar resultado de operación: %w", err)
 	}
-	s.log.Info("Operacion guardada exitosamente", zap.String("id", result.ID))
+	log.Info("Operación guardada exitosamente", zap.String("id", result.ID))
 	return nil
 }
 
 // GetOperationResult obtiene el resultado de una operación a partir de su ID y sk.
 func (s *OperationRepository) GetOperationResult(ctx context.Context, id, sk string) (*model.OperationResult, error) {
+	log := s.log.With(
+		zap.String("component", "OperationRepository"),
+		zap.String("method", "GetOperationResult"),
+		zap.String("operation_id", id),
+		zap.String("sk", sk),
+	)
 	if sk == "" {
+		log.Error("SK no puede estar vacío")
 		return nil, fmt.Errorf("sk no puede estar vacia")
 	}
 
 	filter, err := createSafeFilter(id, sk)
 	if err != nil {
+		log.Error("Error al crear el filtro", zap.Error(err))
 		return nil, err
 	}
 	var result model.OperationResult
 	if err := s.collection.FindOne(ctx, filter).Decode(&result); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
+			log.Warn("Operación no encontrada", zap.String("id", id), zap.String("sk", sk))
 			return nil, ErrOperationNotFound
 		}
-		s.log.Error("Error al recuperar operación:",
-			zap.String("id", id),
-			zap.String("sk", sk))
+		log.Error("Error al recuperar operación", zap.Error(err))
 		return nil, fmt.Errorf("error al recuperar operación: %w", err)
 	}
 
+	log.Info("Operación recuperada exitosamente", zap.String("id", id))
 	return &result, nil
 }
 
 // DeleteOperationResult elimina el resultado de una operación específica en MongoDB.
 func (s *OperationRepository) DeleteOperationResult(ctx context.Context, id, songID string) error {
+	log := s.log.With(
+		zap.String("component", "OperationRepository"),
+		zap.String("method", "DeleteOperationResult"),
+		zap.String("operation_id", id),
+		zap.String("song_id", songID),
+	)
 	if songID == "" {
+		log.Error("SongID no puede estar vacío")
 		return fmt.Errorf("songID no puede estar vacio")
 	}
 	filter, err := createSafeFilter(id, songID)
 	if err != nil {
+		log.Error("Error al crear el filtro", zap.Error(err))
 		return err
 	}
 
 	result, err := s.collection.DeleteOne(ctx, filter)
 	if err != nil {
-		s.log.Error("Error al eliminar la operacion:",
-			zap.Error(err),
-			zap.String("id", id),
-			zap.String("songID", songID))
+		log.Error("Error al eliminar la operación", zap.Error(err))
 		return fmt.Errorf("error al eliminar el resultado de operacion desde MongoDB: %w", err)
 	}
 
 	if result.DeletedCount == 0 {
+		log.Warn("Operación no encontrada para eliminar", zap.String("id", id))
 		return ErrOperationNotFound
 	}
 
-	s.log.Info("Operacion eliminada con exito", zap.String("id", id), zap.String("songID", songID))
+	log.Info("Operación eliminada exitosamente", zap.String("id", id))
 	return nil
 }
 
 // UpdateOperationStatus actualiza el estado de una operación, si el estado es válido.
 func (s *OperationRepository) UpdateOperationStatus(ctx context.Context, operationID string, sk string, status string) error {
+	log := s.log.With(
+		zap.String("component", "OperationRepository"),
+		zap.String("method", "UpdateOperationStatus"),
+		zap.String("operation_id", operationID),
+		zap.String("sk", sk),
+		zap.String("status", status),
+	)
+
 	if !ValidStatus[status] {
+		log.Error("Estado inválido", zap.String("status", status))
 		return ErrInvalidStatus
 	}
 
 	filter, err := createSafeFilter(operationID, sk)
 	if err != nil {
+		log.Error("Error al crear el filtro", zap.Error(err))
 		return err
 	}
 
@@ -171,35 +198,35 @@ func (s *OperationRepository) UpdateOperationStatus(ctx context.Context, operati
 
 	result, err := s.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		s.log.Error("Error al actualizar estado de operacion:",
-			zap.Error(err),
-			zap.String("id", operationID),
-			zap.String("sk", sk))
+		log.Error("Error al actualizar el estado de la operación", zap.Error(err))
 		return fmt.Errorf("error al actualizar el estado de la operacion en MongoDB: %w", err)
 	}
 
 	if result.MatchedCount == 0 {
+		log.Warn("Operación no encontrada para actualizar", zap.String("id", operationID))
 		return ErrOperationNotFound
 	}
 
-	s.log.Info("Estado de operacion actualizado exitosamente",
-		zap.String("id", operationID),
-		zap.String("sk", sk),
-		zap.String("status", status))
+	log.Info("Estado de la operación actualizado exitosamente", zap.String("id", operationID))
 	return nil
 }
 
 func (s *OperationRepository) UpdateOperationResult(ctx context.Context, operationID string, operationResult *model.OperationResult) error {
-	if operationResult == nil {
-		return errors.New("operationResult no puede ser nil")
-	}
+	log := s.log.With(
+		zap.String("component", "OperationRepository"),
+		zap.String("method", "UpdateOperationResult"),
+		zap.String("operation_id", operationID),
+		zap.String("sk", operationResult.SK),
+	)
 
 	if operationResult.SK == "" {
+		log.Error("SK no puede estar vacío")
 		return errors.New("sk no puede estar vacio")
 	}
 
 	filter, err := createSafeFilter(operationID, operationResult.SK)
 	if err != nil {
+		log.Error("Error al crear el filtro", zap.Error(err))
 		return err
 	}
 
@@ -219,19 +246,15 @@ func (s *OperationRepository) UpdateOperationResult(ctx context.Context, operati
 
 	result, err := s.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		s.log.Error("Error al actualizar el resultado de la operacion:",
-			zap.Error(err),
-			zap.String("id", operationID),
-			zap.String("sk", operationResult.SK))
+		log.Error("Error al actualizar el resultado de la operación", zap.Error(err))
 		return fmt.Errorf("error al actualizar resultado de operacion: %w", err)
 	}
 
 	if result.MatchedCount == 0 {
+		log.Warn("Operación no encontrada para actualizar", zap.String("id", operationID))
 		return ErrOperationNotFound
 	}
 
-	s.log.Info("Resultado de operacion actualizado con exito",
-		zap.String("id", operationID),
-		zap.String("sk", operationResult.SK))
+	log.Info("Resultado de la operación actualizado exitosamente", zap.String("id", operationID))
 	return nil
 }
