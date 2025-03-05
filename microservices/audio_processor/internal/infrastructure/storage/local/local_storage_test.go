@@ -7,7 +7,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"os"
 	"path/filepath"
@@ -17,9 +19,11 @@ import (
 )
 
 func TestLocalStorage(t *testing.T) {
-	setupTest := func(t *testing.T) (*LocalStorage, string) {
+	setupTest := func(t *testing.T) (*LocalStorage, string, *logger.MockLogger) {
 		tempDir, err := os.MkdirTemp("", "storage-test-*")
 		require.NoError(t, err, "Error creando directorio temporal")
+
+		mockLogger := new(logger.MockLogger)
 
 		storage, err := NewLocalStorage(&config.Config{
 			Storage: config.StorageConfig{
@@ -27,7 +31,7 @@ func TestLocalStorage(t *testing.T) {
 					BasePath: tempDir,
 				},
 			},
-		})
+		}, mockLogger)
 		require.NoError(t, err, "Error creando LocalStorage")
 
 		t.Cleanup(func() {
@@ -35,13 +39,19 @@ func TestLocalStorage(t *testing.T) {
 				t.Fatalf("Error al eliminar el directorio temporal: %s", err)
 			}
 		})
-		return storage, tempDir
+		return storage, tempDir, mockLogger
 	}
 
 	t.Run("NewLocalStorage", func(t *testing.T) {
 		t.Run("should create base directory if it doesn't exist", func(t *testing.T) {
 			tempDir := filepath.Join(os.TempDir(), "storage-test-new")
-			defer os.RemoveAll(tempDir) // cleanup
+			defer func() {
+				if err := os.RemoveAll(tempDir); err != nil {
+					t.Fatalf("Error al eliminar el directorio temporal: %s", err)
+				}
+			}()
+
+			mockLogger := new(logger.MockLogger)
 
 			storage, err := NewLocalStorage(&config.Config{
 				Storage: config.StorageConfig{
@@ -49,7 +59,7 @@ func TestLocalStorage(t *testing.T) {
 						BasePath: tempDir,
 					},
 				},
-			})
+			}, mockLogger)
 
 			assert.NoError(t, err)
 			assert.NotNil(t, storage)
@@ -63,7 +73,13 @@ func TestLocalStorage(t *testing.T) {
 				t.Fatalf("Error creando el directorio temporal: %s", err)
 			}
 
-			defer os.RemoveAll(tempDir) // cleanup
+			defer func() {
+				if err := os.RemoveAll(tempDir); err != nil {
+					t.Fatalf("Error al eliminar el directorio temporal: %s", err)
+				}
+			}()
+
+			mockLogger := new(logger.MockLogger)
 
 			storage, err := NewLocalStorage(&config.Config{
 				Storage: config.StorageConfig{
@@ -71,7 +87,7 @@ func TestLocalStorage(t *testing.T) {
 						BasePath: tempDir,
 					},
 				},
-			})
+			}, mockLogger)
 
 			assert.Error(t, err)
 			assert.Nil(t, storage)
@@ -81,10 +97,13 @@ func TestLocalStorage(t *testing.T) {
 
 	t.Run("UploadFile", func(t *testing.T) {
 		t.Run("should save DCA file correctly", func(t *testing.T) {
-			storage, tempDir := setupTest(t)
+			storage, tempDir, mockLogger := setupTest(t)
 			content := "contenido de prueba"
 			key := "test.dca"
 			ctx := context.Background()
+
+			mockLogger.On("With", mock.Anything).Return(mockLogger)
+			mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
 			err := storage.UploadFile(ctx, key, strings.NewReader(content))
 
@@ -98,10 +117,13 @@ func TestLocalStorage(t *testing.T) {
 		})
 
 		t.Run("should add .dca extension if missing", func(t *testing.T) {
-			storage, tempDir := setupTest(t)
+			storage, tempDir, mockLogger := setupTest(t)
 			content := "contenido de prueba"
 			key := "test"
 			ctx := context.Background()
+
+			mockLogger.On("With", mock.Anything).Return(mockLogger)
+			mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
 			err := storage.UploadFile(ctx, key, strings.NewReader(content))
 
@@ -111,11 +133,14 @@ func TestLocalStorage(t *testing.T) {
 		})
 
 		t.Run("should handle error when context is canceled", func(t *testing.T) {
-			storage, _ := setupTest(t)
+			storage, _, mockLogger := setupTest(t)
 			content := "contenido de prueba"
 			key := "test.dca"
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
+
+			mockLogger.On("With", mock.Anything).Return(mockLogger)
+			mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 
 			err := storage.UploadFile(ctx, key, strings.NewReader(content))
 
@@ -124,9 +149,11 @@ func TestLocalStorage(t *testing.T) {
 		})
 
 		t.Run("should handle body null", func(t *testing.T) {
-			storage, _ := setupTest(t)
+			storage, _, mockLogger := setupTest(t)
 			ctx := context.Background()
 
+			mockLogger.On("With", mock.Anything).Return(mockLogger)
+			mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 			err := storage.UploadFile(ctx, "test.dca", nil)
 
 			assert.Error(t, err)
@@ -134,97 +161,109 @@ func TestLocalStorage(t *testing.T) {
 		})
 
 		t.Run("should handle large files correctly", func(t *testing.T) {
-			storage, _ := setupTest(t)
+			storage, _, mockLogger := setupTest(t)
 			largeContent := bytes.Repeat([]byte("a"), 1024*1024) // 1MB de datos
 			ctx := context.Background()
 
+			mockLogger.On("With", mock.Anything).Return(mockLogger)
+			mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 			err := storage.UploadFile(ctx, "large.dca", bytes.NewReader(largeContent))
 
 			assert.NoError(t, err)
 		})
-	})
 
-	t.Run("GetFileMetadata", func(t *testing.T) {
-		t.Run("should get metadata correctly", func(t *testing.T) {
-			storage, _ := setupTest(t)
-			content := "contenido de prueba"
-			key := "test.dca"
-			ctx := context.Background()
+		t.Run("GetFileMetadata", func(t *testing.T) {
+			t.Run("should get metadata correctly", func(t *testing.T) {
+				storage, _, mockLogger := setupTest(t)
+				content := "contenido de prueba"
+				key := "test.dca"
+				ctx := context.Background()
 
-			err := storage.UploadFile(ctx, key, strings.NewReader(content))
-			assert.NoError(t, err)
+				mockLogger.On("With", mock.Anything).Return(mockLogger)
+				mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
-			metadata, err := storage.GetFileMetadata(ctx, key)
+				err := storage.UploadFile(ctx, key, strings.NewReader(content))
+				assert.NoError(t, err)
 
-			assert.NoError(t, err)
-			assert.NotNil(t, metadata)
-			assert.Equal(t, storage.config.Storage.LocalConfig.BasePath+"/audio/"+key, metadata.FilePath)
-			assert.Equal(t, "audio/dca", metadata.FileType)
-			assert.Contains(t, metadata.FileSize, "B")
-		})
+				metadata, err := storage.GetFileMetadata(ctx, key)
 
-		t.Run("should handle non-existing file", func(t *testing.T) {
-			storage, _ := setupTest(t)
-			ctx := context.Background()
-
-			metadata, err := storage.GetFileMetadata(ctx, "no-exist.dca")
-
-			assert.Error(t, err)
-			assert.Nil(t, metadata)
-			assert.Contains(t, err.Error(), "no encontrado")
-		})
-
-		t.Run("should add .dca extension if missing", func(t *testing.T) {
-			storage, _ := setupTest(t)
-			content := "contenido de prueba"
-			ctx := context.Background()
-
-			err := storage.UploadFile(ctx, "test", strings.NewReader(content))
-			assert.NoError(t, err)
-
-			metadata, err := storage.GetFileMetadata(ctx, "test")
-
-			assert.NoError(t, err)
-			assert.NotNil(t, metadata)
-			assert.Equal(t, storage.config.Storage.LocalConfig.BasePath+"/audio/test.dca", metadata.FilePath)
-		})
-
-		t.Run("should handle canceled context", func(t *testing.T) {
-			storage, _ := setupTest(t)
-			ctx, cancel := context.WithCancel(context.Background())
-			cancel()
-
-			metadata, err := storage.GetFileMetadata(ctx, "test.dca")
-
-			assert.Error(t, err)
-			assert.Nil(t, metadata)
-			assert.Contains(t, err.Error(), "contexto cancelado")
-		})
-	})
-
-	t.Run("formatFileSize", func(t *testing.T) {
-		tests := []struct {
-			name     string
-			size     int64
-			expected string
-		}{
-			{"bytes", 500, "500B"},
-			{"kilobytes", 1024 * 2, "2.00KB"},
-			{"megabytes", 1024 * 1024 * 3, "3.00MB"},
-			{"gigabytes", 1024 * 1024 * 1024 * 4, "4.00GB"},
-		}
-
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				result := FormatFileSize(tt.size)
-				assert.Equal(t, tt.expected, result)
+				assert.NoError(t, err)
+				assert.NotNil(t, metadata)
+				assert.Equal(t, storage.config.Storage.LocalConfig.BasePath+"/audio/"+key, metadata.FilePath)
+				assert.Equal(t, "audio/dca", metadata.FileType)
+				assert.Contains(t, metadata.FileSize, "B")
 			})
-		}
+
+			t.Run("should handle non-existing file", func(t *testing.T) {
+				storage, _, mockLogger := setupTest(t)
+				ctx := context.Background()
+
+				mockLogger.On("With", mock.Anything).Return(mockLogger)
+				mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+				mockLogger.On("Error", mock.Anything, mock.Anything).Return()
+				metadata, err := storage.GetFileMetadata(ctx, "no-exist.dca")
+
+				assert.Error(t, err)
+				assert.Nil(t, metadata)
+				assert.Contains(t, err.Error(), "no encontrado")
+			})
+
+			t.Run("should add .dca extension if missing", func(t *testing.T) {
+				storage, _, mockLogger := setupTest(t)
+				content := "contenido de prueba"
+				ctx := context.Background()
+
+				mockLogger.On("With", mock.Anything).Return(mockLogger)
+				mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+				err := storage.UploadFile(ctx, "test", strings.NewReader(content))
+				assert.NoError(t, err)
+
+				metadata, err := storage.GetFileMetadata(ctx, "test")
+
+				assert.NoError(t, err)
+				assert.NotNil(t, metadata)
+				assert.Equal(t, storage.config.Storage.LocalConfig.BasePath+"/audio/test.dca", metadata.FilePath)
+			})
+
+			t.Run("should handle canceled context", func(t *testing.T) {
+				storage, _, mockLogger := setupTest(t)
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel()
+
+				mockLogger.On("With", mock.Anything).Return(mockLogger)
+				mockLogger.On("Error", mock.Anything, mock.Anything).Return()
+				metadata, err := storage.GetFileMetadata(ctx, "test.dca")
+
+				assert.Error(t, err)
+				assert.Nil(t, metadata)
+				assert.Contains(t, err.Error(), "contexto cancelado")
+			})
+
+			t.Run("formatFileSize", func(t *testing.T) {
+				tests := []struct {
+					name     string
+					size     int64
+					expected string
+				}{
+					{"bytes", 500, "500B"},
+					{"kilobytes", 1024 * 2, "2.00KB"},
+					{"megabytes", 1024 * 1024 * 3, "3.00MB"},
+					{"gigabytes", 1024 * 1024 * 1024 * 4, "4.00GB"},
+				}
+
+				for _, tt := range tests {
+					t.Run(tt.name, func(t *testing.T) {
+						result := FormatFileSize(tt.size)
+						assert.Equal(t, tt.expected, result)
+					})
+				}
+			})
+		})
 	})
 }
 
 func TestConcurrentAccess(t *testing.T) {
-	storage, _ := setupTest(t)
+	storage, _, mockLogger := setupTest(t)
 	ctx := context.Background()
 	numGoroutines := 10
 	done := make(chan bool)
@@ -234,6 +273,8 @@ func TestConcurrentAccess(t *testing.T) {
 			key := fmt.Sprintf("concurrent_%d.dca", index)
 			content := fmt.Sprintf("content_%d", index)
 
+			mockLogger.On("With", mock.Anything).Return(mockLogger)
+			mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 			err := storage.UploadFile(ctx, key, strings.NewReader(content))
 			assert.NoError(t, err)
 
@@ -255,9 +296,11 @@ func TestConcurrentAccess(t *testing.T) {
 	}
 }
 
-func setupTest(t *testing.T) (*LocalStorage, string) {
+func setupTest(t *testing.T) (*LocalStorage, string, *logger.MockLogger) {
 	tempDir, err := os.MkdirTemp("", "storage-test-*")
 	require.NoError(t, err, "Error creando directorio temporal")
+
+	mockLogger := new(logger.MockLogger)
 
 	storage, err := NewLocalStorage(&config.Config{
 		Storage: config.StorageConfig{
@@ -265,7 +308,7 @@ func setupTest(t *testing.T) (*LocalStorage, string) {
 				BasePath: tempDir,
 			},
 		},
-	})
+	}, mockLogger)
 	require.NoError(t, err, "Error creando LocalStorage")
 
 	t.Cleanup(func() {
@@ -274,5 +317,5 @@ func setupTest(t *testing.T) (*LocalStorage, string) {
 		}
 	})
 
-	return storage, tempDir
+	return storage, tempDir, mockLogger
 }

@@ -15,10 +15,10 @@ import (
 
 // KafkaService proporciona métodos para interactuar con Kafka para producir y consumir mensajes.
 type KafkaService struct {
-	Config   *config.Config      // Configuración para el servicio Kafka.
-	Producer sarama.SyncProducer // Productor de Kafka para enviar mensajes.
-	Consumer sarama.Consumer     // Consumidor de Kafka para recibir mensajes.
-	Log      logger.Logger       // Logger para registrar mensajes.
+	Config   *config.Config
+	Producer sarama.SyncProducer
+	Consumer sarama.Consumer
+	Log      logger.Logger
 }
 
 // NewKafkaService crea una nueva instancia de KafkaService.
@@ -70,8 +70,14 @@ func NewKafkaService(cfgApplication *config.Config, log logger.Logger) (*KafkaSe
 // SendMessage envía un mensaje al tema de Kafka especificado en la configuración.
 // Serializa el mensaje a JSON y registra el resultado.
 func (k *KafkaService) SendMessage(ctx context.Context, message model.Message) error {
+	log := k.Log.With(
+		zap.String("component", "KafkaService"),
+		zap.String("method", "SendMessage"),
+		zap.String("message_id", message.ID),
+	)
 	body, err := json.Marshal(message)
 	if err != nil {
+		log.Error("Error al serializar el mensaje", zap.Error(err))
 		return errors.Wrap(err, "error deserializar mensaje")
 	}
 
@@ -83,11 +89,11 @@ func (k *KafkaService) SendMessage(ctx context.Context, message model.Message) e
 
 	partition, offset, err := k.Producer.SendMessage(msg)
 	if err != nil {
+		log.Error("Error al enviar el mensaje", zap.Error(err))
 		return errors.Wrap(err, "error al enviar mensaje a kafka")
 	}
 
-	k.Log.Info("Mensaje enviado con exito",
-		zap.String("messageID", message.ID),
+	log.Info("Mensaje enviado con éxito",
 		zap.Int32("partition", partition),
 		zap.Int64("offset", offset))
 
@@ -97,13 +103,18 @@ func (k *KafkaService) SendMessage(ctx context.Context, message model.Message) e
 // ReceiveMessage recibe mensajes del tema de Kafka especificado en la configuración.
 // Deserializa los mensajes de JSON y registra el resultado.
 func (k *KafkaService) ReceiveMessage(ctx context.Context) ([]model.Message, error) {
+	log := k.Log.With(
+		zap.String("component", "KafkaService"),
+		zap.String("method", "ReceiveMessage"),
+	)
 	partitionConsumer, err := k.Consumer.ConsumePartition(k.Config.Messaging.Kafka.Topic, 0, sarama.OffsetOldest)
 	if err != nil {
+		log.Error("Error al crear la partición del consumidor", zap.Error(err))
 		return nil, errors.Wrap(err, "error al crear la particion del consumidor")
 	}
 	defer func() {
 		if err := partitionConsumer.Close(); err != nil {
-			k.Log.Error("Error al cerrar la particion del consumidor", zap.Error(err))
+			log.Error("Error al cerrar la partición del consumidor", zap.Error(err))
 		}
 	}()
 
@@ -111,27 +122,41 @@ func (k *KafkaService) ReceiveMessage(ctx context.Context) ([]model.Message, err
 
 	select {
 	case msg := <-partitionConsumer.Messages():
-		k.Log.Info("Mensaje recibido desde Kafka", zap.String("MessageID", string(msg.Key)))
+		log.Info("Mensaje recibido desde Kafka", zap.String("message_id", string(msg.Key)))
 		var message model.Message
 		if err := json.Unmarshal(msg.Value, &message); err != nil {
+			log.Error("Error al deserializar el mensaje", zap.Error(err))
 			return nil, errors.Wrap(err, "error al deserializar mensaje")
 		}
 		messages = append(messages, message)
 	case <-ctx.Done():
+		log.Error("Contexto cancelado durante la recepción de mensajes", zap.Error(ctx.Err()))
 		return messages, ctx.Err()
 	}
+
+	log.Info("Mensajes recibidos exitosamente", zap.Int("count", len(messages)))
 	return messages, nil
 }
 
 // DeleteMessage registra un mensaje indicando que Kafka no admite la eliminación de mensajes individuales.
 // Los mensajes se eliminan automáticamente según el período de retención.
 func (k *KafkaService) DeleteMessage(ctx context.Context, receiptHandle string) error {
-	k.Log.Info("Se llamo a DeleteMessage, pero kafka no admite la eliminacion de mensajes individuales",
-		zap.String("receiptHandle", receiptHandle))
+	log := k.Log.With(
+		zap.String("component", "KafkaService"),
+		zap.String("method", "DeleteMessage"),
+		zap.String("receipt_handle", receiptHandle),
+	)
+	log.Info("Se llamó a DeleteMessage, pero Kafka no admite la eliminación de mensajes individuales")
 	return nil
 }
 
 // Close cierra el productor de Kafka.
 func (k *KafkaService) Close() error {
+	log := k.Log.With(
+		zap.String("component", "KafkaService"),
+		zap.String("method", "Close"),
+	)
+
+	log.Info("Cerrando el productor de Kafka")
 	return k.Producer.Close()
 }

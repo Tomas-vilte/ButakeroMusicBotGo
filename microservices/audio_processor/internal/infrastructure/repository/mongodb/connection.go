@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/utils"
 	"github.com/pkg/errors"
-	"strings"
 	"time"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
@@ -52,7 +51,7 @@ func NewMongoDB(opts MongoOptions) (*MongoDB, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	uri := buildMongoURI(opts.Config)
+	uri := utils.BuildMongoURI(opts.Config)
 	clientOptions := options.Client().ApplyURI(uri)
 
 	if opts.Config.Database.Mongo.EnableTLS {
@@ -88,16 +87,4 @@ func (db *MongoDB) GetCollection(collectionName string) *mongo.Collection {
 
 func (db *MongoDB) Close(ctx context.Context) error {
 	return db.client.Disconnect(ctx)
-}
-
-func buildMongoURI(cfg *config.Config) string {
-	hostList := strings.Join(cfg.Database.Mongo.Host, ",")
-	return fmt.Sprintf("mongodb://%s:%s@%s:%s/?replicaSet=%s&directConnection=true&tls=%v",
-		cfg.Database.Mongo.User,
-		cfg.Database.Mongo.Password,
-		hostList,
-		cfg.Database.Mongo.Port,
-		cfg.Database.Mongo.ReplicaSetName,
-		cfg.Database.Mongo.EnableTLS,
-	)
 }

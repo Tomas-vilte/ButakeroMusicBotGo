@@ -6,6 +6,7 @@ import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -16,6 +17,9 @@ func TestIntegrationMetadataStore(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Saltando test de integración en modo corto")
 	}
+
+	log, err := logger.NewDevelopmentLogger()
+	require.NoError(t, err)
 
 	cfg := &config.Config{
 		AWS: config.AWSConfig{
@@ -36,7 +40,7 @@ func TestIntegrationMetadataStore(t *testing.T) {
 
 	t.Run("SaveAndRetrieveMetadata", func(t *testing.T) {
 		// arrange
-		store, err := NewMetadataStore(cfg)
+		store, err := NewMetadataStore(cfg, log)
 		require.NoError(t, err)
 
 		metadata := &model.Metadata{

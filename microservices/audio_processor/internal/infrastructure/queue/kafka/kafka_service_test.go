@@ -37,6 +37,7 @@ func TestKafkaService(t *testing.T) {
 		expectedPartition := int32(0)
 		expectedOffset := int64(1)
 
+		mockLogger.On("With", mock.Anything).Return(mockLogger)
 		mockProducer.On("SendMessage", mock.Anything).Return(expectedPartition, expectedOffset, nil)
 		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
@@ -65,6 +66,7 @@ func TestKafkaService(t *testing.T) {
 		messageChan := make(chan *sarama.ConsumerMessage, 1)
 		messageChan <- &sarama.ConsumerMessage{Value: messageBytes}
 
+		mockLogger.On("With", mock.Anything).Return(mockLogger)
 		mockConsumer.On("ConsumePartition", cfg.Messaging.Kafka.Topic, int32(0), sarama.OffsetOldest).Return(mockPartitionConsumer, nil)
 		mockPartitionConsumer.On("Messages").Return((<-chan *sarama.ConsumerMessage)(messageChan))
 		mockPartitionConsumer.On("Close").Return(nil)
@@ -90,6 +92,7 @@ func TestKafkaService(t *testing.T) {
 			Log:    mockLogger,
 		}
 
+		mockLogger.On("With", mock.Anything).Return(mockLogger)
 		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
 		// act

@@ -22,7 +22,7 @@ func NewTestHelper(t *testing.T) *TestHelper {
 	ctx := context.Background()
 
 	// Crear logger
-	log, err := logger.NewZapLogger()
+	log, err := logger.NewProductionLogger()
 	require.NoError(t, err, "Error creating logger")
 
 	// Crear contenedor con configuración por defecto

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/adapters"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/encoder"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/queue/sqs"
@@ -24,7 +25,7 @@ import (
 func StartServer() error {
 	cfg := config.LoadConfigAws()
 
-	log, err := logger.NewZapLogger()
+	log, err := logger.NewProductionLogger()
 	if err != nil {
 		return err
 	}
@@ -34,7 +35,7 @@ func StartServer() error {
 		}
 	}()
 
-	storage, err := cloud.NewS3Storage(cfg)
+	storage, err := cloud.NewS3Storage(cfg, log)
 	if err != nil {
 		log.Error("Error al crear el storage", zap.Error(err))
 		return err
@@ -46,13 +47,13 @@ func StartServer() error {
 		return err
 	}
 
-	metadataRepo, err := dynamodb.NewMetadataStore(cfg)
+	metadataRepo, err := dynamodb.NewMetadataStore(cfg, log)
 	if err != nil {
 		log.Error("Error al crear metadata repository", zap.Error(err))
 		return err
 	}
 
-	operationRepo, err := dynamodb.NewOperationStore(cfg)
+	operationRepo, err := dynamodb.NewOperationStore(cfg, log)
 	if err != nil {
 		log.Error("Error al crear operation repository", zap.Error(err))
 		return err
@@ -105,7 +106,11 @@ func StartServer() error {
 
 	operationService := service.NewOperationService(operationRepo, log)
 
-	providerService := service.NewVideoService(youtubeAPI, nil, log)
+	providers := map[string]ports.VideoProvider{
+		"youtube": youtubeAPI,
+	}
+
+	providerService := service.NewVideoService(providers, log)
 	initiateDownloadUC := usecase.NewInitiateDownloadUseCase(audioProcessingService, providerService, operationService)
 	audioHandler := handler.NewAudioHandler(initiateDownloadUC)
 	operationHandler := handler.NewOperationHandler(operationUC)

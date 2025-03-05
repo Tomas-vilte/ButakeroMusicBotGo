@@ -14,7 +14,6 @@ import (
 )
 
 func TestKafkaIntegration_SendAndReceiveMessage(t *testing.T) {
-	// creamos el contenedor de kafka
 	ctx := context.Background()
 
 	kafkaContainer, err := kafkaContainerService.Run(ctx, "confluentinc/confluent-local:7.5.0")
@@ -43,7 +42,7 @@ func TestKafkaIntegration_SendAndReceiveMessage(t *testing.T) {
 		},
 	}
 
-	log, err := logger.NewZapLogger()
+	log, err := logger.NewProductionLogger()
 	assert.NoError(t, err)
 
 	kafkaService, err := NewKafkaService(cfg, log)

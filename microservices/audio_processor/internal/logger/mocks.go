@@ -25,6 +25,7 @@ func (m *MockLogger) Debug(msg string, fields ...zapcore.Field) {
 	m.Called(msg, fields)
 }
 
-func (m *MockLogger) With(fields ...zapcore.Field) {
-	m.Called(fields)
+func (m *MockLogger) With(fields ...zapcore.Field) Logger {
+	args := m.Called(fields)
+	return args.Get(0).(Logger)
 }

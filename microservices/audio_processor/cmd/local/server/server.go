@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/service"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/adapters"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/downloader"
@@ -20,13 +21,17 @@ import (
 func StartServer() error {
 	cfg := config.LoadConfigLocal()
 
-	log, err := logger.NewZapLogger()
+	log, err := logger.NewDevelopmentLogger()
 	if err != nil {
 		return err
 	}
-	defer log.Close()
+	defer func() {
+		if err := log.Close(); err != nil {
+			log.Error("Error al cerrar el logger", zap.Error(err))
+		}
+	}()
 
-	storage, err := local.NewLocalStorage(cfg)
+	storage, err := local.NewLocalStorage(cfg, log)
 	if err != nil {
 		log.Error("Error al crear el storage", zap.Error(err))
 		return err
@@ -37,6 +42,12 @@ func StartServer() error {
 		log.Error("Error al crear queue", zap.Error(err))
 		return err
 	}
+
+	defer func() {
+		if err := messaging.Close(); err != nil {
+			log.Error("Error al cerrar el queue", zap.Error(err))
+		}
+	}()
 
 	conn, err := mongodb.NewMongoDB(mongodb.MongoOptions{
 		Log:    log,
@@ -84,7 +95,11 @@ func StartServer() error {
 
 	operationService := service.NewOperationService(operationRepo, log)
 
-	providerService := service.NewVideoService(youtubeAPI, nil, log)
+	providers := map[string]ports.VideoProvider{
+		"youtube": youtubeAPI,
+	}
+
+	providerService := service.NewVideoService(providers, log)
 	initiateDownloadUC := usecase.NewInitiateDownloadUseCase(audioProcessingService, providerService, operationService)
 	audioHandler := handler.NewAudioHandler(initiateDownloadUC)
 	operationHandler := handler.NewOperationHandler(operationUC)

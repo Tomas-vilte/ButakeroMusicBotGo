@@ -1,4 +1,4 @@
-//go:build !integration
+//go:build integration
 
 package adapters
 
@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
@@ -41,13 +42,16 @@ func TestYouTubeClient_GetVideoDetails(t *testing.T) {
 					},
 				},
 			}
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				t.Fatal(err)
+			}
 		}))
 		defer ts.Close()
 
-		log, err := logger.NewZapLogger()
-		require.NoError(t, err)
-		client := NewYouTubeClient("test-key", log)
+		mockLogger := new(logger.MockLogger)
+		mockLogger.On("With", mock.Anything).Return(mockLogger)
+		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+		client := NewYouTubeClient("test-key", mockLogger)
 		client.BaseURL = ts.URL
 
 		// Act
@@ -66,12 +70,14 @@ func TestYouTubeClient_GetVideoDetails(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		log, err := logger.NewZapLogger()
-		require.NoError(t, err)
-		client := NewYouTubeClient("test-key", log)
+		mockLogger := new(logger.MockLogger)
+		mockLogger.On("With", mock.Anything).Return(mockLogger)
+		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
+		client := NewYouTubeClient("test-key", mockLogger)
 		client.BaseURL = ts.URL
 
-		_, err = client.GetVideoDetails(context.Background(), "invalidID")
+		_, err := client.GetVideoDetails(context.Background(), "invalidID")
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "API respondió con código 404")
@@ -81,17 +87,21 @@ func TestYouTubeClient_GetVideoDetails(t *testing.T) {
 		// Arrange
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{"items": []interface{}{}})
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"items": []interface{}{}}); err != nil {
+				t.Fatal(err)
+			}
 		}))
 		defer ts.Close()
 
-		log, err := logger.NewZapLogger()
-		require.NoError(t, err)
-		client := NewYouTubeClient("test-key", log)
+		mockLogger := new(logger.MockLogger)
+		mockLogger.On("With", mock.Anything).Return(mockLogger)
+		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+		mockLogger.On("Warn", mock.Anything, mock.Anything).Return()
+		client := NewYouTubeClient("test-key", mockLogger)
 		client.BaseURL = ts.URL
 
 		// Act
-		_, err = client.GetVideoDetails(context.Background(), "emptyID")
+		_, err := client.GetVideoDetails(context.Background(), "emptyID")
 
 		// Assert
 		require.Error(t, err)
@@ -105,19 +115,25 @@ func TestYouTubeClient_SearchVideoID(t *testing.T) {
 		expectedID := "test123"
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
 				"items": []interface{}{
 					map[string]interface{}{
 						"id": map[string]interface{}{"videoId": expectedID},
 					},
 				},
-			})
+			}); err != nil {
+				t.Fatal(err)
+			}
 		}))
 		defer ts.Close()
 
-		log, err := logger.NewZapLogger()
-		client := NewYouTubeClient("test-key", log)
+		mockLogger := new(logger.MockLogger)
+		client := NewYouTubeClient("test-key", mockLogger)
 		client.BaseURL = ts.URL
+
+		mockLogger.On("With", mock.Anything).Return(mockLogger)
+		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
 		// Act
 		videoID, err := client.SearchVideoID(context.Background(), "test query")
@@ -130,8 +146,12 @@ func TestYouTubeClient_SearchVideoID(t *testing.T) {
 	t.Run("debe extraer videoID directamente de URL válida", func(t *testing.T) {
 		// Arrange
 		testURL := "https://youtube.com/watch?v=dQw4w9WgXcQ"
-		log, err := logger.NewZapLogger()
-		client := NewYouTubeClient("test-key", log)
+		mockLogger := new(logger.MockLogger)
+		client := NewYouTubeClient("test-key", mockLogger)
+
+		mockLogger.On("With", mock.Anything).Return(mockLogger)
+		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
 		// Act
 		videoID, err := client.SearchVideoID(context.Background(), testURL)
@@ -145,17 +165,23 @@ func TestYouTubeClient_SearchVideoID(t *testing.T) {
 		// Arrange
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(map[string]interface{}{"items": []interface{}{}})
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{"items": []interface{}{}}); err != nil {
+				t.Fatal(err)
+			}
 		}))
 		defer ts.Close()
 
-		log, err := logger.NewZapLogger()
-		require.NoError(t, err)
-		client := NewYouTubeClient("test-key", log)
+		mockLogger := new(logger.MockLogger)
+		client := NewYouTubeClient("test-key", mockLogger)
 		client.BaseURL = ts.URL
 
+		mockLogger.On("With", mock.Anything).Return(mockLogger)
+		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+		mockLogger.On("Warn", mock.Anything, mock.Anything).Return()
+
 		// Act
-		_, err = client.SearchVideoID(context.Background(), "empty query")
+		_, err := client.SearchVideoID(context.Background(), "empty query")
 
 		// Assert
 		require.Error(t, err)

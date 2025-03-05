@@ -37,7 +37,10 @@ func LoggingMiddleware(l logger.Logger) gin.HandlerFunc {
 
 		// Obtener información adicional del contexto
 		statusCode := c.Writer.Status()
-		errorMessage := c.Errors.ByType(gin.ErrorTypePublic).String()
+		var errorMessage string
+		if len(c.Errors) > 0 {
+			errorMessage = c.Errors.ByType(gin.ErrorTypePublic).String()
+		}
 
 		// Logging después de procesar la solicitud
 		l.Info("Respuesta enviada",
@@ -59,10 +62,14 @@ func LoggingMiddleware(l logger.Logger) gin.HandlerFunc {
 			errMsgs := c.Errors.String()
 			if c.Writer.Status() >= http.StatusInternalServerError {
 				l.Error("Errores del servidor encontrados",
-					zap.String("errors", errMsgs))
+					zap.String("errors", errMsgs),
+					zap.Int("status", statusCode),
+				)
 			} else {
 				l.Info("Errores del cliente encontrados",
-					zap.String("errors", errMsgs))
+					zap.String("errors", errMsgs),
+					zap.Int("status", statusCode),
+				)
 			}
 		}
 
@@ -72,6 +79,7 @@ func LoggingMiddleware(l logger.Logger) gin.HandlerFunc {
 				zap.Duration("latency", latency),
 				zap.String("path", path),
 				zap.String("method", c.Request.Method),
+				zap.Int("status", statusCode),
 			)
 		}
 	}

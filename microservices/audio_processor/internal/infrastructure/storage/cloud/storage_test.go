@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/assert"
@@ -18,6 +19,9 @@ func TestS3Storage_UploadFile(t *testing.T) {
 	t.Run("Successful upload", func(t *testing.T) {
 		// arrange
 		mockClient := new(MockStorageS3API)
+		mockLogger := new(logger.MockLogger)
+		mockLogger.On("With", mock.Anything).Return(mockLogger)
+		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 		mockClient.On("PutObject", mock.Anything, mock.AnythingOfType("*s3.PutObjectInput"), mock.Anything).
 			Return(&s3.PutObjectOutput{}, nil)
 
@@ -30,6 +34,7 @@ func TestS3Storage_UploadFile(t *testing.T) {
 					},
 				},
 			},
+			log: mockLogger,
 		}
 
 		// act
@@ -40,12 +45,18 @@ func TestS3Storage_UploadFile(t *testing.T) {
 			t.Fatalf("error inesperado: %v", err)
 		}
 		mockClient.AssertExpectations(t)
+		mockLogger.AssertExpectations(t)
 	})
 
 	t.Run("Upload error", func(t *testing.T) {
 		// arrange
 		expectedErr := errors.New("s3 error")
 		mockClient := new(MockStorageS3API)
+		mockLogger := new(logger.MockLogger)
+
+		mockLogger.On("With", mock.Anything).Return(mockLogger)
+		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 		mockClient.On("PutObject", mock.Anything, mock.AnythingOfType("*s3.PutObjectInput"), mock.Anything).
 			Return((*s3.PutObjectOutput)(nil), expectedErr)
 
@@ -58,6 +69,7 @@ func TestS3Storage_UploadFile(t *testing.T) {
 					},
 				},
 			},
+			log: mockLogger,
 		}
 
 		// act
@@ -77,7 +89,7 @@ func TestS3Storage_UploadFile(t *testing.T) {
 	t.Run("Nil Body", func(t *testing.T) {
 		// arrange
 		mockClient := new(MockStorageS3API)
-		// No configuramos expectativas para PutObject porque no debería ser llamado
+		mockLogger := new(logger.MockLogger)
 
 		storageS3 := S3Storage{
 			Client: mockClient,
@@ -88,7 +100,12 @@ func TestS3Storage_UploadFile(t *testing.T) {
 					},
 				},
 			},
+			log: mockLogger,
 		}
+
+		mockLogger.On("With", mock.Anything).Return(mockLogger)
+		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 
 		// act
 		err := storageS3.UploadFile(context.Background(), "test-file.txt", nil)
@@ -108,11 +125,14 @@ func TestS3Storage_GetFileMetadata(t *testing.T) {
 	t.Run("Successful metadata retrieval", func(t *testing.T) {
 		// Arrange
 		mockClient := new(MockStorageS3API)
+		mockLogger := new(logger.MockLogger)
 		bucketName := "test-bucket"
 		key := "test-file.dca"
 		contentType := "application/octet-stream"
 		contentLength := int64(1024 * 1024) // 1 MB
 
+		mockLogger.On("With", mock.Anything).Return(mockLogger)
+		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 		mockClient.On("HeadObject", mock.Anything, &s3.HeadObjectInput{
 			Bucket: aws.String(bucketName),
 			Key:    aws.String("audio/" + key),
@@ -130,6 +150,7 @@ func TestS3Storage_GetFileMetadata(t *testing.T) {
 					},
 				},
 			},
+			log: mockLogger,
 		}
 
 		// Act
@@ -143,14 +164,19 @@ func TestS3Storage_GetFileMetadata(t *testing.T) {
 		assert.Equal(t, "1.00MB", fileData.FileSize)
 
 		mockClient.AssertExpectations(t)
+		mockLogger.AssertExpectations(t)
 	})
 
 	t.Run("Error retrieving metadata", func(t *testing.T) {
 		// Arrange
 		mockClient := new(MockStorageS3API)
+		mockLogger := new(logger.MockLogger)
 		bucketName := "test-bucket"
 		key := "non-existent-file.mp3"
 
+		mockLogger.On("With", mock.Anything).Return(mockLogger)
+		mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 		mockClient.On("HeadObject", mock.Anything, &s3.HeadObjectInput{
 			Bucket: aws.String(bucketName),
 			Key:    aws.String("audio/" + key),
@@ -165,6 +191,7 @@ func TestS3Storage_GetFileMetadata(t *testing.T) {
 					},
 				},
 			},
+			log: mockLogger,
 		}
 
 		// Act
@@ -176,12 +203,14 @@ func TestS3Storage_GetFileMetadata(t *testing.T) {
 		assert.Contains(t, err.Error(), "error obteniendo metadata del archivo de S3")
 
 		mockClient.AssertExpectations(t)
+		mockLogger.AssertExpectations(t)
 	})
 }
 
 func TestNewS3Storage(t *testing.T) {
 	t.Run("Successful creation", func(t *testing.T) {
 		// act
+		mockLogger := new(logger.MockLogger)
 		cfg := &config.Config{
 			Storage: config.StorageConfig{
 				S3Config: &config.S3Config{
@@ -192,7 +221,7 @@ func TestNewS3Storage(t *testing.T) {
 				Region: "us-east-1",
 			},
 		}
-		storageS3, err := NewS3Storage(cfg)
+		storageS3, err := NewS3Storage(cfg, mockLogger)
 
 		// assert
 		if err != nil {

@@ -55,59 +55,52 @@ func NewMongoMetadataRepository(opts MongoMetadataOptions) (*MongoMetadataReposi
 
 // SaveMetadata guarda los metadatos en MongoDB
 func (m *MongoMetadataRepository) SaveMetadata(ctx context.Context, metadata *model.Metadata) error {
-	// Validar los metadatos antes de guardar
+	log := m.log.With(
+		zap.String("component", "MongoMetadataRepository"),
+		zap.String("method", "SaveMetadata"),
+		zap.String("metadata_id", metadata.ID),
+	)
 	if err := validateMetadata(metadata); err != nil {
-		m.log.Error("Metadatos inválidos",
-			zap.Error(err),
-			zap.Any("metadata", metadata))
+		log.Error("Metadatos inválidos", zap.Error(err))
 		return fmt.Errorf("%w: %v", ErrInvalidMetadata, err)
 	}
 
-	// Generar un nuevo ID si no existe
 	if metadata.ID == "" {
 		metadata.ID = uuid.New().String()
+		log.Info("Generando nuevo ID para los metadatos", zap.String("new_id", metadata.ID))
 	}
 
-	// Crear el documento BSON
 	doc := createMetadataDocument(metadata)
+	log.Debug("Intentando guardar metadatos", zap.String("id", metadata.ID))
 
-	m.log.Debug("Intentando guardar metadatos",
-		zap.String("id", metadata.ID),
-		zap.String("title", metadata.Title))
-
-	// Intentar insertar el documento
 	_, err := m.collection.InsertOne(ctx, doc)
 	if err != nil {
-		// Verificar si es un error de llave duplicada
 		if mongo.IsDuplicateKeyError(err) {
-			m.log.Error("ID duplicado al guardar metadatos",
-				zap.Error(err),
-				zap.String("id", metadata.ID))
+			log.Error("ID duplicado al guardar metadatos", zap.Error(err))
 			return ErrDuplicateKey
 		}
 
-		m.log.Error("Error al guardar metadatos",
-			zap.Error(err),
-			zap.String("id", metadata.ID),
-			zap.String("title", metadata.Title))
+		log.Error("Error al guardar metadatos", zap.Error(err))
 		return fmt.Errorf("error al guardar metadatos: %w", err)
 	}
 
-	m.log.Info("Metadatos guardados exitosamente",
-		zap.String("id", metadata.ID),
-		zap.String("title", metadata.Title))
-
+	log.Info("Metadatos guardados exitosamente", zap.String("id", metadata.ID))
 	return nil
 }
 
 // GetMetadata recupera los metadatos por ID
 func (m *MongoMetadataRepository) GetMetadata(ctx context.Context, id string) (*model.Metadata, error) {
+	log := m.log.With(
+		zap.String("component", "MongoMetadataRepository"),
+		zap.String("method", "GetMetadata"),
+		zap.String("metadata_id", id),
+	)
 	if id == "" {
-		m.log.Error("ID inválido", zap.String("id", id))
+		log.Error("ID inválido", zap.String("id", id))
 		return nil, errors.New("ID no puede estar vacio")
 	}
 
-	m.log.Debug("Buscando metadatos", zap.String("id", id))
+	log.Debug("Buscando metadatos", zap.String("id", id))
 
 	var metadata model.Metadata
 	filter := bson.D{
@@ -117,48 +110,44 @@ func (m *MongoMetadataRepository) GetMetadata(ctx context.Context, id string) (*
 	err := m.collection.FindOne(ctx, filter).Decode(&metadata)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			m.log.Debug("Metadatos no encontrados", zap.String("id", id))
+			log.Debug("Metadatos no encontrados", zap.String("id", id))
 			return nil, ErrMetadataNotFound
 		}
-		m.log.Error("Error al recuperar metadatos",
-			zap.Error(err),
-			zap.String("id", id))
+		log.Error("Error al recuperar metadatos", zap.Error(err))
 		return nil, fmt.Errorf("error al recuperar metadatos: %w", err)
 	}
 
-	m.log.Debug("Metadatos recuperados exitosamente",
-		zap.String("id", id),
-		zap.String("title", metadata.Title))
-
+	log.Debug("Metadatos recuperados exitosamente", zap.String("id", id))
 	return &metadata, nil
 }
 
 // DeleteMetadata elimina los metadatos por ID
 func (m *MongoMetadataRepository) DeleteMetadata(ctx context.Context, id string) error {
+	log := m.log.With(
+		zap.String("component", "MongoMetadataRepository"),
+		zap.String("method", "DeleteMetadata"),
+		zap.String("metadata_id", id),
+	)
 	if id == "" {
-		m.log.Error("ID inválido", zap.String("id", id))
+		log.Error("ID inválido", zap.String("id", id))
 		return errors.New("ID no puede estar vacio")
 	}
 
-	m.log.Debug("Intentando eliminar metadatos", zap.String("id", id))
+	log.Debug("Intentando eliminar metadatos", zap.String("id", id))
 
 	filter := bson.M{"_id": id}
 	result, err := m.collection.DeleteOne(ctx, filter)
 	if err != nil {
-		m.log.Error("Error al eliminar metadatos",
-			zap.Error(err),
-			zap.String("id", id))
+		log.Error("Error al eliminar metadatos", zap.Error(err))
 		return fmt.Errorf("error al eliminar metadatos: %w", err)
 	}
 
 	if result.DeletedCount == 0 {
-		m.log.Debug("No se encontraron metadatos para eliminar",
-			zap.String("id", id))
+		log.Debug("No se encontraron metadatos para eliminar", zap.String("id", id))
 		return ErrMetadataNotFound
 	}
 
-	m.log.Info("Metadatos eliminados exitosamente",
-		zap.String("id", id))
+	log.Info("Metadatos eliminados exitosamente", zap.String("id", id))
 	return nil
 }
 
