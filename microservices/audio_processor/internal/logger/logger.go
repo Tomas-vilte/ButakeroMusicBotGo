@@ -25,6 +25,7 @@ type (
 func NewProductionLogger() (*ZapLogger, error) {
 	config := zap.NewProductionConfig()
 
+	config.DisableStacktrace = true
 	config.EncoderConfig = zapcore.EncoderConfig{
 		TimeKey:        "timestamp",
 		LevelKey:       "level",
@@ -52,11 +53,14 @@ func NewProductionLogger() (*ZapLogger, error) {
 func NewDevelopmentLogger() (*ZapLogger, error) {
 	config := zap.NewDevelopmentConfig()
 
+	config.DisableStacktrace = true
+
 	config.EncoderConfig = zapcore.EncoderConfig{
 		TimeKey:        "timestamp",
 		LevelKey:       "level",
 		NameKey:        "logger",
 		CallerKey:      "caller",
+		FunctionKey:    zapcore.OmitKey,
 		MessageKey:     "msg",
 		StacktraceKey:  "stacktrace",
 		LineEnding:     zapcore.DefaultLineEnding,
@@ -66,9 +70,9 @@ func NewDevelopmentLogger() (*ZapLogger, error) {
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
 
-	config.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
-
-	logger, err := config.Build()
+	logger, err := config.Build(
+		zap.AddCallerSkip(1),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +93,7 @@ func NewZapLogger() (*ZapLogger, error) {
 		LineEnding:     zapcore.DefaultLineEnding,
 		EncodeLevel:    zapcore.CapitalColorLevelEncoder,
 		EncodeTime:     customTimeEncoder,
-		EncodeDuration: zapcore.SecondsDurationEncoder,
+		EncodeDuration: zapcore.StringDurationEncoder,
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
 	config.Encoding = "console"

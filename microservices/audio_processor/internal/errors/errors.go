@@ -7,9 +7,10 @@ import (
 )
 
 var (
-	ErrInvalidInput     = NewAppError("invalid_input", "Input inválido")
-	ErrProviderNotFound = NewAppError("provider_not_found", "Proveedor no encontrado")
-	ErrExternalAPIError = NewAppError("external_api_error", "Error en API externa")
+	ErrInvalidInput       = NewAppError("invalid_input", "Input inválido")
+	ErrYouTubeAPIError    = NewAppError("youtube_api_error", "Error en la API de YouTube")
+	ErrProviderNotFound   = NewAppError("provider_not_found", "Proveedor no encontrado")
+	ErrGetDataFromYouTube = NewAppError("error_get_data", "Error al obtener datos de YouTube")
 
 	ErrDownloadFailed      = NewAppError("download_failed", "Error en descarga de audio")
 	ErrEncodingFailed      = NewAppError("encoding_failed", "Error en codificación de audio")
@@ -55,7 +56,7 @@ func (e *AppError) StatusCode() int {
 		return http.StatusBadRequest
 	case "provider_not_found", "media_not_found", "operation_not_found":
 		return http.StatusNotFound
-	case "external_api_error":
+	case "youtube_api_error":
 		return http.StatusServiceUnavailable
 	case "download_failed", "encoding_failed", "upload_failed",
 		"metadata_failed", "message_failed", "empty_buffer",
