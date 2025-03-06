@@ -1,9 +1,9 @@
 package router
 
 import (
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/interface/http/handler"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/delivery/http/handler"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/delivery/http/middleware"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,8 +13,7 @@ func SetupRoutes(router *gin.Engine,
 	healthCheck *handler.HealthHandler,
 	log logger.Logger) {
 
-	router.Use(middleware.LoggingMiddleware(log))
-	router.Use(middleware.ErrorHandlerMiddleware(log))
+	router.Use(middleware.LoggingMiddleware(log), middleware.ErrorHandlerMiddleware())
 
 	api := router.Group("/api")
 	{
