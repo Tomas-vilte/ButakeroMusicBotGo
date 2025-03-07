@@ -9,14 +9,16 @@ import (
 // DiscordMessenger define todas las operaciones de mensajería relacionadas con Discord.
 type (
 	DiscordMessenger interface {
-		// RespondToInteraction Responde a una interacción (comando slash, botón, etc.) con un embed.
-		RespondToInteraction(interaction *discordgo.Interaction, embed *discordgo.MessageEmbed) error
+		// RespondWithMessage Responde a una interacción (comando slash, botón, etc.) con un mensaje.
+		RespondWithMessage(interaction *discordgo.Interaction, message string) error
 		// SendPlayStatus Envía un mensaje embed de estado de reproducción (ej: "Ahora sonando").
 		SendPlayStatus(channelID string, playMsg *entity.PlayedSong) (messageID string, err error)
 		// UpdatePlayStatus Actualiza un mensaje de estado de reproducción existente.
 		UpdatePlayStatus(channelID, messageID string, playMsg *entity.PlayedSong) error
 		// SendText Envía un mensaje de texto simple a un canal.
 		SendText(channelID, text string) error
+		Respond(interaction *discordgo.Interaction, response discordgo.InteractionResponse) error
+		CreateFollowupMessage(interaction *discordgo.Interaction, params discordgo.WebhookParams) error
 	}
 
 	InteractionHandler interface {
@@ -36,10 +38,10 @@ type (
 		Run(ctx context.Context) error
 		Stop() error
 		SkipSong()
-		Close() error
-		AddSong(textChannelID, voiceChannelID *string, songs ...*entity.Song) error
+		AddSong(textChannelID, voiceChannelID *string, playedSong *entity.PlayedSong) error
 		RemoveSong(position int) (*entity.Song, error)
 		GetPlaylist() ([]string, error)
 		GetPlayedSong() (*entity.PlayedSong, error)
+		UpdateVoiceState(s *discordgo.Session, vs *discordgo.VoiceStateUpdate)
 	}
 )

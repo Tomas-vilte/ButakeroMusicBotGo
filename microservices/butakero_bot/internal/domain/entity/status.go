@@ -21,19 +21,18 @@ type (
 	}
 
 	Metadata struct {
-		ID         string `json:"id"`
-		VideoID    string `json:"video_id"`
-		Title      string `json:"title"`
-		Duration   string `json:"duration"`
-		URLYoutube string `json:"url_youtube"`
-		Thumbnail  string `json:"thumbnail"`
-		Platform   string `json:"platform"`
+		ID           string `bson:"_id" dynamodbav:"_id"`
+		VideoID      string `bson:"video_id" dynamodbav:"video_id"`
+		Title        string `bson:"title" dynamodbav:"title"`
+		DurationMs   int64  `bson:"duration_ms" dynamodbav:"duration_ms"`
+		URL          string `bson:"url" dynamodbav:"url"`
+		ThumbnailURL string `bson:"thumbnail_url" dynamodbav:"thumbnail_url"`
+		Platform     string `bson:"platform" dynamodbav:"platform"`
 	}
 
 	FileData struct {
-		FilePath  string `json:"file_path"`
-		FileSize  string `json:"file_size"`
-		FileType  string `json:"file_type"`
-		PublicURL string `json:"public_url"`
+		FilePath string `bson:"file_path" dynamodbav:"file_path"`
+		FileSize string `bson:"file_size" dynamodbav:"file_size"`
+		FileType string `bson:"file_type" dynamodbav:"file_type"`
 	}
 )

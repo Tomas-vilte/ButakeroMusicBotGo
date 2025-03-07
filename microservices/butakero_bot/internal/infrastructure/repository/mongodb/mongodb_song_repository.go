@@ -13,10 +13,8 @@ import (
 
 // Options contiene las opciones de configuración para el repositorio
 type Options struct {
-	Collection     *mongo.Collection
-	Database       string
-	CollectionName string
-	Logger         logging.Logger
+	Collection *mongo.Collection
+	Logger     logging.Logger
 }
 
 // MongoSongRepository implementa la interfaz ports.SongRepository
@@ -39,7 +37,7 @@ func NewMongoDBSongRepository(opts Options) (*MongoSongRepository, error) {
 func (r *MongoSongRepository) GetSongByVideoID(ctx context.Context, videoID string) (*entity.Song, error) {
 	var song entity.Song
 
-	filter := bson.M{"video_id": videoID}
+	filter := bson.M{"metadata.video_id": videoID}
 	err := r.opts.Collection.FindOne(ctx, filter).Decode(&song)
 
 	if err != nil {
@@ -57,7 +55,7 @@ func (r *MongoSongRepository) GetSongByVideoID(ctx context.Context, videoID stri
 
 func (r *MongoSongRepository) SearchSongsByTitle(ctx context.Context, title string) ([]*entity.Song, error) {
 	indexModel := mongo.IndexModel{
-		Keys:    bson.D{{"title", "text"}},
+		Keys:    bson.D{{"metadata.title", "text"}},
 		Options: options.Index().SetName("title_text"),
 	}
 
