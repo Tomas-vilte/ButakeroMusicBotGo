@@ -10,6 +10,6 @@ type (
 	ExternalSongService interface {
 		// RequestDownload solicita la descarga de una canción por su nombre o url.
 		// Devuelve una respuesta de descarga o un error si ocurre algún problema.
-		RequestDownload(ctx context.Context, songName string) (*entity.DownloadResponse, error)
+		RequestDownload(ctx context.Context, songName, providerType string) (*entity.DownloadResponse, error)
 	}
 )
