@@ -126,7 +126,7 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*m
 		ID:          item.ID,
 		Description: item.Snippet.Description,
 		Creator:     item.Snippet.ChannelTitle,
-		Duration:    durationMs,
+		DurationMs:  durationMs,
 		Thumbnail:   item.Snippet.Thumbnails.Default.URL,
 		PublishedAt: publishedAt,
 		URL:         fmt.Sprintf("https://youtube.com/watch?v=%s", videoID),

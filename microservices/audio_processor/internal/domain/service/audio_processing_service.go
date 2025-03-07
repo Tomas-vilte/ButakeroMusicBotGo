@@ -145,7 +145,7 @@ func (a *AudioProcessingService) createMetadata(mediaDetails *model.MediaDetails
 		ID:           uuid.New().String(),
 		VideoID:      mediaDetails.ID,
 		Title:        mediaDetails.Title,
-		DurationMs:   mediaDetails.Duration,
+		DurationMs:   mediaDetails.DurationMs,
 		URL:          mediaDetails.URL,
 		Platform:     platformYoutube,
 		ThumbnailURL: mediaDetails.Thumbnail,
