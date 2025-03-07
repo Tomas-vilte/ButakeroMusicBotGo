@@ -160,7 +160,7 @@ func createMetadataDocument(metadata *model.Metadata) bson.M {
 		"url":           metadata.URL,
 		"thumbnail_url": metadata.ThumbnailURL,
 		"platform":      metadata.Platform,
-		"duration":      metadata.Duration,
+		"duration_ms":   metadata.DurationMs,
 		"createdAt":     now,
 		"updatedAt":     now,
 	}

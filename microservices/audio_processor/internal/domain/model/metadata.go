@@ -1,6 +1,9 @@
 package model
 
-import "github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+import (
+	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+)
 
 // Metadata representa la información sobre una canción procesada.
 // Contiene detalles sobre la canción, como su título, artista, duración, y URLs de recursos.
@@ -18,9 +21,9 @@ type Metadata struct {
 
 	GSI2PK string `bson:"-" json:"-" dynamodbav:"GSI2_PK"`
 
-	// Duration es la duración de la canción en segundos.
+	// DurationMs es la duración de la canción en milisegundos.
 	// Representa cuánto tiempo dura la canción desde el inicio hasta el final.
-	Duration string `bson:"duration" json:"duration" dynamodbav:"duration"`
+	DurationMs int64 `bson:"duration_ms" json:"duration_ms" dynamodbav:"duration_ms"`
 
 	// es la URL de la canción en YouTube.
 	// Permite localizar la canción en YouTube para referencias adicionales o reproducción.
@@ -37,12 +40,12 @@ type Metadata struct {
 
 func (m *Metadata) ToAttributeValue() map[string]types.AttributeValue {
 	return map[string]types.AttributeValue{
-		"id":        &types.AttributeValueMemberS{Value: m.ID},
-		"video_id":  &types.AttributeValueMemberS{Value: m.VideoID},
-		"title":     &types.AttributeValueMemberS{Value: m.Title},
-		"duration":  &types.AttributeValueMemberS{Value: m.Duration},
-		"url":       &types.AttributeValueMemberS{Value: m.URL},
-		"thumbnail": &types.AttributeValueMemberS{Value: m.ThumbnailURL},
-		"platform":  &types.AttributeValueMemberS{Value: m.Platform},
+		"id":          &types.AttributeValueMemberS{Value: m.ID},
+		"video_id":    &types.AttributeValueMemberS{Value: m.VideoID},
+		"title":       &types.AttributeValueMemberS{Value: m.Title},
+		"duration_ms": &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", m.DurationMs)},
+		"url":         &types.AttributeValueMemberS{Value: m.URL},
+		"thumbnail":   &types.AttributeValueMemberS{Value: m.ThumbnailURL},
+		"platform":    &types.AttributeValueMemberS{Value: m.Platform},
 	}
 }

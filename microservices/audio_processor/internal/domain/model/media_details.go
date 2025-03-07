@@ -7,7 +7,7 @@ type MediaDetails struct {
 	ID          string
 	Description string
 	Creator     string
-	Duration    string
+	Duration    int64
 	PublishedAt time.Time
 	URL         string
 	Thumbnail   string

@@ -27,7 +27,7 @@ func TestMongoMetadataRepository_Integration(t *testing.T) {
 			URL:          "https://youtube.com/test",
 			ThumbnailURL: "https://img.youtube.com/test",
 			Platform:     "youtube",
-			Duration:     "3:45",
+			DurationMs:   257026,
 		}
 
 		// act
@@ -49,7 +49,7 @@ func TestMongoMetadataRepository_Integration(t *testing.T) {
 			URL:          "https://youtube.com/test2",
 			ThumbnailURL: "https://img.youtube.com/test2",
 			Platform:     "youtube",
-			Duration:     "4:20",
+			DurationMs:   257026,
 		}
 
 		err := repo.SaveMetadata(context.Background(), metadata)
@@ -78,7 +78,7 @@ func TestMongoMetadataRepository_Integration(t *testing.T) {
 			URL:          "https://youtube.com/test3",
 			ThumbnailURL: "https://img.youtube.com/test3",
 			Platform:     "youtube",
-			Duration:     "2:30",
+			DurationMs:   257026,
 		}
 
 		err := repo.SaveMetadata(context.Background(), metadata)
@@ -127,7 +127,7 @@ func TestMongoMetadataRepository_Integration(t *testing.T) {
 			URL:          "https://youtube.com/test",
 			ThumbnailURL: "https://img.youtube.com/test",
 			Platform:     "youtube",
-			Duration:     "3:45",
+			DurationMs:   257026,
 		}
 
 		// act - Intentar guardar el mismo ID 2 veces

@@ -115,12 +115,18 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*m
 	item := result.Items[0]
 	publishedAt, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
 
+	durationMs, err := parseISODurationToMs(item.ContentDetails.Duration)
+	if err != nil {
+		log.Error("Error al convertir la duración", zap.Error(err))
+		return nil, fmt.Errorf("error al convertir la duración: %w", err)
+	}
+
 	videoDetails := &model.MediaDetails{
 		Title:       item.Snippet.Title,
 		ID:          item.ID,
 		Description: item.Snippet.Description,
 		Creator:     item.Snippet.ChannelTitle,
-		Duration:    item.ContentDetails.Duration,
+		Duration:    durationMs,
 		Thumbnail:   item.Snippet.Thumbnails.Default.URL,
 		PublishedAt: publishedAt,
 		URL:         fmt.Sprintf("https://youtube.com/watch?v=%s", videoID),
@@ -227,4 +233,14 @@ func ExtractVideoIDFromURL(videoURL string) (string, error) {
 
 func isValidVideoID(videoID string) bool {
 	return len(videoID) == 11
+}
+
+func parseISODurationToMs(isoDuration string) (int64, error) {
+	durationStr := strings.TrimPrefix(isoDuration, "PT")
+	durationStr = strings.ToLower(durationStr)
+	duration, err := time.ParseDuration(durationStr)
+	if err != nil {
+		return 0, fmt.Errorf("error al parsear la duracion ISO 8601: %w", err)
+	}
+	return duration.Milliseconds(), nil
 }
