@@ -32,7 +32,7 @@ func TestVideoService_GetMediaDetails(t *testing.T) {
 		mediaDetails := &model.MediaDetails{
 			Title:       "Test Video",
 			Description: "This is a test video",
-			Duration:    "120",
+			DurationMs:  257026,
 		}
 
 		mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)

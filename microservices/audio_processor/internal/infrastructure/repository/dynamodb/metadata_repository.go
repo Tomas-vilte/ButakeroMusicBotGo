@@ -66,7 +66,7 @@ func (s *DynamoMetadataRepository) SaveMetadata(ctx context.Context, metadata *m
 			"url":           &types.AttributeValueMemberS{Value: metadata.URL},
 			"thumbnail_url": &types.AttributeValueMemberS{Value: metadata.ThumbnailURL},
 			"platform":      &types.AttributeValueMemberS{Value: metadata.Platform},
-			"duration":      &types.AttributeValueMemberS{Value: metadata.Duration},
+			"duration_ms":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", metadata.DurationMs)},
 		},
 	})
 	if err != nil {

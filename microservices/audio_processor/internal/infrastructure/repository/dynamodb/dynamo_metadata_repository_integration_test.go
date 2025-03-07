@@ -44,11 +44,11 @@ func TestIntegrationMetadataStore(t *testing.T) {
 		require.NoError(t, err)
 
 		metadata := &model.Metadata{
-			ID:       "integration-test-id",
-			Title:    "Integration Test Song",
-			URL:      "https://www.youtube.com/watch?v=example",
-			Platform: "YouTube",
-			Duration: "240",
+			ID:         "integration-test-id",
+			Title:      "Integration Test Song",
+			URL:        "https://www.youtube.com/watch?v=example",
+			Platform:   "YouTube",
+			DurationMs: 257026,
 		}
 
 		// act SaveMetadata
@@ -63,7 +63,7 @@ func TestIntegrationMetadataStore(t *testing.T) {
 		assert.Equal(t, metadata.Title, retrievedMetadata.Title)
 		assert.Equal(t, metadata.URL, retrievedMetadata.URL)
 		assert.Equal(t, metadata.Platform, retrievedMetadata.Platform)
-		assert.Equal(t, metadata.Duration, retrievedMetadata.Duration)
+		assert.Equal(t, metadata.DurationMs, retrievedMetadata.DurationMs)
 
 		// act - delete metadata
 		err = store.DeleteMetadata(context.Background(), metadata.ID)

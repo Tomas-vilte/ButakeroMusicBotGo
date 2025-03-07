@@ -21,11 +21,11 @@ func TestAudioProcessingService_ProcessAudio_Success(t *testing.T) {
 	ctx := context.Background()
 	operationID := "test-operation-123"
 	mediaDetails := &model.MediaDetails{
-		ID:        "video123",
-		Title:     "Test Video",
-		Duration:  "3:45",
-		URL:       "https://youtube.com/watch?v=video123",
-		Thumbnail: "https://youtube.com/thumbnail.jpg",
+		ID:         "video123",
+		Title:      "Test Video",
+		DurationMs: 257026,
+		URL:        "https://youtube.com/watch?v=video123",
+		Thumbnail:  "https://youtube.com/thumbnail.jpg",
 	}
 
 	mockDownloadService := new(MockAudioDownloadService)
@@ -85,11 +85,11 @@ func TestAudioProcessingService_ProcessAudio_DownloadError(t *testing.T) {
 	ctx := context.Background()
 	operationID := "test-operation-123"
 	mediaDetails := &model.MediaDetails{
-		ID:        "video123",
-		Title:     "Test Video",
-		Duration:  "3:45",
-		URL:       "https://youtube.com/watch?v=video123",
-		Thumbnail: "https://youtube.com/thumbnail.jpg",
+		ID:         "video123",
+		Title:      "Test Video",
+		DurationMs: 257026,
+		URL:        "https://youtube.com/watch?v=video123",
+		Thumbnail:  "https://youtube.com/thumbnail.jpg",
 	}
 
 	mockDownloadService := new(MockAudioDownloadService)
@@ -143,11 +143,11 @@ func TestAudioProcessingService_ProcessAudio_StorageError(t *testing.T) {
 	ctx := context.Background()
 	operationID := "test-operation-123"
 	mediaDetails := &model.MediaDetails{
-		ID:        "video123",
-		Title:     "Test Video",
-		Duration:  "3:45",
-		URL:       "https://youtube.com/watch?v=video123",
-		Thumbnail: "https://youtube.com/thumbnail.jpg",
+		ID:         "video123",
+		Title:      "Test Video",
+		DurationMs: 257026,
+		URL:        "https://youtube.com/watch?v=video123",
+		Thumbnail:  "https://youtube.com/thumbnail.jpg",
 	}
 
 	mockDownloadService := new(MockAudioDownloadService)
@@ -203,11 +203,11 @@ func TestAudioProcessingService_ProcessAudio_OperationUpdateError(t *testing.T) 
 	ctx := context.Background()
 	operationID := "test-operation-123"
 	mediaDetails := &model.MediaDetails{
-		ID:        "video123",
-		Title:     "Test Video",
-		Duration:  "3:45",
-		URL:       "https://youtube.com/watch?v=video123",
-		Thumbnail: "https://youtube.com/thumbnail.jpg",
+		ID:         "video123",
+		Title:      "Test Video",
+		DurationMs: 257026,
+		URL:        "https://youtube.com/watch?v=video123",
+		Thumbnail:  "https://youtube.com/thumbnail.jpg",
 	}
 
 	mockDownloadService := new(MockAudioDownloadService)
@@ -268,11 +268,11 @@ func TestAudioProcessingService_ProcessAudio_Retry(t *testing.T) {
 	ctx := context.Background()
 	operationID := "test-operation-123"
 	mediaDetails := &model.MediaDetails{
-		ID:        "video123",
-		Title:     "Test Video",
-		Duration:  "3:45",
-		URL:       "https://youtube.com/watch?v=video123",
-		Thumbnail: "https://youtube.com/thumbnail.jpg",
+		ID:         "video123",
+		Title:      "Test Video",
+		DurationMs: 257026,
+		URL:        "https://youtube.com/watch?v=video123",
+		Thumbnail:  "https://youtube.com/thumbnail.jpg",
 	}
 
 	mockDownloadService := new(MockAudioDownloadService)
@@ -358,11 +358,11 @@ func TestAudioProcessingService_ProcessAudio_Retry(t *testing.T) {
 func TestAudioProcessingService_CreateMetadata(t *testing.T) {
 	// Arrange
 	mediaDetails := &model.MediaDetails{
-		ID:        "video123",
-		Title:     "Test Video",
-		Duration:  "3:45",
-		URL:       "https://youtube.com/watch?v=video123",
-		Thumbnail: "https://youtube.com/thumbnail.jpg",
+		ID:         "video123",
+		Title:      "Test Video",
+		DurationMs: 257026,
+		URL:        "https://youtube.com/watch?v=video123",
+		Thumbnail:  "https://youtube.com/thumbnail.jpg",
 	}
 
 	service := NewAudioProcessingService(
@@ -376,7 +376,7 @@ func TestAudioProcessingService_CreateMetadata(t *testing.T) {
 	assert.NotEmpty(t, metadata.ID)
 	assert.Equal(t, mediaDetails.ID, metadata.VideoID)
 	assert.Equal(t, mediaDetails.Title, metadata.Title)
-	assert.Equal(t, mediaDetails.Duration, metadata.Duration)
+	assert.Equal(t, mediaDetails.DurationMs, metadata.DurationMs)
 	assert.Equal(t, mediaDetails.URL, metadata.URL)
 	assert.Equal(t, platformYoutube, metadata.Platform)
 	assert.Equal(t, mediaDetails.Thumbnail, metadata.ThumbnailURL)
