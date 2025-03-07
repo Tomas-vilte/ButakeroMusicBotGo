@@ -40,6 +40,65 @@ func NewZapLogger() (*ZapLogger, error) {
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
 
+	config.Encoding = "console"
+
+	logger, err := config.Build()
+	if err != nil {
+		return nil, err
+	}
+	return &ZapLogger{logger: logger}, nil
+}
+
+func NewDevelopmentLogger() (*ZapLogger, error) {
+	config := zap.NewDevelopmentConfig()
+
+	config.DisableStacktrace = true
+
+	config.EncoderConfig = zapcore.EncoderConfig{
+		TimeKey:        "timestamp",
+		LevelKey:       "level",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		FunctionKey:    zapcore.OmitKey,
+		MessageKey:     "msg",
+		StacktraceKey:  "stacktrace",
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    zapcore.CapitalColorLevelEncoder,
+		EncodeTime:     customTimeEncoder,
+		EncodeDuration: zapcore.StringDurationEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
+	}
+
+	logger, err := config.Build(
+		zap.AddCallerSkip(1),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &ZapLogger{logger: logger}, nil
+}
+
+func NewProductionLogger() (*ZapLogger, error) {
+	config := zap.NewProductionConfig()
+
+	config.DisableStacktrace = true
+	config.EncoderConfig = zapcore.EncoderConfig{
+		TimeKey:        "timestamp",
+		LevelKey:       "level",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		MessageKey:     "msg",
+		StacktraceKey:  "stacktrace",
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    zapcore.CapitalLevelEncoder,
+		EncodeTime:     customTimeEncoder,
+		EncodeDuration: zapcore.SecondsDurationEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
+	}
+
+	config.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
+	config.Encoding = "json"
+
 	logger, err := config.Build()
 	if err != nil {
 		return nil, err

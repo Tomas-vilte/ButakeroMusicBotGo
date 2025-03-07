@@ -3,56 +3,81 @@ package discord
 import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"github.com/bwmarrin/discordgo"
 	"time"
 )
 
-// GeneratePlayingSongEmbed Genera un embed para mostrar una canción en reproducción.
+// GeneratePlayingSongEmbed genera un embed para mostrar una canción en reproducción.
 func GeneratePlayingSongEmbed(playMsg *entity.PlayedSong) *discordgo.MessageEmbed {
 	if playMsg == nil || playMsg.Song == (entity.Song{}) {
 		return nil
 	}
 
+	// Duración total en milisegundos
+	durationMs := playMsg.Song.Metadata.DurationMs
+	duration := time.Duration(durationMs) * time.Millisecond
+
+	// Tiempo transcurrido en milisegundos
+	elapsedMs := playMsg.Position
+	elapsed := time.Duration(elapsedMs) * time.Millisecond
+
+	// Barra de progreso
 	progressBar := generateProgressBar(
-		float64(playMsg.Position)/parseDuration(playMsg.Song.Duration),
+		float64(elapsedMs)/float64(durationMs),
 		20,
 	)
 
+	// Crear el embed
 	embed := &discordgo.MessageEmbed{
-		Title:       playMsg.Song.Title,
-		Description: fmt.Sprintf("%s\n%s / %s", progressBar, shared.FmtDuration(playMsg.Position), shared.FmtDuration(time.Duration(parseDuration(playMsg.Song.Duration))))}
+		Title:       "🎵 **Reproduciendo:** " + playMsg.Song.Metadata.Title,
+		Description: fmt.Sprintf("%s\n**%s / %s**", progressBar, formatDuration(elapsed), formatDuration(duration)),
+		Color:       0x1DB954, // Color verde de Spotify
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:   "**Plataforma**",
+				Value:  playMsg.Song.Metadata.Platform,
+				Inline: true,
+			},
+			{
+				Name:   "**Solicitado por**",
+				Value:  playMsg.RequestedBy,
+				Inline: true,
+			},
+		},
+	}
 
-	if playMsg.Song.ThumbnailURL != "" {
+	// Añadir la miniatura de la canción si está disponible
+	if playMsg.Song.Metadata.ThumbnailURL != "" {
 		embed.Thumbnail = &discordgo.MessageEmbedThumbnail{
-			URL: playMsg.Song.ThumbnailURL,
+			URL: playMsg.Song.Metadata.ThumbnailURL,
 		}
 	}
 
-	if playMsg.RequestedBy != "" {
-		embed.Footer = &discordgo.MessageEmbedFooter{
-			Text: fmt.Sprintf("Solicitado por: %s", playMsg.RequestedBy),
-		}
+	// Añadir un footer con información adicional
+	embed.Footer = &discordgo.MessageEmbedFooter{
+		Text: "Butakero Music Bot 🎶",
 	}
 
 	return embed
 }
 
-func parseDuration(duration string) float64 {
-	d, _ := time.ParseDuration(duration)
-	return d.Seconds()
+// formatDuration formatea una duración en formato MM:SS.
+func formatDuration(duration time.Duration) string {
+	minutes := int(duration.Minutes())
+	seconds := int(duration.Seconds()) % 60
+	return fmt.Sprintf("%02d:%02d", minutes, seconds)
 }
 
-// Función interna para generar la barra de progreso.
+// generateProgressBar genera una barra de progreso visual.
 func generateProgressBar(progress float64, length int) string {
 	filled := int(progress * float64(length))
 	bar := ""
 	for i := 0; i < filled; i++ {
-		bar += "🟥"
+		bar += "▬"
 	}
-	bar += "🔴"
+	bar += "🔘"
 	for i := 0; i < length-filled-1; i++ {
-		bar += "⬛"
+		bar += "▬"
 	}
 	return bar
 }

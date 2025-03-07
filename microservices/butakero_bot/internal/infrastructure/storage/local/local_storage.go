@@ -70,15 +70,5 @@ func (s *LocalStorage) GetAudio(ctx context.Context, songPath string) (io.ReadCl
 		return nil, fmt.Errorf("error al abrir archivo: %w", err)
 	}
 
-	go func() {
-		<-ctx.Done()
-		defer func() {
-			if err := file.Close(); err != nil {
-				s.logger.Error("Hubo un error al cerrar el archivo:", zap.Error(err))
-				return
-			}
-		}()
-	}()
-
 	return file, nil
 }

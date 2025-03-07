@@ -16,8 +16,6 @@ import (
 var (
 	// ErrNoSongs indica que no hay canciones disponibles.
 	ErrNoSongs = errors.New("canción no disponible")
-	// ErrRemoveInvalidPosition indica que la posición de eliminación de la canción es inválida.
-	ErrRemoveInvalidPosition = errors.New("posición inválida")
 )
 
 // Trigger representa un disparador para comandos relacionados con la reproducción de música.
@@ -157,14 +155,8 @@ func (p *GuildPlayer) getVoiceAndTextChannels() (voiceChannel string, textChanne
 	return voiceChannel, textChannel, nil
 }
 
-// Close cierra el reproductor de música.
-func (p *GuildPlayer) Close() error {
-	p.songCtxCancel()
-	return p.session.Close()
-}
-
 // updateSongPosition actualiza la posición de la canción actual.
-func (p *GuildPlayer) updateSongPosition(song *entity.Song, position time.Duration, textChannel, playMsgID string) {
+func (p *GuildPlayer) updateSongPosition(song *entity.Song, position int64, textChannel, playMsgID string) {
 	if err := p.stateStorage.SetCurrentSong(&entity.PlayedSong{Song: *song, Position: position}); err != nil {
 		p.logger.Error("Error fallo al establecer la posicion actual de la cancion", zap.Error(err))
 	}
@@ -179,12 +171,10 @@ func (p *GuildPlayer) GetVoiceChannelInfo() map[string]VoiceChannelInfo {
 }
 
 // AddSong agrega una o más canciones a la lista de reproducción.
-func (p *GuildPlayer) AddSong(textChannelID, voiceChannelID *string, songs ...*entity.Song) error {
-	for _, song := range songs {
-		if err := p.songStorage.AppendSong(song); err != nil {
-			p.logger.Error("Error al agregar canción a la lista de reproducción", zap.Error(err))
-			return fmt.Errorf("al agregar canción: %w", err)
-		}
+func (p *GuildPlayer) AddSong(textChannelID, voiceChannelID *string, playedSong *entity.PlayedSong) error {
+	if err := p.songStorage.AppendSong(&playedSong.Song); err != nil {
+		p.logger.Error("Error al agregar canción a la lista de reproducción", zap.Error(err))
+		return fmt.Errorf("al agregar canción: %w", err)
 	}
 
 	go func() {
@@ -195,7 +185,7 @@ func (p *GuildPlayer) AddSong(textChannelID, voiceChannelID *string, songs ...*e
 		}
 	}()
 
-	p.logger.Info("Canciones agregadas a la lista de reproducción", zap.Int("cantidad", len(songs)))
+	p.logger.Info("Canción agregada a la lista de reproducción", zap.String("título", playedSong.Song.Metadata.Title))
 	return nil
 }
 
@@ -230,7 +220,7 @@ func (p *GuildPlayer) RemoveSong(position int) (*entity.Song, error) {
 		return nil, fmt.Errorf("al eliminar canción: %w", err)
 	}
 
-	p.logger.Info("Canción eliminada de la lista de reproducción", zap.String("título", song.Title))
+	p.logger.Info("Canción eliminada de la lista de reproducción", zap.String("título", song.Metadata.Title))
 	return song, nil
 }
 
@@ -244,7 +234,7 @@ func (p *GuildPlayer) GetPlaylist() ([]string, error) {
 
 	playlist := make([]string, len(songs))
 	for i, song := range songs {
-		playlist[i] = song.Title
+		playlist[i] = song.Metadata.Title
 	}
 
 	p.logger.Info("Lista de reproducción obtenida", zap.Int("cantidad", len(playlist)))
@@ -379,28 +369,54 @@ func (p *GuildPlayer) playSingleSong(ctx context.Context, song *entity.Song, tex
 	p.songCtxCancel = cancel
 	p.mu.Unlock()
 
-	playMsgID, err := p.message.SendPlayStatus(textChannel, &entity.PlayedSong{Song: *song})
+	playedSong := &entity.PlayedSong{
+		Song:     *song,
+		Position: 0,
+	}
+
+	playMsgID, err := p.message.SendPlayStatus(textChannel, playedSong)
 	if err != nil {
 		p.logger.Error("Error al enviar el mensaje con el nombre de la canción", zap.Error(err))
 		return err
 	}
 
-	audioData, err := p.storageAudio.GetAudio(songCtx, song.FilePath)
+	audioData, err := p.storageAudio.GetAudio(songCtx, song.FileData.FilePath)
 	if err != nil {
 		p.logger.Error("Error al obtener datos de audio", zap.Any("Cancion", song), zap.Error(err))
 		return err
 	}
-	defer audioData.Close()
+
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	done := make(chan struct{})
 
 	startTime := time.Now()
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				elapsedMs := time.Since(startTime).Milliseconds()
+				playedSong.Position = elapsedMs
+
+				if err := p.message.UpdatePlayStatus(textChannel, playMsgID, playedSong); err != nil {
+					p.logger.Error("Error al actualizar el estado de reproducción", zap.Error(err))
+				}
+			case <-done:
+				return
+			}
+		}
+	}()
+
 	if err := p.session.SendAudio(songCtx, audioData); err != nil {
 		p.logger.Error("Error al enviar datos de audio", zap.Error(err))
 		return err
 	}
 
-	position := time.Since(startTime)
-	p.updateSongPosition(song, position, textChannel, playMsgID)
+	close(done)
 
+	// Limpiar la canción actual
 	if err := p.stateStorage.SetCurrentSong(nil); err != nil {
 		p.logger.Error("Error al limpiar la canción actual", zap.Error(err))
 		return err

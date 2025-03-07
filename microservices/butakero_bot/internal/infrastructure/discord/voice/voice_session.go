@@ -55,9 +55,6 @@ func (d *DiscordVoiceSession) SendAudio(ctx context.Context, reader io.ReadClose
 		if err := decoderAudio.Close(); err != nil {
 			d.logger.Error("Error al cerrar el decoder", zap.Error(err))
 		}
-		if err := d.vc.Disconnect(); err != nil {
-			d.logger.Error("Error al cerrar la conexión de voz", zap.Error(err))
-		}
 	}()
 
 	for {
@@ -83,14 +80,6 @@ func (d *DiscordVoiceSession) SendAudio(ctx context.Context, reader io.ReadClose
 			}
 		}
 	}
-}
-
-// Close cierra la conexión de voz de Discord.
-func (d *DiscordVoiceSession) Close() error {
-	if d.vc != nil {
-		return d.vc.Disconnect()
-	}
-	return nil
 }
 
 // LeaveVoiceChannel desconecta la sesión del canal de voz.

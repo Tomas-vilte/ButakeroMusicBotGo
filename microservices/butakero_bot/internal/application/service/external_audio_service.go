@@ -21,13 +21,13 @@ func NewExternalAudioService(downloader ports.SongDownloader, logger logging.Log
 	}
 }
 
-func (e *externalServiceAudio) RequestDownload(ctx context.Context, songName string) (*entity.DownloadResponse, error) {
-	response, err := e.downloader.DownloadSong(ctx, songName)
+func (e *externalServiceAudio) RequestDownload(ctx context.Context, songName, providerType string) (*entity.DownloadResponse, error) {
+	response, err := e.downloader.DownloadSong(ctx, songName, providerType)
 	if err != nil {
 		e.logger.Error("Error al solicitar la descarga",
 			zap.String("songName", songName),
 			zap.Error(err))
-		return nil, fmt.Errorf("error al solicitar la descarga: %w", err)
+		return nil, fmt.Errorf("%s", err)
 	}
 
 	e.logger.Info("Solicitud de descarga exitosa",

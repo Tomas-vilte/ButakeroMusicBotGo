@@ -1,4 +1,6 @@
-package client
+//go:build !integration
+
+package adapters
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package client
+package adapters
 
 import (
 	"context"
@@ -8,14 +8,15 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"go.uber.org/zap"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
 )
 
 var (
-	ErrEmptySongName  = errors.New("el nombre de la canción no puede estar vacío")
-	ErrInvalidBaseURL = errors.New("la URL base no es válida")
+	ErrEmptyParameters = errors.New("faltan algunos parametros provider_type/songName")
+	ErrInvalidBaseURL  = errors.New("la URL base no es válida")
 )
 
 type AudioAPIClientConfig struct {
@@ -57,15 +58,16 @@ func NewAudioAPIClient(config AudioAPIClientConfig, logger logging.Logger) (*Aud
 	}, nil
 }
 
-func (c *AudioAPIClient) DownloadSong(ctx context.Context, songName string) (*entity.DownloadResponse, error) {
-	if songName == "" {
-		return nil, ErrEmptySongName
+func (c *AudioAPIClient) DownloadSong(ctx context.Context, songName, providerType string) (*entity.DownloadResponse, error) {
+	if songName == "" || providerType == "" {
+		return nil, ErrEmptyParameters
 	}
 
 	endpoint := c.baseURL.JoinPath("api/v1/audio/start")
 
 	params := url.Values{}
 	params.Add("song", songName)
+	params.Add("provider_type", providerType)
 	endpoint.RawQuery = params.Encode()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), nil)
@@ -79,26 +81,30 @@ func (c *AudioAPIClient) DownloadSong(ctx context.Context, songName string) (*en
 	}
 	defer func() {
 		if closeErr := resp.Body.Close(); closeErr != nil {
-			c.logger.Error("No se pudo cerrar el body de la respuesta",
-				zap.Error(closeErr),
-				zap.String("songName", songName))
+			c.logger.Error("error al cerrar el body de la respuesta", zap.Error(closeErr))
 		}
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("el código de estado %d no es el esperado, debería ser %d",
-			resp.StatusCode, http.StatusOK)
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("error en la solicitud: código de estado %d, respuesta: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error al leer el cuerpo de la respuesta: %w", err)
 	}
 
 	var response entity.DownloadResponse
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+	if err := json.Unmarshal(body, &response); err != nil {
 		return nil, fmt.Errorf("no se pudo decodificar la respuesta: %w", err)
 	}
 
 	c.logger.Info("Iniciando descarga",
-		zap.String("songName", songName),
 		zap.String("operationId", response.OperationID),
-		zap.String("songId", response.SongID))
+		zap.String("songId", response.SongID),
+		zap.String("status", response.Status),
+	)
 
 	return &response, nil
 }

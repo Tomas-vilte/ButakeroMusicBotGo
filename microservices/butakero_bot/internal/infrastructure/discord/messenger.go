@@ -21,21 +21,26 @@ func NewDiscordMessengerService(session *discordgo.Session, logger logging.Logge
 	}
 }
 
-// RespondToInteraction Responde a una interacción con un embed.
-func (m *MessengerService) RespondToInteraction(interaction *discordgo.Interaction, embed *discordgo.MessageEmbed) error {
+// RespondWithMessage responde a una interacción de Discord con un mensaje de texto.
+func (m *MessengerService) RespondWithMessage(interaction *discordgo.Interaction, message string) error {
 	m.logger.Info("Respondiendo a interacción", zap.String("tipo", interaction.Type.String()))
 
-	err := m.session.InteractionRespond(interaction, &discordgo.InteractionResponse{
+	response := discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Embeds: []*discordgo.MessageEmbed{embed},
+			Content: message,
 		},
-	})
-
-	if err != nil {
-		m.logger.Error("Error al responder a la interacción", zap.Error(err))
 	}
-	return err
+	return m.Respond(interaction, response)
+}
+
+// Respond responde a una interacción de Discord con la respuesta proporcionada.
+func (m *MessengerService) Respond(interaction *discordgo.Interaction, response discordgo.InteractionResponse) error {
+	if err := m.session.InteractionRespond(interaction, &response); err != nil {
+		m.logger.Error("No se pudo responder a la interacción", zap.Error(err))
+		return err
+	}
+	return nil
 }
 
 // SendPlayStatus Envía un embed de estado de reproducción a un canal.
@@ -71,4 +76,13 @@ func (m *MessengerService) SendText(channelID, text string) error {
 		m.logger.Error("Error al enviar mensaje de texto", zap.Error(err))
 	}
 	return err
+}
+
+// CreateFollowupMessage crea un mensaje de seguimiento para una interacción de Discord.
+func (m *MessengerService) CreateFollowupMessage(interaction *discordgo.Interaction, params discordgo.WebhookParams) error {
+	if _, err := m.session.FollowupMessageCreate(interaction, true, &params); err != nil {
+		m.logger.Error("No se pudo crear el mensaje de seguimiento", zap.Error(err))
+		return err
+	}
+	return nil
 }
