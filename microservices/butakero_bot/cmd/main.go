@@ -31,6 +31,9 @@ func main() {
 		}
 	}()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	messageConsumer, err := kafka.NewKafkaConsumer(kafka.KafkaConfig{
 		Brokers: []string{"localhost:9092"},
 		Topic:   "notification",
@@ -38,6 +41,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	go func() {
+		if err := messageConsumer.ConsumeMessages(ctx, 0); err != nil {
+			logger.Error("Error al consumir mensajes de kafka")
+		}
+	}()
 	audioClient, err := adapters.NewAudioAPIClient(adapters.AudioAPIClientConfig{
 		BaseURL:         "http://localhost:8080",
 		Timeout:         10 * time.Second,
@@ -60,7 +68,7 @@ func main() {
 		Password:      "root",
 		Database:      "audio_service_db",
 	}, logger)
-	err = connManager.Connect(context.Background())
+	err = connManager.Connect(ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -108,8 +116,6 @@ func main() {
 		presenceNotifier,
 		songService,
 	)
-
-	ctx := context.Background()
 
 	commandHandler := discord.NewSlashCommandRouter(cfg.CommandPrefix).
 		PlayHandler(handler.PlaySong).

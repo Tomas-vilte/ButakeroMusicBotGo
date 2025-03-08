@@ -71,10 +71,10 @@ func (handler *InteractionHandler) GuildCreate(ctx context.Context, s *discordgo
 	}
 	guildPlayer := handler.setupGuildPlayer(GuildID(event.Guild.ID), s)
 	handler.guildsPlayers[GuildID(event.Guild.ID)] = guildPlayer
-	handler.logger.Info("conectado al servidor", zap.String("guildID", event.Guild.ID))
+	handler.logger.Info("Conectando al servidor", zap.String("guildID", event.Guild.ID))
 	go func() {
 		if err := guildPlayer.Run(ctx); err != nil {
-			handler.logger.Error("error al ejecutar el reproductor", zap.Error(err))
+			handler.logger.Error("Error al ejecutar el reproductor", zap.Error(err))
 		}
 	}()
 }
@@ -105,9 +105,9 @@ func (handler *InteractionHandler) GuildDelete(s *discordgo.Session, event *disc
 func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.InteractionCreate, opt *discordgo.ApplicationCommandInteractionDataOption) {
 	g, err := s.State.Guild(ic.GuildID)
 	if err != nil {
-		handler.logger.Error("falló al obtener el servidor", zap.Error(err))
+		handler.logger.Error("Error al obtener el servidor", zap.Error(err))
 		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Ocurrió un error al obtener la información del servidor"); err != nil {
-			handler.logger.Error("falló al responder con el error del servidor", zap.Error(err))
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
@@ -115,7 +115,7 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 	vs := getUsersVoiceState(g, ic.Member.User)
 	if vs == nil {
 		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, ErrorMessageNotInVoiceChannel); err != nil {
-			handler.logger.Error("falló al responder con el error de no estar en un canal de voz", zap.Error(err))
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
@@ -123,7 +123,7 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 	input := opt.Options[0].StringValue()
 
 	if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Buscando y agregando la canción..."); err != nil {
-		handler.logger.Error("falló al responder a la interacción", zap.Error(err))
+		handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		return
 	}
 
@@ -134,7 +134,7 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 			if err := handler.discordMessenger.CreateFollowupMessage(ic.Interaction, discordgo.WebhookParams{
 				Content: "❌ Error al obtener la canción: " + err.Error(),
 			}); err != nil {
-				handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+				handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 			}
 			return
 		}
@@ -151,7 +151,7 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 			if err := handler.discordMessenger.CreateFollowupMessage(ic.Interaction, discordgo.WebhookParams{
 				Content: ErrorMessageFailedToAddSong,
 			}); err != nil {
-				handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+				handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 			}
 			return
 		}
@@ -159,7 +159,7 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 		if err := handler.discordMessenger.CreateFollowupMessage(ic.Interaction, discordgo.WebhookParams{
 			Content: "✅ Canción agregada a la cola: " + song.Metadata.Title,
 		}); err != nil {
-			handler.logger.Error("falló al enviar mensaje de confirmación", zap.Error(err))
+			handler.logger.Error("Error al enviar mensaje de confirmación", zap.Error(err))
 		}
 	}()
 }
@@ -168,33 +168,33 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 func (handler *InteractionHandler) AddSong(s *discordgo.Session, ic *discordgo.InteractionCreate) {
 	g, err := s.State.Guild(ic.GuildID)
 	if err != nil {
-		handler.logger.Info("falló al obtener el servidor", zap.Error(err))
-		if err := handler.discordMessenger.SendText(ic.ChannelID, "Ocurrió un error al obtener la información del servidor"); err != nil {
-			handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+		handler.logger.Info("Error al obtener el servidor", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Ocurrió un error al obtener la información del servidor"); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
 
 	vs := getUsersVoiceState(g, ic.Member.User)
 	if vs == nil {
-		if err := handler.discordMessenger.SendText(ic.ChannelID, ErrorMessageNotInVoiceChannel); err != nil {
-			handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, ErrorMessageNotInVoiceChannel); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
 
 	values := ic.MessageComponentData().Values
 	if len(values) == 0 {
-		if err := handler.discordMessenger.SendText(ic.ChannelID, "No se seleccionó ninguna canción"); err != nil {
-			handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "No se seleccionó ninguna canción"); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
 
 	songs := handler.storage.GetSongList(ic.ChannelID)
 	if len(songs) == 0 {
-		if err := handler.discordMessenger.SendText(ic.ChannelID, "No hay canciones disponibles para agregar"); err != nil {
-			handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "No hay canciones disponibles para agregar"); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
@@ -214,14 +214,14 @@ func (handler *InteractionHandler) AddSong(s *discordgo.Session, ic *discordgo.I
 
 	if err := guildPlayer.AddSong(&ic.ChannelID, &vs.ChannelID, playedSong); err != nil {
 		handler.logger.Error("Error al agregar la canción", zap.Error(err))
-		if err := handler.discordMessenger.SendText(ic.ChannelID, ErrorMessageFailedToAddSong); err != nil {
-			handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, ErrorMessageFailedToAddSong); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
 
-	if err := handler.discordMessenger.SendText(ic.ChannelID, "✅ Canción agregada a la cola"); err != nil {
-		handler.logger.Error("falló al enviar mensaje de confirmación", zap.Error(err))
+	if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "✅ Canción agregada a la cola"); err != nil {
+		handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 	}
 
 	handler.storage.DeleteSongList(ic.ChannelID)
@@ -231,24 +231,24 @@ func (handler *InteractionHandler) AddSong(s *discordgo.Session, ic *discordgo.I
 func (handler *InteractionHandler) StopPlaying(s *discordgo.Session, ic *discordgo.InteractionCreate, _ *discordgo.ApplicationCommandInteractionDataOption) {
 	g, err := s.State.Guild(ic.GuildID)
 	if err != nil {
-		handler.logger.Info("falló al obtener el servidor", zap.Error(err))
-		if err := handler.discordMessenger.SendText(ic.ChannelID, "Ocurrió un error al obtener la información del servidor"); err != nil {
-			handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+		handler.logger.Info("Error al obtener el servidor", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Ocurrió un error al obtener la información del servidor"); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
 
 	guildPlayer := handler.getGuildPlayer(GuildID(g.ID), s)
 	if err := guildPlayer.Stop(); err != nil {
-		handler.logger.Info("falló al detener la reproducción", zap.Error(err))
-		if err := handler.discordMessenger.SendText(ic.ChannelID, "Ocurrió un error al detener la reproducción"); err != nil {
-			handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+		handler.logger.Info("Error al detener la reproducción", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Ocurrió un error al detener la reproducción"); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
 
-	if err := handler.discordMessenger.SendText(ic.ChannelID, "⏹️ Reproducción detenida"); err != nil {
-		handler.logger.Error("falló al enviar mensaje de confirmación", zap.Error(err))
+	if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "⏹️ Reproducción detenida"); err != nil {
+		handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 	}
 }
 
@@ -256,17 +256,17 @@ func (handler *InteractionHandler) StopPlaying(s *discordgo.Session, ic *discord
 func (handler *InteractionHandler) SkipSong(s *discordgo.Session, ic *discordgo.InteractionCreate, _ *discordgo.ApplicationCommandInteractionDataOption) {
 	g, err := s.State.Guild(ic.GuildID)
 	if err != nil {
-		handler.logger.Info("falló al obtener el servidor", zap.Error(err))
-		if err := handler.discordMessenger.SendText(ic.ChannelID, "Ocurrió un error al obtener la información del servidor"); err != nil {
-			handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+		handler.logger.Info("Error al obtener el servidor", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Ocurrió un error al obtener la información del servidor"); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
 
 	guildPlayer := handler.getGuildPlayer(GuildID(g.ID), s)
 	guildPlayer.SkipSong()
-	if err := handler.discordMessenger.SendText(ic.ChannelID, "⏭️ Canción omitida"); err != nil {
-		handler.logger.Error("falló al enviar mensaje de confirmación", zap.Error(err))
+	if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "⏭️ Canción omitida"); err != nil {
+		handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 	}
 }
 
@@ -274,9 +274,9 @@ func (handler *InteractionHandler) SkipSong(s *discordgo.Session, ic *discordgo.
 func (handler *InteractionHandler) ListPlaylist(s *discordgo.Session, ic *discordgo.InteractionCreate, _ *discordgo.ApplicationCommandInteractionDataOption) {
 	g, err := s.State.Guild(ic.GuildID)
 	if err != nil {
-		handler.logger.Info("falló al obtener el servidor", zap.Error(err))
-		if err := handler.discordMessenger.SendText(ic.ChannelID, "Ocurrió un error al obtener la información del servidor"); err != nil {
-			handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+		handler.logger.Error("Error al obtener el servidor", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Ocurrió un error al obtener la información del servidor"); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
@@ -285,15 +285,15 @@ func (handler *InteractionHandler) ListPlaylist(s *discordgo.Session, ic *discor
 	songs, err := guildPlayer.GetPlaylist()
 	if err != nil {
 		handler.logger.Error("Error al obtener la lista de reproducción", zap.Error(err))
-		if err := handler.discordMessenger.SendText(ic.ChannelID, "Error al obtener la lista de reproducción"); err != nil {
-			handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Error al obtener la lista de reproducción"); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
 
 	if len(songs) == 0 {
-		if err := handler.discordMessenger.SendText(ic.ChannelID, "📭 La lista de reproducción está vacía"); err != nil {
-			handler.logger.Error("falló al enviar mensaje", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "📭 La lista de reproducción está vacía"); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
@@ -303,8 +303,8 @@ func (handler *InteractionHandler) ListPlaylist(s *discordgo.Session, ic *discor
 		message += fmt.Sprintf("%d. %s\n", i+1, song)
 	}
 
-	if err := handler.discordMessenger.SendText(ic.ChannelID, message); err != nil {
-		handler.logger.Error("falló al enviar la lista de reproducción", zap.Error(err))
+	if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, message); err != nil {
+		handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 	}
 }
 
@@ -312,9 +312,9 @@ func (handler *InteractionHandler) ListPlaylist(s *discordgo.Session, ic *discor
 func (handler *InteractionHandler) RemoveSong(s *discordgo.Session, ic *discordgo.InteractionCreate, opt *discordgo.ApplicationCommandInteractionDataOption) {
 	g, err := s.State.Guild(ic.GuildID)
 	if err != nil {
-		handler.logger.Info("falló al obtener el servidor", zap.Error(err))
-		if err := handler.discordMessenger.SendText(ic.ChannelID, "Ocurrió un error al obtener la información del servidor"); err != nil {
-			handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+		handler.logger.Error("Error al obtener el servidor", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Ocurrió un error al obtener la información del servidor"); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
@@ -325,14 +325,14 @@ func (handler *InteractionHandler) RemoveSong(s *discordgo.Session, ic *discordg
 	song, err := guildPlayer.RemoveSong(int(position))
 	if err != nil {
 		handler.logger.Error("Error al eliminar la canción", zap.Error(err))
-		if err := handler.discordMessenger.SendText(ic.ChannelID, "Error al eliminar la canción"); err != nil {
-			handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Error al eliminar la canción"); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
 
-	if err := handler.discordMessenger.SendText(ic.ChannelID, fmt.Sprintf("🗑️ Canción **%s** eliminada de la lista", song.Metadata.Title)); err != nil {
-		handler.logger.Error("falló al enviar mensaje de confirmación", zap.Error(err))
+	if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, fmt.Sprintf("🗑️ Canción **%s** eliminada de la lista", song.Metadata.Title)); err != nil {
+		handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 	}
 }
 
@@ -340,9 +340,9 @@ func (handler *InteractionHandler) RemoveSong(s *discordgo.Session, ic *discordg
 func (handler *InteractionHandler) GetPlayingSong(s *discordgo.Session, ic *discordgo.InteractionCreate, _ *discordgo.ApplicationCommandInteractionDataOption) {
 	g, err := s.State.Guild(ic.GuildID)
 	if err != nil {
-		handler.logger.Info("falló al obtener el servidor", zap.Error(err))
-		if err := handler.discordMessenger.SendText(ic.ChannelID, "Ocurrió un error al obtener la información del servidor"); err != nil {
-			handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+		handler.logger.Error("Error al obtener el servidor", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Ocurrió un error al obtener la información del servidor"); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
@@ -351,21 +351,21 @@ func (handler *InteractionHandler) GetPlayingSong(s *discordgo.Session, ic *disc
 	song, err := guildPlayer.GetPlayedSong()
 	if err != nil {
 		handler.logger.Error("Error al obtener la canción actual", zap.Error(err))
-		if err := handler.discordMessenger.SendText(ic.ChannelID, "Error al obtener la canción actual"); err != nil {
-			handler.logger.Error("falló al enviar mensaje de error", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Error al obtener la canción actual"); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
 
 	if song == nil {
-		if err := handler.discordMessenger.SendText(ic.ChannelID, "🔇 No se está reproduciendo ninguna canción"); err != nil {
-			handler.logger.Error("falló al enviar mensaje", zap.Error(err))
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "🔇 No se está reproduciendo ninguna canción"); err != nil {
+			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
 
-	if err := handler.discordMessenger.SendText(ic.ChannelID, fmt.Sprintf("🎵 Reproduciendo: %s", song.Song.Metadata.Title)); err != nil {
-		handler.logger.Error("falló al enviar mensaje", zap.Error(err))
+	if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, fmt.Sprintf("🎵 Reproduciendo: %s", song.Song.Metadata.Title)); err != nil {
+		handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 	}
 }
 
