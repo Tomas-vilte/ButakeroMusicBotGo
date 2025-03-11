@@ -48,9 +48,9 @@ func TestKafkaIntegration_SendAndReceiveMessage(t *testing.T) {
 	kafkaService, err := NewKafkaService(cfg, log)
 	assert.NoError(t, err)
 
-	message := model.Message{
+	message := &model.MediaProcessingMessage{
 		ID:      "test-id",
-		Content: "test-content",
+		VideoID: "test-video",
 	}
 
 	err = kafkaService.SendMessage(ctx, message)
@@ -66,7 +66,7 @@ func TestKafkaIntegration_SendAndReceiveMessage(t *testing.T) {
 
 	assert.NotEmpty(t, receivedMessages, "Se esperaban mensajes, pero no se recibió ninguno")
 	assert.Equal(t, message.ID, receivedMessages[0].ID, "El ID recibido debe coincidir con el ID enviado")
-	assert.Equal(t, message.Content, receivedMessages[0].Content, "El contenido recibido no coincide con el enviado")
+	assert.Equal(t, message.VideoID, receivedMessages[0].VideoID, "El contenido recibido no coincide con el enviado")
 	assert.Equal(t, message, receivedMessages[0], "Respuesta no coincide con el enviado")
 
 }

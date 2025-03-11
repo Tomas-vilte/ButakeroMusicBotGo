@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"time"
 
@@ -26,7 +25,7 @@ const (
 )
 
 type SQSService struct {
-	Client ports.SQSClientInterface
+	Client *sqs.Client
 	Config *config.Config
 	Log    logger.Logger
 }
@@ -55,7 +54,7 @@ func NewSQSService(cfgApplication *config.Config, log logger.Logger) (*SQSServic
 	}, nil
 }
 
-func (s *SQSService) SendMessage(ctx context.Context, message model.Message) error {
+func (s *SQSService) SendMessage(ctx context.Context, message *model.MediaProcessingMessage) error {
 	log := s.Log.With(
 		zap.String("component", "SQSService"),
 		zap.String("method", "SendMessage"),
@@ -113,7 +112,7 @@ func (s *SQSService) sendMessageWithRetry(ctx context.Context, input *sqs.SendMe
 	return errors.Wrap(lastErr, "No se pudo enviar el mensaje a SQS después de todos los reintentos.")
 }
 
-func (s *SQSService) ReceiveMessage(ctx context.Context) ([]model.Message, error) {
+func (s *SQSService) ReceiveMessage(ctx context.Context) ([]model.MediaProcessingMessage, error) {
 	log := s.Log.With(
 		zap.String("component", "SQSService"),
 		zap.String("method", "ReceiveMessage"),
@@ -128,7 +127,7 @@ func (s *SQSService) ReceiveMessage(ctx context.Context) ([]model.Message, error
 		MessageAttributeNames: []string{"All"},
 	}
 
-	var messages []model.Message
+	var messages []model.MediaProcessingMessage
 	var lastErr error
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
@@ -163,15 +162,15 @@ func (s *SQSService) ReceiveMessage(ctx context.Context) ([]model.Message, error
 	return nil, errors.Wrap(lastErr, "No se pudieron recibir mensajes de SQS después de todos los reintentos.")
 }
 
-func (s *SQSService) processReceivedMessages(sqsMessages []types.Message) ([]model.Message, error) {
+func (s *SQSService) processReceivedMessages(sqsMessages []types.Message) ([]model.MediaProcessingMessage, error) {
 	log := s.Log.With(
 		zap.String("component", "SQSService"),
 		zap.String("method", "processReceivedMessages"),
 	)
-	messages := make([]model.Message, 0, len(sqsMessages))
+	messages := make([]model.MediaProcessingMessage, 0, len(sqsMessages))
 
 	for _, sqsMsg := range sqsMessages {
-		var msg model.Message
+		var msg model.MediaProcessingMessage
 		err := json.Unmarshal([]byte(*sqsMsg.Body), &msg)
 		if err != nil {
 			log.Error("Error al deserializar el mensaje",

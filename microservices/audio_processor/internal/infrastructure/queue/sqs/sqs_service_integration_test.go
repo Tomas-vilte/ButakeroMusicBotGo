@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
-	"time"
 )
 
 func cleanupMessages(ctx context.Context, service *SQSService) error {
@@ -66,17 +65,16 @@ func setupTestEnvironment(t *testing.T) (*SQSService, *config.Config) {
 	return service, cfg
 }
 
-func createTestMessage() model.Message {
-	return model.Message{
+func createTestMessage() *model.MediaProcessingMessage {
+	return &model.MediaProcessingMessage{
 		ID:      uuid.New().String(),
-		Content: "Test message " + time.Now().Format(time.RFC3339),
-		Status: model.Status{
-			ID:       uuid.New().String(),
-			Status:   "pending",
-			Message:  "Test status message",
-			Success:  false,
-			Attempts: 0,
+		VideoID: "video_id",
+		FileData: &model.FileData{
+			FilePath: "/path/test",
+			FileSize: "1234",
+			FileType: "dca",
 		},
+		PlatformMetadata: &model.PlatformMetadata{},
 	}
 }
 
@@ -147,14 +145,14 @@ func TestSQSServiceIntegration(t *testing.T) {
 
 	t.Run("Concurrent Message Processing", func(t *testing.T) {
 		numMessages := 5
-		messages := make([]model.Message, numMessages)
+		messages := make([]*model.MediaProcessingMessage, numMessages)
 		for i := 0; i < numMessages; i++ {
 			messages[i] = createTestMessage()
 		}
 
 		errChan := make(chan error, numMessages)
 		for _, msg := range messages {
-			go func(m model.Message) {
+			go func(m *model.MediaProcessingMessage) {
 				errChan <- service.SendMessage(ctx, m)
 			}(msg)
 		}
