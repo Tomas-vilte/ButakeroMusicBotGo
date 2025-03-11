@@ -6,31 +6,26 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type MockOperationRepository struct {
+type MockMediaRepository struct {
 	mock.Mock
 }
 
-func (m *MockOperationRepository) SaveOperationsResult(ctx context.Context, result *model.OperationResult) error {
-	args := m.Called(ctx, result)
+func (m *MockMediaRepository) SaveMedia(ctx context.Context, media *model.Media) error {
+	args := m.Called(ctx, media)
 	return args.Error(0)
 }
 
-func (m *MockOperationRepository) GetOperationResult(ctx context.Context, id, songID string) (*model.OperationResult, error) {
-	args := m.Called(ctx, id, songID)
-	return args.Get(0).(*model.OperationResult), args.Error(1)
+func (m *MockMediaRepository) GetMedia(ctx context.Context, id string, videoID string) (*model.Media, error) {
+	args := m.Called(ctx, id, videoID)
+	return args.Get(0).(*model.Media), args.Error(1)
 }
 
-func (m *MockOperationRepository) DeleteOperationResult(ctx context.Context, id, songID string) error {
-	args := m.Called(ctx, id, songID)
+func (m *MockMediaRepository) DeleteMedia(ctx context.Context, id string, videoID string) error {
+	args := m.Called(ctx, id, videoID)
 	return args.Error(0)
 }
 
-func (m *MockOperationRepository) UpdateOperationStatus(ctx context.Context, operationID, songID, status string) error {
-	args := m.Called(ctx, operationID, songID, status)
-	return args.Error(0)
-}
-
-func (m *MockOperationRepository) UpdateOperationResult(ctx context.Context, operationID string, operationResult *model.OperationResult) error {
-	args := m.Called(ctx, operationID, operationResult)
+func (m *MockMediaRepository) UpdateMedia(ctx context.Context, id string, videoID string, media *model.Media) error {
+	args := m.Called(ctx, id, videoID, media)
 	return args.Error(0)
 }

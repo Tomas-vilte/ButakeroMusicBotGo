@@ -47,15 +47,9 @@ func StartServer() error {
 		return err
 	}
 
-	metadataRepo, err := dynamodb.NewMetadataStore(cfg, log)
+	mediaRepository, err := dynamodb.NewMediaRepositoryDynamoDB(cfg, log)
 	if err != nil {
 		log.Error("Error al crear metadata repository", zap.Error(err))
-		return err
-	}
-
-	operationRepo, err := dynamodb.NewOperationStore(cfg, log)
-	if err != nil {
-		log.Error("Error al crear operation repository", zap.Error(err))
 		return err
 	}
 
@@ -92,26 +86,21 @@ func StartServer() error {
 		return err
 	}
 	youtubeAPI := adapters.NewYouTubeClient(cfg.API.YouTube.ApiKey, log)
-
-	encoderAudio := encoder.NewFFmpegEncoder(log)
-	downloaderService := service.NewAudioDownloader(downloaderMusic, encoderAudio, log)
-	storageService := service.NewAudioStorage(storage, metadataRepo, log)
-	opsManager := service.NewOperationManager(operationRepo, log, cfg)
-	messageService := service.NewMessagingService(messaging, log)
-	errorHandler := service.NewErrorHandler(operationRepo, messaging, log, cfg)
-
-	audioProcessingService := service.NewAudioProcessingService(downloaderService, storageService, opsManager, messageService, errorHandler, log, cfg)
-
-	operationUC := usecase.NewGetOperationStatusUseCase(operationRepo)
-
-	operationService := service.NewOperationService(operationRepo, log)
-
 	providers := map[string]ports.VideoProvider{
 		"youtube": youtubeAPI,
 	}
 
+	encoderAudio := encoder.NewFFmpegEncoder(log)
+	mediaService := service.NewMediaService(mediaRepository, log)
+	audioStorageService := service.NewAudioStorageService(storage, log)
+	topicPublisherService := service.NewMediaProcessingPublisherService(messaging, log)
+	audioDownloadService := service.NewAudioDownloaderService(downloaderMusic, encoderAudio, log)
+	coreService := service.NewCoreService(mediaService, audioStorageService, topicPublisherService, audioDownloadService, log, cfg)
+	operationService := service.NewOperationService(mediaRepository, log)
+
 	providerService := service.NewVideoService(providers, log)
-	initiateDownloadUC := usecase.NewInitiateDownloadUseCase(audioProcessingService, providerService, operationService)
+	initiateDownloadUC := usecase.NewInitiateDownloadUseCase(coreService, providerService, operationService)
+	operationUC := usecase.NewGetOperationStatusUseCase(mediaRepository)
 	audioHandler := handler.NewAudioHandler(initiateDownloadUC)
 	operationHandler := handler.NewOperationHandler(operationUC)
 	healthCheck := handler.NewHealthHandler(cfg)

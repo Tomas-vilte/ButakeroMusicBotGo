@@ -10,22 +10,22 @@ import (
 )
 
 type GetOperationStatusUseCaseImpl struct {
-	operationRepository ports.OperationRepository
+	mediaRepository ports.MediaRepository
 }
 
-func NewGetOperationStatusUseCase(operationRepository ports.OperationRepository) *GetOperationStatusUseCaseImpl {
+func NewGetOperationStatusUseCase(mediaRepository ports.MediaRepository) *GetOperationStatusUseCaseImpl {
 	return &GetOperationStatusUseCaseImpl{
-		operationRepository: operationRepository,
+		mediaRepository: mediaRepository,
 	}
 }
 
-func (uc *GetOperationStatusUseCaseImpl) Execute(ctx context.Context, operationID, songID string) (*model.OperationResult, error) {
+func (uc *GetOperationStatusUseCaseImpl) Execute(ctx context.Context, operationID, songID string) (*model.Media, error) {
 	if !isValidUUID(operationID) {
 		return nil, errors.ErrInvalidUUID.WithMessage(
 			fmt.Sprintf("ID de operación inválido: %s", operationID))
 	}
 
-	operation, err := uc.operationRepository.GetOperationResult(ctx, operationID, songID)
+	operation, err := uc.mediaRepository.GetMedia(ctx, operationID, songID)
 	if err != nil {
 		return nil, errors.ErrOperationNotFound.WithMessage(
 			fmt.Sprintf("Operación no encontrada: %s", operationID))

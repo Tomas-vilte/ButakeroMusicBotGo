@@ -11,31 +11,30 @@ type (
 		GetMediaDetails(ctx context.Context, input string, providerType string) (*model.MediaDetails, error)
 	}
 
-	AudioProcessor interface {
-		ProcessAudio(ctx context.Context, operationID string, metadata *model.MediaDetails) error
-	}
-
-	OperationStarter interface {
-		StartOperation(ctx context.Context, songID string) (*model.OperationInitResult, error)
-	}
-
 	AudioDownloadService interface {
 		DownloadAndEncode(ctx context.Context, url string) (*bytes.Buffer, error)
 	}
 
 	AudioStorageService interface {
-		StoreAudio(ctx context.Context, buffer *bytes.Buffer, metadata *model.Metadata) (*model.FileData, error)
+		StoreAudio(ctx context.Context, buffer *bytes.Buffer, songName string) (*model.FileData, error)
 	}
 
-	OperationsManager interface {
-		HandleOperationSuccess(ctx context.Context, operationID string, metadata *model.Metadata, fileData *model.FileData) error
+	TopicPublisherService interface {
+		PublishMediaProcessed(ctx context.Context, message *model.MediaProcessingMessage) error
 	}
 
-	MessagingManager interface {
-		SendProcessingMessage(ctx context.Context, operationID, status string, metadata *model.Metadata, attempts int) error
+	MediaService interface {
+		CreateMedia(ctx context.Context, media *model.Media) error
+		GetMediaByID(ctx context.Context, id, videoID string) (*model.Media, error)
+		UpdateMedia(ctx context.Context, id, videoID string, status *model.Media) error
+		DeleteMedia(ctx context.Context, id, videoID string) error
 	}
 
-	ErrorManagement interface {
-		HandleProcessingError(ctx context.Context, operationID string, metadata *model.Metadata, stage string, attempts int, err error) error
+	CoreService interface {
+		ProcessMedia(ctx context.Context, operationID string, mediaDetails *model.MediaDetails) error
+	}
+
+	OperationService interface {
+		StartOperation(ctx context.Context, videoID string) (*model.OperationInitResult, error)
 	}
 )

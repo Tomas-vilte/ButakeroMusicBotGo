@@ -122,14 +122,15 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*m
 	}
 
 	videoDetails := &model.MediaDetails{
-		Title:       item.Snippet.Title,
-		ID:          item.ID,
-		Description: item.Snippet.Description,
-		Creator:     item.Snippet.ChannelTitle,
-		DurationMs:  durationMs,
-		Thumbnail:   item.Snippet.Thumbnails.Default.URL,
-		PublishedAt: publishedAt,
-		URL:         fmt.Sprintf("https://youtube.com/watch?v=%s", videoID),
+		Title:        item.Snippet.Title,
+		ID:           item.ID,
+		Description:  item.Snippet.Description,
+		Creator:      item.Snippet.ChannelTitle,
+		DurationMs:   durationMs,
+		ThumbnailURL: item.Snippet.Thumbnails.Default.URL,
+		PublishedAt:  publishedAt,
+		URL:          fmt.Sprintf("https://youtube.com/watch?v=%s", videoID),
+		Provider:     "YouTube",
 	}
 	log.Debug("Detalles del video obtenidos correctamente", zap.String("video_title", videoDetails.Title))
 	return videoDetails, nil

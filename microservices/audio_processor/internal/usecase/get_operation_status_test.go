@@ -13,23 +13,24 @@ import (
 func TestGetOperationStatusUseCase_Execute(t *testing.T) {
 
 	t.Run("It should return the operation when it is found", func(t *testing.T) {
-		mockRepo := new(MockOperationRepository)
+		mockMediaRepo := new(MockMediaRepository)
 		ctx := context.Background()
-		uc := NewGetOperationStatusUseCase(mockRepo)
+		uc := NewGetOperationStatusUseCase(mockMediaRepo)
 
 		operationID := uuid.New().String()
-		expectedOperation := &model.OperationResult{
+		songID := "test-song-id"
+		expectedOperation := &model.Media{
 			ID:     operationID,
 			Status: "completed",
 		}
 
-		mockRepo.On("GetOperationResult", ctx, operationID, "song-id").Return(expectedOperation, nil)
+		mockMediaRepo.On("GetMedia", ctx, operationID, songID).Return(expectedOperation, nil)
 
-		result, err := uc.Execute(ctx, operationID, "song-id")
+		result, err := uc.Execute(ctx, operationID, "test-song-id")
 
 		assert.NoError(t, err)
 		assert.Equal(t, expectedOperation, result)
-		mockRepo.AssertExpectations(t)
+		mockMediaRepo.AssertExpectations(t)
 	})
 
 }

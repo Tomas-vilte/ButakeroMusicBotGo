@@ -29,7 +29,7 @@ type Metadata struct {
 	// Permite localizar la canción en YouTube para referencias adicionales o reproducción.
 	URL string `bson:"url" json:"url" dynamodbav:"url"`
 
-	// Thumbnail es la imagen en miniatura del contenido.
+	// ThumbnailURL es la imagen en miniatura del contenido.
 	// Proporciona una vista previa visual de la canción, útil para interfaces de usuario y presentación.
 	ThumbnailURL string `bson:"thumbnail_url" json:"thumbnail_url" dynamodbav:"thumbnail_url"`
 

@@ -11,6 +11,6 @@ type (
 	}
 
 	GetOperationStatusUseCase interface {
-		Execute(ctx context.Context, operationID, songID string) (*model.OperationResult, error)
+		Execute(ctx context.Context, operationID, songID string) (*model.Media, error)
 	}
 )
