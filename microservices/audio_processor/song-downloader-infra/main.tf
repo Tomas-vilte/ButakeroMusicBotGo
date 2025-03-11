@@ -26,7 +26,6 @@ module "secret_manager" {
     "OAUTH2": var.oauth2_enabled
     "S3_BUCKET_NAME": module.storage.bucket_name
     "DYNAMODB_TABLE_SONGS": module.database.songs_table_name
-    "DYNAMODB_TABLE_OPERATIONS": module.database.operations_table_name
     "SERVICE_MAX_ATTEMPTS": var.service_max_attempts
     "SERVICE_TIMEOUT": var.service_timeout
   }
@@ -36,7 +35,6 @@ module "secret_manager" {
 
 module "database" {
   source = "./modules/database"
-  dynamodb_table_operations_tags = var.dynamodb_table_operations_tags
   dynamodb_table_songs_tag = var.dynamodb_table_songs_tag
   project_name = var.project_name
   environment  = var.environment

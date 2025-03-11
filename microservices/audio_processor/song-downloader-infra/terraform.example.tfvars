@@ -24,11 +24,6 @@ storage_s3_tags = {
   Environment = "production"
 }
 
-dynamodb_table_operations_tags = {
-  Project     = "music-downloader"
-  Environment = "production"
-}
-
 dynamodb_table_songs_tag = {
   Project     = "music-downloader"
   Environment = "production"

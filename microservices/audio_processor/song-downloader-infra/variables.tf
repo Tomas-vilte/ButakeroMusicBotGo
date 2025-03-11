@@ -49,11 +49,6 @@ variable "storage_s3_tags" {
   type = map(string)
 }
 
-variable "dynamodb_table_operations_tags" {
-  description = "Tags especificos para la tabla de Operaciones de Dynamodb"
-  type = map(string)
-}
-
 variable "dynamodb_table_songs_tag" {
   description = "Tags especificos para la tabla de Canciones de Dynamodb"
   type = map(string)

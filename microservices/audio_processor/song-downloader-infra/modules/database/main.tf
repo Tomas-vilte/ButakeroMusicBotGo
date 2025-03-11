@@ -1,9 +1,8 @@
 resource "aws_dynamodb_table" "songs" {
-  name = "${var.project_name}-songs-${var.environment}"
+  name         = "${var.project_name}-songs-${var.environment}"
   billing_mode = "PAY_PER_REQUEST"
-  hash_key       = "PK"
-  range_key      = "SK"
-  
+  hash_key     = "PK"
+  range_key    = "SK"
 
   attribute {
     name = "PK"
@@ -12,11 +11,6 @@ resource "aws_dynamodb_table" "songs" {
 
   attribute {
     name = "SK"
-    type = "S"
-  }
-
-  attribute {
-    name = "GSI2_PK"
     type = "S"
   }
 
@@ -26,48 +20,60 @@ resource "aws_dynamodb_table" "songs" {
   }
 
   attribute {
-    name = "url_youtube"
+    name = "url"
     type = "S"
   }
-  
+
+  attribute {
+    name = "created_at"
+    type = "S"
+  }
+
+  attribute {
+    name = "updated_at"
+    type = "S"
+  }
+
+  attribute {
+    name = "status"
+    type = "S"
+  }
+
+  attribute {
+    name = "message"
+    type = "S"
+  }
+
+  attribute {
+    name = "play_count"
+    type = "N"
+  }
+
+  attribute {
+    name = "attempts"
+    type = "N"
+  }
+
+  attribute {
+    name = "failures"
+    type = "N"
+  }
+
+  attribute {
+    name = "processing_date"
+    type = "S"
+  }
+
+  attribute {
+    name = "success"
+    type = "BOOL"
+  }
+
   global_secondary_index {
-    name               = "GSI2-title-index"
-    hash_key           = "GSI2_PK"
-    range_key          = "title"
-    projection_type    = "ALL"
+    name            = "TitleIndex"
+    hash_key        = "title"
+    projection_type = "ALL"
   }
 
   tags = var.dynamodb_table_songs_tag
-}
-
-resource "aws_dynamodb_table" "operations" {
-  name = "${var.project_name}-operations-${var.environment}"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key       = "PK"
-  range_key      = "SK"
-
-  attribute {
-    name = "PK"
-    type = "S"
-  }
-
-  attribute {
-    name = "SK"
-    type = "S"
-  }
-
-  attribute {
-    name = "SongID"
-    type = "S"
-  }
-
-  global_secondary_index {
-    name = "SongIDIndex"
-    hash_key = "SongID"
-    projection_type = "ALL"
-    read_capacity = 5
-    write_capacity = 5
-  }
-
-  tags = var.dynamodb_table_operations_tags
 }
