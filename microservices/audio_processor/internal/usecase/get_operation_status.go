@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
@@ -19,16 +18,18 @@ func NewGetOperationStatusUseCase(mediaRepository ports.MediaRepository) *GetOpe
 	}
 }
 
-func (uc *GetOperationStatusUseCaseImpl) Execute(ctx context.Context, operationID, songID string) (*model.Media, error) {
+func (uc *GetOperationStatusUseCaseImpl) Execute(ctx context.Context, operationID, videoID string) (*model.Media, error) {
 	if !isValidUUID(operationID) {
-		return nil, errors.ErrInvalidUUID.WithMessage(
-			fmt.Sprintf("ID de operación inválido: %s", operationID))
+		return nil, errors.ErrInvalidUUID.WithMessage("UUID inválido")
 	}
 
-	operation, err := uc.mediaRepository.GetMedia(ctx, operationID, songID)
+	if videoID == "" {
+		return nil, errors.ErrInvalidInput.WithMessage("El ID de la canción no puede estar vacío")
+	}
+
+	operation, err := uc.mediaRepository.GetMedia(ctx, operationID, videoID)
 	if err != nil {
-		return nil, errors.ErrOperationNotFound.WithMessage(
-			fmt.Sprintf("Operación no encontrada: %s", operationID))
+		return nil, errors.ErrOperationNotFound.WithMessage("No se encontró la operación solicitada")
 	}
 	return operation, nil
 }

@@ -19,9 +19,9 @@ func NewOperationHandler(getOperationStatusUC usecase.GetOperationStatusUseCase)
 
 func (h *OperationHandler) GetOperationStatus(c *gin.Context) {
 	operationID := c.Query("operation_id")
-	songID := c.Query("song_id")
+	videoID := c.Query("video_id")
 
-	if operationID == "" || songID == "" {
+	if operationID == "" || videoID == "" {
 		c.Error(errors.ErrInvalidInput.WithMessage("faltan los parámetros 'operation_id' y/o 'song_id'"))
 		return
 	}
@@ -31,7 +31,12 @@ func (h *OperationHandler) GetOperationStatus(c *gin.Context) {
 		return
 	}
 
-	status, err := h.getOperationStatusUC.Execute(c.Request.Context(), operationID, songID)
+	if !isValidSongID(videoID) {
+		c.Error(errors.ErrInvalidInput.WithMessage("video_id inválido"))
+		return
+	}
+
+	status, err := h.getOperationStatusUC.Execute(c.Request.Context(), operationID, videoID)
 	if err != nil {
 		c.Error(err)
 		return
@@ -41,4 +46,8 @@ func (h *OperationHandler) GetOperationStatus(c *gin.Context) {
 		"operation_id": operationID,
 		"status":       status,
 	})
+}
+
+func isValidSongID(songID string) bool {
+	return len(songID) > 0 && len(songID) <= 100
 }

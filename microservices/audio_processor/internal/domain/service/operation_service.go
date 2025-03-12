@@ -29,24 +29,24 @@ func (s *OperationService) StartOperation(ctx context.Context, videoID string) (
 		VideoID: videoID,
 		Status:  "starting",
 		Metadata: &model.PlatformMetadata{
-			Title:        "", // Inicializar con valores por defecto
+			Title:        "",
 			DurationMs:   0,
 			URL:          "",
 			ThumbnailURL: "",
 			Platform:     "",
 		},
 		FileData: &model.FileData{
-			FilePath: "", // Inicializar con valores por defecto
+			FilePath: "",
 			FileSize: "",
 			FileType: "",
 		},
-		ProcessingDate: time.Now(), // Inicializar con la fecha actual
-		Success:        false,      // Inicializar con un valor por defecto
-		Attempts:       0,          // Inicializar con un valor por defecto
-		Failures:       0,          // Inicializar con un valor por defecto
-		CreatedAt:      time.Now(), // Inicializar con la fecha actual
-		UpdatedAt:      time.Now(), // Inicializar con la fecha actual
-		PlayCount:      0,          // Inicializar con un valor por defecto
+		ProcessingDate: time.Now(),
+		Success:        false,
+		Attempts:       0,
+		Failures:       0,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+		PlayCount:      0,
 	}
 
 	if err := s.repo.SaveMedia(ctx, media); err != nil {
