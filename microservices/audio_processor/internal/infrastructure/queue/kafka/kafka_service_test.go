@@ -33,7 +33,7 @@ func TestKafkaService(t *testing.T) {
 			Log:      mockLogger,
 		}
 
-		message := model.Message{ID: "test-id", Content: "test-content"}
+		message := &model.MediaProcessingMessage{ID: "test-id", VideoID: "test-video"}
 		expectedPartition := int32(0)
 		expectedOffset := int64(1)
 
@@ -60,7 +60,7 @@ func TestKafkaService(t *testing.T) {
 			Consumer: mockConsumer,
 		}
 
-		message := model.Message{ID: "test-id", Content: "test-content"}
+		message := model.MediaProcessingMessage{ID: "test-id", VideoID: "test-video"}
 		messageBytes, err := json.Marshal(message)
 
 		messageChan := make(chan *sarama.ConsumerMessage, 1)
@@ -79,7 +79,7 @@ func TestKafkaService(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, messages, 1)
 		assert.Equal(t, message.ID, messages[0].ID)
-		assert.Equal(t, message.Content, messages[0].Content)
+		assert.Equal(t, message.VideoID, messages[0].VideoID)
 
 		mockConsumer.AssertExpectations(t)
 		mockPartitionConsumer.AssertExpectations(t)

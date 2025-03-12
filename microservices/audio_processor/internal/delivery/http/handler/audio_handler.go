@@ -45,9 +45,8 @@ func (h *AudioHandler) InitiateDownload(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"success":      true,
 		"operation_id": result.ID,
-		"song_id":      result.SongID,
+		"video_id":     result.VideoID,
 		"provider":     providerType,
 		"status":       result.Status,
-		"created_at":   result.CreatedAt,
 	})
 }

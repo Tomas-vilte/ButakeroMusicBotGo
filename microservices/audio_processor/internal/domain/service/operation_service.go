@@ -12,35 +12,53 @@ import (
 )
 
 type OperationService struct {
-	repo   ports.OperationRepository
+	repo   ports.MediaRepository
 	logger logger.Logger
 }
 
-func NewOperationService(repo ports.OperationRepository, logger logger.Logger) *OperationService {
+func NewOperationService(repo ports.MediaRepository, logger logger.Logger) *OperationService {
 	return &OperationService{
 		repo:   repo,
 		logger: logger,
 	}
 }
 
-func (s *OperationService) StartOperation(ctx context.Context, songID string) (*model.OperationInitResult, error) {
-	operation := &model.OperationResult{
-		ID:     uuid.New().String(),
-		SK:     songID,
-		Status: statusInitiating,
+func (s *OperationService) StartOperation(ctx context.Context, videoID string) (*model.OperationInitResult, error) {
+	media := &model.Media{
+		ID:      uuid.New().String(),
+		VideoID: videoID,
+		Status:  "starting",
+		Metadata: &model.PlatformMetadata{
+			Title:        "",
+			DurationMs:   0,
+			URL:          "",
+			ThumbnailURL: "",
+			Platform:     "",
+		},
+		FileData: &model.FileData{
+			FilePath: "",
+			FileSize: "",
+			FileType: "",
+		},
+		ProcessingDate: time.Now(),
+		Success:        false,
+		Attempts:       0,
+		Failures:       0,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+		PlayCount:      0,
 	}
 
-	if err := s.repo.SaveOperationsResult(ctx, operation); err != nil {
+	if err := s.repo.SaveMedia(ctx, media); err != nil {
 		s.logger.Error("Error al iniciar operación",
-			zap.String("songID", songID),
+			zap.String("songID", videoID),
 			zap.Error(err))
 		return nil, errors.ErrOperationInitFailed.Wrap(err)
 	}
 
 	return &model.OperationInitResult{
-		ID:        operation.ID,
-		SongID:    operation.SK,
-		Status:    operation.Status,
-		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+		ID:      media.ID,
+		VideoID: media.VideoID,
+		Status:  media.Status,
 	}, nil
 }

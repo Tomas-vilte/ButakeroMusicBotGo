@@ -7,60 +7,82 @@ import (
 	"errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
+	"time"
 )
 
 func TestOperationService_StartOperation(t *testing.T) {
-	t.Run("should start operation successfully", func(t *testing.T) {
-		// Arrange
-		mockRepo := new(MockOperationRepository)
-		mockLogger := new(logger.MockLogger)
+	// Arrange
+	mockRepo := new(MockMediaRepository)
+	mockLogger := new(logger.MockLogger)
 
-		operationService := NewOperationService(mockRepo, mockLogger)
+	service := NewOperationService(mockRepo, mockLogger)
 
-		ctx := context.Background()
-		songID := "test_song_id"
+	videoID := "test-video-id"
+	expectedMedia := &model.Media{
+		ID:      uuid.New().String(),
+		VideoID: videoID,
+		Status:  "starting",
+		Metadata: &model.PlatformMetadata{
+			Title:        "",
+			DurationMs:   0,
+			URL:          "",
+			ThumbnailURL: "",
+			Platform:     "",
+		},
+		FileData: &model.FileData{
+			FilePath: "",
+			FileSize: "",
+			FileType: "",
+		},
+		ProcessingDate: time.Now(),
+		Success:        false,
+		Attempts:       0,
+		Failures:       0,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+		PlayCount:      0,
+	}
 
-		mockRepo.On("SaveOperationsResult", ctx, mock.MatchedBy(func(operation *model.OperationResult) bool {
-			return operation.SK == songID && operation.Status == statusInitiating
-		})).Return(nil)
+	mockRepo.On("SaveMedia", mock.Anything, mock.MatchedBy(func(media *model.Media) bool {
+		return media.VideoID == videoID && media.Status == "starting"
+	})).Return(nil)
 
-		// Act
-		result, err := operationService.StartOperation(ctx, songID)
+	// Act
+	result, err := service.StartOperation(context.Background(), videoID)
 
-		// Assert
-		assert.NoError(t, err)
-		assert.NotNil(t, result)
-		assert.Equal(t, songID, result.SongID)
-		assert.Equal(t, statusInitiating, result.Status)
-		assert.NotEmpty(t, result.CreatedAt)
-		mockRepo.AssertExpectations(t)
-	})
+	// Assert
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, expectedMedia.VideoID, result.VideoID)
+	assert.Equal(t, expectedMedia.Status, result.Status)
 
-	t.Run("should return error when saving operation fails", func(t *testing.T) {
-		// Arrange
-		mockRepo := new(MockOperationRepository)
-		mockLogger := new(logger.MockLogger)
+	mockRepo.AssertExpectations(t)
+}
 
-		operationService := NewOperationService(mockRepo, mockLogger)
+func TestOperationService_StartOperation_Error(t *testing.T) {
+	// Arrange
+	mockRepo := new(MockMediaRepository)
+	mockLogger := new(logger.MockLogger)
 
-		ctx := context.Background()
-		songID := "test_song_id"
+	service := NewOperationService(mockRepo, mockLogger)
 
-		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
-		mockRepo.On("SaveOperationsResult", ctx, mock.MatchedBy(func(operation *model.OperationResult) bool {
-			return operation.SK == songID && operation.Status == statusInitiating
-		})).Return(errors.New("save failed"))
+	videoID := "test-video-id"
+	expectedError := errors.New("repository error")
 
-		// Act
-		result, err := operationService.StartOperation(ctx, songID)
+	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
+	mockRepo.On("SaveMedia", mock.Anything, mock.AnythingOfType("*model.Media")).Return(expectedError)
 
-		// Assert
-		assert.Error(t, err)
-		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "Error al iniciar la operación")
-		mockRepo.AssertExpectations(t)
-	})
+	// Act
+	result, err := service.StartOperation(context.Background(), videoID)
+
+	// Assert
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Equal(t, expectedError, errors.Unwrap(err))
+
+	mockRepo.AssertExpectations(t)
 }

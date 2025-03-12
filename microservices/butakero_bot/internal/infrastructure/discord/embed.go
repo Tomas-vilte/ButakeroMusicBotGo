@@ -13,25 +13,21 @@ func GeneratePlayingSongEmbed(playMsg *entity.PlayedSong) *discordgo.MessageEmbe
 		return nil
 	}
 
-	// Duración total en milisegundos
 	durationMs := playMsg.Song.Metadata.DurationMs
 	duration := time.Duration(durationMs) * time.Millisecond
 
-	// Tiempo transcurrido en milisegundos
 	elapsedMs := playMsg.Position
 	elapsed := time.Duration(elapsedMs) * time.Millisecond
 
-	// Barra de progreso
 	progressBar := generateProgressBar(
 		float64(elapsedMs)/float64(durationMs),
 		20,
 	)
 
-	// Crear el embed
 	embed := &discordgo.MessageEmbed{
 		Title:       "🎵 **Reproduciendo:** " + playMsg.Song.Metadata.Title,
 		Description: fmt.Sprintf("%s\n**%s / %s**", progressBar, formatDuration(elapsed), formatDuration(duration)),
-		Color:       0x1DB954, // Color verde de Spotify
+		Color:       0x1DB954,
 		Fields: []*discordgo.MessageEmbedField{
 			{
 				Name:   "**Plataforma**",
@@ -46,14 +42,12 @@ func GeneratePlayingSongEmbed(playMsg *entity.PlayedSong) *discordgo.MessageEmbe
 		},
 	}
 
-	// Añadir la miniatura de la canción si está disponible
 	if playMsg.Song.Metadata.ThumbnailURL != "" {
 		embed.Thumbnail = &discordgo.MessageEmbedThumbnail{
 			URL: playMsg.Song.Metadata.ThumbnailURL,
 		}
 	}
 
-	// Añadir un footer con información adicional
 	embed.Footer = &discordgo.MessageEmbedFooter{
 		Text: "Butakero Music Bot 🎶",
 	}

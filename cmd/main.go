@@ -57,7 +57,6 @@ func main() {
 	}()
 	profiler.StartProfiler()
 	defer func() {
-		// Cerrar el logger cuando la función termine.
 		err := logger.Close()
 		if err != nil {
 			logger.Error("Error cerrando el logger", zap.Error(err))

@@ -11,21 +11,21 @@ import (
 	"io"
 )
 
-type AudioDownloader struct {
+type AudioDownloaderService struct {
 	downloader ports.Downloader
 	encoder    ports.AudioEncoder
 	log        logger.Logger
 }
 
-func NewAudioDownloader(d ports.Downloader, e ports.AudioEncoder, l logger.Logger) *AudioDownloader {
-	return &AudioDownloader{
+func NewAudioDownloaderService(d ports.Downloader, e ports.AudioEncoder, l logger.Logger) *AudioDownloaderService {
+	return &AudioDownloaderService{
 		downloader: d,
 		encoder:    e,
 		log:        l,
 	}
 }
 
-func (ad *AudioDownloader) DownloadAndEncode(ctx context.Context, url string) (*bytes.Buffer, error) {
+func (ad *AudioDownloaderService) DownloadAndEncode(ctx context.Context, url string) (*bytes.Buffer, error) {
 	reader, err := ad.downloader.DownloadAudio(ctx, url)
 	if err != nil {
 		return nil, errors.ErrDownloadFailed.Wrap(err)
@@ -41,7 +41,7 @@ func (ad *AudioDownloader) DownloadAndEncode(ctx context.Context, url string) (*
 }
 
 // readAudioFramesToBuffer lee los frames de audio de la sesión de codificación y los almacena en un buffer.
-func (ad *AudioDownloader) readAudioFramesToBuffer(session encoder.EncodeSession) (*bytes.Buffer, error) {
+func (ad *AudioDownloaderService) readAudioFramesToBuffer(session encoder.EncodeSession) (*bytes.Buffer, error) {
 	var buffer bytes.Buffer
 
 	for {

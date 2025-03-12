@@ -70,7 +70,7 @@ func TestYouTubeClient_GetVideoDetails(t *testing.T) {
 		assert.Equal(t, "Test Description", details.Description)
 		assert.Equal(t, "Test Channel", details.Creator)
 		assert.Equal(t, "PT5M30S", details.Duration)
-		assert.Equal(t, "http://test.com/thumb.jpg", details.Thumbnail)
+		assert.Equal(t, "http://test.com/thumb.jpg", details.ThumbnailURL)
 		assert.Equal(t, "https://youtube.com/watch?v="+expectedID, details.URL)
 
 		expectedPublishedAt, _ := time.Parse(time.RFC3339, publishedDate)

@@ -7,19 +7,20 @@ import (
 )
 
 var (
-	ErrInvalidInput       = NewAppError("invalid_input", "Input inválido")
-	ErrYouTubeAPIError    = NewAppError("youtube_api_error", "Error en la API de YouTube")
-	ErrProviderNotFound   = NewAppError("provider_not_found", "Proveedor no encontrado")
-	ErrGetDataFromYouTube = NewAppError("error_get_data", "Error al obtener datos de YouTube")
+	ErrInvalidInput          = NewAppError("invalid_input", "Input inválido")
+	ErrYouTubeAPIError       = NewAppError("youtube_api_error", "Error en la API de YouTube")
+	ErrProviderNotFound      = NewAppError("provider_not_found", "Proveedor no encontrado")
+	ErrGetMediaDetailsFailed = NewAppError("get_media_details_failed", "Error al obtener detalles del media")
+	ErrStartOperationFailed  = NewAppError("start_operation_failed", "Error al iniciar la operación")
 
-	ErrDownloadFailed      = NewAppError("download_failed", "Error en descarga de audio")
-	ErrEncodingFailed      = NewAppError("encoding_failed", "Error en codificación de audio")
-	ErrUploadFailed        = NewAppError("upload_failed", "Error al subir a almacenamiento")
-	ErrMetadataSaveFailed  = NewAppError("metadata_failed", "Error al guardar metadatos")
-	ErrMessageSendFailed   = NewAppError("message_failed", "Error al enviar mensaje")
-	ErrOperationInitFailed = NewAppError("operation_init_failed", "Error al iniciar la operación")
-	ErrOperationNotFound   = NewAppError("operation_not_found", "No se encontró la operación solicitada")
-	ErrInvalidUUID         = NewAppError("invalid_uuid", "UUID inválido")
+	ErrDownloadFailed       = NewAppError("download_failed", "Error en descarga de audio")
+	ErrEncodingFailed       = NewAppError("encoding_failed", "Error en codificación de audio")
+	ErrUploadFailed         = NewAppError("upload_failed", "Error al subir a almacenamiento")
+	ErrOperationInitFailed  = NewAppError("operation_init_failed", "Error al iniciar la operación")
+	ErrOperationNotFound    = NewAppError("operation_not_found", "No se encontró la operación solicitada")
+	ErrInvalidUUID          = NewAppError("invalid_uuid", "UUID inválido")
+	ErrUpdateMediaFailed    = NewAppError("update_media_failed", "Error al actualizar el media")
+	ErrPublishMessageFailed = NewAppError("publish_message_failed", "Error al publicar el mensaje")
 )
 
 type AppError struct {
@@ -59,8 +60,8 @@ func (e *AppError) StatusCode() int {
 	case "youtube_api_error":
 		return http.StatusServiceUnavailable
 	case "download_failed", "encoding_failed", "upload_failed",
-		"metadata_failed", "message_failed", "empty_buffer",
-		"operation_init_failed":
+		"empty_buffer", "operation_init_failed",
+		"update_media_failed", "publish_message_failed":
 		return http.StatusInternalServerError
 	default:
 		return http.StatusInternalServerError

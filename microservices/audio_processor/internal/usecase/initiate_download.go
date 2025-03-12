@@ -5,18 +5,18 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 )
 
 type InitiateDownloadUseCase struct {
-	audioService     ports.AudioProcessor
+	coreService      ports.CoreService
 	providerService  ports.VideoService
-	operationService ports.OperationStarter
+	operationService ports.OperationService
 }
 
-func NewInitiateDownloadUseCase(audioService ports.AudioProcessor, providerAPI ports.VideoService,
-	operationService ports.OperationStarter) *InitiateDownloadUseCase {
+func NewInitiateDownloadUseCase(coreService ports.CoreService, providerAPI ports.VideoService, operationService ports.OperationService) *InitiateDownloadUseCase {
 	return &InitiateDownloadUseCase{
-		audioService:     audioService,
+		coreService:      coreService,
 		providerService:  providerAPI,
 		operationService: operationService,
 	}
@@ -25,17 +25,17 @@ func NewInitiateDownloadUseCase(audioService ports.AudioProcessor, providerAPI p
 func (uc *InitiateDownloadUseCase) Execute(ctx context.Context, song string, providerType string) (*model.OperationInitResult, error) {
 	mediaDetails, err := uc.providerService.GetMediaDetails(ctx, song, providerType)
 	if err != nil {
-		return &model.OperationInitResult{}, fmt.Errorf("error al buscar el ID de la cancion: %w", err)
+		return nil, errors.ErrGetMediaDetailsFailed.WithMessage(fmt.Sprintf("error al obtener detalles del media: %v", err))
 	}
 
 	operationResult, err := uc.operationService.StartOperation(ctx, mediaDetails.ID)
 	if err != nil {
-		return &model.OperationInitResult{}, fmt.Errorf("error al iniciar la operación: %w", err)
+		return nil, errors.ErrStartOperationFailed.WithMessage(fmt.Sprintf("error al iniciar la operación: %v", err))
 	}
 
 	go func() {
 		backgroundCtx := context.Background()
-		err := uc.audioService.ProcessAudio(backgroundCtx, operationResult.ID, mediaDetails)
+		err := uc.coreService.ProcessMedia(backgroundCtx, operationResult.ID, mediaDetails)
 		if err != nil {
 			fmt.Printf("Error en el procesamiento: %v", err)
 		}

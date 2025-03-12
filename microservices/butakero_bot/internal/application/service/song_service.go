@@ -67,13 +67,6 @@ func (s *SongService) GetOrDownloadSong(ctx context.Context, song, providerType 
 	}
 
 	msgChan := s.messageConsumer.GetMessagesChannel()
-	go func() {
-		if err := s.messageConsumer.ConsumeMessages(ctx, 0); err != nil {
-			s.logger.Error("Error al consumir mensajes",
-				zap.String("input", input),
-				zap.Error(err))
-		}
-	}()
 
 	for {
 		select {

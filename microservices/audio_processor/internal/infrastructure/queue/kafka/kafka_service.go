@@ -69,7 +69,7 @@ func NewKafkaService(cfgApplication *config.Config, log logger.Logger) (*KafkaSe
 
 // SendMessage envía un mensaje al tema de Kafka especificado en la configuración.
 // Serializa el mensaje a JSON y registra el resultado.
-func (k *KafkaService) SendMessage(ctx context.Context, message model.Message) error {
+func (k *KafkaService) SendMessage(ctx context.Context, message *model.MediaProcessingMessage) error {
 	log := k.Log.With(
 		zap.String("component", "KafkaService"),
 		zap.String("method", "SendMessage"),
@@ -102,7 +102,7 @@ func (k *KafkaService) SendMessage(ctx context.Context, message model.Message) e
 
 // ReceiveMessage recibe mensajes del tema de Kafka especificado en la configuración.
 // Deserializa los mensajes de JSON y registra el resultado.
-func (k *KafkaService) ReceiveMessage(ctx context.Context) ([]model.Message, error) {
+func (k *KafkaService) ReceiveMessage(ctx context.Context) ([]model.MediaProcessingMessage, error) {
 	log := k.Log.With(
 		zap.String("component", "KafkaService"),
 		zap.String("method", "ReceiveMessage"),
@@ -118,12 +118,12 @@ func (k *KafkaService) ReceiveMessage(ctx context.Context) ([]model.Message, err
 		}
 	}()
 
-	var messages []model.Message
+	var messages []model.MediaProcessingMessage
 
 	select {
 	case msg := <-partitionConsumer.Messages():
 		log.Info("Mensaje recibido desde Kafka", zap.String("message_id", string(msg.Key)))
-		var message model.Message
+		var message model.MediaProcessingMessage
 		if err := json.Unmarshal(msg.Value, &message); err != nil {
 			log.Error("Error al deserializar el mensaje", zap.Error(err))
 			return nil, errors.Wrap(err, "error al deserializar mensaje")
