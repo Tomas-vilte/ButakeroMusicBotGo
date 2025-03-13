@@ -188,7 +188,7 @@ func (r *MediaRepositoryDynamoDB) UpdateMedia(ctx context.Context, id, videoID s
 		return ErrInvalidVideoID
 	}
 
-	if media.Metadata == nil || media.Metadata.Title == "" || media.Metadata.Platform == "" {
+	if media.Metadata == nil || media.Title == "" || media.Metadata.Platform == "" {
 		log.Error("Metadatos inválidos", zap.Any("metadata", media.Metadata))
 		return ErrInvalidMetadata
 	}

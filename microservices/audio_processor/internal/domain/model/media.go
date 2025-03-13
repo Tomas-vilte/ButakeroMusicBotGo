@@ -10,8 +10,11 @@ type (
 
 	// Media representa un modelo de procesamiento multimedia.
 	Media struct {
-		ID             string            `json:"id" bson:"_id" dynamodbav:"PK"`
-		VideoID        string            `json:"video_id" bson:"video_id" dynamodbav:"SK"`
+		ID      string `json:"id" bson:"_id" dynamodbav:"PK"`
+		VideoID string `json:"video_id" bson:"video_id" dynamodbav:"SK"`
+		// Title es el título de la canción.
+		// Representa el nombre de la canción tal como aparece en la fuente de origen.
+		Title          string            `json:"title" bson:"title" dynamodbav:"title"`
 		Status         string            `json:"status" bson:"status" dynamodbav:"status"`
 		Message        string            `json:"message" bson:"message" dynamodbav:"message"`
 		Metadata       *PlatformMetadata `json:"metadata" bson:"metadata" dynamodbav:"metadata"`
@@ -27,9 +30,6 @@ type (
 
 	// PlatformMetadata representa los metadatos de una plataforma
 	PlatformMetadata struct {
-		// Title es el título de la canción.
-		// Representa el nombre de la canción tal como aparece en la fuente de origen.
-		Title string `json:"title" bson:"title" dynamodbav:"title"`
 		// DurationMs es la duración de la canción en milisegundos.
 		// Representa cuánto tiempo dura la canción desde el inicio hasta el final.
 		DurationMs int64 `json:"duration_ms" bson:"duration_ms" dynamodbav:"duration_ms"`
@@ -84,7 +84,6 @@ func (f *FileData) ToAttributeValue() types.AttributeValue {
 func (m *PlatformMetadata) ToAttributeValue() types.AttributeValue {
 	return &types.AttributeValueMemberM{
 		Value: map[string]types.AttributeValue{
-			"title":         &types.AttributeValueMemberS{Value: m.Title},
 			"duration_ms":   &types.AttributeValueMemberN{Value: fmt.Sprintf("%d", m.DurationMs)},
 			"url":           &types.AttributeValueMemberS{Value: m.URL},
 			"thumbnail_url": &types.AttributeValueMemberS{Value: m.ThumbnailURL},

@@ -77,7 +77,7 @@ func (r *MediaRepository) SaveMedia(ctx context.Context, media *model.Media) err
 	now := time.Now()
 	media.CreatedAt = now
 	media.UpdatedAt = now
-	media.Metadata.Title = strings.ToLower(media.Metadata.Title)
+	media.Title = strings.ToLower(media.Title)
 
 	_, err := r.collection.InsertOne(ctx, media)
 	if err != nil {
@@ -190,7 +190,7 @@ func (r *MediaRepository) UpdateMedia(ctx context.Context, id, videoID string, m
 		return ErrInvalidVideoID
 	}
 
-	if media.Metadata == nil || media.Metadata.Title == "" || media.Metadata.Platform == "" {
+	if media.Metadata == nil || media.Title == "" || media.Metadata.Platform == "" {
 		log.Error("Metadatos inválidos", zap.Any("metadata", media.Metadata))
 		return ErrInvalidMetadata
 	}
@@ -209,6 +209,7 @@ func (r *MediaRepository) UpdateMedia(ctx context.Context, id, videoID string, m
 
 	update := bson.D{
 		{Key: "$set", Value: bson.D{
+			{Key: "title", Value: media.Title},
 			{Key: "status", Value: media.Status},
 			{Key: "message", Value: media.Message},
 			{Key: "metadata", Value: media.Metadata},

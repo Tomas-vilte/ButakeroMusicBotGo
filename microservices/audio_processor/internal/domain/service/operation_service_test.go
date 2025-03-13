@@ -26,8 +26,8 @@ func TestOperationService_StartOperation(t *testing.T) {
 		ID:      uuid.New().String(),
 		VideoID: videoID,
 		Status:  "starting",
+		Title:   "",
 		Metadata: &model.PlatformMetadata{
-			Title:        "",
 			DurationMs:   0,
 			URL:          "",
 			ThumbnailURL: "",

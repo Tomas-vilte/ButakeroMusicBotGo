@@ -50,12 +50,11 @@ func (s *CoreService) ProcessMedia(ctx context.Context, operationID string, medi
 	ctx, cancel := context.WithTimeout(ctx, s.cfg.Service.Timeout)
 	defer cancel()
 
-	metadata := s.createMetadata(mediaDetails)
 	attempts := 0
 
 	s.logger.Info("Iniciando procesamiento de audio",
 		zap.String("operation_id", operationID),
-		zap.String("title", metadata.Title),
+		zap.String("title", mediaDetails.Title),
 	)
 
 	var lastError error
@@ -91,10 +90,10 @@ func (s *CoreService) ProcessMedia(ctx context.Context, operationID string, medi
 		media := &model.Media{
 			ID:      operationID,
 			VideoID: mediaDetails.ID,
+			Title:   mediaDetails.Title,
 			Status:  "success",
 			Message: "Procesamiento completado exitosamente",
 			Metadata: &model.PlatformMetadata{
-				Title:        mediaDetails.Title,
 				DurationMs:   mediaDetails.DurationMs,
 				URL:          mediaDetails.URL,
 				ThumbnailURL: mediaDetails.ThumbnailURL,
@@ -111,9 +110,12 @@ func (s *CoreService) ProcessMedia(ctx context.Context, operationID string, medi
 
 		message := &model.MediaProcessingMessage{
 			ID:               media.ID,
+			Title:            media.Title,
 			VideoID:          media.VideoID,
 			FileData:         media.FileData,
 			PlatformMetadata: media.Metadata,
+			Status:           media.Status,
+			Message:          media.Message,
 		}
 
 		if err := s.mediaService.UpdateMedia(ctx, media.ID, media.VideoID, media); err != nil {
@@ -146,14 +148,4 @@ func (s *CoreService) ProcessMedia(ctx context.Context, operationID string, medi
 	}
 
 	return nil
-}
-
-func (s *CoreService) createMetadata(mediaDetails *model.MediaDetails) *model.PlatformMetadata {
-	return &model.PlatformMetadata{
-		Title:        mediaDetails.Title,
-		DurationMs:   mediaDetails.DurationMs,
-		URL:          mediaDetails.URL,
-		ThumbnailURL: mediaDetails.ThumbnailURL,
-		Platform:     mediaDetails.Provider,
-	}
 }
