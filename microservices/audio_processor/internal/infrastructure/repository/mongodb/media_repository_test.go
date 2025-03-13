@@ -51,8 +51,8 @@ func TestMediaRepository_SaveMedia(t *testing.T) {
 		VideoID: "video123",
 		Status:  "processed",
 		Message: "success",
+		Title:   "Test Song",
 		Metadata: &model.PlatformMetadata{
-			Title:        "Test Song",
 			DurationMs:   300000,
 			URL:          "https://youtube.com/watch?v=video123",
 			ThumbnailURL: "https://img.youtube.com/vi/video123/default.jpg",
@@ -81,7 +81,7 @@ func TestMediaRepository_SaveMedia(t *testing.T) {
 	assert.Equal(t, media.VideoID, retrievedMedia.VideoID)
 	assert.Equal(t, media.Status, retrievedMedia.Status)
 	assert.Equal(t, media.Message, retrievedMedia.Message)
-	assert.Equal(t, media.Metadata.Title, retrievedMedia.Metadata.Title)
+	assert.Equal(t, media.Title, retrievedMedia.Title)
 	assert.Equal(t, media.Metadata.DurationMs, retrievedMedia.Metadata.DurationMs)
 	assert.Equal(t, media.Metadata.URL, retrievedMedia.Metadata.URL)
 	assert.Equal(t, media.Metadata.ThumbnailURL, retrievedMedia.Metadata.ThumbnailURL)
@@ -138,8 +138,8 @@ func TestMediaRepository_UpdateMedia(t *testing.T) {
 		VideoID: "video123",
 		Status:  "processed",
 		Message: "success",
+		Title:   "Test Song",
 		Metadata: &model.PlatformMetadata{
-			Title:        "Test Song",
 			DurationMs:   300000,
 			URL:          "https://youtube.com/watch?v=video123",
 			ThumbnailURL: "https://img.youtube.com/vi/video123/default.jpg",
@@ -193,8 +193,8 @@ func TestMediaRepository_DeleteMedia(t *testing.T) {
 		VideoID: "video123",
 		Status:  "processed",
 		Message: "success",
+		Title:   "Test Song",
 		Metadata: &model.PlatformMetadata{
-			Title:        "Test Song",
 			DurationMs:   300000,
 			URL:          "https://youtube.com/watch?v=video123",
 			ThumbnailURL: "https://img.youtube.com/vi/video123/default.jpg",

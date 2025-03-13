@@ -114,10 +114,10 @@ func TestMediaRepositoryDynamoDB_Integration(t *testing.T) {
 	media := &model.Media{
 		ID:      uuid.New().String(),
 		VideoID: "video123",
+		Title:   "Test Song",
 		Status:  "processed",
 		Message: "success",
 		Metadata: &model.PlatformMetadata{
-			Title:        "Test Song",
 			DurationMs:   300000,
 			URL:          "https://youtube.com/watch?v=video123",
 			ThumbnailURL: "https://img.youtube.com/vi/video123/default.jpg",
@@ -146,7 +146,7 @@ func TestMediaRepositoryDynamoDB_Integration(t *testing.T) {
 	assert.Equal(t, media.VideoID, retrievedMedia.VideoID)
 	assert.Equal(t, media.Status, retrievedMedia.Status)
 	assert.Equal(t, media.Message, retrievedMedia.Message)
-	assert.Equal(t, media.Metadata.Title, retrievedMedia.Metadata.Title)
+	assert.Equal(t, media.Title, retrievedMedia.Title)
 	assert.Equal(t, media.Metadata.DurationMs, retrievedMedia.Metadata.DurationMs)
 	assert.Equal(t, media.Metadata.URL, retrievedMedia.Metadata.URL)
 	assert.Equal(t, media.Metadata.ThumbnailURL, retrievedMedia.Metadata.ThumbnailURL)
@@ -209,10 +209,10 @@ func TestMediaRepositoryDynamoDB_SaveMedia_InvalidID(t *testing.T) {
 	media := &model.Media{
 		ID:      "invalid-uuid",
 		VideoID: "video123",
+		Title:   "Test Song",
 		Status:  "processed",
 		Message: "success",
 		Metadata: &model.PlatformMetadata{
-			Title:        "Test Song",
 			DurationMs:   300000,
 			URL:          "https://youtube.com/watch?v=video123",
 			ThumbnailURL: "https://img.youtube.com/vi/video123/default.jpg",
@@ -330,8 +330,8 @@ func TestMediaRepositoryDynamoDB_UpdateMedia_InvalidMetadata(t *testing.T) {
 		VideoID: "video123",
 		Status:  "processed",
 		Message: "success",
+		Title:   "",
 		Metadata: &model.PlatformMetadata{
-			Title:        "",
 			DurationMs:   300000,
 			URL:          "https://youtube.com/watch?v=video123",
 			ThumbnailURL: "https://img.youtube.com/vi/video123/default.jpg",
