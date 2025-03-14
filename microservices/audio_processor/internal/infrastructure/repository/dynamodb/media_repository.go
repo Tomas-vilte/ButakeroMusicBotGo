@@ -12,14 +12,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"time"
 )
 
 var (
 	ErrMediaNotFound   = errors.New("registro de media no encontrado")
-	ErrInvalidMediaID  = errors.New("ID de media inválido")
 	ErrInvalidVideoID  = errors.New("video_id inválido")
 	ErrInvalidMetadata = errors.New("metadatos inválidos")
 )
@@ -53,20 +51,15 @@ func (r *MediaRepositoryDynamoDB) SaveMedia(ctx context.Context, media *model.Me
 		zap.String("method", "SaveMedia"),
 	)
 
-	if media.ID == "" {
-		media.ID = uuid.New().String()
-		log.Info("Generando nuevo ID para el registro de media", zap.String("new_id", media.ID))
-	} else if !isValidUUID(media.ID) {
-		log.Error("ID de media inválido", zap.String("media_id", media.ID))
-		return ErrInvalidMediaID
-	}
-
-	log = log.With(zap.String("media_id", media.ID))
-
 	if media.VideoID == "" {
 		log.Error("video_id no puede estar vacío")
 		return ErrInvalidVideoID
 	}
+
+	log = log.With(zap.String("video_id", media.VideoID))
+
+	media.PK = fmt.Sprintf("VIDEO#%s", media.VideoID)
+	media.SK = "METADATA"
 
 	now := time.Now()
 	media.CreatedAt = now
@@ -91,18 +84,12 @@ func (r *MediaRepositoryDynamoDB) SaveMedia(ctx context.Context, media *model.Me
 	return nil
 }
 
-func (r *MediaRepositoryDynamoDB) GetMedia(ctx context.Context, id, videoID string) (*model.Media, error) {
+func (r *MediaRepositoryDynamoDB) GetMedia(ctx context.Context, videoID string) (*model.Media, error) {
 	log := r.log.With(
 		zap.String("component", "MediaRepository"),
 		zap.String("method", "GetMedia"),
-		zap.String("media_id", id),
 		zap.String("video_id", videoID),
 	)
-
-	if !isValidUUID(id) {
-		log.Error("ID de media inválido")
-		return nil, ErrInvalidMediaID
-	}
 
 	if videoID == "" {
 		log.Error("video_id no puede estar vacío")
@@ -112,8 +99,8 @@ func (r *MediaRepositoryDynamoDB) GetMedia(ctx context.Context, id, videoID stri
 	result, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String(r.cfg.Database.DynamoDB.Tables.Songs),
 		Key: map[string]types.AttributeValue{
-			"PK": &types.AttributeValueMemberS{Value: id},
-			"SK": &types.AttributeValueMemberS{Value: videoID},
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("VIDEO#%s", videoID)},
+			"SK": &types.AttributeValueMemberS{Value: "METADATA"},
 		},
 	})
 	if err != nil {
@@ -132,22 +119,18 @@ func (r *MediaRepositoryDynamoDB) GetMedia(ctx context.Context, id, videoID stri
 		return nil, fmt.Errorf("error al convertir atributos de DynamoDB a media: %w", err)
 	}
 
+	media.VideoID = videoID
+
 	log.Info("Registro de media recuperado exitosamente de DynamoDB")
 	return media, nil
 }
 
-func (r *MediaRepositoryDynamoDB) DeleteMedia(ctx context.Context, id, videoID string) error {
+func (r *MediaRepositoryDynamoDB) DeleteMedia(ctx context.Context, videoID string) error {
 	log := r.log.With(
 		zap.String("component", "MediaRepository"),
 		zap.String("method", "DeleteMedia"),
-		zap.String("media_id", id),
 		zap.String("video_id", videoID),
 	)
-
-	if !isValidUUID(id) {
-		log.Error("ID de media inválido")
-		return ErrInvalidMediaID
-	}
 
 	if videoID == "" {
 		log.Error("video_id no puede estar vacío")
@@ -157,8 +140,8 @@ func (r *MediaRepositoryDynamoDB) DeleteMedia(ctx context.Context, id, videoID s
 	_, err := r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
 		TableName: aws.String(r.cfg.Database.DynamoDB.Tables.Songs),
 		Key: map[string]types.AttributeValue{
-			"PK": &types.AttributeValueMemberS{Value: id},
-			"SK": &types.AttributeValueMemberS{Value: videoID},
+			"PK": &types.AttributeValueMemberS{Value: fmt.Sprintf("VIDEO#%s", videoID)},
+			"SK": &types.AttributeValueMemberS{Value: "METADATA"},
 		},
 	})
 	if err != nil {
@@ -170,25 +153,19 @@ func (r *MediaRepositoryDynamoDB) DeleteMedia(ctx context.Context, id, videoID s
 	return nil
 }
 
-func (r *MediaRepositoryDynamoDB) UpdateMedia(ctx context.Context, id, videoID string, media *model.Media) error {
+func (r *MediaRepositoryDynamoDB) UpdateMedia(ctx context.Context, videoID string, media *model.Media) error {
 	log := r.log.With(
 		zap.String("component", "MediaRepository"),
 		zap.String("method", "UpdateMedia"),
-		zap.String("media_id", id),
 		zap.String("video_id", videoID),
 	)
-
-	if !isValidUUID(id) {
-		log.Error("ID de media inválido")
-		return ErrInvalidMediaID
-	}
 
 	if videoID == "" {
 		log.Error("video_id no puede estar vacío")
 		return ErrInvalidVideoID
 	}
 
-	if media.Metadata == nil || media.Title == "" || media.Metadata.Platform == "" {
+	if media.Metadata == nil || media.Metadata.Title == "" || media.Metadata.Platform == "" {
 		log.Error("Metadatos inválidos", zap.Any("metadata", media.Metadata))
 		return ErrInvalidMetadata
 	}
@@ -212,12 +189,6 @@ func (r *MediaRepositoryDynamoDB) UpdateMedia(ctx context.Context, id, videoID s
 
 	log.Info("Registro de media actualizado exitosamente en DynamoDB")
 	return nil
-}
-
-// isValidUUID verifica si una cadena es un UUID válido.
-func isValidUUID(id string) bool {
-	_, err := uuid.Parse(id)
-	return err == nil
 }
 
 func (r *MediaRepositoryDynamoDB) toAttributeValueMap(media *model.Media) (map[string]types.AttributeValue, error) {

@@ -25,7 +25,6 @@ func (s *TopicPublisherService) PublishMediaProcessed(ctx context.Context, messa
 	log := s.logger.With(
 		zap.String("component", "TopicPublisherService"),
 		zap.String("method", "PublishMediaProcessed"),
-		zap.String("media_id", message.ID),
 		zap.String("video_id", message.VideoID),
 	)
 
@@ -34,6 +33,6 @@ func (s *TopicPublisherService) PublishMediaProcessed(ctx context.Context, messa
 		return fmt.Errorf("error al publicar el mensaje: %w", err)
 	}
 
-	log.Info("Mensaje publicado exitosamente", zap.String("media_id", message.ID))
+	log.Info("Mensaje publicado exitosamente", zap.String("video_id", message.VideoID))
 	return nil
 }

@@ -2,11 +2,12 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
+	errorsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
-	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"time"
 )
@@ -25,11 +26,11 @@ func NewOperationService(repo ports.MediaRepository, logger logger.Logger) *Oper
 
 func (s *OperationService) StartOperation(ctx context.Context, videoID string) (*model.OperationInitResult, error) {
 	media := &model.Media{
-		ID:      uuid.New().String(),
-		VideoID: videoID,
-		Status:  "starting",
-		Title:   "",
+		VideoID:    videoID,
+		Status:     "starting",
+		TitleLower: "",
 		Metadata: &model.PlatformMetadata{
+			Title:        "",
 			DurationMs:   0,
 			URL:          "",
 			ThumbnailURL: "",
@@ -53,11 +54,14 @@ func (s *OperationService) StartOperation(ctx context.Context, videoID string) (
 		s.logger.Error("Error al iniciar operación",
 			zap.String("songID", videoID),
 			zap.Error(err))
-		return nil, errors.ErrOperationInitFailed.Wrap(err)
+
+		if errors.Is(err, errorsApp.ErrDuplicateRecord) {
+			return nil, errorsApp.ErrDuplicateRecord.WithMessage(fmt.Sprintf("El video con ID '%s' ya esta registado", videoID))
+		}
+		return nil, errorsApp.ErrOperationInitFailed.Wrap(err)
 	}
 
 	return &model.OperationInitResult{
-		ID:      media.ID,
 		VideoID: media.VideoID,
 		Status:  media.Status,
 	}, nil

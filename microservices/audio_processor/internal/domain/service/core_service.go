@@ -40,7 +40,7 @@ func NewCoreService(
 	}
 }
 
-func (s *CoreService) ProcessMedia(ctx context.Context, operationID string, mediaDetails *model.MediaDetails) error {
+func (s *CoreService) ProcessMedia(ctx context.Context, mediaDetails *model.MediaDetails) error {
 	log := s.logger.With(
 		zap.String("component", "CoreService"),
 		zap.String("method", "ProcessMedia"),
@@ -53,7 +53,6 @@ func (s *CoreService) ProcessMedia(ctx context.Context, operationID string, medi
 	attempts := 0
 
 	s.logger.Info("Iniciando procesamiento de audio",
-		zap.String("operation_id", operationID),
 		zap.String("title", mediaDetails.Title),
 	)
 
@@ -68,7 +67,6 @@ func (s *CoreService) ProcessMedia(ctx context.Context, operationID string, medi
 
 		if attempts > 1 {
 			s.logger.Info("Reintentando procesamiento",
-				zap.String("operation_id", operationID),
 				zap.Int("attempt", attempts),
 				zap.Int("max_attempts", s.cfg.Service.MaxAttempts))
 		}
@@ -88,12 +86,12 @@ func (s *CoreService) ProcessMedia(ctx context.Context, operationID string, medi
 		}
 
 		media := &model.Media{
-			ID:      operationID,
-			VideoID: mediaDetails.ID,
-			Title:   mediaDetails.Title,
-			Status:  "success",
-			Message: "Procesamiento completado exitosamente",
+			VideoID:    mediaDetails.ID,
+			TitleLower: mediaDetails.Title,
+			Status:     "success",
+			Message:    "Procesamiento completado exitosamente",
 			Metadata: &model.PlatformMetadata{
+				Title:        mediaDetails.Title,
 				DurationMs:   mediaDetails.DurationMs,
 				URL:          mediaDetails.URL,
 				ThumbnailURL: mediaDetails.ThumbnailURL,
@@ -109,8 +107,6 @@ func (s *CoreService) ProcessMedia(ctx context.Context, operationID string, medi
 		}
 
 		message := &model.MediaProcessingMessage{
-			ID:               media.ID,
-			Title:            media.Title,
 			VideoID:          media.VideoID,
 			FileData:         media.FileData,
 			PlatformMetadata: media.Metadata,
@@ -118,8 +114,8 @@ func (s *CoreService) ProcessMedia(ctx context.Context, operationID string, medi
 			Message:          media.Message,
 		}
 
-		if err := s.mediaService.UpdateMedia(ctx, media.ID, media.VideoID, media); err != nil {
-			log.Error("Error al actualizar operation", zap.String("operation_id", operationID), zap.Error(err))
+		if err := s.mediaService.UpdateMedia(ctx, media.VideoID, media); err != nil {
+			log.Error("Error al actualizar la operation", zap.String("video_id", media.VideoID), zap.Error(err))
 			lastError = errors.ErrUpdateMediaFailed.Wrap(err)
 			return lastError
 		}
@@ -130,7 +126,7 @@ func (s *CoreService) ProcessMedia(ctx context.Context, operationID string, medi
 			return lastError
 		}
 
-		log.Info("Procesamiento de medios completado exitosamente", zap.String("media_id", media.ID))
+		log.Info("Procesamiento de medios completado exitosamente", zap.String("video_id", media.VideoID))
 		return nil
 	}
 
@@ -141,7 +137,6 @@ func (s *CoreService) ProcessMedia(ctx context.Context, operationID string, medi
 	err := backoff.Retry(operation, bo)
 	if err != nil {
 		s.logger.Error("Procesamiento fallido después de reintentos",
-			zap.String("operation_id", operationID),
 			zap.Error(err),
 			zap.Int("final_attempts", attempts))
 		return err

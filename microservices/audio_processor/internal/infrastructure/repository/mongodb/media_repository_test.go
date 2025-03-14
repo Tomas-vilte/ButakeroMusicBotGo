@@ -10,7 +10,6 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/repository/mongodb"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -47,12 +46,12 @@ func TestMediaRepository_SaveMedia(t *testing.T) {
 	require.NoError(t, err, "Error al crear el repositorio")
 
 	media := &model.Media{
-		ID:      uuid.New().String(),
-		VideoID: "video123",
-		Status:  "processed",
-		Message: "success",
-		Title:   "Test Song",
+		VideoID:    "video123",
+		Status:     "processed",
+		Message:    "success",
+		TitleLower: "test song",
 		Metadata: &model.PlatformMetadata{
+			Title:        "Test Song",
 			DurationMs:   300000,
 			URL:          "https://youtube.com/watch?v=video123",
 			ThumbnailURL: "https://img.youtube.com/vi/video123/default.jpg",
@@ -75,13 +74,13 @@ func TestMediaRepository_SaveMedia(t *testing.T) {
 	err = repo.SaveMedia(ctx, media)
 	assert.NoError(t, err, "Error al guardar el registro de media")
 
-	retrievedMedia, err := repo.GetMedia(ctx, media.ID, media.VideoID)
+	retrievedMedia, err := repo.GetMedia(ctx, media.VideoID)
 	assert.NoError(t, err, "Error al obtener el registro de media")
-	assert.Equal(t, media.ID, retrievedMedia.ID)
 	assert.Equal(t, media.VideoID, retrievedMedia.VideoID)
 	assert.Equal(t, media.Status, retrievedMedia.Status)
 	assert.Equal(t, media.Message, retrievedMedia.Message)
-	assert.Equal(t, media.Title, retrievedMedia.Title)
+	assert.Equal(t, media.Metadata.Title, retrievedMedia.Metadata.Title)
+	assert.Equal(t, media.TitleLower, retrievedMedia.TitleLower)
 	assert.Equal(t, media.Metadata.DurationMs, retrievedMedia.Metadata.DurationMs)
 	assert.Equal(t, media.Metadata.URL, retrievedMedia.Metadata.URL)
 	assert.Equal(t, media.Metadata.ThumbnailURL, retrievedMedia.Metadata.ThumbnailURL)
@@ -110,10 +109,9 @@ func TestMediaRepository_GetMedia_NotFound(t *testing.T) {
 	})
 	require.NoError(t, err, "Error al crear el repositorio")
 
-	nonExistentID := uuid.New().String()
 	nonExistentVideoID := "non-existent-video"
 
-	_, err = repo.GetMedia(ctx, nonExistentID, nonExistentVideoID)
+	_, err = repo.GetMedia(ctx, nonExistentVideoID)
 	assert.Error(t, err, "Se esperaba un error al obtener un registro inexistente")
 	assert.Equal(t, mongodb.ErrMediaNotFound, err, "El error no es el esperado")
 }
@@ -134,12 +132,12 @@ func TestMediaRepository_UpdateMedia(t *testing.T) {
 	require.NoError(t, err, "Error al crear el repositorio")
 
 	media := &model.Media{
-		ID:      uuid.New().String(),
-		VideoID: "video123",
-		Status:  "processed",
-		Message: "success",
-		Title:   "Test Song",
+		VideoID:    "video123",
+		Status:     "processed",
+		Message:    "success",
+		TitleLower: "test song",
 		Metadata: &model.PlatformMetadata{
+			Title:        "Test Song",
 			DurationMs:   300000,
 			URL:          "https://youtube.com/watch?v=video123",
 			ThumbnailURL: "https://img.youtube.com/vi/video123/default.jpg",
@@ -164,10 +162,10 @@ func TestMediaRepository_UpdateMedia(t *testing.T) {
 
 	media.Status = "updated"
 	media.Message = "updated message"
-	err = repo.UpdateMedia(ctx, media.ID, media.VideoID, media)
+	err = repo.UpdateMedia(ctx, media.VideoID, media)
 	assert.NoError(t, err, "Error al actualizar el registro de media")
 
-	updatedMedia, err := repo.GetMedia(ctx, media.ID, media.VideoID)
+	updatedMedia, err := repo.GetMedia(ctx, media.VideoID)
 	assert.NoError(t, err, "Error al obtener el registro de media actualizado")
 	assert.Equal(t, "updated", updatedMedia.Status)
 	assert.Equal(t, "updated message", updatedMedia.Message)
@@ -189,12 +187,12 @@ func TestMediaRepository_DeleteMedia(t *testing.T) {
 	require.NoError(t, err, "Error al crear el repositorio")
 
 	media := &model.Media{
-		ID:      uuid.New().String(),
-		VideoID: "video123",
-		Status:  "processed",
-		Message: "success",
-		Title:   "Test Song",
+		VideoID:    "video123",
+		Status:     "processed",
+		Message:    "success",
+		TitleLower: "test song",
 		Metadata: &model.PlatformMetadata{
+			Title:        "Test Song",
 			DurationMs:   300000,
 			URL:          "https://youtube.com/watch?v=video123",
 			ThumbnailURL: "https://img.youtube.com/vi/video123/default.jpg",
@@ -217,10 +215,10 @@ func TestMediaRepository_DeleteMedia(t *testing.T) {
 	err = repo.SaveMedia(ctx, media)
 	assert.NoError(t, err, "Error al guardar el registro de media")
 
-	err = repo.DeleteMedia(ctx, media.ID, media.VideoID)
+	err = repo.DeleteMedia(ctx, media.VideoID)
 	assert.NoError(t, err, "Error al eliminar el registro de media")
 
-	_, err = repo.GetMedia(ctx, media.ID, media.VideoID)
+	_, err = repo.GetMedia(ctx, media.VideoID)
 	assert.Error(t, err, "Se esperaba un error al obtener un registro eliminado")
 	assert.Equal(t, mongodb.ErrMediaNotFound, err, "El error no es el esperado")
 }

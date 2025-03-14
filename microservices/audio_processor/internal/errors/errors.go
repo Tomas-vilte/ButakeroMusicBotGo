@@ -16,6 +16,7 @@ var (
 	ErrDownloadFailed       = NewAppError("download_failed", "Error en descarga de audio")
 	ErrEncodingFailed       = NewAppError("encoding_failed", "Error en codificación de audio")
 	ErrUploadFailed         = NewAppError("upload_failed", "Error al subir a almacenamiento")
+	ErrDuplicateRecord      = NewAppError("duplicate_record", "El registro ya existe")
 	ErrOperationInitFailed  = NewAppError("operation_init_failed", "Error al iniciar la operación")
 	ErrOperationNotFound    = NewAppError("operation_not_found", "No se encontró la operación solicitada")
 	ErrInvalidUUID          = NewAppError("invalid_uuid", "UUID inválido")
@@ -59,6 +60,8 @@ func (e *AppError) StatusCode() int {
 		return http.StatusNotFound
 	case "youtube_api_error":
 		return http.StatusServiceUnavailable
+	case "duplicate_record":
+		return http.StatusConflict
 	case "download_failed", "encoding_failed", "upload_failed",
 		"empty_buffer", "operation_init_failed",
 		"update_media_failed", "publish_message_failed":

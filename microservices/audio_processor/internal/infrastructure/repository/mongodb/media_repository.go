@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
+	errorsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -18,7 +17,6 @@ import (
 
 var (
 	ErrMediaNotFound   = errors.New("registro de media no encontrado")
-	ErrInvalidMediaID  = errors.New("ID de media inválido")
 	ErrInvalidVideoID  = errors.New("video_id inválido")
 	ErrInvalidMetadata = errors.New("metadatos inválidos")
 )
@@ -59,16 +57,6 @@ func (r *MediaRepository) SaveMedia(ctx context.Context, media *model.Media) err
 		zap.String("method", "SaveMedia"),
 	)
 
-	if media.ID == "" {
-		media.ID = uuid.New().String()
-		log.Info("Generando nuevo ID para el registro de media", zap.String("new_id", media.ID))
-	} else if !isValidUUID(media.ID) {
-		log.Error("ID de media inválido", zap.String("media_id", media.ID))
-		return ErrInvalidMediaID
-	}
-
-	log = log.With(zap.String("media_id", media.ID))
-
 	if media.VideoID == "" {
 		log.Error("video_id no puede estar vacío")
 		return ErrInvalidVideoID
@@ -77,13 +65,12 @@ func (r *MediaRepository) SaveMedia(ctx context.Context, media *model.Media) err
 	now := time.Now()
 	media.CreatedAt = now
 	media.UpdatedAt = now
-	media.Title = strings.ToLower(media.Title)
 
 	_, err := r.collection.InsertOne(ctx, media)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			log.Warn("ID duplicado al guardar el registro de media, intentando actualizar", zap.Error(err))
-			return r.UpdateMedia(ctx, media.ID, media.VideoID, media)
+			return errorsApp.ErrDuplicateRecord.WithMessage(fmt.Sprintf("El video con ID '%s' ya está registrado.", media.VideoID))
 		}
 		log.Error("Error al guardar el registro de media", zap.Error(err))
 		return fmt.Errorf("error al guardar el registro de media: %w", err)
@@ -94,18 +81,12 @@ func (r *MediaRepository) SaveMedia(ctx context.Context, media *model.Media) err
 }
 
 // GetMedia obtiene un registro de procesamiento multimedia por su ID y video_id.
-func (r *MediaRepository) GetMedia(ctx context.Context, id, videoID string) (*model.Media, error) {
+func (r *MediaRepository) GetMedia(ctx context.Context, videoID string) (*model.Media, error) {
 	log := r.log.With(
 		zap.String("component", "MediaRepository"),
 		zap.String("method", "GetMedia"),
-		zap.String("media_id", id),
 		zap.String("video_id", videoID),
 	)
-
-	if !isValidUUID(id) {
-		log.Error("ID de media inválido")
-		return nil, ErrInvalidMediaID
-	}
 
 	if videoID == "" {
 		log.Error("video_id no puede estar vacío")
@@ -113,8 +94,7 @@ func (r *MediaRepository) GetMedia(ctx context.Context, id, videoID string) (*mo
 	}
 
 	filter := bson.D{
-		{Key: "_id", Value: id},
-		{Key: "video_id", Value: videoID},
+		{Key: "_id", Value: videoID},
 	}
 
 	var media model.Media
@@ -133,18 +113,12 @@ func (r *MediaRepository) GetMedia(ctx context.Context, id, videoID string) (*mo
 }
 
 // DeleteMedia elimina un registro de procesamiento multimedia por su ID y video_id.
-func (r *MediaRepository) DeleteMedia(ctx context.Context, id, videoID string) error {
+func (r *MediaRepository) DeleteMedia(ctx context.Context, videoID string) error {
 	log := r.log.With(
 		zap.String("component", "MediaRepository"),
 		zap.String("method", "DeleteMedia"),
-		zap.String("media_id", id),
 		zap.String("video_id", videoID),
 	)
-
-	if !isValidUUID(id) {
-		log.Error("ID de media inválido")
-		return ErrInvalidMediaID
-	}
 
 	if videoID == "" {
 		log.Error("video_id no puede estar vacío")
@@ -152,8 +126,7 @@ func (r *MediaRepository) DeleteMedia(ctx context.Context, id, videoID string) e
 	}
 
 	filter := bson.D{
-		{Key: "_id", Value: id},
-		{Key: "video_id", Value: videoID},
+		{Key: "_id", Value: videoID},
 	}
 
 	result, err := r.collection.DeleteOne(ctx, filter)
@@ -172,44 +145,36 @@ func (r *MediaRepository) DeleteMedia(ctx context.Context, id, videoID string) e
 }
 
 // UpdateMedia actualiza un registro de procesamiento multimedia de manera más eficiente.
-func (r *MediaRepository) UpdateMedia(ctx context.Context, id, videoID string, media *model.Media) error {
+func (r *MediaRepository) UpdateMedia(ctx context.Context, videoID string, media *model.Media) error {
 	log := r.log.With(
 		zap.String("component", "MediaRepository"),
 		zap.String("method", "UpdateMedia"),
-		zap.String("media_id", id),
 		zap.String("video_id", videoID),
 	)
-
-	if !isValidUUID(id) {
-		log.Error("ID de media inválido")
-		return ErrInvalidMediaID
-	}
 
 	if videoID == "" {
 		log.Error("video_id no puede estar vacío")
 		return ErrInvalidVideoID
 	}
 
-	if media.Metadata == nil || media.Title == "" || media.Metadata.Platform == "" {
+	if media.Metadata == nil || media.Metadata.Title == "" || media.Metadata.Platform == "" {
 		log.Error("Metadatos inválidos", zap.Any("metadata", media.Metadata))
 		return ErrInvalidMetadata
 	}
 
 	media.UpdatedAt = time.Now()
 
-	media.ID = id
 	media.VideoID = videoID
 
 	filter := bson.D{
-		{Key: "_id", Value: id},
-		{Key: "video_id", Value: videoID},
+		{Key: "_id", Value: videoID},
 	}
 
 	opts := options.Update().SetUpsert(false)
 
 	update := bson.D{
 		{Key: "$set", Value: bson.D{
-			{Key: "title", Value: media.Title},
+			{Key: "title_lower", Value: media.TitleLower},
 			{Key: "status", Value: media.Status},
 			{Key: "message", Value: media.Message},
 			{Key: "metadata", Value: media.Metadata},
@@ -236,10 +201,4 @@ func (r *MediaRepository) UpdateMedia(ctx context.Context, id, videoID string, m
 
 	log.Info("Registro de media actualizado exitosamente")
 	return nil
-}
-
-// isValidUUID verifica si una cadena es un UUID válido.
-func isValidUUID(id string) bool {
-	_, err := uuid.Parse(id)
-	return err == nil
 }

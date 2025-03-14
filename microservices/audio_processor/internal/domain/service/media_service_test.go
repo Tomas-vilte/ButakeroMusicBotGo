@@ -20,7 +20,6 @@ func TestMediaService_CreateMedia(t *testing.T) {
 	service := NewMediaService(mockRepo, mockLogger)
 
 	media := &model.Media{
-		ID:      "test-id",
 		VideoID: "test-video-id",
 		Status:  "starting",
 	}
@@ -45,7 +44,6 @@ func TestMediaService_CreateMedia_Error(t *testing.T) {
 	service := NewMediaService(mockRepo, mockLogger)
 
 	media := &model.Media{
-		ID:      "test-id",
 		VideoID: "test-video-id",
 		Status:  "starting",
 	}
@@ -71,20 +69,18 @@ func TestMediaService_GetMediaByID(t *testing.T) {
 
 	service := NewMediaService(mockRepo, mockLogger)
 
-	id := "test-id"
 	videoID := "test-video-id"
 	expectedMedia := &model.Media{
-		ID:      id,
 		VideoID: videoID,
 		Status:  "starting",
 	}
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
-	mockRepo.On("GetMedia", mock.Anything, id, videoID).Return(expectedMedia, nil)
+	mockRepo.On("GetMedia", mock.Anything, videoID).Return(expectedMedia, nil)
 
 	// Act
-	media, err := service.GetMediaByID(context.Background(), id, videoID)
+	media, err := service.GetMediaByID(context.Background(), videoID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -99,16 +95,15 @@ func TestMediaService_GetMediaByID_Error(t *testing.T) {
 
 	service := NewMediaService(mockRepo, mockLogger)
 
-	id := "test-id"
 	videoID := "test-video-id"
 	expectedError := errors.New("repository error")
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
-	mockRepo.On("GetMedia", mock.Anything, id, videoID).Return(&model.Media{}, expectedError)
+	mockRepo.On("GetMedia", mock.Anything, videoID).Return(&model.Media{}, expectedError)
 
 	// Act
-	media, err := service.GetMediaByID(context.Background(), id, videoID)
+	media, err := service.GetMediaByID(context.Background(), videoID)
 
 	// Assert
 	assert.Error(t, err)
@@ -124,20 +119,18 @@ func TestMediaService_UpdateMedia(t *testing.T) {
 
 	service := NewMediaService(mockRepo, mockLogger)
 
-	id := "test-id"
 	videoID := "test-video-id"
 	media := &model.Media{
-		ID:      id,
 		VideoID: videoID,
 		Status:  "completed",
 	}
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
-	mockRepo.On("UpdateMedia", mock.Anything, id, videoID, media).Return(nil)
+	mockRepo.On("UpdateMedia", mock.Anything, videoID, media).Return(nil)
 
 	// Act
-	err := service.UpdateMedia(context.Background(), id, videoID, media)
+	err := service.UpdateMedia(context.Background(), videoID, media)
 
 	// Assert
 	assert.NoError(t, err)
@@ -151,10 +144,8 @@ func TestMediaService_UpdateMedia_Error(t *testing.T) {
 
 	service := NewMediaService(mockRepo, mockLogger)
 
-	id := "test-id"
 	videoID := "test-video-id"
 	media := &model.Media{
-		ID:      id,
 		VideoID: videoID,
 		Status:  "completed",
 	}
@@ -162,10 +153,10 @@ func TestMediaService_UpdateMedia_Error(t *testing.T) {
 	expectedError := errors.New("repository error")
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
-	mockRepo.On("UpdateMedia", mock.Anything, id, videoID, media).Return(expectedError)
+	mockRepo.On("UpdateMedia", mock.Anything, videoID, media).Return(expectedError)
 
 	// Act
-	err := service.UpdateMedia(context.Background(), id, videoID, media)
+	err := service.UpdateMedia(context.Background(), videoID, media)
 
 	// Assert
 	assert.Error(t, err)
@@ -180,15 +171,14 @@ func TestMediaService_DeleteMedia(t *testing.T) {
 
 	service := NewMediaService(mockRepo, mockLogger)
 
-	id := "test-id"
 	videoID := "test-video-id"
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
-	mockRepo.On("DeleteMedia", mock.Anything, id, videoID).Return(nil)
+	mockRepo.On("DeleteMedia", mock.Anything, videoID).Return(nil)
 
 	// Act
-	err := service.DeleteMedia(context.Background(), id, videoID)
+	err := service.DeleteMedia(context.Background(), videoID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -202,16 +192,15 @@ func TestMediaService_DeleteMedia_Error(t *testing.T) {
 
 	service := NewMediaService(mockRepo, mockLogger)
 
-	id := "test-id"
 	videoID := "test-video-id"
 	expectedError := errors.New("repository error")
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
-	mockRepo.On("DeleteMedia", mock.Anything, id, videoID).Return(expectedError)
+	mockRepo.On("DeleteMedia", mock.Anything, videoID).Return(expectedError)
 
 	// Act
-	err := service.DeleteMedia(context.Background(), id, videoID)
+	err := service.DeleteMedia(context.Background(), videoID)
 
 	// Assert
 	assert.Error(t, err)

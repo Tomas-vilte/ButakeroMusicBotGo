@@ -2,9 +2,7 @@ package model
 
 type (
 	MediaProcessingMessage struct {
-		ID               string            `json:"id"`
 		VideoID          string            `json:"video_id"`
-		Title            string            `json:"title"`
 		FileData         *FileData         `json:"file_data"`
 		PlatformMetadata *PlatformMetadata `json:"platform_metadata"`
 		ReceiptHandle    string            `json:"receipt_handle,omitempty"`
