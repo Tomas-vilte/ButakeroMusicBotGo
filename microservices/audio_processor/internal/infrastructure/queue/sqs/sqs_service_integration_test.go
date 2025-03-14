@@ -7,7 +7,6 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -67,7 +66,6 @@ func setupTestEnvironment(t *testing.T) (*SQSService, *config.Config) {
 
 func createTestMessage() *model.MediaProcessingMessage {
 	return &model.MediaProcessingMessage{
-		ID:      uuid.New().String(),
 		VideoID: "video_id",
 		FileData: &model.FileData{
 			FilePath: "/path/test",

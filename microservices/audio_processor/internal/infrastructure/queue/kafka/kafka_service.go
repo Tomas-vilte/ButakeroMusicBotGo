@@ -73,7 +73,6 @@ func (k *KafkaService) SendMessage(ctx context.Context, message *model.MediaProc
 	log := k.Log.With(
 		zap.String("component", "KafkaService"),
 		zap.String("method", "SendMessage"),
-		zap.String("message_id", message.ID),
 	)
 	body, err := json.Marshal(message)
 	if err != nil {
@@ -82,7 +81,7 @@ func (k *KafkaService) SendMessage(ctx context.Context, message *model.MediaProc
 	}
 
 	msg := &sarama.ProducerMessage{
-		Key:   sarama.StringEncoder(message.ID),
+		Key:   sarama.StringEncoder(message.VideoID),
 		Topic: k.Config.Messaging.Kafka.Topic,
 		Value: sarama.StringEncoder(body),
 	}

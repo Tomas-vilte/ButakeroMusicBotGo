@@ -25,13 +25,13 @@ type (
 
 	MediaService interface {
 		CreateMedia(ctx context.Context, media *model.Media) error
-		GetMediaByID(ctx context.Context, id, videoID string) (*model.Media, error)
-		UpdateMedia(ctx context.Context, id, videoID string, status *model.Media) error
-		DeleteMedia(ctx context.Context, id, videoID string) error
+		GetMediaByID(ctx context.Context, videoID string) (*model.Media, error)
+		UpdateMedia(ctx context.Context, videoID string, status *model.Media) error
+		DeleteMedia(ctx context.Context, videoID string) error
 	}
 
 	CoreService interface {
-		ProcessMedia(ctx context.Context, operationID string, mediaDetails *model.MediaDetails) error
+		ProcessMedia(ctx context.Context, mediaDetails *model.MediaDetails) error
 	}
 
 	OperationService interface {

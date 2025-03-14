@@ -15,7 +15,7 @@ resource "aws_dynamodb_table" "songs" {
   }
 
   attribute {
-    name = "title"
+    name = "title_lower"
     type = "S"
   }
 
@@ -69,10 +69,21 @@ resource "aws_dynamodb_table" "songs" {
     type = "BOOL"
   }
 
+  attribute {
+    name = "GSI1PK"
+    type = "S"
+  }
+
+  attribute {
+    name = "GSI1SK"
+    type = "S"
+  }
+
   global_secondary_index {
-    name            = "TitleIndex"
-    hash_key        = "title"
-    projection_type = "ALL"
+    name               = "GSI1"
+    hash_key           = "GSI1PK"
+    range_key          = "GSI1SK"
+    projection_type    = "ALL"
   }
 
   tags = var.dynamodb_table_songs_tag

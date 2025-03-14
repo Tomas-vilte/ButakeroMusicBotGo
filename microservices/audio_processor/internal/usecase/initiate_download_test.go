@@ -1,4 +1,4 @@
-//go:build !integration
+////go:build !integration
 
 package usecase
 
@@ -29,7 +29,6 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 			Title: "Test Song",
 		}
 		operationResult := &model.OperationInitResult{
-			ID:     "test-operation-id",
 			Status: "started",
 		}
 
@@ -38,7 +37,7 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 
 		mockVideoService.On("GetMediaDetails", ctx, song, providerType).Return(mediaDetails, nil)
 		mockOperationService.On("StartOperation", ctx, mediaDetails.ID).Return(operationResult, nil)
-		mockCoreService.On("ProcessMedia", context.Background(), operationResult.ID, mediaDetails).Run(func(args mock.Arguments) {
+		mockCoreService.On("ProcessMedia", context.Background(), mediaDetails).Run(func(args mock.Arguments) {
 			wg.Done()
 		}).Return(nil)
 
@@ -71,7 +70,6 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 			Title: "Test Song",
 		}
 		operationResult := &model.OperationInitResult{
-			ID:     "test-operation-id",
 			Status: "started",
 		}
 		expectedError := errors.New("background processing failed")
@@ -81,7 +79,7 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 
 		mockVideoService.On("GetMediaDetails", ctx, song, providerType).Return(mediaDetails, nil)
 		mockOperationService.On("StartOperation", ctx, mediaDetails.ID).Return(operationResult, nil)
-		mockCoreService.On("ProcessMedia", context.Background(), operationResult.ID, mediaDetails).Run(func(args mock.Arguments) {
+		mockCoreService.On("ProcessMedia", context.Background(), mediaDetails).Run(func(args mock.Arguments) {
 			wg.Done()
 		}).Return(expectedError)
 

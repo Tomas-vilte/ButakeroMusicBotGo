@@ -7,7 +7,6 @@ import (
 	"errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"testing"
@@ -23,10 +22,9 @@ func TestOperationService_StartOperation(t *testing.T) {
 
 	videoID := "test-video-id"
 	expectedMedia := &model.Media{
-		ID:      uuid.New().String(),
-		VideoID: videoID,
-		Status:  "starting",
-		Title:   "",
+		VideoID:    videoID,
+		Status:     "starting",
+		TitleLower: "",
 		Metadata: &model.PlatformMetadata{
 			DurationMs:   0,
 			URL:          "",

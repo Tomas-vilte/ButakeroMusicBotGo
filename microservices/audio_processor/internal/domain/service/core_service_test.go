@@ -39,7 +39,6 @@ func TestCoreService_ProcessMedia_Success(t *testing.T) {
 		cfg,
 	)
 
-	operationID := "test-operation-id"
 	mediaDetails := &model.MediaDetails{
 		ID:           "test-video-id",
 		Title:        "Test Song",
@@ -60,10 +59,10 @@ func TestCoreService_ProcessMedia_Success(t *testing.T) {
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockAudioDownloadService.On("DownloadAndEncode", mock.Anything, mediaDetails.URL).Return(audioBuffer, nil)
 	mockAudioStorageService.On("StoreAudio", mock.Anything, audioBuffer, mediaDetails.Title).Return(fileData, nil)
-	mockMediaService.On("UpdateMedia", mock.Anything, operationID, mediaDetails.ID, mock.AnythingOfType("*model.Media")).Return(nil)
+	mockMediaService.On("UpdateMedia", mock.Anything, mediaDetails.ID, mock.AnythingOfType("*model.Media")).Return(nil)
 	mockTopicPublisher.On("PublishMediaProcessed", mock.Anything, mock.AnythingOfType("*model.MediaProcessingMessage")).Return(nil)
 
-	err := service.ProcessMedia(context.Background(), operationID, mediaDetails)
+	err := service.ProcessMedia(context.Background(), mediaDetails)
 
 	// Assert
 	assert.NoError(t, err)
@@ -97,7 +96,6 @@ func TestCoreService_ProcessMedia_DownloadError(t *testing.T) {
 		cfg,
 	)
 
-	operationID := "test-operation-id"
 	mediaDetails := &model.MediaDetails{
 		ID:           "test-video-id",
 		Title:        "Test Song",
@@ -114,7 +112,7 @@ func TestCoreService_ProcessMedia_DownloadError(t *testing.T) {
 	mockAudioDownloadService.On("DownloadAndEncode", mock.Anything, mediaDetails.URL).Return((*bytes.Buffer)(nil), expectedError)
 
 	// Act
-	err := service.ProcessMedia(context.Background(), operationID, mediaDetails)
+	err := service.ProcessMedia(context.Background(), mediaDetails)
 
 	// Assert
 	assert.Error(t, err)
@@ -155,7 +153,6 @@ func TestCoreService_ProcessMedia_StorageError(t *testing.T) {
 		cfg,
 	)
 
-	operationID := "test-operation-id"
 	mediaDetails := &model.MediaDetails{
 		ID:           "test-video-id",
 		Title:        "Test Song",
@@ -175,7 +172,7 @@ func TestCoreService_ProcessMedia_StorageError(t *testing.T) {
 	mockAudioStorageService.On("StoreAudio", mock.Anything, audioBuffer, mediaDetails.Title).Return((*model.FileData)(nil), expectedError)
 
 	// Act
-	err := service.ProcessMedia(context.Background(), operationID, mediaDetails)
+	err := service.ProcessMedia(context.Background(), mediaDetails)
 
 	// Assert
 	assert.Error(t, err)
@@ -210,7 +207,6 @@ func TestCoreService_ProcessMedia_UpdateMediaError(t *testing.T) {
 		cfg,
 	)
 
-	operationID := "test-operation-id"
 	mediaDetails := &model.MediaDetails{
 		ID:           "test-video-id",
 		Title:        "Test Song",
@@ -233,10 +229,10 @@ func TestCoreService_ProcessMedia_UpdateMediaError(t *testing.T) {
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 	mockAudioDownloadService.On("DownloadAndEncode", mock.Anything, mediaDetails.URL).Return(audioBuffer, nil)
 	mockAudioStorageService.On("StoreAudio", mock.Anything, audioBuffer, mediaDetails.Title).Return(fileData, nil)
-	mockMediaService.On("UpdateMedia", mock.Anything, operationID, mediaDetails.ID, mock.AnythingOfType("*model.Media")).Return(expectedError)
+	mockMediaService.On("UpdateMedia", mock.Anything, mediaDetails.ID, mock.AnythingOfType("*model.Media")).Return(expectedError)
 
 	// Act
-	err := service.ProcessMedia(context.Background(), operationID, mediaDetails)
+	err := service.ProcessMedia(context.Background(), mediaDetails)
 
 	// Assert
 	assert.Error(t, err)
@@ -277,7 +273,6 @@ func TestCoreService_ProcessMedia_PublishError(t *testing.T) {
 		cfg,
 	)
 
-	operationID := "test-operation-id"
 	mediaDetails := &model.MediaDetails{
 		ID:           "test-video-id",
 		Title:        "Test Song",
@@ -300,11 +295,11 @@ func TestCoreService_ProcessMedia_PublishError(t *testing.T) {
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 	mockAudioDownloadService.On("DownloadAndEncode", mock.Anything, mediaDetails.URL).Return(audioBuffer, nil)
 	mockAudioStorageService.On("StoreAudio", mock.Anything, audioBuffer, mediaDetails.Title).Return(fileData, nil)
-	mockMediaService.On("UpdateMedia", mock.Anything, operationID, mediaDetails.ID, mock.AnythingOfType("*model.Media")).Return(nil)
+	mockMediaService.On("UpdateMedia", mock.Anything, mediaDetails.ID, mock.AnythingOfType("*model.Media")).Return(nil)
 	mockTopicPublisher.On("PublishMediaProcessed", mock.Anything, mock.AnythingOfType("*model.MediaProcessingMessage")).Return(expectedError)
 
 	// Act
-	err := service.ProcessMedia(context.Background(), operationID, mediaDetails)
+	err := service.ProcessMedia(context.Background(), mediaDetails)
 
 	// Assert
 	assert.Error(t, err)

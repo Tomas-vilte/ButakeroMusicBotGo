@@ -7,6 +7,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"go.uber.org/zap"
+	"strings"
 )
 
 // MediaService es la implementación de ports.MediaService.
@@ -28,7 +29,6 @@ func (s *MediaService) CreateMedia(ctx context.Context, media *model.Media) erro
 	log := s.logger.With(
 		zap.String("component", "MediaService"),
 		zap.String("method", "CreateMedia"),
-		zap.String("media_id", media.ID),
 	)
 
 	if err := s.repo.SaveMedia(ctx, media); err != nil {
@@ -41,15 +41,14 @@ func (s *MediaService) CreateMedia(ctx context.Context, media *model.Media) erro
 }
 
 // GetMediaByID obtiene un registro de Media por su ID y videoID.
-func (s *MediaService) GetMediaByID(ctx context.Context, id, videoID string) (*model.Media, error) {
+func (s *MediaService) GetMediaByID(ctx context.Context, videoID string) (*model.Media, error) {
 	log := s.logger.With(
 		zap.String("component", "MediaService"),
 		zap.String("method", "GetMediaByID"),
-		zap.String("media_id", id),
 		zap.String("video_id", videoID),
 	)
 
-	media, err := s.repo.GetMedia(ctx, id, videoID)
+	media, err := s.repo.GetMedia(ctx, videoID)
 	if err != nil {
 		log.Error("Error al obtener el registro de media", zap.Error(err))
 		return nil, fmt.Errorf("error al obtener el registro de media: %w", err)
@@ -60,15 +59,16 @@ func (s *MediaService) GetMediaByID(ctx context.Context, id, videoID string) (*m
 }
 
 // UpdateMedia actualiza el estado de un registro de Media.
-func (s *MediaService) UpdateMedia(ctx context.Context, id, videoID string, media *model.Media) error {
+func (s *MediaService) UpdateMedia(ctx context.Context, videoID string, media *model.Media) error {
 	log := s.logger.With(
 		zap.String("component", "MediaService"),
 		zap.String("method", "UpdateMediaStatus"),
-		zap.String("media_id", id),
 		zap.String("video_id", videoID),
 	)
 
-	if err := s.repo.UpdateMedia(ctx, id, videoID, media); err != nil {
+	media.TitleLower = strings.ToLower(media.TitleLower)
+
+	if err := s.repo.UpdateMedia(ctx, videoID, media); err != nil {
 		log.Error("Error al actualizar el estado del registro de media", zap.Error(err))
 		return fmt.Errorf("error al actualizar el estado del registro de media: %w", err)
 	}
@@ -78,15 +78,14 @@ func (s *MediaService) UpdateMedia(ctx context.Context, id, videoID string, medi
 }
 
 // DeleteMedia elimina un registro de Media por su ID y videoID.
-func (s *MediaService) DeleteMedia(ctx context.Context, id, videoID string) error {
+func (s *MediaService) DeleteMedia(ctx context.Context, videoID string) error {
 	log := s.logger.With(
 		zap.String("component", "MediaService"),
 		zap.String("method", "DeleteMedia"),
-		zap.String("media_id", id),
 		zap.String("video_id", videoID),
 	)
 
-	if err := s.repo.DeleteMedia(ctx, id, videoID); err != nil {
+	if err := s.repo.DeleteMedia(ctx, videoID); err != nil {
 		log.Error("Error al eliminar el registro de media", zap.Error(err))
 		return fmt.Errorf("error al eliminar el registro de media: %w", err)
 	}

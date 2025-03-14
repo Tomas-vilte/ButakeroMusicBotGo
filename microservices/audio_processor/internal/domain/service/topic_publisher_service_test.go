@@ -20,7 +20,6 @@ func TestTopicPublisherService_PublishMediaProcessed(t *testing.T) {
 
 	ctx := context.Background()
 	message := &model.MediaProcessingMessage{
-		ID:      "123",
 		VideoID: "video123",
 		Status:  "processed",
 		Message: "success",
@@ -47,7 +46,6 @@ func TestTopicPublisherService_PublishMediaProcessed_Error(t *testing.T) {
 
 	ctx := context.Background()
 	message := &model.MediaProcessingMessage{
-		ID:      "123",
 		VideoID: "video123",
 		Status:  "processed",
 		Message: "success",

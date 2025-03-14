@@ -58,7 +58,7 @@ func (s *SQSService) SendMessage(ctx context.Context, message *model.MediaProces
 	log := s.Log.With(
 		zap.String("component", "SQSService"),
 		zap.String("method", "SendMessage"),
-		zap.String("message_id", message.ID),
+		zap.String("message_id", message.VideoID),
 	)
 	body, err := json.Marshal(message)
 	if err != nil {
@@ -71,7 +71,7 @@ func (s *SQSService) SendMessage(ctx context.Context, message *model.MediaProces
 		MessageBody: aws.String(string(body)),
 	}
 
-	return s.sendMessageWithRetry(ctx, input, message.ID)
+	return s.sendMessageWithRetry(ctx, input, message.VideoID)
 }
 
 // sendMessageWithRetry implementa la lógica de reintento para enviar mensajes
