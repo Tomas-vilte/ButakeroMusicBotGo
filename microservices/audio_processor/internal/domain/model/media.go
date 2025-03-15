@@ -23,6 +23,8 @@ type (
 		CreatedAt      time.Time         `json:"created_at" bson:"created_at" dynamodbav:"created_at"`
 		UpdatedAt      time.Time         `json:"updated_at" bson:"updated_at" dynamodbav:"updated_at"`
 		PlayCount      int               `json:"play_count" bson:"play_count" dynamodbav:"play_count"`
+		GSI1PK         string            `json:"-" bson:"-" dynamodbav:"GSI1PK"`
+		GSI1SK         string            `json:"-" bson:"-" dynamodbav:"GSI1SK"`
 	}
 
 	// PlatformMetadata representa los metadatos de una plataforma
