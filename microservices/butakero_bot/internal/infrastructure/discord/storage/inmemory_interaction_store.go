@@ -9,20 +9,20 @@ import (
 
 // InMemoryInteractionStorage es una estructura de almacenamiento en memoria para interacciones.
 type InMemoryInteractionStorage struct {
-	songsToAdd map[string][]*entity.Song
+	songsToAdd map[string][]*entity.DiscordEntity
 	mutex      sync.RWMutex
 	logger     logging.Logger
 }
 
 func NewInMemoryInteractionStorage(logger logging.Logger) *InMemoryInteractionStorage {
 	return &InMemoryInteractionStorage{
-		songsToAdd: make(map[string][]*entity.Song),
+		songsToAdd: make(map[string][]*entity.DiscordEntity),
 		logger:     logger,
 	}
 }
 
 // SaveSongList guarda una lista de canciones en el canal identificado por channelID.
-func (s *InMemoryInteractionStorage) SaveSongList(channelID string, list []*entity.Song) {
+func (s *InMemoryInteractionStorage) SaveSongList(channelID string, list []*entity.DiscordEntity) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.songsToAdd[channelID] = list
@@ -38,7 +38,7 @@ func (s *InMemoryInteractionStorage) DeleteSongList(channelID string) {
 }
 
 // GetSongList retorna la lista de canciones asociada al canal identificado por channelID.
-func (s *InMemoryInteractionStorage) GetSongList(channelID string) []*entity.Song {
+func (s *InMemoryInteractionStorage) GetSongList(channelID string) []*entity.DiscordEntity {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	list, exists := s.songsToAdd[channelID]

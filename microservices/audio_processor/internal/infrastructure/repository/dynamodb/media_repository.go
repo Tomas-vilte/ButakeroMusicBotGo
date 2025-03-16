@@ -60,6 +60,8 @@ func (r *MediaRepositoryDynamoDB) SaveMedia(ctx context.Context, media *model.Me
 
 	media.PK = fmt.Sprintf("VIDEO#%s", media.VideoID)
 	media.SK = "METADATA"
+	media.GSI1PK = "SONG"
+	media.GSI1SK = media.TitleLower
 
 	now := time.Now()
 	media.CreatedAt = now

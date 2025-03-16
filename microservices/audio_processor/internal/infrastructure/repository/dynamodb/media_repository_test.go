@@ -51,6 +51,14 @@ func createDynamoDBTables(ctx context.Context, client *dynamodb.Client) error {
 				AttributeName: aws.String("title_lower"),
 				AttributeType: types.ScalarAttributeTypeS,
 			},
+			{
+				AttributeName: aws.String("GSI1PK"),
+				AttributeType: types.ScalarAttributeTypeS,
+			},
+			{
+				AttributeName: aws.String("GSI1SK"),
+				AttributeType: types.ScalarAttributeTypeS,
+			},
 		},
 		KeySchema: []types.KeySchemaElement{
 			{
@@ -69,6 +77,26 @@ func createDynamoDBTables(ctx context.Context, client *dynamodb.Client) error {
 					{
 						AttributeName: aws.String("title_lower"),
 						KeyType:       types.KeyTypeHash,
+					},
+				},
+				Projection: &types.Projection{
+					ProjectionType: types.ProjectionTypeAll,
+				},
+				ProvisionedThroughput: &types.ProvisionedThroughput{
+					ReadCapacityUnits:  aws.Int64(5),
+					WriteCapacityUnits: aws.Int64(5),
+				},
+			},
+			{
+				IndexName: aws.String("GSI1"),
+				KeySchema: []types.KeySchemaElement{
+					{
+						AttributeName: aws.String("GSI1PK"),
+						KeyType:       types.KeyTypeHash,
+					},
+					{
+						AttributeName: aws.String("GSI1SK"),
+						KeyType:       types.KeyTypeRange,
 					},
 				},
 				Projection: &types.Projection{
@@ -174,6 +202,8 @@ func TestMediaRepositoryDynamoDB_Integration(t *testing.T) {
 	assert.Equal(t, media.Message, retrievedMedia.Message)
 	assert.Equal(t, media.Metadata.Title, retrievedMedia.Metadata.Title)
 	assert.Equal(t, media.Metadata.DurationMs, retrievedMedia.Metadata.DurationMs)
+	assert.Equal(t, media.PK, retrievedMedia.PK)
+	assert.Equal(t, media.SK, retrievedMedia.SK)
 	assert.Equal(t, media.Metadata.URL, retrievedMedia.Metadata.URL)
 	assert.Equal(t, media.Metadata.ThumbnailURL, retrievedMedia.Metadata.ThumbnailURL)
 	assert.Equal(t, media.Metadata.Platform, retrievedMedia.Metadata.Platform)

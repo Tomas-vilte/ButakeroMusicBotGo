@@ -3,12 +3,15 @@ package mongodb
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
+	"strings"
+	"time"
 )
 
 // Options contiene las opciones de configuración para el repositorio
@@ -28,16 +31,29 @@ func NewMongoDBSongRepository(opts Options) (*MongoSongRepository, error) {
 		return nil, errors.New("mongo collection es requerido")
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	indexModel := mongo.IndexModel{
+		Keys:    bson.D{{"title_lower", "text"}},
+		Options: options.Index().SetName("title_text"),
+	}
+
+	_, err := opts.Collection.Indexes().CreateOne(ctx, indexModel)
+	if err != nil {
+		opts.Logger.Warn("Error al crear el índice", zap.Error(err))
+	}
+
 	return &MongoSongRepository{
 		opts: opts,
 	}, nil
 }
 
 // GetSongByVideoID obtiene una canción por su ID
-func (r *MongoSongRepository) GetSongByVideoID(ctx context.Context, videoID string) (*entity.Song, error) {
-	var song entity.Song
+func (r *MongoSongRepository) GetSongByVideoID(ctx context.Context, videoID string) (*entity.SongEntity, error) {
+	var song entity.SongEntity
 
-	filter := bson.M{"metadata.video_id": videoID}
+	filter := bson.M{"_id": videoID}
 	err := r.opts.Collection.FindOne(ctx, filter).Decode(&song)
 
 	if err != nil {
@@ -53,25 +69,17 @@ func (r *MongoSongRepository) GetSongByVideoID(ctx context.Context, videoID stri
 	return &song, nil
 }
 
-func (r *MongoSongRepository) SearchSongsByTitle(ctx context.Context, title string) ([]*entity.Song, error) {
-	indexModel := mongo.IndexModel{
-		Keys:    bson.D{{"metadata.title", "text"}},
-		Options: options.Index().SetName("title_text"),
-	}
-
-	_, err := r.opts.Collection.Indexes().CreateOne(ctx, indexModel)
-	if err != nil {
-		r.opts.Logger.Warn("Error al crear el indice", zap.Error(err))
-	}
+func (r *MongoSongRepository) SearchSongsByTitle(ctx context.Context, title string) ([]*entity.SongEntity, error) {
+	title = strings.ToLower(title)
 
 	filter := bson.M{
-		"$text": bson.M{
-			"$search": title,
+		"title_lower": bson.M{
+			"$regex":   fmt.Sprintf(".*%s.*", title),
+			"$options": "i",
 		},
 	}
 
 	findOptions := options.Find().
-		SetSort(bson.D{{Key: "score", Value: bson.M{"$meta": "textScore"}}}).
 		SetLimit(10)
 
 	cursor, err := r.opts.Collection.Find(ctx, filter, findOptions)
@@ -85,7 +93,7 @@ func (r *MongoSongRepository) SearchSongsByTitle(ctx context.Context, title stri
 		}
 	}()
 
-	var songs []*entity.Song
+	var songs []*entity.SongEntity
 	if err = cursor.All(ctx, &songs); err != nil {
 		r.opts.Logger.Error("Error al decodificar canciones", zap.Error(err))
 		return nil, err

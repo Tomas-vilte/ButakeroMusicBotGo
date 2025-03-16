@@ -6,7 +6,7 @@ import (
 
 // InteractionStorage define la interfaz para el almacenamiento de interacciones.
 type InteractionStorage interface {
-	SaveSongList(channelID string, list []*entity.Song)
-	GetSongList(channelID string) []*entity.Song
+	SaveSongList(channelID string, list []*entity.DiscordEntity)
+	GetSongList(channelID string) []*entity.DiscordEntity
 	DeleteSongList(channelID string)
 }

@@ -9,11 +9,11 @@ import (
 
 // GeneratePlayingSongEmbed genera un embed para mostrar una canción en reproducción.
 func GeneratePlayingSongEmbed(playMsg *entity.PlayedSong) *discordgo.MessageEmbed {
-	if playMsg == nil || playMsg.Song == (entity.Song{}) {
+	if playMsg == nil || playMsg.DiscordSong == nil {
 		return nil
 	}
 
-	durationMs := playMsg.Song.Metadata.DurationMs
+	durationMs := playMsg.DiscordSong.DurationMs
 	duration := time.Duration(durationMs) * time.Millisecond
 
 	elapsedMs := playMsg.Position
@@ -25,13 +25,13 @@ func GeneratePlayingSongEmbed(playMsg *entity.PlayedSong) *discordgo.MessageEmbe
 	)
 
 	embed := &discordgo.MessageEmbed{
-		Title:       "🎵 **Reproduciendo:** " + playMsg.Song.Metadata.Title,
+		Title:       "🎵 **Reproduciendo:** " + playMsg.DiscordSong.TitleTrack,
 		Description: fmt.Sprintf("%s\n**%s / %s**", progressBar, formatDuration(elapsed), formatDuration(duration)),
 		Color:       0x1DB954,
 		Fields: []*discordgo.MessageEmbedField{
 			{
 				Name:   "**Plataforma**",
-				Value:  playMsg.Song.Metadata.Platform,
+				Value:  playMsg.DiscordSong.Platform,
 				Inline: true,
 			},
 			{
@@ -42,9 +42,9 @@ func GeneratePlayingSongEmbed(playMsg *entity.PlayedSong) *discordgo.MessageEmbe
 		},
 	}
 
-	if playMsg.Song.Metadata.ThumbnailURL != "" {
+	if playMsg.DiscordSong.ThumbnailURL != "" {
 		embed.Thumbnail = &discordgo.MessageEmbedThumbnail{
-			URL: playMsg.Song.Metadata.ThumbnailURL,
+			URL: playMsg.DiscordSong.ThumbnailURL,
 		}
 	}
 

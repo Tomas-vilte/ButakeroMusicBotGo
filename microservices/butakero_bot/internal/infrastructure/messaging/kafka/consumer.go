@@ -26,7 +26,7 @@ type KafkaConsumer struct {
 	brokers     []string
 	topic       string
 	logger      logging.Logger
-	messageChan chan *entity.StatusMessage
+	messageChan chan *entity.MessageQueue
 	errorChan   chan error
 	wg          sync.WaitGroup
 }
@@ -34,6 +34,7 @@ type KafkaConsumer struct {
 func NewKafkaConsumer(config KafkaConfig, logger logging.Logger) (*KafkaConsumer, error) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Consumer.Return.Errors = true
+	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetNewest
 
 	logger.Info("Iniciando configuración del consumidor Kafka",
 		zap.Strings("brokers", config.Brokers),
@@ -63,13 +64,24 @@ func NewKafkaConsumer(config KafkaConfig, logger logging.Logger) (*KafkaConsumer
 		brokers:     config.Brokers,
 		topic:       config.Topic,
 		logger:      logger,
-		messageChan: make(chan *entity.StatusMessage),
+		messageChan: make(chan *entity.MessageQueue),
 		errorChan:   make(chan error),
 	}, nil
 }
 
 func (k *KafkaConsumer) ConsumeMessages(ctx context.Context, offset int64) error {
 	k.logger.Info("Iniciando consumo de mensajes", zap.String("topic", k.topic))
+
+	exists, err := k.TopicExists(k.topic)
+	if err != nil {
+		k.logger.Error("Error al verificar si el topic existe", zap.Error(err))
+		return err
+	}
+
+	if !exists {
+		k.logger.Error("El topic no existe", zap.String("topic", k.topic))
+		return fmt.Errorf("el topic '%s' no existe", k.topic)
+	}
 
 	partitionList, err := k.consumer.Partitions(k.topic)
 	if err != nil {
@@ -107,9 +119,14 @@ func (k *KafkaConsumer) consumePartition(ctx context.Context, pc sarama.Partitio
 		}
 	}()
 
+	k.logger.Debug("Consumiendo mensajes de la partición", zap.Int32("partition", partition))
+
 	for {
 		select {
 		case msg := <-pc.Messages():
+			k.logger.Info("Mensaje recibido en la partición",
+				zap.Int32("partition", partition),
+				zap.Int64("offset", msg.Offset))
 			k.handleMessage(msg)
 		case err := <-pc.Errors():
 			k.logger.Error("Error consumiendo mensajes", zap.Int32("partition", partition), zap.Error(err))
@@ -124,20 +141,43 @@ func (k *KafkaConsumer) consumePartition(ctx context.Context, pc sarama.Partitio
 func (k *KafkaConsumer) handleMessage(msg *sarama.ConsumerMessage) {
 	k.logger.Debug("Mensaje recibido", zap.Int64("offset", msg.Offset))
 
-	var statusMessage entity.StatusMessage
+	var statusMessage entity.MessageQueue
 	if err := json.Unmarshal(msg.Value, &statusMessage); err != nil {
 		k.logger.Error("Error al deserializar mensaje", zap.Error(err), zap.ByteString("contenido_mensaje", msg.Value))
 		k.errorChan <- err
 		return
 	}
 
-	if statusMessage.Status.Status == "success" {
-		k.logger.Info("Mensaje procesado exitosamente", zap.String("status", statusMessage.Status.Status))
+	k.logger.Debug("Mensaje procesado",
+		zap.String("status", statusMessage.Status),
+		zap.String("videoID", statusMessage.VideoID))
+
+	if statusMessage.Status == "success" {
+		k.logger.Info("Mensaje procesado exitosamente", zap.String("status", statusMessage.Status))
 		k.messageChan <- &statusMessage
+	} else {
+		k.logger.Warn("Mensaje con estado no exitoso", zap.String("status", statusMessage.Status))
 	}
 }
 
-func (k *KafkaConsumer) GetMessagesChannel() <-chan *entity.StatusMessage {
+func (k *KafkaConsumer) TopicExists(topic string) (bool, error) {
+	topics, err := k.consumer.Topics()
+	if err != nil {
+		k.logger.Error("Error al obtener la lista de topics", zap.Error(err))
+		return false, fmt.Errorf("error al obtener la lista de topics: %w", err)
+	}
+
+	for _, t := range topics {
+		if t == topic {
+			k.logger.Info("El topic existe", zap.String("topic", topic))
+			return true, nil
+		}
+	}
+	k.logger.Warn("El topic no existe", zap.String("topic", topic))
+	return false, nil
+}
+
+func (k *KafkaConsumer) GetMessagesChannel() <-chan *entity.MessageQueue {
 	return k.messageChan
 }
 
