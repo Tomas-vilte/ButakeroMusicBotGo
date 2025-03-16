@@ -11,5 +11,5 @@ import (
 // son "success" y "error".
 type MessageConsumer interface {
 	ConsumeMessages(ctx context.Context, offset int64) error
-	GetMessagesChannel() <-chan *entity.StatusMessage
+	GetMessagesChannel() <-chan *entity.MessageQueue
 }

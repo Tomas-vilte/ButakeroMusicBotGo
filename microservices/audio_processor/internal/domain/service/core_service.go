@@ -111,6 +111,7 @@ func (s *CoreService) ProcessMedia(ctx context.Context, mediaDetails *model.Medi
 			FileData:         media.FileData,
 			PlatformMetadata: media.Metadata,
 			Status:           media.Status,
+			Success:          media.Success,
 			Message:          media.Message,
 		}
 

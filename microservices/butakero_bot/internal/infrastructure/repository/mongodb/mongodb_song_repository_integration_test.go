@@ -89,27 +89,33 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Run("SearchSongsByTitle", func(t *testing.T) {
-		testSongs := []*entity.Song{
+		testSongs := []*entity.SongEntity{
 			{
-				ID:       "song1",
-				VideoID:  "video123",
-				Title:    "Test Song One",
-				Duration: time.Minute*3 + time.Second*41,
-				URL:      "https://youtube.com/video123",
+				VideoID:    "video123",
+				TitleLower: "test song one",
+				Metadata: entity.Metadata{
+					Title:      "Test Song One",
+					DurationMs: 3245,
+					URL:        "https://youtube.com/video123",
+				},
 			},
 			{
-				ID:       "song2",
-				VideoID:  "video456",
-				Title:    "Another Test Song",
-				Duration: time.Minute*3 + time.Second*41,
-				URL:      "https://youtube.com/video456",
+				VideoID:    "video456",
+				TitleLower: "another test song",
+				Metadata: entity.Metadata{
+					Title:      "Another Test Song",
+					DurationMs: 2323,
+					URL:        "https://youtube.com/video456",
+				},
 			},
 			{
-				ID:       "song3",
-				VideoID:  "video789",
-				Title:    "Something Completely Different",
-				Duration: time.Minute*3 + time.Second*41,
-				URL:      "https://youtube.com/video789",
+				VideoID:    "video789",
+				TitleLower: "something completely different",
+				Metadata: entity.Metadata{
+					Title:      "Something Completely Different",
+					DurationMs: 4242,
+					URL:        "https://youtube.com/video789",
+				},
 			},
 		}
 
@@ -120,7 +126,7 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 
 		defer func() {
 			_, err := collection.DeleteMany(ctx, bson.M{
-				"_id": bson.M{"$in": []string{"song1", "song2", "song3"}},
+				"_id": bson.M{"$in": []string{"video123", "video456", "video789"}},
 			})
 			assert.NoError(t, err)
 		}()
@@ -131,25 +137,26 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 		// Assert
 		assert.NoError(t, err)
 		assert.Len(t, results, 2)
-		assert.Contains(t, []string{results[0].Title, results[1].Title}, "Test Song One")
-		assert.Contains(t, []string{results[0].Title, results[1].Title}, "Another Test Song")
+		assert.Contains(t, []string{results[0].Metadata.Title, results[1].Metadata.Title}, "Test Song One")
+		assert.Contains(t, []string{results[0].Metadata.Title, results[1].Metadata.Title}, "Another Test Song")
 	})
 
 	t.Run("GetSongByVideoID", func(t *testing.T) {
 		// Arrange
-		testSong := &entity.Song{
-			ID:       "song4",
-			VideoID:  "videoXYZ",
-			Title:    "Video ID Test Song",
-			Duration: time.Minute*3 + time.Second*41,
-			URL:      "https://youtube.com/videoXYZ",
+		testSong := &entity.SongEntity{
+			VideoID: "videoXYZ",
+			Metadata: entity.Metadata{
+				Title:      "Video ID Test Song",
+				DurationMs: 2424,
+				URL:        "https://youtube.com/videoXYZ",
+			},
 		}
 
 		_, err := collection.InsertOne(ctx, testSong)
 		assert.NoError(t, err)
 
 		defer func() {
-			_, err := collection.DeleteOne(ctx, bson.M{"_id": testSong.ID})
+			_, err := collection.DeleteOne(ctx, bson.M{"_id": testSong.VideoID})
 			assert.NoError(t, err)
 		}()
 
@@ -160,7 +167,7 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, testSong.VideoID, result.VideoID)
-		assert.Equal(t, testSong.Title, result.Title)
+		assert.Equal(t, testSong.Metadata.Title, result.Metadata.Title)
 	})
 
 	t.Run("SearchSongsByTitle - No Results", func(t *testing.T) {

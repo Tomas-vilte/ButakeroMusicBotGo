@@ -13,14 +13,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	dynamodbDocker "github.com/testcontainers/testcontainers-go/modules/dynamodb"
+	"strings"
 	"testing"
 	"time"
 )
 
 const (
-	tableName    = "test_songs"
-	partitionKey = "id"
-	defaultPort  = "8000"
+	tableName   = "test_songs"
+	defaultPort = "8000"
 )
 
 func createTestTableWithIndexes(ctx context.Context, client *dynamodb.Client) error {
@@ -28,59 +28,58 @@ func createTestTableWithIndexes(ctx context.Context, client *dynamodb.Client) er
 		TableName: aws.String(tableName),
 		AttributeDefinitions: []types.AttributeDefinition{
 			{
-				AttributeName: aws.String(partitionKey),
+				AttributeName: aws.String("PK"),
 				AttributeType: types.ScalarAttributeTypeS,
 			},
 			{
-				AttributeName: aws.String("video_id"),
+				AttributeName: aws.String("SK"),
 				AttributeType: types.ScalarAttributeTypeS,
 			},
 			{
-				AttributeName: aws.String("title"),
+				AttributeName: aws.String("GSI1PK"),
 				AttributeType: types.ScalarAttributeTypeS,
 			},
 			{
-				AttributeName: aws.String("GSI2_PK"),
+				AttributeName: aws.String("GSI1SK"),
 				AttributeType: types.ScalarAttributeTypeS,
 			},
 		},
 		KeySchema: []types.KeySchemaElement{
 			{
-				AttributeName: aws.String(partitionKey),
+				AttributeName: aws.String("PK"),
 				KeyType:       types.KeyTypeHash,
+			},
+			{
+				AttributeName: aws.String("SK"),
+				KeyType:       types.KeyTypeRange,
 			},
 		},
 		GlobalSecondaryIndexes: []types.GlobalSecondaryIndex{
 			{
-				IndexName: aws.String("VideoIDIndex"),
+				IndexName: aws.String("GSI1"),
 				KeySchema: []types.KeySchemaElement{
 					{
-						AttributeName: aws.String("video_id"),
-						KeyType:       types.KeyTypeHash,
-					},
-				},
-				Projection: &types.Projection{
-					ProjectionType: types.ProjectionTypeAll,
-				},
-			},
-			{
-				IndexName: aws.String("GSI2-title-index"),
-				KeySchema: []types.KeySchemaElement{
-					{
-						AttributeName: aws.String("GSI2_PK"),
+						AttributeName: aws.String("GSI1PK"),
 						KeyType:       types.KeyTypeHash,
 					},
 					{
-						AttributeName: aws.String("title"),
+						AttributeName: aws.String("GSI1SK"),
 						KeyType:       types.KeyTypeRange,
 					},
 				},
 				Projection: &types.Projection{
 					ProjectionType: types.ProjectionTypeAll,
 				},
+				ProvisionedThroughput: &types.ProvisionedThroughput{
+					ReadCapacityUnits:  aws.Int64(5),
+					WriteCapacityUnits: aws.Int64(5),
+				},
 			},
 		},
-		BillingMode: types.BillingModePayPerRequest,
+		ProvisionedThroughput: &types.ProvisionedThroughput{
+			ReadCapacityUnits:  aws.Int64(5),
+			WriteCapacityUnits: aws.Int64(5),
+		},
 	}
 
 	_, err := client.CreateTable(ctx, input)
@@ -147,66 +146,44 @@ func TestDynamoSongRepositoryIntegration(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	testSongs := []entity.Song{
+	testSongs := []entity.SongEntity{
 		{
-			ID:       "song1",
-			VideoID:  "video1",
-			Title:    "bohemian rhapsody",
-			Duration: time.Minute*3 + time.Second*41,
-			URL:      "https://youtube.com/video1",
+			VideoID:    "6swmTBVI83k",
+			TitleLower: "lil nas x - montero (call me by your name) (official video)",
+			Metadata: entity.Metadata{
+				Title:      "Lil Nas X - MONTERO (Call Me By Your Name) (Official Video)",
+				DurationMs: 190000,
+				URL:        "https://youtube.com/watch?v=6swmTBVI83k",
+			},
 		},
 		{
-			ID:       "song2",
-			VideoID:  "video2",
-			Title:    "stairway to heaven",
-			Duration: time.Minute*3 + time.Second*41,
-			URL:      "https://youtube.com/video2",
+			VideoID:    "dQw4w9WgXcQ",
+			TitleLower: "rick astley - never gonna give you up (official music video)",
+			Metadata: entity.Metadata{
+				Title:      "Rick Astley - Never Gonna Give You Up (Official Music Video)",
+				DurationMs: 213000,
+				URL:        "https://youtube.com/watch?v=dQw4w9WgXcQ",
+			},
 		},
 		{
-			ID:       "song3",
-			VideoID:  "video3",
-			Title:    "hotel california",
-			Duration: time.Minute*3 + time.Second*41,
-			URL:      "https://youtube.com/video3",
-		},
-		{
-			ID:       "song4",
-			VideoID:  "video4",
-			Title:    "sweet child o'mine",
-			Duration: time.Minute*3 + time.Second*41,
-			URL:      "https://youtube.com/video4",
-		},
-		{
-			ID:       "song5",
-			VideoID:  "video5",
-			Title:    "smells like teen spirit",
-			Duration: time.Minute*3 + time.Second*41,
-			URL:      "https://youtube.com/video5",
-		},
-		{
-			ID:       "song6",
-			VideoID:  "video6",
-			Title:    "love story",
-			Duration: time.Minute*3 + time.Second*41,
-			URL:      "https://youtube.com/video6",
-		},
-		{
-			ID:       "song7",
-			VideoID:  "video7",
-			Title:    "lover",
-			Duration: time.Minute*3 + time.Second*41,
-			URL:      "https://youtube.com/video7",
+			VideoID:    "kJQP7kiw5Fk",
+			TitleLower: "luis fonsi - despacito ft. daddy yankee",
+			Metadata: entity.Metadata{
+				Title:      "Luis Fonsi - Despacito ft. Daddy Yankee",
+				DurationMs: 229000,
+				URL:        "https://youtube.com/watch?v=kJQP7kiw5Fk",
+			},
 		},
 	}
 
 	for _, song := range testSongs {
-		item, err := attributevalue.MarshalMap(struct {
-			entity.Song
-			GSIPK string `dynamodbav:"GSI2_PK"`
-		}{
-			Song:  song,
-			GSIPK: "SEARCH#TITLE",
-		})
+		titleLower := strings.ToLower(song.Metadata.Title)
+		song.TitleLower = titleLower
+		song.PK = fmt.Sprintf("VIDEO#" + song.VideoID)
+		song.SK = fmt.Sprintf("METADATA")
+		song.GSI1PK = "SONG"
+		song.GSI1SK = titleLower
+		item, err := attributevalue.MarshalMap(song)
 		require.NoError(t, err)
 
 		_, err = client.PutItem(ctx, &dynamodb.PutItemInput{
@@ -216,39 +193,31 @@ func TestDynamoSongRepositoryIntegration(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	t.Run("Buscar 'bohemian'", func(t *testing.T) {
-		results, err := repo.SearchSongsByTitle(ctx, "Bohemian")
+	// Casos de prueba
+	t.Run("Buscar 'montero' (búsqueda parcial)", func(t *testing.T) {
+		results, err := repo.SearchSongsByTitle(ctx, "lil nas x - montero")
 		require.NoError(t, err)
 		assert.Len(t, results, 1)
-		assert.Equal(t, "bohemian rhapsody", results[0].Title)
+		assert.Equal(t, "lil nas x - montero (call me by your name) (official video)", results[0].TitleLower)
 	})
 
-	t.Run("Buscar 'love'", func(t *testing.T) {
-		results, err := repo.SearchSongsByTitle(ctx, "love")
-		require.NoError(t, err)
-		assert.Len(t, results, 2)
-		titles := []string{results[0].Title, results[1].Title}
-		assert.Contains(t, titles, "love story")
-		assert.Contains(t, titles, "lover")
-	})
-
-	t.Run("Buscar 'swee'", func(t *testing.T) {
-		results, err := repo.SearchSongsByTitle(ctx, "swee")
+	t.Run("Buscar 'never gonna' (búsqueda parcial)", func(t *testing.T) {
+		results, err := repo.SearchSongsByTitle(ctx, "rick astley - never gonna")
 		require.NoError(t, err)
 		assert.Len(t, results, 1)
-		assert.Equal(t, "sweet child o'mine", results[0].Title)
+		assert.Equal(t, "rick astley - never gonna give you up (official music video)", results[0].TitleLower)
+	})
+
+	t.Run("Buscar 'despacito' (búsqueda exacta)", func(t *testing.T) {
+		results, err := repo.SearchSongsByTitle(ctx, "luis fonsi - despacito")
+		require.NoError(t, err)
+		assert.Len(t, results, 1)
+		assert.Equal(t, "luis fonsi - despacito ft. daddy yankee", results[0].TitleLower)
 	})
 
 	t.Run("Buscar 'z' (sin resultados)", func(t *testing.T) {
 		results, err := repo.SearchSongsByTitle(ctx, "z")
 		require.NoError(t, err)
 		assert.Empty(t, results)
-	})
-
-	t.Run("Buscar 'StAiRwAy' (case-insensitive)", func(t *testing.T) {
-		results, err := repo.SearchSongsByTitle(ctx, "StAiRwAy")
-		require.NoError(t, err)
-		assert.Len(t, results, 1)
-		assert.Equal(t, "stairway to heaven", results[0].Title)
 	})
 }

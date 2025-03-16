@@ -122,9 +122,11 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 
 	input := opt.Options[0].StringValue()
 
-	if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Buscando y agregando la canción..."); err != nil {
-		handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
-		return
+	if err := handler.discordMessenger.Respond(ic.Interaction, discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{},
+	}); err != nil {
+		handler.logger.Error("fallo al enviar la respuesta diferida", zap.Error(err))
 	}
 
 	go func() {
@@ -139,13 +141,15 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 			return
 		}
 
-		handler.storage.SaveSongList(ic.ChannelID, []*entity.Song{song})
+		handler.logger.Info("Canción obtenida o descargada", zap.String("título", song.TitleTrack))
+		handler.storage.SaveSongList(ic.ChannelID, []*entity.DiscordEntity{song})
 
 		guildPlayer := handler.getGuildPlayer(GuildID(g.ID), s)
 		playedSong := &entity.PlayedSong{
-			Song:        *song,
+			DiscordSong: song,
 			RequestedBy: ic.Member.User.Username,
 		}
+
 		if err := guildPlayer.AddSong(&ic.ChannelID, &vs.ChannelID, playedSong); err != nil {
 			handler.logger.Error("Error al agregar la canción:", zap.Error(err))
 			if err := handler.discordMessenger.CreateFollowupMessage(ic.Interaction, discordgo.WebhookParams{
@@ -156,8 +160,10 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 			return
 		}
 
+		handler.logger.Info("Canción agregada a la cola", zap.String("título", song.TitleTrack))
+
 		if err := handler.discordMessenger.CreateFollowupMessage(ic.Interaction, discordgo.WebhookParams{
-			Content: "✅ Canción agregada a la cola: " + song.Metadata.Title,
+			Content: "✅ Canción agregada a la cola: " + song.TitleTrack,
 		}); err != nil {
 			handler.logger.Error("Error al enviar mensaje de confirmación", zap.Error(err))
 		}
@@ -200,15 +206,13 @@ func (handler *InteractionHandler) AddSong(s *discordgo.Session, ic *discordgo.I
 	}
 
 	guildPlayer := handler.getGuildPlayer(GuildID(g.ID), s)
-	song := &entity.Song{
-		Metadata: entity.Metadata{
-			URL:   values[0],
-			Title: values[0],
-		},
+	song := &entity.DiscordEntity{
+		URL:        values[0],
+		TitleTrack: values[0],
 	}
 
 	playedSong := &entity.PlayedSong{
-		Song:        *song,
+		DiscordSong: song,
 		RequestedBy: ic.Member.User.Username,
 	}
 
@@ -331,7 +335,7 @@ func (handler *InteractionHandler) RemoveSong(s *discordgo.Session, ic *discordg
 		return
 	}
 
-	if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, fmt.Sprintf("🗑️ Canción **%s** eliminada de la lista", song.Metadata.Title)); err != nil {
+	if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, fmt.Sprintf("🗑️ Canción **%s** eliminada de la lista", song.TitleTrack)); err != nil {
 		handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 	}
 }
@@ -364,7 +368,7 @@ func (handler *InteractionHandler) GetPlayingSong(s *discordgo.Session, ic *disc
 		return
 	}
 
-	if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, fmt.Sprintf("🎵 Reproduciendo: %s", song.Song.Metadata.Title)); err != nil {
+	if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, fmt.Sprintf("🎵 Reproduciendo: %s", song.DiscordSong.TitleTrack)); err != nil {
 		handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 	}
 }

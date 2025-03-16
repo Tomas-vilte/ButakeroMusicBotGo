@@ -101,8 +101,7 @@ func (c *AudioAPIClient) DownloadSong(ctx context.Context, songName, providerTyp
 	}
 
 	c.logger.Info("Iniciando descarga",
-		zap.String("operationId", response.OperationID),
-		zap.String("songId", response.SongID),
+		zap.String("videoID", response.VideoID),
 		zap.String("status", response.Status),
 	)
 

@@ -26,7 +26,7 @@ func (m *MessengerService) RespondWithMessage(interaction *discordgo.Interaction
 	m.logger.Info("Respondiendo a interacción", zap.String("tipo", interaction.Type.String()))
 
 	response := discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: message,
 		},

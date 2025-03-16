@@ -1,9 +1,8 @@
 package entity
 
 type DownloadResponse struct {
-	OperationID string `json:"operation_id"`
-	SongID      string `json:"song_id"`
-	Status      string `json:"status"`
-	Provider    string `json:"provider"`
-	CreatedAt   string `json:"created_at"`
+	Provider string `json:"provider"`
+	Status   string `json:"status"`
+	Success  bool   `json:"success"`
+	VideoID  string `json:"video_id"`
 }

@@ -36,13 +36,13 @@ func main() {
 
 	messageConsumer, err := kafka.NewKafkaConsumer(kafka.KafkaConfig{
 		Brokers: []string{"localhost:9092"},
-		Topic:   "notification",
+		Topic:   "notifications",
 	}, logger)
 	if err != nil {
 		panic(err)
 	}
 	go func() {
-		if err := messageConsumer.ConsumeMessages(ctx, 0); err != nil {
+		if err := messageConsumer.ConsumeMessages(ctx, -1); err != nil {
 			logger.Error("Error al consumir mensajes de kafka")
 		}
 	}()
@@ -72,7 +72,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	collection := connManager.GetDatabase().Collection("Operations")
+	collection := connManager.GetDatabase().Collection("Songs")
 	externalService := service.NewExternalAudioService(audioClient, logger)
 	songRepo, err := mongodb.NewMongoDBSongRepository(mongodb.Options{
 		Collection: collection,

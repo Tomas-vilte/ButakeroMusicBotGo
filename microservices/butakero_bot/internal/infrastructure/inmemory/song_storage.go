@@ -15,7 +15,7 @@ var (
 // InmemorySongStorage implementa la interfaz SongStorage utilizando la memoria ram para almacenar la lista de reproducción de canciones.
 type InmemorySongStorage struct {
 	mutex  sync.RWMutex
-	songs  []*entity.Song
+	songs  []*entity.PlayedSong
 	logger logging.Logger
 }
 
@@ -23,23 +23,23 @@ type InmemorySongStorage struct {
 func NewInmemorySongStorage(logger logging.Logger) *InmemorySongStorage {
 	return &InmemorySongStorage{
 		mutex:  sync.RWMutex{},
-		songs:  make([]*entity.Song, 0),
+		songs:  make([]*entity.PlayedSong, 0),
 		logger: logger,
 	}
 }
 
 // PrependSong agrega una canción al principio de la lista de reproducción.
-func (s *InmemorySongStorage) PrependSong(song *entity.Song) error {
+func (s *InmemorySongStorage) PrependSong(song *entity.PlayedSong) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.songs = append([]*entity.Song{song}, s.songs...)
+	s.songs = append([]*entity.PlayedSong{song}, s.songs...)
 	s.logger.Info("Canción agregada al principio de la lista de reproducción")
 	return nil
 }
 
 // AppendSong agrega una canción al final de la lista de reproducción.
-func (s *InmemorySongStorage) AppendSong(song *entity.Song) error {
+func (s *InmemorySongStorage) AppendSong(song *entity.PlayedSong) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -49,7 +49,7 @@ func (s *InmemorySongStorage) AppendSong(song *entity.Song) error {
 }
 
 // RemoveSong elimina una canción de la lista de reproducción por posición.
-func (s *InmemorySongStorage) RemoveSong(position int) (*entity.Song, error) {
+func (s *InmemorySongStorage) RemoveSong(position int) (*entity.PlayedSong, error) {
 	index := position - 1
 
 	s.mutex.Lock()
@@ -74,18 +74,18 @@ func (s *InmemorySongStorage) ClearPlaylist() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	s.songs = make([]*entity.Song, 0)
+	s.songs = make([]*entity.PlayedSong, 0)
 	s.logger.Info("Lista de reproducción borrada")
 	return nil
 }
 
 // GetSongs devuelve todas las canciones de la lista de reproducción.
-func (s *InmemorySongStorage) GetSongs() ([]*entity.Song, error) {
+func (s *InmemorySongStorage) GetSongs() ([]*entity.PlayedSong, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
 	// Se copian las canciones para evitar modificaciones inadvertidas.
-	songs := make([]*entity.Song, len(s.songs))
+	songs := make([]*entity.PlayedSong, len(s.songs))
 	copy(songs, s.songs)
 
 	s.logger.Info("Obteniendo todas las canciones de la lista de reproducción")
@@ -93,7 +93,7 @@ func (s *InmemorySongStorage) GetSongs() ([]*entity.Song, error) {
 }
 
 // PopFirstSong elimina y devuelve la primera canción de la lista de reproducción.
-func (s *InmemorySongStorage) PopFirstSong() (*entity.Song, error) {
+func (s *InmemorySongStorage) PopFirstSong() (*entity.PlayedSong, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 

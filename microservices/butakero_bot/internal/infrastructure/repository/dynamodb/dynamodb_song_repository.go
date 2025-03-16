@@ -56,17 +56,16 @@ func NewDynamoSongRepository(opts Options) (*DynamoSongRepository, error) {
 }
 
 // GetSongByVideoID implementa la obtención de canciones desde DynamoDB
-func (r *DynamoSongRepository) GetSongByVideoID(ctx context.Context, videoID string) (*entity.Song, error) {
-	input := &dynamodb.QueryInput{
-		TableName:              aws.String(r.opts.TableName),
-		IndexName:              aws.String("VideoIDIndex"),
-		KeyConditionExpression: aws.String("video_id = :videoID"),
-		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":videoID": &types.AttributeValueMemberS{Value: videoID},
+func (r *DynamoSongRepository) GetSongByVideoID(ctx context.Context, videoID string) (*entity.SongEntity, error) {
+	input := &dynamodb.GetItemInput{
+		TableName: aws.String(r.opts.TableName),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: "VIDEO#" + videoID},
+			"SK": &types.AttributeValueMemberS{Value: "METADATA"},
 		},
 	}
 
-	result, err := r.opts.Client.Query(ctx, input)
+	result, err := r.opts.Client.GetItem(ctx, input)
 	if err != nil {
 		r.opts.Logger.Error("Error al obtener cancion",
 			zap.String("id", videoID),
@@ -75,12 +74,12 @@ func (r *DynamoSongRepository) GetSongByVideoID(ctx context.Context, videoID str
 		return nil, err
 	}
 
-	if len(result.Items) == 0 {
+	if len(result.Item) == 0 {
 		return nil, nil
 	}
 
-	var song entity.Song
-	if err := attributevalue.UnmarshalMap(result.Items[0], &song); err != nil {
+	var song entity.SongEntity
+	if err := attributevalue.UnmarshalMap(result.Item, &song); err != nil {
 		r.opts.Logger.Error("Error de deserialzacion",
 			zap.Error(err))
 		return nil, fmt.Errorf("error deserializando canción: %w", err)
@@ -89,15 +88,15 @@ func (r *DynamoSongRepository) GetSongByVideoID(ctx context.Context, videoID str
 }
 
 // SearchSongsByTitle implementa la búsqueda de canciones por título en DynamoDB
-func (r *DynamoSongRepository) SearchSongsByTitle(ctx context.Context, title string) ([]*entity.Song, error) {
+func (r *DynamoSongRepository) SearchSongsByTitle(ctx context.Context, title string) ([]*entity.SongEntity, error) {
 	normalizedTitle := strings.ToLower(title)
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(r.opts.TableName),
-		IndexName:              aws.String("GSI2-title-index"),
-		KeyConditionExpression: aws.String("GSI2_PK = :pk AND begins_with(title, :title)"),
+		IndexName:              aws.String("GSI1"),
+		KeyConditionExpression: aws.String("GSI1PK = :pk AND begins_with(GSI1SK, :sk)"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":pk":    &types.AttributeValueMemberS{Value: "SEARCH#TITLE"},
-			":title": &types.AttributeValueMemberS{Value: normalizedTitle},
+			":pk": &types.AttributeValueMemberS{Value: "SONG"},
+			":sk": &types.AttributeValueMemberS{Value: normalizedTitle},
 		},
 	}
 
@@ -110,9 +109,9 @@ func (r *DynamoSongRepository) SearchSongsByTitle(ctx context.Context, title str
 		return nil, err
 	}
 
-	var songs []*entity.Song
+	var songs []*entity.SongEntity
 	if err := attributevalue.UnmarshalListOfMaps(result.Items, &songs); err != nil {
-		r.opts.Logger.Error("Error de deserialzacion",
+		r.opts.Logger.Error("Error de deserialización",
 			zap.Error(err))
 		return nil, err
 	}

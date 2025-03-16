@@ -32,7 +32,7 @@ func (e *externalServiceAudio) RequestDownload(ctx context.Context, songName, pr
 
 	e.logger.Info("Solicitud de descarga exitosa",
 		zap.String("songName", songName),
-		zap.String("operationId", response.OperationID))
+		zap.String("videoID", response.VideoID))
 
 	return response, nil
 }

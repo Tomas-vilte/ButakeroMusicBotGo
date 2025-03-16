@@ -36,56 +36,87 @@ func (s *SongService) extractURLOrTitle(input string) (string, bool) {
 	return input, urlRegex.MatchString(input)
 }
 
-func (s *SongService) GetOrDownloadSong(ctx context.Context, song, providerType string) (*entity.Song, error) {
-	input, isURL := s.extractURLOrTitle(song)
+func (s *SongService) GetOrDownloadSong(ctx context.Context, songInput, providerType string) (*entity.DiscordEntity, error) {
+	input, isURL := s.extractURLOrTitle(songInput)
 	s.logger.Info("Procesando solicitud de canción",
 		zap.String("input", input),
 		zap.Bool("isURL", isURL))
 
-	var songs []*entity.Song
+	var songs []*entity.SongEntity
 	var err error
 
 	if isURL {
 		videoID := extractVideoID(input)
 		song, err := s.songRepo.GetSongByVideoID(ctx, videoID)
 		if err == nil && song != nil {
-			return song, nil
+			return &entity.DiscordEntity{
+				TitleTrack:   song.Metadata.Title,
+				DurationMs:   song.Metadata.DurationMs,
+				Platform:     song.Metadata.Platform,
+				FilePath:     song.FileData.FilePath,
+				ThumbnailURL: song.Metadata.ThumbnailURL,
+			}, nil
 		}
 	} else {
 		songs, err = s.songRepo.SearchSongsByTitle(ctx, input)
 		if err == nil && len(songs) > 0 {
-			return songs[0], nil
+			return &entity.DiscordEntity{
+				TitleTrack:   songs[0].Metadata.Title,
+				DurationMs:   songs[0].Metadata.DurationMs,
+				Platform:     songs[0].Metadata.Platform,
+				FilePath:     songs[0].FileData.FilePath,
+				ThumbnailURL: songs[0].Metadata.ThumbnailURL,
+			}, nil
 		}
 	}
 
 	s.logger.Info("Canción no encontrada en DB, iniciando descarga",
 		zap.String("input", input))
 
-	downloadResp, err := s.externalService.RequestDownload(ctx, input, providerType)
+	response, err := s.externalService.RequestDownload(ctx, input, providerType)
 	if err != nil {
 		return nil, fmt.Errorf("%s", err)
 	}
+
+	if !response.Success {
+		return nil, fmt.Errorf("la solicitud de descarga falló: %s", response.Status)
+	}
+
+	videoID := response.VideoID
+	s.logger.Info("Solicitud de descarga enviada",
+		zap.String("video_id", videoID),
+		zap.String("provider", response.Provider),
+		zap.String("status", response.Status))
 
 	msgChan := s.messageConsumer.GetMessagesChannel()
 
 	for {
 		select {
 		case msg := <-msgChan:
-			if msg.Status.ID != downloadResp.OperationID {
+			if msg.VideoID != videoID {
 				s.logger.Warn("Mensaje recibido no corresponde a la operación actual",
-					zap.String("esperado", downloadResp.OperationID),
-					zap.String("recibido", msg.Status.ID))
+					zap.String("esperado", videoID),
+					zap.String("recibido", msg.VideoID))
 				continue
 			}
 
-			if msg.Status.Status == "success" {
+			if msg.Status == "success" {
 				s.logger.Info("Descarga completada exitosamente",
-					zap.String("input", input))
-				return &entity.Song{
-					ID: msg.Status.ID,
+					zap.String("video_id", videoID))
+				return &entity.DiscordEntity{
+					TitleTrack:   msg.PlatformMetadata.Title,
+					DurationMs:   msg.PlatformMetadata.DurationMs,
+					ThumbnailURL: msg.PlatformMetadata.ThumbnailURL,
+					Platform:     msg.PlatformMetadata.Platform,
+					FilePath:     msg.FileData.FilePath,
+					URL:          msg.PlatformMetadata.URL,
 				}, nil
+			} else {
+				s.logger.Error("Error en la descarga",
+					zap.String("video_id", videoID),
+					zap.String("error", msg.Message))
+				return nil, fmt.Errorf("error en la descarga: %s", msg.Message)
 			}
-			return nil, fmt.Errorf("error en la descarga: %s", msg.Status.Message)
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}

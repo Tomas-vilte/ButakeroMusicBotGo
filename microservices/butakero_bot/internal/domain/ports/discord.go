@@ -39,7 +39,7 @@ type (
 		Stop() error
 		SkipSong()
 		AddSong(textChannelID, voiceChannelID *string, playedSong *entity.PlayedSong) error
-		RemoveSong(position int) (*entity.Song, error)
+		RemoveSong(position int) (*entity.DiscordEntity, error)
 		GetPlaylist() ([]string, error)
 		GetPlayedSong() (*entity.PlayedSong, error)
 		UpdateVoiceState(s *discordgo.Session, vs *discordgo.VoiceStateUpdate)
