@@ -10,7 +10,7 @@ type MockSongDownloader struct {
 	mock.Mock
 }
 
-func (m *MockSongDownloader) DownloadSong(ctx context.Context, songName string) (*entity.DownloadResponse, error) {
-	args := m.Called(ctx, songName)
+func (m *MockSongDownloader) DownloadSong(ctx context.Context, songName, providerType string) (*entity.DownloadResponse, error) {
+	args := m.Called(ctx, songName, providerType)
 	return args.Get(0).(*entity.DownloadResponse), args.Error(1)
 }

@@ -1,3 +1,5 @@
+//go:build integration
+
 package mongodb_test
 
 import (
@@ -66,7 +68,7 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	logger, err := logging.NewZapLogger()
+	logger, err := logging.NewDevelopmentLogger()
 	assert.NoError(t, err)
 
 	container, mongoURI, err := setupMongoContainer(ctx)
@@ -91,7 +93,7 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 	t.Run("SearchSongsByTitle", func(t *testing.T) {
 		testSongs := []*entity.SongEntity{
 			{
-				VideoID:    "video123",
+				ID:         "video123",
 				TitleLower: "test song one",
 				Metadata: entity.Metadata{
 					Title:      "Test Song One",
@@ -100,7 +102,7 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 				},
 			},
 			{
-				VideoID:    "video456",
+				ID:         "video456",
 				TitleLower: "another test song",
 				Metadata: entity.Metadata{
 					Title:      "Another Test Song",
@@ -109,7 +111,7 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 				},
 			},
 			{
-				VideoID:    "video789",
+				ID:         "video789",
 				TitleLower: "something completely different",
 				Metadata: entity.Metadata{
 					Title:      "Something Completely Different",
@@ -144,7 +146,7 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 	t.Run("GetSongByVideoID", func(t *testing.T) {
 		// Arrange
 		testSong := &entity.SongEntity{
-			VideoID: "videoXYZ",
+			ID: "videoXYZ",
 			Metadata: entity.Metadata{
 				Title:      "Video ID Test Song",
 				DurationMs: 2424,
@@ -156,7 +158,7 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 		assert.NoError(t, err)
 
 		defer func() {
-			_, err := collection.DeleteOne(ctx, bson.M{"_id": testSong.VideoID})
+			_, err := collection.DeleteOne(ctx, bson.M{"_id": testSong.ID})
 			assert.NoError(t, err)
 		}()
 
@@ -166,7 +168,7 @@ func TestMongoSongRepositoryIntegration(t *testing.T) {
 		// Assert
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
-		assert.Equal(t, testSong.VideoID, result.VideoID)
+		assert.Equal(t, testSong.ID, result.ID)
 		assert.Equal(t, testSong.Metadata.Title, result.Metadata.Title)
 	})
 
@@ -199,7 +201,7 @@ func TestConnectionManagerIntegration(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	logger, err := logging.NewZapLogger()
+	logger, err := logging.NewDevelopmentLogger()
 	assert.NoError(t, err)
 
 	// Arrange - Configurar Testcontainer

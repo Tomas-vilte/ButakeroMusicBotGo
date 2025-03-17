@@ -45,8 +45,14 @@ func (s *LocalStorage) GetAudio(ctx context.Context, songPath string) (io.ReadCl
 		return nil, fmt.Errorf("songPath no puede estar vacío")
 	}
 
+	logger := s.logger.With(
+		zap.String("method", "GetAudio"),
+		zap.String("songPath", songPath),
+	)
+
 	select {
 	case <-ctx.Done():
+		logger.Debug("Contexto cancelado antes de abrir el archivo")
 		return nil, ctx.Err()
 	default:
 	}
@@ -54,21 +60,29 @@ func (s *LocalStorage) GetAudio(ctx context.Context, songPath string) (io.ReadCl
 	fullPath := filepath.Join(s.baseDir, filepath.Clean("/"+songPath))
 	relPath, err := filepath.Rel(s.baseDir, fullPath)
 	if err != nil || strings.HasPrefix(relPath, "..") {
-		s.logger.Error("Intento de acceso fuera del directorio base",
+		logger.Error("Intento de acceso fuera del directorio base",
 			zap.String("path", fullPath))
 		return nil, fmt.Errorf("ruta no permitida")
 	}
 
-	s.logger.Debug("Obteniendo audio local",
+	logger.Debug("Obteniendo audio local",
 		zap.String("path", fullPath))
 
 	file, err := os.Open(fullPath)
 	if err != nil {
-		s.logger.Error("Error al abrir archivo local",
+		logger.Error("Error al abrir archivo local",
 			zap.String("path", fullPath),
 			zap.Error(err))
 		return nil, fmt.Errorf("error al abrir archivo: %w", err)
 	}
+
+	go func() {
+		<-ctx.Done()
+		logger.Debug("Contexto cancelado, cerrando archivo")
+		if err := file.Close(); err != nil {
+			logger.Error("Hubo un error al cerrar el archivo: ", zap.Error(err))
+		}
+	}()
 
 	return file, nil
 }

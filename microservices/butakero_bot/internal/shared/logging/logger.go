@@ -13,7 +13,7 @@ type (
 		Warn(msg string, fields ...zapcore.Field)  // Warn registra un mensaje de advertencia.
 		Error(msg string, fields ...zapcore.Field) // Error registra un mensaje de error.
 		Debug(msg string, fields ...zapcore.Field) // Debug registra un mensaje de depuración.
-		With(fields ...zapcore.Field)              // With añade campos adicionales a los mensajes de log.
+		With(fields ...zapcore.Field) Logger       // With añade campos adicionales a los mensajes de log.
 	}
 
 	// ZapLogger es una implementación de la interfaz Logger utilizando Zap Logger.
@@ -21,33 +21,6 @@ type (
 		logger *zap.Logger
 	}
 )
-
-// NewZapLogger crea una nueva instancia de ZapLogger.
-func NewZapLogger() (*ZapLogger, error) {
-	config := zap.NewProductionConfig()
-
-	config.EncoderConfig = zapcore.EncoderConfig{
-		TimeKey:        "timestamp",
-		LevelKey:       "level",
-		NameKey:        "logger",
-		CallerKey:      "caller",
-		MessageKey:     "msg",
-		StacktraceKey:  "stacktrace",
-		LineEnding:     zapcore.DefaultLineEnding,
-		EncodeLevel:    zapcore.CapitalLevelEncoder,
-		EncodeTime:     customTimeEncoder,
-		EncodeDuration: zapcore.SecondsDurationEncoder,
-		EncodeCaller:   zapcore.ShortCallerEncoder,
-	}
-
-	config.Encoding = "console"
-
-	logger, err := config.Build()
-	if err != nil {
-		return nil, err
-	}
-	return &ZapLogger{logger: logger}, nil
-}
 
 func NewDevelopmentLogger() (*ZapLogger, error) {
 	config := zap.NewDevelopmentConfig()
@@ -115,8 +88,8 @@ func (l *ZapLogger) Close() error {
 	return nil
 }
 
-func (l *ZapLogger) With(fields ...zapcore.Field) {
-	l.logger.With(fields...)
+func (l *ZapLogger) With(fields ...zapcore.Field) Logger {
+	return &ZapLogger{logger: l.logger.With(fields...)}
 }
 
 // Info registra un mensaje informativo.

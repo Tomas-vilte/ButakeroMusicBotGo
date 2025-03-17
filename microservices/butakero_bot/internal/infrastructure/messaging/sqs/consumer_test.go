@@ -1,3 +1,5 @@
+//go:build !integration
+
 package sqs
 
 import (
@@ -39,6 +41,8 @@ func TestNewSQSConsumer(t *testing.T) {
 		WaitTimeSeconds: 20,
 	}
 
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
+
 	// Act
 	consumer := NewSQSConsumer(mockClient, config, mockLogger)
 
@@ -62,6 +66,8 @@ func TestSQSConsumer_ConsumeMessages(t *testing.T) {
 		MaxMessages:     10,
 		WaitTimeSeconds: 20,
 	}
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
+
 	consumer := NewSQSConsumer(mockClient, config, mockLogger)
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -81,8 +87,9 @@ func TestSQSConsumer_receiveAndProcessMessages_Success(t *testing.T) {
 	ctx := context.Background()
 	msgID := "test-message-id"
 	receiptHandle := "test-receipt-handle"
-	body := `{"status":{"status":"success"}}`
+	body := `{"status":"success"}`
 
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
@@ -112,12 +119,11 @@ func TestSQSConsumer_receiveAndProcessMessages_Success(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		msg := <-consumer.messageChan
-		assert.Equal(t, "success", msg.Status.Status)
+		assert.Equal(t, "success", msg.Status)
 	}()
 
 	consumer.receiveAndProcessMessages(ctx)
 
-	// Wait for message processing with timeout
 	done := make(chan struct{})
 	go func() {
 		wg.Wait()
@@ -126,7 +132,6 @@ func TestSQSConsumer_receiveAndProcessMessages_Success(t *testing.T) {
 
 	select {
 	case <-done:
-		// Test passed
 	case <-time.After(time.Second):
 		t.Fatal("Test timed out waiting for message processing")
 	}
@@ -141,8 +146,8 @@ func TestSQSConsumer_receiveAndProcessMessages_Error(t *testing.T) {
 
 	ctx := context.Background()
 
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
-
 	mockClient.On("ReceiveMessage", mock.Anything, mock.Anything).Return(
 		&sqs.ReceiveMessageOutput{}, errors.New("test error"))
 
@@ -169,8 +174,9 @@ func TestSQSConsumer_handleMessage_Success(t *testing.T) {
 	ctx := context.Background()
 	msgID := "test-message-id"
 	receiptHandle := "test-receipt-handle"
-	body := `{"status":{"status":"success"}}`
+	body := `{"status":"success"}`
 
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
@@ -193,7 +199,7 @@ func TestSQSConsumer_handleMessage_Success(t *testing.T) {
 	go func() {
 		select {
 		case message := <-consumer.messageChan:
-			assert.Equal(t, "success", message.Status.Status)
+			assert.Equal(t, "success", message.Status)
 		case <-time.After(100 * time.Millisecond):
 			t.Error("Timeout waiting for message in channel")
 		}
@@ -216,8 +222,9 @@ func TestSQSConsumer_handleMessage_WarningStatus(t *testing.T) {
 	ctx := context.Background()
 	msgID := "test-message-id"
 	receiptHandle := "test-receipt-handle"
-	body := `{"status":{"status":"error"}}`
+	body := `{"status":"error"}`
 
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Warn", mock.Anything, mock.Anything).Return()
 
@@ -256,6 +263,7 @@ func TestSQSConsumer_handleMessage_UnmarshalError(t *testing.T) {
 	receiptHandle := "test-receipt-handle"
 	body := `invalid json`
 
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 
@@ -289,6 +297,8 @@ func TestSQSConsumer_GetMessagesChannel(t *testing.T) {
 		MaxMessages:     10,
 		WaitTimeSeconds: 20,
 	}
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
+
 	consumer := NewSQSConsumer(mockClient, config, mockLogger)
 
 	ch := consumer.GetMessagesChannel()

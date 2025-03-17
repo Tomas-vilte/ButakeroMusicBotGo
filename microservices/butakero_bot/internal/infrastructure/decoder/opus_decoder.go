@@ -28,6 +28,7 @@ func NewOpusDecoder(r io.ReadCloser) *OpusDecoder {
 	return &OpusDecoder{
 		reader: r,
 		closed: false,
+		closer: r,
 	}
 }
 

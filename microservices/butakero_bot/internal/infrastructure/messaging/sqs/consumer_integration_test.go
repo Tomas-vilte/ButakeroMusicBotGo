@@ -1,3 +1,5 @@
+//go:build integration
+
 package sqs
 
 import (
@@ -96,12 +98,12 @@ func TestSQSConsumerIntegration(t *testing.T) {
 		WaitTimeSeconds: 5,
 	}
 
-	logger, err := logging.NewZapLogger()
+	logger, err := logging.NewDevelopmentLogger()
 	require.NoError(t, err)
 
 	consumer := NewSQSConsumer(container.Client, cfg, logger)
 
-	messageBody := `{"status":{"status":"success"}}`
+	messageBody := `{"status":"success"}`
 
 	_, err = container.Client.SendMessage(ctx, &sqs.SendMessageInput{
 		QueueUrl:    aws.String(container.QueueURL),
@@ -114,7 +116,7 @@ func TestSQSConsumerIntegration(t *testing.T) {
 
 	select {
 	case msg := <-consumer.messageChan:
-		assert.Equal(t, "success", msg.Status.Status)
+		assert.Equal(t, "success", msg.Status)
 	case <-time.After(5 * time.Second):
 		t.Fatal("timeout waiting for message")
 	}
@@ -141,12 +143,12 @@ func TestSQSConsumerIntegration_ErrorStatus(t *testing.T) {
 		WaitTimeSeconds: 5,
 	}
 
-	logger, err := logging.NewZapLogger()
+	logger, err := logging.NewDevelopmentLogger()
 	require.NoError(t, err)
 
 	consumer := NewSQSConsumer(container.Client, cfg, logger)
 
-	messageBody := `{"status":{"status":"error"}}`
+	messageBody := `{"status":"error"}`
 
 	_, err = container.Client.SendMessage(ctx, &sqs.SendMessageInput{
 		QueueUrl:    aws.String(container.QueueURL),

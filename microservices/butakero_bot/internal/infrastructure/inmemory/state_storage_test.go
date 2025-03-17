@@ -1,3 +1,5 @@
+//go:build !integration
+
 package inmemory
 
 import (
@@ -11,7 +13,11 @@ func TestInmemoryStateStorage_GetCurrentSong(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
 	storage := NewInmemoryStateStorage(mockLogger)
 
-	currentSong := &entity.PlayedSong{Song: entity.Song{Title: "Test Song"}}
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
+	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+
+	currentSong := &entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "Test Song"}}
 	err := storage.SetCurrentSong(currentSong)
 	if err != nil {
 		t.Errorf("Error al establecer la canción actual: %v", err)
@@ -22,8 +28,8 @@ func TestInmemoryStateStorage_GetCurrentSong(t *testing.T) {
 		t.Errorf("Error al obtener la canción actual: %v", err)
 	}
 
-	if song.Title != currentSong.Title {
-		t.Errorf("La canción obtenida no coincide con la canción establecida. Esperado: %s, Obtenido: %s", currentSong.Title, song.Title)
+	if song.DiscordSong.TitleTrack != currentSong.DiscordSong.TitleTrack {
+		t.Errorf("La canción obtenida no coincide con la canción establecida. Esperado: %s, Obtenido: %s", currentSong.DiscordSong.TitleTrack, song.DiscordSong.TitleTrack)
 	}
 
 	mockLogger.AssertExpectations(t)
@@ -31,8 +37,9 @@ func TestInmemoryStateStorage_GetCurrentSong(t *testing.T) {
 
 func TestInmemoryStateStorage_GetVoiceChannel(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
-	mockLogger.On("Info", "Obteniendo el canal de voz", mock.AnythingOfType("[]zapcore.Field")).Return()
-	mockLogger.On("Info", "Canal de voz establecido", mock.AnythingOfType("[]zapcore.Field")).Return()
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
+	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
 	storage := NewInmemoryStateStorage(mockLogger)
 
@@ -56,8 +63,10 @@ func TestInmemoryStateStorage_GetVoiceChannel(t *testing.T) {
 
 func TestInmemoryStateStorage_GetTextChannel(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
-	mockLogger.On("Info", "Obteniendo el canal de texto", mock.AnythingOfType("[]zapcore.Field")).Return()
-	mockLogger.On("Info", "Canal de texto establecido", mock.AnythingOfType("[]zapcore.Field")).Return()
+
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
+	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
 	storage := NewInmemoryStateStorage(mockLogger)
 

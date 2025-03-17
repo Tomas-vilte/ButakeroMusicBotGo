@@ -57,6 +57,11 @@ func NewDynamoSongRepository(opts Options) (*DynamoSongRepository, error) {
 
 // GetSongByVideoID implementa la obtención de canciones desde DynamoDB
 func (r *DynamoSongRepository) GetSongByVideoID(ctx context.Context, videoID string) (*entity.SongEntity, error) {
+	logger := r.opts.Logger.With(
+		zap.String("method", "GetSongByVideoID"),
+		zap.String("videoID", videoID),
+	)
+
 	input := &dynamodb.GetItemInput{
 		TableName: aws.String(r.opts.TableName),
 		Key: map[string]types.AttributeValue{
@@ -67,28 +72,32 @@ func (r *DynamoSongRepository) GetSongByVideoID(ctx context.Context, videoID str
 
 	result, err := r.opts.Client.GetItem(ctx, input)
 	if err != nil {
-		r.opts.Logger.Error("Error al obtener cancion",
-			zap.String("id", videoID),
-			zap.Error(err),
-		)
+		logger.Error("Error al obtener canción", zap.Error(err))
 		return nil, err
 	}
 
 	if len(result.Item) == 0 {
+		logger.Info("Canción no encontrada")
 		return nil, nil
 	}
 
 	var song entity.SongEntity
 	if err := attributevalue.UnmarshalMap(result.Item, &song); err != nil {
-		r.opts.Logger.Error("Error de deserialzacion",
-			zap.Error(err))
+		logger.Error("Error de deserialización", zap.Error(err))
 		return nil, fmt.Errorf("error deserializando canción: %w", err)
 	}
+
+	logger.Info("Canción obtenida exitosamente")
 	return &song, nil
 }
 
 // SearchSongsByTitle implementa la búsqueda de canciones por título en DynamoDB
 func (r *DynamoSongRepository) SearchSongsByTitle(ctx context.Context, title string) ([]*entity.SongEntity, error) {
+	logger := r.opts.Logger.With(
+		zap.String("method", "SearchSongsByTitle"),
+		zap.String("title", title),
+	)
+
 	normalizedTitle := strings.ToLower(title)
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(r.opts.TableName),
@@ -102,19 +111,16 @@ func (r *DynamoSongRepository) SearchSongsByTitle(ctx context.Context, title str
 
 	result, err := r.opts.Client.Query(ctx, input)
 	if err != nil {
-		r.opts.Logger.Error("Error al buscar canciones",
-			zap.String("title", title),
-			zap.Error(err),
-		)
+		logger.Error("Error al buscar canciones", zap.Error(err))
 		return nil, err
 	}
 
 	var songs []*entity.SongEntity
 	if err := attributevalue.UnmarshalListOfMaps(result.Items, &songs); err != nil {
-		r.opts.Logger.Error("Error de deserialización",
-			zap.Error(err))
+		logger.Error("Error de deserialización", zap.Error(err))
 		return nil, err
 	}
 
+	logger.Info("Búsqueda de canciones completada", zap.Int("count", len(songs)))
 	return songs, nil
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
+	"go.uber.org/zap"
 	"sync"
 )
 
@@ -33,8 +34,13 @@ func (s *InmemorySongStorage) PrependSong(song *entity.PlayedSong) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	logger := s.logger.With(
+		zap.String("method", "PrependSong"),
+		zap.String("songTitle", song.DiscordSong.TitleTrack),
+	)
+
 	s.songs = append([]*entity.PlayedSong{song}, s.songs...)
-	s.logger.Info("Canción agregada al principio de la lista de reproducción")
+	logger.Info("Canción agregada al principio de la lista de reproducción")
 	return nil
 }
 
@@ -43,8 +49,13 @@ func (s *InmemorySongStorage) AppendSong(song *entity.PlayedSong) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	logger := s.logger.With(
+		zap.String("method", "AppendSong"),
+		zap.String("songTitle", song.DiscordSong.TitleTrack),
+	)
+
 	s.songs = append(s.songs, song)
-	s.logger.Info("Canción agregada al final de la lista de reproducción")
+	logger.Info("Canción agregada al final de la lista de reproducción")
 	return nil
 }
 
@@ -55,8 +66,13 @@ func (s *InmemorySongStorage) RemoveSong(position int) (*entity.PlayedSong, erro
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	logger := s.logger.With(
+		zap.String("method", "RemoveSong"),
+		zap.Int("position", position),
+	)
+
 	if index >= len(s.songs) || index < 0 {
-		s.logger.Info("Posición de eliminación de canción inválida")
+		logger.Info("Posición de eliminación de canción inválida")
 		return nil, ErrRemoveInvalidPosition
 	}
 
@@ -65,7 +81,7 @@ func (s *InmemorySongStorage) RemoveSong(position int) (*entity.PlayedSong, erro
 	copy(s.songs[index:], s.songs[index+1:])
 	s.songs[len(s.songs)-1] = nil
 	s.songs = s.songs[:len(s.songs)-1]
-	s.logger.Info("Canción eliminada de la lista de reproducción")
+	logger.Info("Canción eliminada de la lista de reproducción")
 	return song, nil
 }
 
@@ -74,8 +90,10 @@ func (s *InmemorySongStorage) ClearPlaylist() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	logger := s.logger.With(zap.String("method", "ClearPlaylist"))
+	logger.Info("Lista de reproducción borrada")
+
 	s.songs = make([]*entity.PlayedSong, 0)
-	s.logger.Info("Lista de reproducción borrada")
 	return nil
 }
 
@@ -84,11 +102,13 @@ func (s *InmemorySongStorage) GetSongs() ([]*entity.PlayedSong, error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
+	logger := s.logger.With(zap.String("method", "GetSongs"))
+	logger.Info("Obteniendo todas las canciones de la lista de reproducción")
+
 	// Se copian las canciones para evitar modificaciones inadvertidas.
 	songs := make([]*entity.PlayedSong, len(s.songs))
 	copy(songs, s.songs)
 
-	s.logger.Info("Obteniendo todas las canciones de la lista de reproducción")
 	return songs, nil
 }
 
@@ -97,13 +117,15 @@ func (s *InmemorySongStorage) PopFirstSong() (*entity.PlayedSong, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	logger := s.logger.With(zap.String("method", "PopFirstSong"))
+
 	if len(s.songs) == 0 {
-		s.logger.Info("No hay canciones para eliminar")
+		logger.Info("No hay canciones para eliminar")
 		return nil, ErrNoSongs
 	}
 
 	song := s.songs[0]
 	s.songs = s.songs[1:]
-	s.logger.Info("Primera canción eliminada de la lista de reproducción")
+	logger.Info("Primera canción eliminada de la lista de reproducción")
 	return song, nil
 }

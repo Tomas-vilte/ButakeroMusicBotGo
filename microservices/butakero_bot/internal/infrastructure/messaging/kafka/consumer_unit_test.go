@@ -1,3 +1,5 @@
+//go:build !integration
+
 package kafka
 
 import (
@@ -35,9 +37,10 @@ func TestKafkaConsumer_Close(t *testing.T) {
 		brokers:     []string{"dummy"},
 		topic:       "test-topic",
 		logger:      mockLogger,
-		messageChan: make(chan *entity.StatusMessage, 1),
+		messageChan: make(chan *entity.MessageQueue, 1),
 	}
 
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
 	err := consumer.Close()
@@ -49,35 +52,26 @@ func TestKafkaConsumer_Close(t *testing.T) {
 func TestHandleSuccessMessage(t *testing.T) {
 	// Arrange
 	successJSON := `{
-		"status": {
-			"id": "19f6c66f-26f3-4ccf-bfc7-967449a95ad4",
-			"sk": "SRXH9AbT280",
-			"status": "success",
-			"message": "Procesamiento exitoso",
-			"metadata": {
-				"id": "63f48016-78cd-4387-99b9-c38af46e8e90",
-				"video_id": "SRXH9AbT280",
-				"title": "The Emptiness Machine (Official Music Video) - Linkin Park",
-				"duration": "PT3M21S",
-				"url_youtube": "https://youtube.com/watch?v=SRXH9AbT280",
-				"thumbnail": "https://i.ytimg.com/vi/SRXH9AbT280/default.jpg",
-				"platform": "Youtube"
-			},
-			"file_data": {
-				"file_path": "audio/The Emptiness Machine (Official Music Video) - Linkin Park.dca",
-				"file_size": "1.44MB",
-				"file_type": "audio/dca",
-				"public_url": "file://data/audio-files/audio/The Emptiness Machine (Official Music Video) - Linkin Park.dca"
-			},
-			"processing_date": "2024-12-24T05:39:58Z",
-			"success": true,
-			"attempts": 1,
-			"failures": 0
-		}
-	}`
+        "video_id": "19f6c66f-26f3-4ccf-bfc7-967449a95ad4",
+        "status": "success",
+        "message": "Procesamiento exitoso",
+        "platform_metadata": {
+            "title": "The Emptiness Machine (Official Music Video) - Linkin Park",
+            "duration_ms": 2345,
+            "url": "https://youtube.com/watch?v=SRXH9AbT280",
+            "thumbnail_url": "https://i.ytimg.com/vi/SRXH9AbT280/default.jpg",
+            "platform": "youtube"
+        },
+        "file_data": {
+            "file_path": "audio/The Emptiness Machine (Official Music Video) - Linkin Park.dca",
+            "file_size": "1.44MB",
+            "file_type": "audio/dca"
+        },
+        "success": true
+    }`
 	mockLogger := new(logging.MockLogger)
 	consumer := &KafkaConsumer{
-		messageChan: make(chan *entity.StatusMessage, 1),
+		messageChan: make(chan *entity.MessageQueue, 1),
 		logger:      mockLogger,
 	}
 
@@ -86,6 +80,7 @@ func TestHandleSuccessMessage(t *testing.T) {
 		Value:  []byte(successJSON),
 	}
 
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
@@ -95,8 +90,8 @@ func TestHandleSuccessMessage(t *testing.T) {
 	// Assert
 	select {
 	case msg := <-consumer.GetMessagesChannel():
-		assert.Equal(t, "success", msg.Status.Status, "El estado debe ser success")
-		assert.True(t, msg.Status.Success, "El campo success debe ser true")
+		assert.Equal(t, "success", msg.Status, "El estado debe ser success")
+		assert.True(t, msg.Success, "El campo success debe ser true")
 	case <-time.After(1 * time.Second):
 		t.Fatal("No se recibió el mensaje esperado en el canal")
 	}
@@ -105,30 +100,22 @@ func TestHandleSuccessMessage(t *testing.T) {
 func TestHandleErrorMessage(t *testing.T) {
 	// Arrange
 	errorJSON := `{
-		"status": {
-			"id": "959326a1-53db-4810-9fc8-b17275122158",
-			"sk": "DFswyIQyrl8",
-			"status": "error",
-			"message": "Error en descarga: io: read/write on closed pipe",
-			"metadata": {
-				"id": "873f0521-f808-4721-b2c1-5e63a782b7cf",
-				"video_id": "DFswyIQyrl8",
-				"title": "Ke Personajes - My Immortal (Video Oficial)",
-				"duration": "PT4M19S",
-				"url_youtube": "https://youtube.com/watch?v=DFswyIQyrl8",
-				"thumbnail": "https://i.ytimg.com/vi/DFswyIQyrl8/default.jpg",
-				"platform": "Youtube"
-			},
-			"file_data": null,
-			"processing_date": "2025-02-10T14:23:14Z",
-			"success": false,
-			"attempts": 8,
-			"failures": 8
-		}
-	}`
+        "video_id": "DFswyIQyrl8",
+        "status": "error",
+        "message": "Error en descarga: io: read/write on closed pipe",
+        "platform_metadata": {
+            "title": "Ke Personajes - My Immortal (Video Oficial)",
+            "duration_ms": 259000,
+            "url": "https://youtube.com/watch?v=DFswyIQyrl8",
+            "thumbnail_url": "https://i.ytimg.com/vi/DFswyIQyrl8/default.jpg",
+            "platform": "youtube"
+        },
+		"file_data": null,
+        "success": false
+    }`
 	mockLogger := new(logging.MockLogger)
 	consumer := &KafkaConsumer{
-		messageChan: make(chan *entity.StatusMessage, 1),
+		messageChan: make(chan *entity.MessageQueue, 1),
 		logger:      mockLogger,
 	}
 
@@ -137,6 +124,7 @@ func TestHandleErrorMessage(t *testing.T) {
 		Value:  []byte(errorJSON),
 	}
 
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Warn", mock.Anything, mock.Anything).Return()
 

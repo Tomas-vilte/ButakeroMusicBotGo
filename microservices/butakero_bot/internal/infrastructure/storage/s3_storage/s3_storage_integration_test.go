@@ -1,3 +1,5 @@
+//go:build integration
+
 package s3_storage
 
 import (
@@ -37,7 +39,7 @@ func TestS3StorageIntegration(t *testing.T) {
 		t.Skip("Saltando prueba de integración en modo corto")
 	}
 
-	logger, err := logging.NewZapLogger()
+	logger, err := logging.NewDevelopmentLogger()
 	require.NoError(t, err)
 
 	storage, err := NewS3Storage(testConfig, logger)

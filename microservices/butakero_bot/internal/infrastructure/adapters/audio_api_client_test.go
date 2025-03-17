@@ -8,8 +8,8 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -26,6 +26,7 @@ func TestNewAudioAPIClient_ValidConfig(t *testing.T) {
 		MaxConnsPerHost: 20,
 	}
 
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	client, err := NewAudioAPIClient(config, mockLogger)
 
 	require.NoError(t, err)
@@ -53,9 +54,11 @@ func TestDownloadSong_EmptySongName(t *testing.T) {
 	loggerMock := new(logging.MockLogger)
 	client := &AudioAPIClient{logger: loggerMock}
 
-	_, err := client.DownloadSong(context.Background(), "")
+	loggerMock.On("With", mock.Anything, mock.Anything).Return(loggerMock)
+	loggerMock.On("Error", mock.Anything, mock.Anything)
+	_, err := client.DownloadSong(context.Background(), "", "youtube")
 
-	assert.Equal(t, ErrEmptySongName, err)
+	assert.Equal(t, ErrEmptyParameters, err)
 }
 
 func TestDownloadSong_HTTPError(t *testing.T) {
@@ -71,7 +74,11 @@ func TestDownloadSong_HTTPError(t *testing.T) {
 		httpClient: &http.Client{Timeout: time.Nanosecond},
 	}
 
-	_, err := client.DownloadSong(context.Background(), "test-song")
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
+
+	_, err := client.DownloadSong(context.Background(), "test-song", "youtube")
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "falló la request")
@@ -93,8 +100,12 @@ func TestDownloadSong_NonOKStatus(t *testing.T) {
 		httpClient: &http.Client{},
 	}
 
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
+
 	// Act
-	_, err := client.DownloadSong(context.Background(), "test-song")
+	_, err := client.DownloadSong(context.Background(), "test-song", "youtube")
 
 	// Assert
 	require.Error(t, err)
@@ -104,9 +115,8 @@ func TestDownloadSong_NonOKStatus(t *testing.T) {
 func TestDownloadSong_Success(t *testing.T) {
 	// Arrange
 	expectedResponse := entity.DownloadResponse{
-		OperationID: "123",
-		SongID:      "abc",
-		Status:      "processing",
+		VideoID: "123",
+		Status:  "processing",
 	}
 
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -117,11 +127,9 @@ func TestDownloadSong_Success(t *testing.T) {
 
 	baseURL, _ := url.Parse(testServer.URL)
 	loggerMock := new(logging.MockLogger)
-	loggerMock.On("Info", "Iniciando descarga", []zap.Field{
-		zap.String("songName", "test-song"),
-		zap.String("operationId", "123"),
-		zap.String("songId", "abc"),
-	})
+	loggerMock.On("With", mock.Anything, mock.Anything).Return(loggerMock)
+	loggerMock.On("Info", mock.Anything, mock.Anything).Return()
+	loggerMock.On("Debug", mock.Anything, mock.Anything).Return()
 
 	client := &AudioAPIClient{
 		baseURL:    baseURL,
@@ -130,11 +138,11 @@ func TestDownloadSong_Success(t *testing.T) {
 	}
 
 	// Act
-	resp, err := client.DownloadSong(context.Background(), "test-song")
+	resp, err := client.DownloadSong(context.Background(), "test-song", "youtube")
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, expectedResponse.OperationID, resp.OperationID)
-	assert.Equal(t, expectedResponse.SongID, resp.SongID)
+	assert.Equal(t, expectedResponse.VideoID, resp.VideoID)
+	assert.Equal(t, expectedResponse.Status, resp.Status)
 	loggerMock.AssertExpectations(t)
 }
