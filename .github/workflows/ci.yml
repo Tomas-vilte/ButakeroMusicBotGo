@@ -50,42 +50,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # Instalar dependencias del sistema
           sudo apt-get update
-          sudo apt-get install -y build-essential libopus-dev libopusfile-dev
-          sudo apt-get install -y ffmpeg wget libopusfile0
-          sudo apt-get install -y python3-pip python3-venv
-          go install github.com/bwmarrin/dca/cmd/dca@latest
-          
-          # Crear un entorno virtual y activar
-          python3 -m venv venv
-          source venv/bin/activate
-
-          # Instalar yt-dlp en el entorno virtual
-          pip install -U yt-dlp
-          pip install -U https://github.com/coletdjnz/yt-dlp-youtube-oauth2/archive/refs/heads/master.zip
-
-
-          sudo cp venv/bin/yt-dlp /usr/local/bin/
-          sudo chmod +x /usr/local/bin/yt-dlp
-          
-          # Instalar yt-dlp y el paquete oauth2 dentro del entorno virtual
-          pip install -U yt-dlp
-          pip install -U https://github.com/coletdjnz/yt-dlp-youtube-oauth2/archive/refs/heads/master.zip
+          sudo apt install ffmpeg
 
       - name: Run unit tests
         run: make unit-test
-
-      - name: Generate unit test coverage report
-        run: |
-          go test -short -coverprofile=unit-coverage.out ./...
-          go tool cover -html=unit-coverage.out -o unit-coverage.html
-
-      - name: Upload unit test coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-coverage-report
-          path: unit-coverage.html
 
   integration-tests:
     runs-on: ubuntu-latest
@@ -124,14 +93,3 @@ jobs:
           DYNAMODB_TABLE_NAME_OPERATION: ${{ secrets.DYNAMODB_TABLE_NAME_OPERATION }}
           SQS_QUEUE_URL: ${{ secrets.SQS_QUEUE_URL }}
         run: make integration-test
-
-      - name: Generate integration test coverage report
-        run: |
-          go test -run Integration -coverprofile=integration-coverage.out ./...
-          go tool cover -html=integration-coverage.out -o integration-coverage.html
-
-      - name: Upload integration test coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-coverage-report
-          path: integration-coverage.html
