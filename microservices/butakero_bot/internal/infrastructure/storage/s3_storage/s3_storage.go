@@ -48,14 +48,20 @@ func (s *S3Storage) GetAudio(ctx context.Context, songPath string) (io.ReadClose
 		return nil, fmt.Errorf("songPath no puede estar vacío")
 	}
 
+	logger := s.logger.With(
+		zap.String("method", "GetAudio"),
+		zap.String("songPath", songPath),
+	)
+
 	select {
 	case <-ctx.Done():
+		logger.Debug("Contexto cancelado antes de abrir el archivo")
 		return nil, ctx.Err()
 	default:
 	}
 
 	bucket := s.config.Storage.S3Config.BucketName
-	s.logger.Debug("Obteniendo audio de S3",
+	logger.Debug("Obteniendo audio de S3",
 		zap.String("bucket", bucket),
 		zap.String("path", songPath))
 
@@ -65,14 +71,14 @@ func (s *S3Storage) GetAudio(ctx context.Context, songPath string) (io.ReadClose
 	})
 
 	if err != nil {
-		s.logger.Error("Error al obtener objeto de S3",
+		logger.Error("Error al obtener objeto de S3",
 			zap.String("bucket", bucket),
 			zap.String("path", songPath),
 			zap.Error(err))
 		return nil, fmt.Errorf("error al obtener de S3: %w", err)
 	}
 
-	s.logger.Debug("Audio obtenido exitosamente",
+	logger.Debug("Audio obtenido exitosamente",
 		zap.String("bucket", bucket),
 		zap.String("path", songPath))
 

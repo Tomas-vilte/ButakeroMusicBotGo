@@ -48,6 +48,11 @@ func NewAudioAPIClient(config AudioAPIClientConfig, logger logging.Logger) (*Aud
 		IdleConnTimeout: 90 * time.Second,
 	}
 
+	logger = logger.With(
+		zap.String("component", "audio_api_client"),
+		zap.String("baseURL", config.BaseURL),
+	)
+
 	return &AudioAPIClient{
 		baseURL: baseURL,
 		logger:  logger,
@@ -59,7 +64,14 @@ func NewAudioAPIClient(config AudioAPIClientConfig, logger logging.Logger) (*Aud
 }
 
 func (c *AudioAPIClient) DownloadSong(ctx context.Context, songName, providerType string) (*entity.DownloadResponse, error) {
+	logger := c.logger.With(
+		zap.String("method", "DownloadSong"),
+		zap.String("songName", songName),
+		zap.String("providerType", providerType),
+	)
+
 	if songName == "" || providerType == "" {
+		logger.Error("Parámetros vacíos", zap.Error(ErrEmptyParameters))
 		return nil, ErrEmptyParameters
 	}
 
@@ -72,35 +84,45 @@ func (c *AudioAPIClient) DownloadSong(ctx context.Context, songName, providerTyp
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint.String(), nil)
 	if err != nil {
+		logger.Error("Error al crear la solicitud", zap.Error(err))
 		return nil, fmt.Errorf("hubo un error al crear la request: %w", err)
 	}
 
+	logger.Debug("Enviando solicitud de descarga", zap.String("endpoint", endpoint.String()))
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		logger.Error("Error al realizar la solicitud", zap.Error(err))
 		return nil, fmt.Errorf("falló la request: %w", err)
 	}
 	defer func() {
 		if closeErr := resp.Body.Close(); closeErr != nil {
-			c.logger.Error("error al cerrar el body de la respuesta", zap.Error(closeErr))
+			logger.Error("Error al cerrar el body de la respuesta", zap.Error(closeErr))
 		}
 	}()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		logger.Error("Error en la solicitud",
+			zap.Int("statusCode", resp.StatusCode),
+			zap.String("responseBody", string(body)),
+		)
 		return nil, fmt.Errorf("error en la solicitud: código de estado %d, respuesta: %s", resp.StatusCode, string(body))
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		logger.Error("Error al leer el cuerpo de la respuesta", zap.Error(err))
 		return nil, fmt.Errorf("error al leer el cuerpo de la respuesta: %w", err)
 	}
 
 	var response entity.DownloadResponse
 	if err := json.Unmarshal(body, &response); err != nil {
+		logger.Error("Error al decodificar la respuesta", zap.Error(err))
 		return nil, fmt.Errorf("no se pudo decodificar la respuesta: %w", err)
 	}
 
-	c.logger.Info("Iniciando descarga",
+	logger.Info("Iniciando descarga",
 		zap.String("videoID", response.VideoID),
 		zap.String("status", response.Status),
 	)

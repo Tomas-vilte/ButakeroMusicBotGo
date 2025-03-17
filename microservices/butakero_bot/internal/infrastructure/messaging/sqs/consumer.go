@@ -22,28 +22,33 @@ type SQSConsumer struct {
 	client      ClientSQS
 	queueURL    string
 	logger      logging.Logger
-	messageChan chan *entity.StatusMessage
+	messageChan chan *entity.MessageQueue
 	maxMessages int32
 	waitTime    int32
 	wg          sync.WaitGroup
 }
 
 func NewSQSConsumer(client ClientSQS, config SQSConfig, logger logging.Logger) *SQSConsumer {
+	logger = logger.With(
+		zap.String("component", "sqs_consumer"),
+		zap.String("queueURL", config.QueueURL),
+		zap.Int32("maxMessages", config.MaxMessages),
+		zap.Int32("waitTimeSeconds", config.WaitTimeSeconds),
+	)
+
 	return &SQSConsumer{
 		client:      client,
 		queueURL:    config.QueueURL,
 		logger:      logger,
-		messageChan: make(chan *entity.StatusMessage),
+		messageChan: make(chan *entity.MessageQueue),
 		maxMessages: config.MaxMessages,
 		waitTime:    config.WaitTimeSeconds,
 	}
 }
 
 func (s *SQSConsumer) ConsumeMessages(ctx context.Context, offset int64) error {
-	s.logger.Info("Iniciando consumo de mensajes SQS",
-		zap.String("queueURL", s.queueURL),
-		zap.Int32("maxMessages", s.maxMessages),
-		zap.Int32("waitTimeSeconds", s.waitTime))
+	logger := s.logger.With(zap.String("method", "ConsumeMessages"))
+	logger.Info("Iniciando consumo de mensajes SQS")
 
 	s.wg.Add(1)
 	go func() {
@@ -53,7 +58,7 @@ func (s *SQSConsumer) ConsumeMessages(ctx context.Context, offset int64) error {
 		for {
 			select {
 			case <-ctx.Done():
-				s.logger.Info("Contexto cancelado, deteniendo consumidor SQS")
+				logger.Info("Contexto cancelado, deteniendo consumidor SQS")
 				return
 			default:
 				s.receiveAndProcessMessages(ctx)
@@ -64,6 +69,8 @@ func (s *SQSConsumer) ConsumeMessages(ctx context.Context, offset int64) error {
 }
 
 func (s *SQSConsumer) receiveAndProcessMessages(ctx context.Context) {
+	logger := s.logger.With(zap.String("method", "receiveAndProcessMessages"))
+
 	input := &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(s.queueURL),
 		MaxNumberOfMessages: s.maxMessages,
@@ -76,7 +83,7 @@ func (s *SQSConsumer) receiveAndProcessMessages(ctx context.Context) {
 
 	resp, err := s.client.ReceiveMessage(ctx, input)
 	if err != nil {
-		s.logger.Error("Error al recibir mensajes de la cola SQS", zap.Error(err))
+		logger.Error("Error al recibir mensajes de la cola SQS", zap.Error(err))
 		time.Sleep(time.Second)
 		return
 	}
@@ -87,23 +94,28 @@ func (s *SQSConsumer) receiveAndProcessMessages(ctx context.Context) {
 }
 
 func (s *SQSConsumer) handleMessage(ctx context.Context, msg types.Message) {
-	s.logger.Debug("Mensaje recibido", zap.String("messageID", *msg.MessageId))
+	logger := s.logger.With(
+		zap.String("method", "handleMessage"),
+		zap.String("messageID", *msg.MessageId),
+	)
 
-	var statusMessage entity.StatusMessage
+	logger.Debug("Mensaje recibido")
+
+	var statusMessage entity.MessageQueue
 	if err := json.Unmarshal([]byte(*msg.Body), &statusMessage); err != nil {
-		s.logger.Error("Error al deserializar mensaje",
+		logger.Error("Error al deserializar mensaje",
 			zap.Error(err),
 			zap.String("messageBody", *msg.Body))
 		return
 	}
 
-	if statusMessage.Status.Status == "success" {
-		s.logger.Info("Mensaje procesado exitosamente",
-			zap.String("status", statusMessage.Status.Status),
+	if statusMessage.Status == "success" {
+		logger.Info("Mensaje procesado exitosamente",
+			zap.String("status", statusMessage.Status),
 			zap.String("messageId", *msg.MessageId))
 		s.messageChan <- &statusMessage
 	} else {
-		s.logger.Warn("Mensaje recibido con estado de error",
+		logger.Warn("Mensaje recibido con estado de error",
 			zap.Any("status", statusMessage),
 			zap.String("messageId", *msg.MessageId))
 	}
@@ -111,11 +123,16 @@ func (s *SQSConsumer) handleMessage(ctx context.Context, msg types.Message) {
 	s.deleteMessage(ctx, msg)
 }
 
-func (s *SQSConsumer) GetMessagesChannel() <-chan *entity.StatusMessage {
+func (s *SQSConsumer) GetMessagesChannel() <-chan *entity.MessageQueue {
 	return s.messageChan
 }
 
 func (s *SQSConsumer) deleteMessage(ctx context.Context, msg types.Message) {
+	logger := s.logger.With(
+		zap.String("method", "deleteMessage"),
+		zap.String("messageID", *msg.MessageId),
+	)
+
 	deleteInput := &sqs.DeleteMessageInput{
 		QueueUrl:      aws.String(s.queueURL),
 		ReceiptHandle: msg.ReceiptHandle,
@@ -123,8 +140,6 @@ func (s *SQSConsumer) deleteMessage(ctx context.Context, msg types.Message) {
 
 	_, err := s.client.DeleteMessage(ctx, deleteInput)
 	if err != nil {
-		s.logger.Error("Error al eliminar mensaje de SQS",
-			zap.Error(err),
-			zap.String("messageId", *msg.MessageId))
+		logger.Error("Error al eliminar mensaje de SQS", zap.Error(err))
 	}
 }

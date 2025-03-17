@@ -1,3 +1,5 @@
+//go:build integration
+
 package kafka
 
 import (
@@ -41,57 +43,39 @@ func TestIntegrationKafkaConsumer(t *testing.T) {
 	}()
 
 	successJSON := `{
-		"status": {
-			"id": "19f6c66f-26f3-4ccf-bfc7-967449a95ad4",
-			"sk": "SRXH9AbT280",
-			"status": "success",
-			"message": "Procesamiento exitoso",
-			"metadata": {
-				"id": "63f48016-78cd-4387-99b9-c38af46e8e90",
-				"video_id": "SRXH9AbT280",
-				"title": "The Emptiness Machine (Official Music Video) - Linkin Park",
-				"duration": "PT3M21S",
-				"url_youtube": "https://youtube.com/watch?v=SRXH9AbT280",
-				"thumbnail": "https://i.ytimg.com/vi/SRXH9AbT280/default.jpg",
-				"platform": "Youtube"
-			},
-			"file_data": {
-				"file_path": "audio/The Emptiness Machine (Official Music Video) - Linkin Park.dca",
-				"file_size": "1.44MB",
-				"file_type": "audio/dca",
-				"public_url": "file://data/audio-files/audio/The Emptiness Machine (Official Music Video) - Linkin Park.dca"
-			},
-			"processing_date": "2024-12-24T05:39:58Z",
-			"success": true,
-			"attempts": 1,
-			"failures": 0
-		}
-	}`
+        "video_id": "19f6c66f-26f3-4ccf-bfc7-967449a95ad4",
+        "status": "success",
+        "message": "Procesamiento exitoso",
+        "platform_metadata": {
+            "title": "The Emptiness Machine (Official Music Video) - Linkin Park",
+            "duration_ms": 2345,
+            "url": "https://youtube.com/watch?v=SRXH9AbT280",
+            "thumbnail_url": "https://i.ytimg.com/vi/SRXH9AbT280/default.jpg",
+            "platform": "youtube"
+        },
+        "file_data": {
+            "file_path": "audio/The Emptiness Machine (Official Music Video) - Linkin Park.dca",
+            "file_size": "1.44MB",
+            "file_type": "audio/dca"
+        },
+        "success": true
+    }`
 
 	errorJSON := `{
-		"status": {
-			"id": "959326a1-53db-4810-9fc8-b17275122158",
-			"sk": "DFswyIQyrl8",
-			"status": "error",
-			"message": "Error en descarga: io: read/write on closed pipe",
-			"metadata": {
-				"id": "873f0521-f808-4721-b2c1-5e63a782b7cf",
-				"video_id": "DFswyIQyrl8",
-				"title": "Ke Personajes - My Immortal (Video Oficial)",
-				"duration": "PT4M19S",
-				"url_youtube": "https://youtube.com/watch?v=DFswyIQyrl8",
-				"thumbnail": "https://i.ytimg.com/vi/DFswyIQyrl8/default.jpg",
-				"platform": "Youtube"
-			},
-			"file_data": null,
-			"processing_date": "2025-02-10T14:23:14Z",
-			"success": false,
-			"attempts": 8,
-			"failures": 8
-		}
-	}`
+        "video_id": "DFswyIQyrl8",
+        "status": "error",
+        "message": "Error en descarga: io: read/write on closed pipe",
+        "platform_metadata": {
+            "title": "Ke Personajes - My Immortal (Video Oficial)",
+            "duration_ms": 259000,
+            "url": "https://youtube.com/watch?v=DFswyIQyrl8",
+            "thumbnail_url": "https://i.ytimg.com/vi/DFswyIQyrl8/default.jpg",
+            "platform": "youtube"
+        },
+		"file_data": null,
+        "success": false
+    }`
 
-	// Publicar ambos mensajes en el topic real
 	_, _, err = producer.SendMessage(&sarama.ProducerMessage{
 		Topic: topic,
 		Value: sarama.StringEncoder(successJSON),
@@ -109,7 +93,7 @@ func TestIntegrationKafkaConsumer(t *testing.T) {
 		TLS:     false,
 	}
 
-	logger, err := logging.NewZapLogger()
+	logger, err := logging.NewDevelopmentLogger()
 	require.NoError(t, err)
 	consumer, err := NewKafkaConsumer(configKafka, logger)
 	require.NoError(t, err)
@@ -121,8 +105,8 @@ func TestIntegrationKafkaConsumer(t *testing.T) {
 
 	select {
 	case received := <-consumer.GetMessagesChannel():
-		assert.Equal(t, "success", received.Status.Status, "Se esperaba un mensaje con estado 'success'")
-		assert.Equal(t, "Procesamiento exitoso", received.Status.Message, "El mensaje debe coincidir")
+		assert.Equal(t, "success", received.Status, "Se esperaba un mensaje con estado 'success'")
+		assert.Equal(t, "Procesamiento exitoso", received.Message, "El mensaje debe coincidir")
 	case <-time.After(5 * time.Second):
 		t.Fatal("No se recibió el mensaje de éxito esperado")
 	}

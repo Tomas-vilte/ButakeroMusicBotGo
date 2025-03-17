@@ -3,7 +3,6 @@ package interactions
 import (
 	"context"
 	"fmt"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/application/service"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/player"
@@ -32,7 +31,7 @@ type InteractionHandler struct {
 	discordMessenger ports.DiscordMessenger
 	storageAudio     ports.StorageAudio
 	presenceNotifier ports.PresenceSubject
-	songService      *service.SongService
+	songService      ports.SongService
 }
 
 // NewInteractionHandler crea una nueva instancia de InteractionHandler.
@@ -43,7 +42,7 @@ func NewInteractionHandler(
 	discordMessenger ports.DiscordMessenger,
 	storageAudio ports.StorageAudio,
 	presenceNotifier ports.PresenceSubject,
-	songService *service.SongService,
+	songService ports.SongService,
 ) *InteractionHandler {
 	return &InteractionHandler{
 		guildsPlayers:    make(map[GuildID]*player.GuildPlayer),

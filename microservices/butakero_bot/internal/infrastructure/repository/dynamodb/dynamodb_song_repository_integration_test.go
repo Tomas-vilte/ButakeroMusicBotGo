@@ -1,3 +1,5 @@
+//go:build integration
+
 package dynamodb_test
 
 import (
@@ -99,7 +101,7 @@ func TestDynamoSongRepositoryIntegration(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	logger, err := logging.NewZapLogger()
+	logger, err := logging.NewDevelopmentLogger()
 	require.NoError(t, err)
 
 	dynamoContainer, err := dynamodbDocker.Run(ctx,
@@ -148,7 +150,8 @@ func TestDynamoSongRepositoryIntegration(t *testing.T) {
 
 	testSongs := []entity.SongEntity{
 		{
-			VideoID:    "6swmTBVI83k",
+			PK:         "6swmTBVI83k",
+			SK:         "METADATA",
 			TitleLower: "lil nas x - montero (call me by your name) (official video)",
 			Metadata: entity.Metadata{
 				Title:      "Lil Nas X - MONTERO (Call Me By Your Name) (Official Video)",
@@ -157,7 +160,8 @@ func TestDynamoSongRepositoryIntegration(t *testing.T) {
 			},
 		},
 		{
-			VideoID:    "dQw4w9WgXcQ",
+			PK:         "dQw4w9WgXcQ",
+			SK:         "METADATA",
 			TitleLower: "rick astley - never gonna give you up (official music video)",
 			Metadata: entity.Metadata{
 				Title:      "Rick Astley - Never Gonna Give You Up (Official Music Video)",
@@ -166,7 +170,8 @@ func TestDynamoSongRepositoryIntegration(t *testing.T) {
 			},
 		},
 		{
-			VideoID:    "kJQP7kiw5Fk",
+			PK:         "kJQP7kiw5Fk",
+			SK:         "METADATA",
 			TitleLower: "luis fonsi - despacito ft. daddy yankee",
 			Metadata: entity.Metadata{
 				Title:      "Luis Fonsi - Despacito ft. Daddy Yankee",
@@ -179,8 +184,7 @@ func TestDynamoSongRepositoryIntegration(t *testing.T) {
 	for _, song := range testSongs {
 		titleLower := strings.ToLower(song.Metadata.Title)
 		song.TitleLower = titleLower
-		song.PK = fmt.Sprintf("VIDEO#" + song.VideoID)
-		song.SK = fmt.Sprintf("METADATA")
+		song.PK = fmt.Sprintf("VIDEO#" + song.PK)
 		song.GSI1PK = "SONG"
 		song.GSI1SK = titleLower
 		item, err := attributevalue.MarshalMap(song)

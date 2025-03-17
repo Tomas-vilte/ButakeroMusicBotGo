@@ -51,6 +51,11 @@ func NewMongoDBSongRepository(opts Options) (*MongoSongRepository, error) {
 
 // GetSongByVideoID obtiene una canción por su ID
 func (r *MongoSongRepository) GetSongByVideoID(ctx context.Context, videoID string) (*entity.SongEntity, error) {
+	logger := r.opts.Logger.With(
+		zap.String("method", "GetSongByVideoID"),
+		zap.String("videoID", videoID),
+	)
+
 	var song entity.SongEntity
 
 	filter := bson.M{"_id": videoID}
@@ -58,18 +63,24 @@ func (r *MongoSongRepository) GetSongByVideoID(ctx context.Context, videoID stri
 
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			r.opts.Logger.Info("Cancion no encontrada", zap.String("id", videoID))
+			logger.Info("Canción no encontrada")
 			return nil, nil
 		}
-		r.opts.Logger.Error("Error al obtener la cancion", zap.Error(err))
+		logger.Error("Error al obtener la canción", zap.Error(err))
 		return nil, err
 	}
 
-	r.opts.Logger.Info("Cancion obtenida exitosamente", zap.String("id", videoID))
+	logger.Info("Canción obtenida exitosamente")
 	return &song, nil
 }
 
+// SearchSongsByTitle busca canciones por título
 func (r *MongoSongRepository) SearchSongsByTitle(ctx context.Context, title string) ([]*entity.SongEntity, error) {
+	logger := r.opts.Logger.With(
+		zap.String("method", "SearchSongsByTitle"),
+		zap.String("title", title),
+	)
+
 	title = strings.ToLower(title)
 
 	filter := bson.M{
@@ -84,20 +95,21 @@ func (r *MongoSongRepository) SearchSongsByTitle(ctx context.Context, title stri
 
 	cursor, err := r.opts.Collection.Find(ctx, filter, findOptions)
 	if err != nil {
-		r.opts.Logger.Error("Error al buscar canciones", zap.Error(err))
+		logger.Error("Error al buscar canciones", zap.Error(err))
 		return nil, err
 	}
 	defer func() {
 		if err := cursor.Close(ctx); err != nil {
-			r.opts.Logger.Error("Error al cerrar el cursor", zap.Error(err))
+			logger.Error("Error al cerrar el cursor", zap.Error(err))
 		}
 	}()
 
 	var songs []*entity.SongEntity
 	if err = cursor.All(ctx, &songs); err != nil {
-		r.opts.Logger.Error("Error al decodificar canciones", zap.Error(err))
+		logger.Error("Error al decodificar canciones", zap.Error(err))
 		return nil, err
 	}
 
+	logger.Info("Búsqueda de canciones completada", zap.Int("count", len(songs)))
 	return songs, nil
 }
