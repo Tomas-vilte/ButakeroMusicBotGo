@@ -515,9 +515,11 @@ func (e *encodeSessionimpl) Options() *EncodeOptions {
 // asegurando que ningún proceso ffmpeg comience a acumularse en su sistema
 // acordate siempre que tenes que llamar a esto después de que esté hecho
 func (e *encodeSessionimpl) Cleanup() {
-	e.Stop()
+	if err := e.Stop(); err != nil && err.Error() != "la session no esta corriendo" {
+		e.log.Error("Error al detener la sesión de codificación", zap.Error(err))
+	}
 
-	for _ = range e.frameChannel {
+	for range e.frameChannel {
 
 	}
 }

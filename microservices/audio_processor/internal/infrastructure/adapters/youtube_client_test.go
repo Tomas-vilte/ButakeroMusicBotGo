@@ -1,4 +1,4 @@
-//go:build integration
+//go:build !integration
 
 package adapters
 
@@ -69,7 +69,7 @@ func TestYouTubeClient_GetVideoDetails(t *testing.T) {
 		assert.Equal(t, "Test Video", details.Title)
 		assert.Equal(t, "Test Description", details.Description)
 		assert.Equal(t, "Test Channel", details.Creator)
-		assert.Equal(t, "PT5M30S", details.Duration)
+		assert.Equal(t, int64(330000), details.DurationMs)
 		assert.Equal(t, "http://test.com/thumb.jpg", details.ThumbnailURL)
 		assert.Equal(t, "https://youtube.com/watch?v="+expectedID, details.URL)
 
@@ -99,7 +99,7 @@ func TestYouTubeClient_GetVideoDetails(t *testing.T) {
 					"message": "Video not found",
 				},
 			}
-			json.NewEncoder(w).Encode(response)
+			_ = json.NewEncoder(w).Encode(response)
 		}))
 		defer ts.Close()
 
@@ -163,7 +163,7 @@ func TestYouTubeClient_GetVideoDetails(t *testing.T) {
 		// Arrange
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("{invalid json"))
+			_, _ = w.Write([]byte("{invalid json"))
 		}))
 		defer ts.Close()
 
@@ -198,7 +198,7 @@ func TestYouTubeClient_GetVideoDetails(t *testing.T) {
 					},
 				},
 			}
-			json.NewEncoder(w).Encode(errorResponse)
+			_ = json.NewEncoder(w).Encode(errorResponse)
 		}))
 		defer ts.Close()
 
@@ -316,7 +316,7 @@ func TestYouTubeClient_SearchVideoID(t *testing.T) {
 					},
 				},
 			}
-			json.NewEncoder(w).Encode(errorResponse)
+			_ = json.NewEncoder(w).Encode(errorResponse)
 		}))
 		defer ts.Close()
 

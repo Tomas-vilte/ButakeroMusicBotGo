@@ -35,7 +35,7 @@ func NewMongoDBSongRepository(opts Options) (*MongoSongRepository, error) {
 	defer cancel()
 
 	indexModel := mongo.IndexModel{
-		Keys:    bson.D{{"title_lower", "text"}},
+		Keys:    bson.D{{Key: "title_lower", Value: "text"}},
 		Options: options.Index().SetName("title_text"),
 	}
 

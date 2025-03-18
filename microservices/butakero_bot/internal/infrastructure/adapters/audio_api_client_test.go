@@ -121,7 +121,7 @@ func TestDownloadSong_Success(t *testing.T) {
 
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(expectedResponse)
+		_ = json.NewEncoder(w).Encode(expectedResponse)
 	}))
 	defer testServer.Close()
 

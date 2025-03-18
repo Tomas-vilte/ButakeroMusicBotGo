@@ -53,6 +53,10 @@ func StartServer() error {
 		Log:    log,
 		Config: cfg,
 	})
+	if err != nil {
+		log.Error("Error al crear mongo connection", zap.Error(err))
+		return err
+	}
 
 	mediaRepository, err := mongodb.NewMediaRepository(mongodb.MediaRepositoryOptions{
 		Log:        log,

@@ -48,7 +48,11 @@ func (d *DiscordVoiceSession) SendAudio(ctx context.Context, reader io.ReadClose
 		d.logger.Error("Error al comenzar a hablar", zap.Error(err))
 		return err
 	}
-	defer d.vc.Speaking(false)
+	defer func() {
+		if err := d.vc.Speaking(false); err != nil {
+			d.logger.Error("Error al detener la conversación", zap.Error(err))
+		}
+	}()
 
 	decoderAudio := decoder.NewBufferedOpusDecoder(reader)
 	defer func() {

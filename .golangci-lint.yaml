@@ -1,0 +1,60 @@
+run:
+  timeout: 5m
+  tests: false
+
+linters:
+  disable-all: true
+  enable:
+    # Bugs/error
+    - staticcheck
+    - gosec
+    - errcheck
+    - govet
+    - ineffassign
+
+    # Performance
+    - prealloc
+
+    # Style, formatting
+    - gofmt
+    - goconst
+    - unconvert
+    - misspell
+    - unparam
+    - nakedret
+    - tagliatelle
+    - revive
+
+linters-settings:
+  gofmt:
+    rewrite-rules:
+      - pattern: 'interface{}'
+        replacement: 'any'
+      - pattern: 'a[b:len(a)]'
+        replacement: 'a[b:]'
+  unused:
+
+  misspell:
+    locale: US
+
+  errcheck:
+    check-type-assertions: true
+
+  gosec:
+    excludes:
+      - G101
+      - G104
+
+  revive:
+    rules:
+      - name: "exported"
+        arguments: [".*"]
+        severity: warning
+
+issues:
+  max-same-issues: 0
+  max-issues-per-linter: 0
+  exclude-use-default: false
+  exclude:
+    - G104
+    - "**/*_test.go"
