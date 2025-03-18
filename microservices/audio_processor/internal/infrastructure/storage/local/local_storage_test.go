@@ -1,4 +1,4 @@
-//go:build !integration
+////go:build !integration
 
 package local
 
@@ -268,13 +268,14 @@ func TestConcurrentAccess(t *testing.T) {
 	numGoroutines := 10
 	done := make(chan bool)
 
+	mockLogger.On("With", mock.Anything).Return(mockLogger)
+	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+
 	for i := 0; i < numGoroutines; i++ {
 		go func(index int) {
 			key := fmt.Sprintf("concurrent_%d.dca", index)
 			content := fmt.Sprintf("content_%d", index)
 
-			mockLogger.On("With", mock.Anything).Return(mockLogger)
-			mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 			err := storage.UploadFile(ctx, key, strings.NewReader(content))
 			assert.NoError(t, err)
 
