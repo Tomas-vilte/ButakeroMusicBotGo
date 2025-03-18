@@ -55,11 +55,6 @@ func (d *DiscordVoiceSession) SendAudio(ctx context.Context, reader io.ReadClose
 	}()
 
 	decoderAudio := decoder.NewBufferedOpusDecoder(reader)
-	defer func() {
-		if err := decoderAudio.Close(); err != nil {
-			d.logger.Error("Error al cerrar el decoder", zap.Error(err))
-		}
-	}()
 
 	for {
 		select {
