@@ -24,12 +24,17 @@ jobs:
         with:
           go-version: 1.21
 
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
       - name: Run golangci-lint in all microservices
         run: |
           for dir in $(find ./microservices -name 'go.mod' -exec dirname {} \;); do
             echo "Running golangci-lint in $dir"
-            (cd $dir && golangci-lint run --out-format=github-actions) || exit $?
+            (cd $dir && golangci-lint run) || exit $?
           done
+          
+          
 
   unit-tests:
     runs-on: ubuntu-latest
