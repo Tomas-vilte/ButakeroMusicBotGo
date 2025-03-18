@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"time"
 )
 
 var (
@@ -111,9 +110,9 @@ func (d *OpusDecoder) decodeFrame() ([]byte, error) {
 	return frame, nil
 }
 
-func (d *OpusDecoder) frameDuration() time.Duration {
-	if d.metadata == nil {
-		return 20 * time.Millisecond
-	}
-	return time.Duration(((d.metadata.Opus.FrameSize/d.metadata.Opus.Channels)/960)*20) * time.Millisecond
-}
+//func (d *OpusDecoder) frameDuration() time.Duration {
+//	if d.metadata == nil {
+//		return 20 * time.Millisecond
+//	}
+//	return time.Duration(((d.metadata.Opus.FrameSize/d.metadata.Opus.Channels)/960)*20) * time.Millisecond
+//}

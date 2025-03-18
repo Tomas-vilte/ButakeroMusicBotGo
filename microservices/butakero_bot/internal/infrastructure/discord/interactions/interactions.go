@@ -111,6 +111,8 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 		return
 	}
 
+	handler.getVoiceChannelMembers(s, ic.ChannelID)
+
 	vs := getUsersVoiceState(g, ic.Member.User)
 	if vs == nil {
 		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, ErrorMessageNotInVoiceChannel); err != nil {
