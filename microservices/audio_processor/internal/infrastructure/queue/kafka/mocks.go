@@ -90,19 +90,17 @@ func (m *MockConsumer) Close() error {
 }
 
 func (m *MockConsumer) Pause(topicPartitions map[string][]int32) {
-	return
+	m.Called(topicPartitions)
 }
 
 func (m *MockConsumer) Resume(topicPartitions map[string][]int32) {
-	return
+	m.Called(topicPartitions)
 }
 
 func (m *MockConsumer) PauseAll() {
-	return
 }
 
 func (m *MockConsumer) ResumeAll() {
-	return
 }
 
 func (m *MockPartitionConsumer) Close() error {

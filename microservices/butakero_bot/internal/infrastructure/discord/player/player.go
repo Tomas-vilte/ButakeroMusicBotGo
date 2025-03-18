@@ -155,16 +155,6 @@ func (p *GuildPlayer) getVoiceAndTextChannels() (voiceChannel string, textChanne
 	return voiceChannel, textChannel, nil
 }
 
-// updateSongPosition actualiza la posición de la canción actual.
-func (p *GuildPlayer) updateSongPosition(song *entity.DiscordEntity, position int64, textChannel, playMsgID string) {
-	if err := p.stateStorage.SetCurrentSong(&entity.PlayedSong{DiscordSong: song, Position: position}); err != nil {
-		p.logger.Error("Error fallo al establecer la posicion actual de la cancion", zap.Error(err))
-	}
-	if err := p.message.UpdatePlayStatus(textChannel, playMsgID, &entity.PlayedSong{DiscordSong: song, Position: position}); err != nil {
-		p.logger.Error("Error fallo al editar el mensaje")
-	}
-}
-
 // GetVoiceChannelInfo devuelve el mapa con toda la información de los canales de voz y su estado.
 func (p *GuildPlayer) GetVoiceChannelInfo() map[string]VoiceChannelInfo {
 	return p.voiceChannelMap

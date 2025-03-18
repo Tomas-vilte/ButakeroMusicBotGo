@@ -20,18 +20,18 @@ func (h *OperationHandler) GetOperationStatus(c *gin.Context) {
 	videoID := c.Query("video_id")
 
 	if videoID == "" {
-		c.Error(errors.ErrInvalidInput.WithMessage("faltan los parámetros 'song_id'"))
+		_ = c.Error(errors.ErrInvalidInput.WithMessage("faltan los parámetros 'song_id'"))
 		return
 	}
 
 	if !isValidSongID(videoID) {
-		c.Error(errors.ErrInvalidInput.WithMessage("video_id inválido"))
+		_ = c.Error(errors.ErrInvalidInput.WithMessage("video_id inválido"))
 		return
 	}
 
 	response, err := h.getOperationStatusUC.Execute(c.Request.Context(), videoID)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 

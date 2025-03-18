@@ -30,7 +30,7 @@ func (h *AudioHandler) InitiateDownload(c *gin.Context) {
 			missingParams = append(missingParams, "provider_type")
 		}
 
-		c.Error(errors.ErrInvalidInput.WithMessage(
+		_ = c.Error(errors.ErrInvalidInput.WithMessage(
 			fmt.Sprintf("faltan parámetros requeridos: %v", missingParams),
 		))
 		return
@@ -38,7 +38,7 @@ func (h *AudioHandler) InitiateDownload(c *gin.Context) {
 
 	result, err := h.initiateDownloadUC.Execute(c.Request.Context(), song, providerType)
 	if err != nil {
-		c.Error(err)
+		_ = c.Error(err)
 		return
 	}
 

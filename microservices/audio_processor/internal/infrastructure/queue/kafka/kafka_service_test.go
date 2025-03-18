@@ -62,6 +62,7 @@ func TestKafkaService(t *testing.T) {
 
 		message := model.MediaProcessingMessage{VideoID: "test-video"}
 		messageBytes, err := json.Marshal(message)
+		assert.NoError(t, err)
 
 		messageChan := make(chan *sarama.ConsumerMessage, 1)
 		messageChan <- &sarama.ConsumerMessage{Value: messageBytes}

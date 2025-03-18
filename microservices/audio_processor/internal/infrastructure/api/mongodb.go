@@ -59,9 +59,8 @@ func CheckMongoDB(ctx context.Context, cfgApplication *config.Config) (*MongoMet
 	}
 
 	var replicaSetStatus bson.M
-	err = client.Database("admin").RunCommand(ctx, bson.D{{"replSetGetStatus", 1}}).Decode(&replicaSetStatus)
-	if err != nil {
-		return nil, fmt.Errorf("error obteniendo status de replica set: %w", err)
+	if err := client.Database("admin").RunCommand(ctx, bson.D{{Key: "replSetGetStatus", Value: 1}}).Decode(&replicaSetStatus); err != nil {
+		return nil, fmt.Errorf("error obteniendo status de replicaSet: %w", err)
 	}
 
 	status := ReplicaSetStatus{}
@@ -85,7 +84,7 @@ func CheckMongoDB(ctx context.Context, cfgApplication *config.Config) (*MongoMet
 	}
 
 	var buildInfo bson.M
-	err = client.Database(cfgApplication.Database.Mongo.Database).RunCommand(ctx, bson.D{{"buildInfo", 1}}).Decode(&buildInfo)
+	err = client.Database(cfgApplication.Database.Mongo.Database).RunCommand(ctx, bson.D{{Key: "buildInfo", Value: 1}}).Decode(&buildInfo)
 	if err != nil {
 		return nil, fmt.Errorf("error obteniendo version de MongoDB: %w", err)
 	}
@@ -95,7 +94,7 @@ func CheckMongoDB(ctx context.Context, cfgApplication *config.Config) (*MongoMet
 	}
 
 	var serverStatus bson.M
-	err = client.Database(cfgApplication.Database.Mongo.Database).RunCommand(ctx, bson.D{{"serverStatus", 1}}).Decode(&serverStatus)
+	err = client.Database(cfgApplication.Database.Mongo.Database).RunCommand(ctx, bson.D{{Key: "serverStatus", Value: 1}}).Decode(&serverStatus)
 	if err != nil {
 		return nil, fmt.Errorf("error obteniendo status de conexiones de MongoDB: %w", err)
 	}
