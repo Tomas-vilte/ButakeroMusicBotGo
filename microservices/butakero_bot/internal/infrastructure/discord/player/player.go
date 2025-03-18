@@ -6,16 +6,12 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/inmemory"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 	"sync"
 	"time"
-)
-
-var (
-	// ErrNoSongs indica que no hay canciones disponibles.
-	ErrNoSongs = errors.New("canción no disponible")
 )
 
 // Trigger representa un disparador para comandos relacionados con la reproducción de música.
@@ -323,7 +319,7 @@ func (p *GuildPlayer) playPlaylist(ctx context.Context) error {
 
 	for {
 		song, err := p.songStorage.PopFirstSong()
-		if errors.Is(err, ErrNoSongs) {
+		if errors.Is(err, inmemory.ErrNoSongs) {
 			p.logger.Info("la lista de reproducción está vacía")
 			break
 		}
@@ -399,11 +395,6 @@ func (p *GuildPlayer) playSingleSong(ctx context.Context, song *entity.PlayedSon
 	}
 
 	close(done)
-
-	if err := p.stateStorage.SetCurrentSong(nil); err != nil {
-		p.logger.Error("Error al limpiar la canción actual", zap.Error(err))
-		return err
-	}
 
 	return nil
 }
