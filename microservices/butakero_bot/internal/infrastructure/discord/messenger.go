@@ -86,3 +86,12 @@ func (m *MessengerService) CreateFollowupMessage(interaction *discordgo.Interact
 	}
 	return nil
 }
+
+func (m *MessengerService) EditOriginalResponse(interaction *discordgo.Interaction, params *discordgo.WebhookEdit) error {
+	_, err := m.session.InteractionResponseEdit(interaction, params)
+	if err != nil {
+		m.logger.Error("No se pudo editar la respuesta original", zap.Error(err))
+		return err
+	}
+	return nil
+}
