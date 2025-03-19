@@ -143,14 +143,12 @@ func main() {
 	})
 	discordClient.Identify.Intents = discordgo.IntentsAll
 
-	// Iniciar el bot
 	err = discordClient.Open()
 	if err != nil {
 		logger.Error("Error al abrir conexión con Discord", zap.Error(err))
 	}
 	defer discordClient.Close()
 
-	// Esperar señal de cierre
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop

@@ -72,7 +72,7 @@ func (s *InmemoryStateStorage) SetVoiceChannel(channelID string) error {
 
 	logger := s.logger.With(
 		zap.String("method", "SetVoiceChannel"),
-		zap.String("channelID", channelID),
+		zap.String("voiceChannelID", channelID),
 	)
 
 	s.voiceChannel = channelID

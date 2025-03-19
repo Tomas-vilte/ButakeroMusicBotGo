@@ -19,6 +19,7 @@ type (
 		SendText(channelID, text string) error
 		Respond(interaction *discordgo.Interaction, response discordgo.InteractionResponse) error
 		CreateFollowupMessage(interaction *discordgo.Interaction, params discordgo.WebhookParams) error
+		EditOriginalResponse(interaction *discordgo.Interaction, params *discordgo.WebhookEdit) error
 	}
 
 	InteractionHandler interface {
