@@ -11,29 +11,29 @@ import (
 	"io"
 )
 
-type AudioDownloaderService struct {
+type audioDownloaderService struct {
 	downloader ports.Downloader
 	encoder    ports.AudioEncoder
 	log        logger.Logger
 }
 
-func NewAudioDownloaderService(d ports.Downloader, e ports.AudioEncoder, l logger.Logger) *AudioDownloaderService {
-	return &AudioDownloaderService{
+func NewAudioDownloaderService(d ports.Downloader, e ports.AudioEncoder, l logger.Logger) ports.AudioDownloadService {
+	return &audioDownloaderService{
 		downloader: d,
 		encoder:    e,
 		log:        l,
 	}
 }
 
-func (ad *AudioDownloaderService) DownloadAndEncode(ctx context.Context, url string) (*bytes.Buffer, error) {
+func (ad *audioDownloaderService) DownloadAndEncode(ctx context.Context, url string) (*bytes.Buffer, error) {
 	reader, err := ad.downloader.DownloadAudio(ctx, url)
 	if err != nil {
-		return nil, errors.ErrDownloadFailed.Wrap(err)
+		return nil, errors.ErrDownloadFailed.WithMessage(fmt.Sprintf("Error al descargar el audio: %v", err))
 	}
 
 	session, err := ad.encoder.Encode(ctx, reader, encoder.StdEncodeOptions)
 	if err != nil {
-		return nil, errors.ErrEncodingFailed.Wrap(err)
+		return nil, errors.ErrEncodingFailed.WithMessage(fmt.Sprintf("Error al codificar el audio: %v", err))
 	}
 	defer session.Cleanup()
 
@@ -41,7 +41,7 @@ func (ad *AudioDownloaderService) DownloadAndEncode(ctx context.Context, url str
 }
 
 // readAudioFramesToBuffer lee los frames de audio de la sesión de codificación y los almacena en un buffer.
-func (ad *AudioDownloaderService) readAudioFramesToBuffer(session encoder.EncodeSession) (*bytes.Buffer, error) {
+func (ad *audioDownloaderService) readAudioFramesToBuffer(session encoder.EncodeSession) (*bytes.Buffer, error) {
 	var buffer bytes.Buffer
 
 	for {

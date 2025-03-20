@@ -12,19 +12,19 @@ import (
 	"time"
 )
 
-type OperationService struct {
+type operationService struct {
 	repo   ports.MediaRepository
 	logger logger.Logger
 }
 
-func NewOperationService(repo ports.MediaRepository, logger logger.Logger) *OperationService {
-	return &OperationService{
+func NewOperationService(repo ports.MediaRepository, logger logger.Logger) ports.OperationService {
+	return &operationService{
 		repo:   repo,
 		logger: logger,
 	}
 }
 
-func (s *OperationService) StartOperation(ctx context.Context, videoID string) (*model.OperationInitResult, error) {
+func (s *operationService) StartOperation(ctx context.Context, videoID string) (*model.OperationInitResult, error) {
 	media := &model.Media{
 		VideoID:    videoID,
 		Status:     "starting",

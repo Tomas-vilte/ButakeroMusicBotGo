@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-type CoreService struct {
+type coreService struct {
 	mediaService         ports.MediaService
 	audioStorageService  ports.AudioStorageService
 	topicPublisher       ports.TopicPublisherService
@@ -29,8 +29,8 @@ func NewCoreService(
 	audioDownloadService ports.AudioDownloadService,
 	logger logger.Logger,
 	cfg *config.Config,
-) *CoreService {
-	return &CoreService{
+) ports.CoreService {
+	return &coreService{
 		mediaService:         mediaService,
 		audioStorageService:  audioStorageService,
 		topicPublisher:       topicPublisher,
@@ -40,7 +40,7 @@ func NewCoreService(
 	}
 }
 
-func (s *CoreService) ProcessMedia(ctx context.Context, mediaDetails *model.MediaDetails) error {
+func (s *coreService) ProcessMedia(ctx context.Context, mediaDetails *model.MediaDetails) error {
 	log := s.logger.With(
 		zap.String("component", "CoreService"),
 		zap.String("method", "ProcessMedia"),

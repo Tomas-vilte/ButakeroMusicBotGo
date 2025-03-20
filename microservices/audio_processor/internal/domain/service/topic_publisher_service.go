@@ -9,19 +9,19 @@ import (
 	"go.uber.org/zap"
 )
 
-type TopicPublisherService struct {
+type topicPublisherService struct {
 	messageQueue ports.MessageQueue
 	logger       logger.Logger
 }
 
-func NewMediaProcessingPublisherService(messageQueue ports.MessageQueue, logger logger.Logger) *TopicPublisherService {
-	return &TopicPublisherService{
+func NewMediaProcessingPublisherService(messageQueue ports.MessageQueue, logger logger.Logger) ports.TopicPublisherService {
+	return &topicPublisherService{
 		messageQueue: messageQueue,
 		logger:       logger,
 	}
 }
 
-func (s *TopicPublisherService) PublishMediaProcessed(ctx context.Context, message *model.MediaProcessingMessage) error {
+func (s *topicPublisherService) PublishMediaProcessed(ctx context.Context, message *model.MediaProcessingMessage) error {
 	log := s.logger.With(
 		zap.String("component", "TopicPublisherService"),
 		zap.String("method", "PublishMediaProcessed"),

@@ -2,10 +2,10 @@ package dynamodb
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
+	errorsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
@@ -14,12 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"go.uber.org/zap"
 	"time"
-)
-
-var (
-	ErrMediaNotFound   = errors.New("registro de media no encontrado")
-	ErrInvalidVideoID  = errors.New("video_id inválido")
-	ErrInvalidMetadata = errors.New("metadatos inválidos")
 )
 
 type (
@@ -33,7 +27,7 @@ type (
 func NewMediaRepositoryDynamoDB(cfgApplication *config.Config, log logger.Logger) (*MediaRepositoryDynamoDB, error) {
 	cfg, err := awsCfg.LoadDefaultConfig(context.Background(), awsCfg.WithRegion(cfgApplication.AWS.Region))
 	if err != nil {
-		return nil, fmt.Errorf("error cargando configuración AWS: %w", err)
+		return nil, errorsApp.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("error cargando configuración AWS: %v", err))
 	}
 
 	client := dynamodb.NewFromConfig(cfg)
@@ -53,7 +47,7 @@ func (r *MediaRepositoryDynamoDB) SaveMedia(ctx context.Context, media *model.Me
 
 	if media.VideoID == "" {
 		log.Error("video_id no puede estar vacío")
-		return ErrInvalidVideoID
+		return errorsApp.ErrCodeInvalidVideoID
 	}
 
 	log = log.With(zap.String("video_id", media.VideoID))
@@ -70,7 +64,7 @@ func (r *MediaRepositoryDynamoDB) SaveMedia(ctx context.Context, media *model.Me
 	item, err := r.toAttributeValueMap(media)
 	if err != nil {
 		log.Error("Error al convertir media a atributos de DynamoDB", zap.Error(err))
-		return fmt.Errorf("error al convertir media a atributos de DynamoDB: %w", err)
+		return errorsApp.ErrCodeSaveMediaFailed.WithMessage(fmt.Sprintf("error al convertir media a atributos de DynamoDB: %v", err))
 	}
 
 	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
@@ -79,7 +73,7 @@ func (r *MediaRepositoryDynamoDB) SaveMedia(ctx context.Context, media *model.Me
 	})
 	if err != nil {
 		log.Error("Error al guardar el registro de media en DynamoDB", zap.Error(err))
-		return fmt.Errorf("error al guardar el registro de media en DynamoDB: %w", err)
+		return errorsApp.ErrCodeSaveMediaFailed.WithMessage(fmt.Sprintf("error al guardar el registro de media en DynamoDB: %v", err))
 	}
 
 	log.Info("Registro de media guardado exitosamente en DynamoDB")
@@ -95,7 +89,7 @@ func (r *MediaRepositoryDynamoDB) GetMedia(ctx context.Context, videoID string) 
 
 	if videoID == "" {
 		log.Error("video_id no puede estar vacío")
-		return nil, ErrInvalidVideoID
+		return nil, errorsApp.ErrCodeInvalidVideoID
 	}
 
 	result, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
@@ -107,18 +101,18 @@ func (r *MediaRepositoryDynamoDB) GetMedia(ctx context.Context, videoID string) 
 	})
 	if err != nil {
 		log.Error("Error al obtener el registro de media de DynamoDB", zap.Error(err))
-		return nil, fmt.Errorf("error al obtener el registro de media de DynamoDB: %w", err)
+		return nil, errorsApp.ErrGetMediaDetailsFailed.WithMessage(fmt.Sprintf("error al obtener el registro de media de DynamoDB: %v", err))
 	}
 
 	if result.Item == nil {
 		log.Warn("Registro de media no encontrado en DynamoDB")
-		return nil, ErrMediaNotFound
+		return nil, errorsApp.ErrCodeMediaNotFound
 	}
 
 	media, err := r.fromAttributeValueMap(result.Item)
 	if err != nil {
 		log.Error("Error al convertir atributos de DynamoDB a media", zap.Error(err))
-		return nil, fmt.Errorf("error al convertir atributos de DynamoDB a media: %w", err)
+		return nil, errorsApp.ErrGetMediaDetailsFailed.WithMessage(fmt.Sprintf("error al convertir atributos de DynamoDB a media: %v", err))
 	}
 
 	media.VideoID = videoID
@@ -136,7 +130,7 @@ func (r *MediaRepositoryDynamoDB) DeleteMedia(ctx context.Context, videoID strin
 
 	if videoID == "" {
 		log.Error("video_id no puede estar vacío")
-		return ErrInvalidVideoID
+		return errorsApp.ErrCodeInvalidVideoID
 	}
 
 	_, err := r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
@@ -148,7 +142,7 @@ func (r *MediaRepositoryDynamoDB) DeleteMedia(ctx context.Context, videoID strin
 	})
 	if err != nil {
 		log.Error("Error al eliminar el registro de media de DynamoDB", zap.Error(err))
-		return fmt.Errorf("error al eliminar el registro de media de DynamoDB: %w", err)
+		return errorsApp.ErrCodeDeleteMediaFailed.WithMessage(fmt.Sprintf("error al eliminar el registro de media de DynamoDB: %v", err))
 	}
 
 	log.Info("Registro de media eliminado exitosamente de DynamoDB")
@@ -164,12 +158,12 @@ func (r *MediaRepositoryDynamoDB) UpdateMedia(ctx context.Context, videoID strin
 
 	if videoID == "" {
 		log.Error("video_id no puede estar vacío")
-		return ErrInvalidVideoID
+		return errorsApp.ErrCodeInvalidVideoID
 	}
 
 	if media.Metadata == nil || media.Metadata.Title == "" || media.Metadata.Platform == "" {
 		log.Error("Metadatos inválidos", zap.Any("metadata", media.Metadata))
-		return ErrInvalidMetadata
+		return errorsApp.ErrCodeInvalidMetadata
 	}
 
 	media.UpdatedAt = time.Now()
@@ -177,7 +171,7 @@ func (r *MediaRepositoryDynamoDB) UpdateMedia(ctx context.Context, videoID strin
 	item, err := r.toAttributeValueMap(media)
 	if err != nil {
 		log.Error("Error al convertir media a atributos de DynamoDB", zap.Error(err))
-		return fmt.Errorf("error al convertir media a atributos de DynamoDB: %w", err)
+		return errorsApp.ErrUpdateMediaFailed.WithMessage(fmt.Sprintf("error al convertir media a atributos de DynamoDB: %v", err))
 	}
 
 	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
@@ -186,7 +180,7 @@ func (r *MediaRepositoryDynamoDB) UpdateMedia(ctx context.Context, videoID strin
 	})
 	if err != nil {
 		log.Error("Error al actualizar el registro de media en DynamoDB", zap.Error(err))
-		return fmt.Errorf("error al actualizar el registro de media en DynamoDB: %w", err)
+		return errorsApp.ErrUpdateMediaFailed.WithMessage(fmt.Sprintf("error al actualizar el registro de media en DynamoDB: %v", err))
 	}
 
 	log.Info("Registro de media actualizado exitosamente en DynamoDB")

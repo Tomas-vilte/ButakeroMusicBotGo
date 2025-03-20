@@ -72,8 +72,7 @@ func TestAudioStorageService_StoreAudio_UploadError(t *testing.T) {
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok, "El error debería ser de tipo *errors.AppError")
 	assert.Equal(t, "upload_failed", appErr.Code)
-	assert.Equal(t, "Error al subir a almacenamiento", appErr.Message)
-	assert.Equal(t, expectedError, appErr.Err)
+	assert.Contains(t, err.Error(), expectedError.Error())
 
 	mockStorage.AssertExpectations(t)
 }
@@ -106,8 +105,7 @@ func TestAudioStorageService_StoreAudio_MetadataError(t *testing.T) {
 	ok := errors.As(err, &appErr)
 	assert.True(t, ok, "El error debería ser de tipo *errors.AppError")
 	assert.Equal(t, "upload_failed", appErr.Code)
-	assert.Equal(t, "Error al subir a almacenamiento", appErr.Message)
-	assert.Equal(t, expectedError, appErr.Err)
+	assert.Contains(t, "Error al obtener metadatos del archivo: metadata failed", appErr.Message)
 
 	mockStorage.AssertExpectations(t)
 }
