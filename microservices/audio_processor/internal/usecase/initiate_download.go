@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
-	errorsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 )
 
 type InitiateDownloadUseCase struct {
@@ -25,18 +24,12 @@ func NewInitiateDownloadUseCase(coreService ports.CoreService, providerAPI ports
 func (uc *InitiateDownloadUseCase) Execute(ctx context.Context, song string, providerType string) (*model.OperationInitResult, error) {
 	mediaDetails, err := uc.providerService.GetMediaDetails(ctx, song, providerType)
 	if err != nil {
-		if errorsApp.IsAppError(err) {
-			return nil, err
-		}
-		return nil, errorsApp.ErrGetMediaDetailsFailed.WithMessage(fmt.Sprintf("Error al obtener detalles del media: %v", err))
+		return nil, err
 	}
 
 	operationResult, err := uc.operationService.StartOperation(ctx, mediaDetails.ID)
 	if err != nil {
-		if errorsApp.IsAppError(err) {
-			return nil, err
-		}
-		return nil, errorsApp.ErrStartOperationFailed.WithMessage(fmt.Sprintf("Error al iniciar la operación: %v", err))
+		return nil, err
 	}
 
 	go func() {

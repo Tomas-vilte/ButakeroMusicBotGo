@@ -45,7 +45,6 @@ var (
 	ErrInvalidInput          = NewAppError("invalid_input", "Input inválido")
 	ErrYouTubeAPIError       = NewAppError("youtube_api_error", "Error en la API de YouTube")
 	ErrProviderNotFound      = NewAppError("provider_not_found", "Proveedor no encontrado")
-	ErrStartOperationFailed  = NewAppError("start_operation_failed", "Error al iniciar la operación")
 	ErrGetMediaDetailsFailed = NewAppError("get_media_details_failed", "Error al obtener detalles del media")
 
 	ErrDuplicateRecord           = NewAppError("duplicate_record", "El registro ya existe")

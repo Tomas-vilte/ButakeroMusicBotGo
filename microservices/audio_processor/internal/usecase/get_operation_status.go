@@ -24,7 +24,7 @@ func (uc *GetOperationStatusUseCaseImpl) Execute(ctx context.Context, videoID st
 
 	operation, err := uc.mediaRepository.GetMedia(ctx, videoID)
 	if err != nil {
-		return nil, errors.ErrOperationNotFound.WithMessage("No se encontró la operación solicitada")
+		return nil, err
 	}
 	return operation, nil
 }
