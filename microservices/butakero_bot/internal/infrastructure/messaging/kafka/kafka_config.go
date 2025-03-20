@@ -1,10 +1,11 @@
 package kafka
 
-type KafkaConfig struct {
-	Brokers    []string
-	Topic      string
-	TLS        bool
-	CertFile   string
-	KeyFile    string
-	CACertFile string
-}
+import "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
+
+type (
+	KafkaConfig struct {
+		Brokers []string
+		Topic   string
+		TLS     shared.TLSConfig
+	}
+)

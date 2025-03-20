@@ -2,11 +2,9 @@ package kafka
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"os"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"sync"
 
 	"github.com/IBM/sarama"
@@ -44,15 +42,23 @@ func NewKafkaConsumer(config KafkaConfig, logger logging.Logger) (*KafkaConsumer
 
 	logger.Info("Iniciando configuración del consumidor Kafka")
 
-	if config.TLS {
+	if config.TLS.Enabled {
 		logger.Info("Configurando conexión TLS")
-		tlsConfig, err := NewTLSConfig(config.CertFile, config.KeyFile, config.CACertFile)
+		tlsConfig, err := shared.ConfigureTLS(shared.TLSConfig{
+			Enabled:  config.TLS.Enabled,
+			CAFile:   config.TLS.CAFile,
+			CertFile: config.TLS.CertFile,
+			KeyFile:  config.TLS.KeyFile,
+		})
 		if err != nil {
 			logger.Error("Error al crear configuración TLS", zap.Error(err))
 			return nil, fmt.Errorf("error creando configuración TLS: %w", err)
 		}
 		saramaConfig.Net.TLS.Enable = true
 		saramaConfig.Net.TLS.Config = tlsConfig
+		logger.Debug("Configuración TLS aplicada")
+	} else {
+		logger.Info("TLS no está habilitado")
 	}
 
 	consumer, err := sarama.NewConsumer(config.Brokers, saramaConfig)
@@ -203,26 +209,4 @@ func (k *KafkaConsumer) Close() error {
 	logger := k.logger.With(zap.String("method", "Close"))
 	logger.Info("Cerrando consumidor Kafka")
 	return k.consumer.Close()
-}
-
-func NewTLSConfig(certFile, keyFile, caCertFile string) (*tls.Config, error) {
-	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return nil, fmt.Errorf("error cargando par de claves: %w", err)
-	}
-
-	caCert, err := os.ReadFile(caCertFile)
-	if err != nil {
-		return nil, fmt.Errorf("error leyendo certificado CA: %w", err)
-	}
-
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
-
-	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		RootCAs:      caCertPool,
-	}
-
-	return tlsConfig, nil
 }

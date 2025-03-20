@@ -3,13 +3,12 @@ package mongodb
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
-	"os"
 	"strings"
 	"time"
 )
@@ -20,14 +19,6 @@ type (
 		Address string
 		Port    int
 	}
-
-	// TLSConfig contiene la configuración de los certificados TLS
-	TLSConfig struct {
-		Enabled  bool
-		CAFile   string
-		CertFile string
-		KeyFile  string
-	}
 	// MongoConfig contiene la configuración necesaria para la conexión
 	MongoConfig struct {
 		Hosts         []Host
@@ -37,7 +28,7 @@ type (
 		Database      string
 		AuthSource    string
 		Timeout       time.Duration
-		TLS           TLSConfig
+		TLS           shared.TLSConfig
 		DirectConnect bool
 		RetryWrites   bool
 	}
@@ -64,31 +55,23 @@ func NewConnectionManager(config MongoConfig, logger logging.Logger) *Connection
 
 // setupTLS configura los certificados TLS
 func (cm *ConnectionManager) setupTLS() (*tls.Config, error) {
-	tlsConfig := &tls.Config{}
-
-	if cm.config.TLS.CAFile != "" {
-		caFile, err := os.ReadFile(cm.config.TLS.CAFile)
-		if err != nil {
-			cm.logger.Error("Error al leer el archivo CA", zap.Error(err))
-			return nil, fmt.Errorf("error al leer el archivo CA: %w", err)
-		}
-
-		caCertPool := x509.NewCertPool()
-		if !caCertPool.AppendCertsFromPEM(caFile) {
-			cm.logger.Error("Error al agregar certificado CA")
-			return nil, fmt.Errorf("error al agregar certificado CA")
-		}
-		tlsConfig.RootCAs = caCertPool
+	if !cm.config.TLS.Enabled {
+		cm.logger.Info("TLS no está habilitado")
+		return nil, nil
 	}
 
-	if cm.config.TLS.CertFile != "" && cm.config.TLS.KeyFile != "" {
-		cert, err := tls.LoadX509KeyPair(cm.config.TLS.CertFile, cm.config.TLS.KeyFile)
-		if err != nil {
-			cm.logger.Error("Error al cargar certificado del cliente", zap.Error(err))
-			return nil, fmt.Errorf("error al cargar certificado del cliente: %v", err)
-		}
-		tlsConfig.Certificates = []tls.Certificate{cert}
+	cm.logger.Info("Configurando TLS para MongoDB")
+	tlsConfig, err := shared.ConfigureTLS(shared.TLSConfig{
+		Enabled:  cm.config.TLS.Enabled,
+		CAFile:   cm.config.TLS.CAFile,
+		CertFile: cm.config.TLS.CertFile,
+		KeyFile:  cm.config.TLS.KeyFile,
+	})
+	if err != nil {
+		cm.logger.Error("Error al configurar TLS", zap.Error(err))
+		return nil, fmt.Errorf("error al configurar TLS: %w", err)
 	}
+
 	cm.logger.Info("Configuración TLS completada")
 	return tlsConfig, nil
 }

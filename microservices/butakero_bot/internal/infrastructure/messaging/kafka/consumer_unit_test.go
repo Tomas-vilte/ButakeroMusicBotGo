@@ -4,6 +4,7 @@ package kafka
 
 import (
 	"github.com/IBM/sarama/mocks"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -21,7 +22,12 @@ func TestNewTLSConfig_Failure(t *testing.T) {
 	caCertFile := "nonexistent_ca.pem"
 
 	// Act
-	tlsConfig, err := NewTLSConfig(certFile, keyFile, caCertFile)
+	tlsConfig, err := shared.ConfigureTLS(shared.TLSConfig{
+		Enabled:  true,
+		CAFile:   caCertFile,
+		CertFile: certFile,
+		KeyFile:  keyFile,
+	})
 
 	// Assert
 	require.Error(t, err, "Se esperaba error al cargar archivos inexistentes")
