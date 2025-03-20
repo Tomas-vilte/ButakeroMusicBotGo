@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
@@ -30,7 +29,7 @@ func (s *topicPublisherService) PublishMediaProcessed(ctx context.Context, messa
 
 	if err := s.messageQueue.SendMessage(ctx, message); err != nil {
 		log.Error("Error al publicar el mensaje", zap.Error(err))
-		return fmt.Errorf("error al publicar el mensaje: %w", err)
+		return err
 	}
 
 	log.Info("Mensaje publicado exitosamente", zap.String("video_id", message.VideoID))

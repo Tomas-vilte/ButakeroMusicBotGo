@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"go.uber.org/zap"
 )
@@ -33,13 +32,13 @@ func (as *audioStorageService) StoreAudio(ctx context.Context, buffer *bytes.Buf
 
 	if err := as.storage.UploadFile(ctx, keyName, buffer); err != nil {
 		log.Error("Error al subir el archivo", zap.Error(err))
-		return nil, errors.ErrUploadFailed.WithMessage(fmt.Sprintf("Error al subir el archivo: %v", err))
+		return nil, err
 	}
 
 	fileData, err := as.storage.GetFileMetadata(ctx, keyName)
 	if err != nil {
 		log.Error("Error al obtener metadatos del archivo", zap.Error(err))
-		return nil, errors.ErrUploadFailed.WithMessage(fmt.Sprintf("Error al obtener metadatos del archivo: %v", err))
+		return nil, err
 	}
 
 	log.Info("Archivo de audio almacenado exitosamente", zap.String("key", keyName))

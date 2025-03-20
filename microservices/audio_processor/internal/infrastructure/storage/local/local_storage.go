@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
+	errorsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"go.uber.org/zap"
 	"io"
@@ -20,17 +21,17 @@ type LocalStorage struct {
 
 func NewLocalStorage(cfg *config.Config, log logger.Logger) (*LocalStorage, error) {
 	if err := os.MkdirAll(cfg.Storage.LocalConfig.BasePath, 0777); err != nil {
-		return nil, fmt.Errorf("error creando directorio base %s:%w", cfg.Storage.LocalConfig.BasePath, err)
+		return nil, errorsApp.ErrLocalDirectoryNotWritable.WithMessage(fmt.Sprintf("error creando directorio base %s: %v", cfg.Storage.LocalConfig.BasePath, err))
 	}
 
 	testFile := filepath.Join(cfg.Storage.LocalConfig.BasePath, ".write_test")
 	if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
-		return nil, fmt.Errorf("el directorio %s no es escribible: %w", testFile, err)
+		return nil, errorsApp.ErrLocalDirectoryNotWritable.WithMessage(fmt.Sprintf("el directorio %s no es escribible: %v", testFile, err))
 	}
 
 	defer func() {
 		if err := os.Remove(testFile); err != nil {
-			_ = fmt.Errorf("error al eliminar el archivo: %w", err)
+			log.Error("Error al eliminar el archivo", zap.Error(err))
 		}
 	}()
 
@@ -50,13 +51,13 @@ func (l *LocalStorage) UploadFile(ctx context.Context, key string, body io.Reade
 	select {
 	case <-ctx.Done():
 		log.Error("Contexto cancelado durante la subida del archivo", zap.Error(ctx.Err()))
-		return fmt.Errorf("contexto cancelado durante la subida del archivo: %w", ctx.Err())
+		return errorsApp.ErrLocalUploadFailed.WithMessage(fmt.Sprintf("contexto cancelado durante la subida del archivo: %v", ctx.Err()))
 	default:
 	}
 
 	if body == nil {
 		log.Error("El cuerpo del archivo es nulo")
-		return fmt.Errorf("el body no puede ser nulo")
+		return errorsApp.ErrLocalInvalidFile.WithMessage("el body no puede ser nulo")
 	}
 
 	if !strings.HasSuffix(key, ".dca") {
@@ -68,13 +69,13 @@ func (l *LocalStorage) UploadFile(ctx context.Context, key string, body io.Reade
 
 	if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
 		log.Error("Error creando directorio", zap.Error(err))
-		return fmt.Errorf("error creando directorio para %s: %w", fullPath, err)
+		return errorsApp.ErrLocalUploadFailed.WithMessage(fmt.Sprintf("error creando directorio para %s: %v", fullPath, err))
 	}
 
 	file, err := os.OpenFile(fullPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Error("Error creando archivo", zap.Error(err))
-		return fmt.Errorf("error creando archivo %s: %w", fullPath, err)
+		return errorsApp.ErrLocalUploadFailed.WithMessage(fmt.Sprintf("error creando archivo %s: %v", fullPath, err))
 	}
 
 	defer func() {
@@ -87,7 +88,7 @@ func (l *LocalStorage) UploadFile(ctx context.Context, key string, body io.Reade
 	_, err = io.CopyBuffer(file, body, buf)
 	if err != nil {
 		log.Error("Error escribiendo archivo", zap.Error(err))
-		return fmt.Errorf("error escribiendo archivo %s: %w", fullPath, err)
+		return errorsApp.ErrLocalUploadFailed.WithMessage(fmt.Sprintf("error escribiendo archivo %s: %v", fullPath, err))
 	}
 
 	log.Info("Archivo subido exitosamente")
@@ -104,7 +105,7 @@ func (l *LocalStorage) GetFileMetadata(ctx context.Context, key string) (*model.
 	select {
 	case <-ctx.Done():
 		log.Error("Contexto cancelado durante la obtención de metadatos", zap.Error(ctx.Err()))
-		return nil, fmt.Errorf("contexto cancelado durante la obtención de metadata: %w", ctx.Err())
+		return nil, errorsApp.ErrLocalGetMetadataFailed.WithMessage(fmt.Sprintf("contexto cancelado durante la obtención de metadata: %v", ctx.Err()))
 	default:
 	}
 
@@ -120,10 +121,10 @@ func (l *LocalStorage) GetFileMetadata(ctx context.Context, key string) (*model.
 	if err != nil {
 		if os.IsNotExist(err) {
 			log.Error("Archivo no encontrado", zap.Error(err))
-			return nil, fmt.Errorf("archivo %s no encontrado: %w", key, err)
+			return nil, errorsApp.ErrLocalFileNotFound.WithMessage(fmt.Sprintf("archivo %s no encontrado: %v", key, err))
 		}
 		log.Error("Error obteniendo información del archivo", zap.Error(err))
-		return nil, fmt.Errorf("error obteniendo información del archivo %s: %w", key, err)
+		return nil, errorsApp.ErrLocalGetMetadataFailed.WithMessage(fmt.Sprintf("error obteniendo información del archivo %s: %v", key, err))
 	}
 
 	readableSize := FormatFileSize(fileInfo.Size())
@@ -136,7 +137,6 @@ func (l *LocalStorage) GetFileMetadata(ctx context.Context, key string) (*model.
 	}, nil
 }
 
-// GetFileContent obtiene el contenido del archivo con la clave especificada.
 func (l *LocalStorage) GetFileContent(ctx context.Context, path string, key string) (io.ReadCloser, error) {
 	log := l.log.With(
 		zap.String("component", "LocalStorage"),
@@ -148,7 +148,7 @@ func (l *LocalStorage) GetFileContent(ctx context.Context, path string, key stri
 	select {
 	case <-ctx.Done():
 		log.Error("Contexto cancelado durante la obtención del contenido del archivo", zap.Error(ctx.Err()))
-		return nil, fmt.Errorf("contexto cancelado durante la obtención del contenido del archivo: %w", ctx.Err())
+		return nil, errorsApp.ErrLocalGetContentFailed.WithMessage(fmt.Sprintf("contexto cancelado durante la obtención del contenido del archivo: %v", ctx.Err()))
 	default:
 	}
 
@@ -159,17 +159,16 @@ func (l *LocalStorage) GetFileContent(ctx context.Context, path string, key stri
 	if err != nil {
 		if os.IsNotExist(err) {
 			log.Error("Archivo no encontrado", zap.Error(err))
-			return nil, fmt.Errorf("archivo %s no encontrado: %w", fullPath, err)
+			return nil, errorsApp.ErrLocalFileNotFound.WithMessage(fmt.Sprintf("archivo %s no encontrado: %v", fullPath, err))
 		}
 		log.Error("Error abriendo archivo", zap.Error(err))
-		return nil, fmt.Errorf("error abriendo archivo %s: %w", fullPath, err)
+		return nil, errorsApp.ErrLocalGetContentFailed.WithMessage(fmt.Sprintf("error abriendo archivo %s: %v", fullPath, err))
 	}
 
 	log.Info("Contenido del archivo obtenido exitosamente")
 	return file, nil
 }
 
-// FormatFileSize formatea el tamaño del archivo en una representación legible.
 func FormatFileSize(sizeBytes int64) string {
 	const (
 		KB = 1024

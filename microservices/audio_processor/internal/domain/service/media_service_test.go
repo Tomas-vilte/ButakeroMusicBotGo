@@ -57,7 +57,7 @@ func TestMediaService_CreateMedia_Error(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Error al crear el registro de media")
+	assert.Contains(t, err.Error(), "repository error")
 	mockRepo.AssertExpectations(t)
 }
 
@@ -107,7 +107,7 @@ func TestMediaService_GetMediaByID_Error(t *testing.T) {
 	// Assert
 	assert.Error(t, err)
 	assert.Nil(t, media)
-	assert.Contains(t, err.Error(), "Error al obtener el registro de media")
+	assert.Contains(t, err.Error(), "repository error")
 	mockRepo.AssertExpectations(t)
 }
 
@@ -159,7 +159,7 @@ func TestMediaService_UpdateMedia_Error(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Error al actualizar el registro de media")
+	assert.Contains(t, err.Error(), "repository error")
 	mockRepo.AssertExpectations(t)
 }
 
@@ -203,6 +203,6 @@ func TestMediaService_DeleteMedia_Error(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "Error al eliminar el registro de media")
+	assert.Contains(t, err.Error(), "repository error")
 	mockRepo.AssertExpectations(t)
 }

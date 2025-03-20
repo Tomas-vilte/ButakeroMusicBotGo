@@ -42,14 +42,14 @@ func (s *videoService) GetMediaDetails(ctx context.Context, input string, provid
 	videoID, err := provider.SearchVideoID(ctx, input)
 	if err != nil {
 		log.Error("Error al buscar ID de video", zap.Error(err), zap.String("provider_type", providerType))
-		return nil, errors.ErrCodeSearchVideoIDFailed.WithMessage(fmt.Sprintf("Error al buscar ID de video: %v", err))
+		return nil, err
 	}
 
 	log.Debug("Obteniendo detalles de la cancion", zap.String("provider_type", providerType), zap.String("video_id", videoID))
 	mediaDetails, err := provider.GetVideoDetails(ctx, videoID)
 	if err != nil {
 		log.Error("Error al obtener detalles del medio", zap.Error(err), zap.String("provider_type", providerType), zap.String("video_id", videoID))
-		return nil, errors.ErrCodeGetVideoDetailsFailed.WithMessage(fmt.Sprintf("Error al obtener detalles de la cancion: %v", err))
+		return nil, err
 	}
 	return mediaDetails, nil
 }

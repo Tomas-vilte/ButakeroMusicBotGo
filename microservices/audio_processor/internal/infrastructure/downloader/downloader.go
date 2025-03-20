@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	errorsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"go.uber.org/zap"
 	"io"
@@ -14,7 +15,6 @@ import (
 )
 
 type (
-	// YTDLPDownloader es una implementación de Downloader que usa yt-dlp para descargar audio.
 	YTDLPDownloader struct {
 		log       logger.Logger
 		useOAuth2 bool
@@ -22,17 +22,15 @@ type (
 		errorChan chan error
 	}
 
-	// YTDLPOptions contiene las opciones de configuración para YTDLPDownloader.
 	YTDLPOptions struct {
 		UseOAuth2 bool
 		Cookies   string
 	}
 )
 
-// NewYTDLPDownloader crea y devuelve una nueva instancia de YTDLPDownloader.
 func NewYTDLPDownloader(log logger.Logger, options YTDLPOptions) (*YTDLPDownloader, error) {
 	if log == nil {
-		return nil, fmt.Errorf("el logger no puede estar vacio")
+		return nil, errorsApp.ErrInvalidInput.WithMessage("el logger no puede estar vacio")
 	}
 	return &YTDLPDownloader{
 		log:       log,
@@ -42,8 +40,6 @@ func NewYTDLPDownloader(log logger.Logger, options YTDLPOptions) (*YTDLPDownload
 	}, nil
 }
 
-// DownloadAudio implementa la interfaz Downloader para YTDLPDownloader.
-// Descarga el audio de la URL proporcionada usando yt-dlp y devuelve un io.Reader para acceder al contenido.
 func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Reader, error) {
 	log := d.log.With(
 		zap.String("component", "YTDLPDownloader"),
@@ -81,12 +77,12 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("error al crear el pipe de stdout: %w", err)
+		return nil, errorsApp.ErrYTDLPCommandFailed.WithMessage(fmt.Sprintf("error al crear el pipe de stdout: %v", err))
 	}
 
 	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
-		return nil, fmt.Errorf("error al crear el pipe de stderr: %w", err)
+		return nil, errorsApp.ErrYTDLPCommandFailed.WithMessage(fmt.Sprintf("error al crear el pipe de stderr: %v", err))
 	}
 
 	cmd.Stdout = pw
@@ -100,7 +96,7 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 	var cmdError error
 
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("error al iniciar el comando: %w", err)
+		return nil, errorsApp.ErrYTDLPCommandFailed.WithMessage(fmt.Sprintf("error al iniciar el comando: %v", err))
 	}
 
 	go func() {
@@ -174,15 +170,13 @@ func readAllAndReturnReader(r io.Reader, log logger.Logger) (io.Reader, error) {
 			return nil, err
 		}
 		log.Error("Error al leer reader en readAllAndReturnReader", zap.Error(err))
-		return nil, fmt.Errorf("error al leer el reader: %w", err)
+		return nil, errorsApp.ErrYTDLPInvalidOutput.WithMessage(fmt.Sprintf("error al leer el reader: %v", err))
 	}
 
 	log.Debug("Creando nuevo io.Reader en readAllAndReturnReader")
 	return strings.NewReader(string(data)), nil
 }
 
-// processOutput maneja la salida de stdout o stderr del comando yt-dlp.
-// Registra la salida usando el logger apropiado según el tipo y contenido del mensaje.
 func (d *YTDLPDownloader) processOutput(wg *sync.WaitGroup, pipe io.ReadCloser, pipeType string) {
 	defer wg.Done()
 	d.log.Debug("Iniciando processOutput", zap.String("pipeType", pipeType))

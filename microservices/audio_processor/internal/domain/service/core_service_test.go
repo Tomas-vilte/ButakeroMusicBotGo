@@ -8,7 +8,6 @@ import (
 	"errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
-	errors2 "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -117,11 +116,7 @@ func TestCoreService_ProcessMedia_DownloadError(t *testing.T) {
 	// Assert
 	assert.Error(t, err)
 
-	var appErr *errors2.AppError
-	assert.True(t, errors.As(err, &appErr), "El error debería ser de tipo AppError")
-	assert.Equal(t, "download_failed", appErr.Code)
-	assert.Contains(t, appErr.Error(), "Error en descarga de audio")
-	assert.Contains(t, appErr.Error(), "download failed")
+	assert.Equal(t, err.Error(), "número máximo de intentos alcanzado (3): download failed")
 
 	mockAudioDownloadService.AssertExpectations(t)
 	mockAudioStorageService.AssertNotCalled(t, "StoreAudio")
@@ -236,12 +231,7 @@ func TestCoreService_ProcessMedia_UpdateMediaError(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-
-	var appErr *errors2.AppError
-	assert.True(t, errors.As(err, &appErr), "El error debería ser de tipo AppError")
-	assert.Equal(t, "update_media_failed", appErr.Code)
-	assert.Contains(t, appErr.Error(), "Error al actualizar el media")
-	assert.Contains(t, appErr.Error(), "update failed")
+	assert.Contains(t, err.Error(), "update failed")
 
 	mockAudioDownloadService.AssertExpectations(t)
 	mockAudioStorageService.AssertExpectations(t)
@@ -304,11 +294,7 @@ func TestCoreService_ProcessMedia_PublishError(t *testing.T) {
 	// Assert
 	assert.Error(t, err)
 
-	var appErr *errors2.AppError
-	assert.True(t, errors.As(err, &appErr), "El error debería ser de tipo AppError")
-	assert.Equal(t, "publish_message_failed", appErr.Code)
-	assert.Contains(t, appErr.Error(), "Error al publicar el mensaje")
-	assert.Contains(t, appErr.Error(), "publish failed")
+	assert.Contains(t, err.Error(), "publish failed")
 
 	mockAudioDownloadService.AssertExpectations(t)
 	mockAudioStorageService.AssertExpectations(t)

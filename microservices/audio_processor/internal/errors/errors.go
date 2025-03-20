@@ -7,17 +7,48 @@ import (
 )
 
 var (
+	errorStatusMap = map[string]int{
+		"invalid_input":                http.StatusBadRequest,
+		"invalid_video_id":             http.StatusBadRequest,
+		"invalid_metadata":             http.StatusBadRequest,
+		"s3_invalid_file":              http.StatusBadRequest,
+		"local_invalid_file":           http.StatusBadRequest,
+		"provider_not_found":           http.StatusNotFound,
+		"operation_not_found":          http.StatusNotFound,
+		"media_not_found":              http.StatusNotFound,
+		"local_file_not_found":         http.StatusNotFound,
+		"youtube_api_error":            http.StatusServiceUnavailable,
+		"duplicate_record":             http.StatusConflict,
+		"get_media_details_failed":     http.StatusInternalServerError,
+		"update_media_failed":          http.StatusInternalServerError,
+		"publish_message_failed":       http.StatusInternalServerError,
+		"start_operation_failed":       http.StatusInternalServerError,
+		"search_video_id_failed":       http.StatusInternalServerError,
+		"get_video_details_failed":     http.StatusInternalServerError,
+		"db_connection_failed":         http.StatusInternalServerError,
+		"save_media_failed":            http.StatusInternalServerError,
+		"delete_media_failed":          http.StatusInternalServerError,
+		"get_media_failed":             http.StatusInternalServerError,
+		"s3_upload_failed":             http.StatusInternalServerError,
+		"s3_get_metadata_failed":       http.StatusInternalServerError,
+		"s3_get_content_failed":        http.StatusInternalServerError,
+		"local_upload_failed":          http.StatusInternalServerError,
+		"local_get_metadata_failed":    http.StatusInternalServerError,
+		"local_get_content_failed":     http.StatusInternalServerError,
+		"local_directory_not_writable": http.StatusInternalServerError,
+		"ytdlp_command_failed":         http.StatusInternalServerError,
+		"ytdlp_invalid_output":         http.StatusInternalServerError,
+	}
+)
+
+var (
 	ErrInvalidInput          = NewAppError("invalid_input", "Input inválido")
 	ErrYouTubeAPIError       = NewAppError("youtube_api_error", "Error en la API de YouTube")
 	ErrProviderNotFound      = NewAppError("provider_not_found", "Proveedor no encontrado")
 	ErrStartOperationFailed  = NewAppError("start_operation_failed", "Error al iniciar la operación")
 	ErrGetMediaDetailsFailed = NewAppError("get_media_details_failed", "Error al obtener detalles del media")
 
-	ErrDownloadFailed            = NewAppError("download_failed", "Error en descarga de audio")
-	ErrEncodingFailed            = NewAppError("encoding_failed", "Error en codificación de audio")
-	ErrUploadFailed              = NewAppError("upload_failed", "Error al subir a almacenamiento")
 	ErrDuplicateRecord           = NewAppError("duplicate_record", "El registro ya existe")
-	ErrOperationInitFailed       = NewAppError("operation_init_failed", "Error al iniciar la operación")
 	ErrOperationNotFound         = NewAppError("operation_not_found", "No se encontró la operación solicitada")
 	ErrUpdateMediaFailed         = NewAppError("update_media_failed", "Error al actualizar el media")
 	ErrPublishMessageFailed      = NewAppError("publish_message_failed", "Error al publicar el mensaje")
@@ -30,7 +61,21 @@ var (
 	ErrCodeInvalidMetadata    = NewAppError("invalid_metadata", "Metadata inválido")
 	ErrCodeSaveMediaFailed    = NewAppError("save_media_failed", "Error al guardar el media")
 	ErrCodeDeleteMediaFailed  = NewAppError("delete_media_failed", "Error al eliminar el media")
-	ErrCodeGetMediaFailed     = NewAppError("get_media_failed", "Error al obtener el media")
+
+	ErrS3UploadFailed      = NewAppError("s3_upload_failed", "Error al subir archivo a S3")
+	ErrS3GetMetadataFailed = NewAppError("s3_get_metadata_failed", "Error al obtener metadatos del archivo de S3")
+	ErrS3GetContentFailed  = NewAppError("s3_get_content_failed", "Error al obtener contenido del archivo de S3")
+	ErrS3InvalidFile       = NewAppError("s3_invalid_file", "El archivo proporcionado no es válido")
+
+	ErrLocalUploadFailed         = NewAppError("local_upload_failed", "Error al subir archivo al almacenamiento local")
+	ErrLocalGetMetadataFailed    = NewAppError("local_get_metadata_failed", "Error al obtener metadatos del archivo local")
+	ErrLocalGetContentFailed     = NewAppError("local_get_content_failed", "Error al obtener contenido del archivo local")
+	ErrLocalInvalidFile          = NewAppError("local_invalid_file", "El archivo proporcionado no es válido")
+	ErrLocalFileNotFound         = NewAppError("local_file_not_found", "Archivo no encontrado en el almacenamiento local")
+	ErrLocalDirectoryNotWritable = NewAppError("local_directory_not_writable", "El directorio no es escribible")
+
+	ErrYTDLPCommandFailed = NewAppError("ytdlp_command_failed", "Error al ejecutar el comando yt-dlp")
+	ErrYTDLPInvalidOutput = NewAppError("ytdlp_invalid_output", "Salida inválida de yt-dlp")
 )
 
 type AppError struct {
@@ -68,24 +113,10 @@ func (e *AppError) Error() string {
 }
 
 func (e *AppError) StatusCode() int {
-	switch e.Code {
-	case "invalid_input", "invalid_video_id", "invalid_metadata":
-		return http.StatusBadRequest
-	case "provider_not_found", "operation_not_found", "media_not_found":
-		return http.StatusNotFound
-	case "youtube_api_error":
-		return http.StatusServiceUnavailable
-	case "duplicate_record":
-		return http.StatusConflict
-	case "download_failed", "encoding_failed", "upload_failed",
-		"operation_init_failed", "get_media_details_failed",
-		"update_media_failed", "publish_message_failed", "start_operation_failed",
-		"search_video_id_failed", "get_video_details_failed",
-		"db_connection_failed", "save_media_failed", "delete_media_failed", "get_media_failed":
-		return http.StatusInternalServerError
-	default:
-		return http.StatusInternalServerError
+	if status, ok := errorStatusMap[e.Code]; ok {
+		return status
 	}
+	return http.StatusInternalServerError
 }
 
 func (e *AppError) Wrap(err error) *AppError {

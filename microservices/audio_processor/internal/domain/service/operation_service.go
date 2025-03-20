@@ -2,12 +2,9 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
-	errorsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"time"
 )
@@ -54,11 +51,7 @@ func (s *operationService) StartOperation(ctx context.Context, videoID string) (
 		s.logger.Error("Error al iniciar operación",
 			zap.String("songID", videoID),
 			zap.Error(err))
-
-		if errors.Is(err, errorsApp.ErrDuplicateRecord) {
-			return nil, errorsApp.ErrDuplicateRecord.WithMessage(fmt.Sprintf("El video con ID '%s' ya esta registado", videoID))
-		}
-		return nil, errorsApp.ErrOperationInitFailed.Wrap(err)
+		return nil, err
 	}
 
 	return &model.OperationInitResult{
