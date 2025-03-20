@@ -56,6 +56,9 @@ func (s *LocalStorage) GetAudio(ctx context.Context, songPath string) (io.ReadCl
 		logger.Error("Error al abrir archivo local",
 			zap.String("path", fullPath),
 			zap.Error(err))
+		if os.IsNotExist(err) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("error al abrir archivo: %w", err)
 	}
 
