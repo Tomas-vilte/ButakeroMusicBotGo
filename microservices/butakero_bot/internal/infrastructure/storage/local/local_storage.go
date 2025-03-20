@@ -3,7 +3,6 @@ package local_storage
 import (
 	"context"
 	"fmt"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"go.uber.org/zap"
 	"io"
@@ -13,30 +12,14 @@ import (
 )
 
 type LocalStorage struct {
-	config  *config.Config
-	logger  logging.Logger
-	baseDir string
+	logger logging.Logger
 }
 
-// NewLocalStorage crea una instancia de LocalStorage con validación de directorio.
-func NewLocalStorage(cfg *config.Config, logger logging.Logger) (*LocalStorage, error) {
-	if cfg == nil || cfg.Storage.LocalConfig.Directory == "" {
-		return nil, fmt.Errorf("configuración local inválida")
-	}
-
-	absPath, err := filepath.Abs(cfg.Storage.LocalConfig.Directory)
-	if err != nil {
-		logger.Error("Error al obtener ruta absoluta",
-			zap.String("directorio", cfg.Storage.LocalConfig.Directory),
-			zap.Error(err))
-		return nil, fmt.Errorf("error de directorio: %w", err)
-	}
-
+// NewLocalStorage crea una instancia de LocalStorage.
+func NewLocalStorage(logger logging.Logger) *LocalStorage {
 	return &LocalStorage{
-		config:  cfg,
-		logger:  logger,
-		baseDir: absPath,
-	}, nil
+		logger: logger,
+	}
 }
 
 // GetAudio obtiene un archivo de audio local con prevención de directory traversal.
@@ -57,10 +40,10 @@ func (s *LocalStorage) GetAudio(ctx context.Context, songPath string) (io.ReadCl
 	default:
 	}
 
-	fullPath := filepath.Join(s.baseDir, filepath.Clean("/"+songPath))
-	relPath, err := filepath.Rel(s.baseDir, fullPath)
-	if err != nil || strings.HasPrefix(relPath, "..") {
-		logger.Error("Intento de acceso fuera del directorio base",
+	fullPath := filepath.Clean(songPath)
+
+	if strings.Contains(fullPath, "..") {
+		logger.Error("Intento de acceso fuera del directorio permitido",
 			zap.String("path", fullPath))
 		return nil, fmt.Errorf("ruta no permitida")
 	}

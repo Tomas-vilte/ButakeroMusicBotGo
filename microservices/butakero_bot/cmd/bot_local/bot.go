@@ -109,16 +109,7 @@ func StartBot() error {
 
 	discordMessenger := discord.NewDiscordMessengerService(discordClient, logger)
 
-	storageAudio, err := local_storage.NewLocalStorage(&config.Config{
-		Storage: config.StorageConfig{
-			LocalConfig: config.LocalConfig{
-				Directory: cfg.Storage.LocalConfig.Directory,
-			},
-		},
-	}, logger)
-	if err != nil {
-		logger.Error("Error al crear storage de audio", zap.Error(err))
-	}
+	storageAudio := local_storage.NewLocalStorage(logger)
 
 	interactionStorage := storage.NewInMemoryInteractionStorage(logger)
 

@@ -1,0 +1,190 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.7.1
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "22181:2181"
+    networks:
+      - test-application
+
+  kafka:
+    image: confluentinc/cp-kafka:7.7.1
+    depends_on:
+      - zookeeper
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: [ "CMD", "bash", "-c", "echo 'Verificando Kafka' && kafka-broker-api-versions --bootstrap-server localhost:9092" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - test-application
+
+  mongodb:
+    image: mongo:8
+    container_name: mongodb
+    command: [ "bash", "/etc/mongodb/pki/init.sh", "--replSet", "rs0", "--bind_ip_all", "--port", "27017", "--keyFile", "/etc/mongodb/pki/keyfile" ]
+    environment:
+      MONGO_INITDB_DATABASE: audio_service_db
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ${PWD}/init.sh:/etc/mongodb/pki/init.sh
+    networks:
+      - test-application
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongodb:27017'}]}) }"| mongosh --port 27017 -u root -p root --authenticationDatabase admin
+      interval: 5s
+      timeout: 15s
+      retries: 7
+      start_period: 15s
+    restart: always
+
+  audio_processor:
+    image: tomasvilte/audio_processor:1.0.0
+    container_name: audio_processor
+    volumes:
+      - ./yt-cookies.txt:/root/yt-cookies.txt
+      - audio_files:/app/data/audio-files
+    depends_on:
+      kafka:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: "local"
+      LOCAL_STORAGE_PATH: "/app/data/audio-files"
+      SERVICE_MAX_ATTEMPTS: 5
+      SERVICE_TIMEOUT: 2
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
+      GIN_MODE: "release"
+      KAFKA_TOPIC: "notifications"
+      KAFKA_BROKERS: "kafka:29092"
+      KAFKA_ENABLE_TLS: false
+      MONGO_USER: "root"
+      MONGO_PASSWORD: "root"
+      MONGO_PORT: 27017
+      MONGO_HOST: "mongodb"
+      MONGO_DATABASE: "audio_service_db"
+      MONGO_COLLECTION_SONGS: "Songs"
+      MONGO_ENABLE_TLS: false
+      MONGO_REPLICA_SET_NAME: "rs0"
+      COOKIES_YOUTUBE: "/root/yt-cookies.txt"
+    ports:
+      - "8080:8080"
+    networks:
+      - test-application
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/api/v1/health" ]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  butakero_bot:
+    image: tomasvilte/butakero_bot:1.0.0
+    container_name: butakero_bot
+    depends_on:
+      kafka:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      audio_processor:
+        condition: service_healthy
+    volumes:
+      - audio_files:/app/data/audio-files
+    environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      KAFKA_BROKERS: "kafka:29092"
+      KAFKA_TLS_ENABLED: false
+      KAFKA_TLS_CA_FILE: ""
+      KAFKA_TLS_CERT_FILE: ""
+      KAFKA_TLS_KEY_FILE: ""
+      MONGO_HOSTS: "mongodb"
+      MONGO_PORT: 27017
+      MONGO_DATABASE: "audio_service_db"
+      MONGO_COLLECTION: "Songs"
+      MONGO_USERNAME: "root"
+      MONGO_PASSWORD: "root"
+      MONGO_AUTH_SOURCE: "admin"
+      MONGO_REPLICA_SET_NAME: "rs0"
+      MONGO_TIMEOUT: "10s"
+      MONGO_TLS_ENABLED: false
+      MONGO_TLS_CA_FILE: ""
+      MONGO_TLS_CERT_FILE: ""
+      MONGO_TLS_KEY_FILE: ""
+      MONGO_DIRECT_CONNECT: true
+      MONGO_RETRY_WRITES: "true"
+      AUDIO_PROCESSOR_URL: "http://audio_processor:8080"
+    networks:
+      - test-application
+    restart: always
+
+#  butakero_bot_debug:
+#    image: tomasvilte/butakero_bot:1.0.0-debug
+#    container_name: butakero_bot_debug
+#    depends_on:
+#      kafka:
+#        condition: service_healthy
+#      mongodb:
+#        condition: service_healthy
+#      audio_processor:
+#        condition: service_healthy
+#    volumes:
+#      - audio_files:/app/data/audio-files
+#    environment:
+#      DISCORD_TOKEN: ${DISCORD_TOKEN}
+#      KAFKA_BROKERS: "kafka:29092"
+#      KAFKA_TLS_ENABLED: false
+#      KAFKA_TLS_CA_FILE: ""
+#      KAFKA_TLS_CERT_FILE: ""
+#      KAFKA_TLS_KEY_FILE: ""
+#      MONGO_HOSTS: "mongodb"
+#      MONGO_PORT: 27017
+#      MONGO_DATABASE: "audio_service_db"
+#      MONGO_COLLECTION: "Songs"
+#      MONGO_USERNAME: "root"
+#      MONGO_PASSWORD: "root"
+#      MONGO_AUTH_SOURCE: "admin"
+#      MONGO_REPLICA_SET_NAME: "rs0"
+#      MONGO_TIMEOUT: "10s"
+#      MONGO_TLS_ENABLED: false
+#      MONGO_TLS_CA_FILE: ""
+#      MONGO_TLS_CERT_FILE: ""
+#      MONGO_TLS_KEY_FILE: ""
+#      MONGO_DIRECT_CONNECT: true
+#      MONGO_RETRY_WRITES: "true"
+#      AUDIO_PROCESSOR_URL: "http://audio_processor:8080"
+#      LOCAL_STORAGE_PATH: "/app/data/audio-files"
+#    ports:
+#      - "40000:40000"
+#    networks:
+#      - test-application
+#    restart: always
+
+volumes:
+  mongo_data:
+  audio_files:
+
+networks:
+  test-application:
+    driver: bridge
