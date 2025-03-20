@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
+	errorsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"go.uber.org/zap"
 	"net/http"
@@ -47,20 +47,20 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*m
 	log.Debug("Iniciando la obtención de detalles del video")
 
 	if !isValidVideoID(videoID) {
-		return nil, fmt.Errorf("invalid video ID: %s", videoID)
+		return nil, errorsApp.ErrCodeInvalidVideoID.WithMessage(fmt.Sprintf("ID de video inválido: %s", videoID))
 	}
 
 	endpoint := fmt.Sprintf("%s/videos?part=snippet,contentDetails&id=%s&key=%s", c.BaseURL, videoID, c.ApiKey)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		log.Error("Error al crear la solicitud HTTP", zap.Error(err))
-		return nil, fmt.Errorf("error al crear la solicitud: %w", err)
+		return nil, errorsApp.ErrCodeGetVideoDetailsFailed.Wrap(err)
 	}
 
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
 		log.Error("Error al ejecutar la solicitud HTTP", zap.Error(err))
-		return nil, fmt.Errorf("error al hacer la solicitud a la API de YouTube: %w", err)
+		return nil, errorsApp.ErrYouTubeAPIError.WithMessage(fmt.Sprintf("Error al hacer la solicitud a la API de YouTube: %v", err))
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
@@ -74,12 +74,25 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*m
 		var youtubeError struct {
 			Error struct {
 				Message string `json:"message"`
+				Errors  []struct {
+					Message  string `json:"message"`
+					Domain   string `json:"domain"`
+					Reason   string `json:"reason"`
+					Location string `json:"location"`
+				} `json:"errors"`
 			} `json:"error"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&youtubeError); err == nil {
-			return nil, fmt.Errorf("API de YouTube respondió con código %d: %s", resp.StatusCode, youtubeError.Error.Message)
+			if len(youtubeError.Error.Errors) > 0 {
+				errorDetails := make([]string, 0)
+				for _, e := range youtubeError.Error.Errors {
+					errorDetails = append(errorDetails, fmt.Sprintf("domain: %s, reason: %s, message: %s", e.Domain, e.Reason, e.Message))
+				}
+				return nil, errorsApp.ErrYouTubeAPIError.WithMessage(fmt.Sprintf("API de YouTube respondió con código %d: %s. Detalles: %v", resp.StatusCode, youtubeError.Error.Message, strings.Join(errorDetails, "; ")))
+			}
+			return nil, errorsApp.ErrYouTubeAPIError.WithMessage(fmt.Sprintf("API de YouTube respondió con código %d: %s", resp.StatusCode, youtubeError.Error.Message))
 		}
-		return nil, fmt.Errorf("API de YouTube respondió con código %d", resp.StatusCode)
+		return nil, errorsApp.ErrYouTubeAPIError.WithMessage(fmt.Sprintf("API de YouTube respondió con código %d", resp.StatusCode))
 	}
 
 	var result struct {
@@ -104,21 +117,25 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*m
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		log.Error("Error al decodificar la respuesta de la API de YouTube", zap.Error(err))
-		return nil, fmt.Errorf("error al decodificar la respuesta de la API de YouTube: %w", err)
+		return nil, errorsApp.ErrCodeGetVideoDetailsFailed.WithMessage(fmt.Sprintf("Error al decodificar la respuesta de la API de YouTube: %v", err))
 	}
 
 	if len(result.Items) == 0 {
 		log.Warn("No se encontró el video con el ID proporcionado")
-		return nil, fmt.Errorf("no se encontró el video con el ID proporcionado")
+		return nil, errorsApp.ErrCodeMediaNotFound.WithMessage(fmt.Sprintf("No se encontró el video con el ID %s", videoID))
 	}
 
 	item := result.Items[0]
-	publishedAt, _ := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+	publishedAt, err := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+	if err != nil {
+		log.Error("Error al parsear la fecha de publicación", zap.Error(err))
+		return nil, errorsApp.ErrCodeGetVideoDetailsFailed.WithMessage(fmt.Sprintf("Error al parsear la fecha de publicación: %v", err))
+	}
 
 	durationMs, err := parseISODurationToMs(item.ContentDetails.Duration)
 	if err != nil {
 		log.Error("Error al convertir la duración", zap.Error(err))
-		return nil, fmt.Errorf("error al convertir la duración: %w", err)
+		return nil, errorsApp.ErrCodeGetVideoDetailsFailed.WithMessage(fmt.Sprintf("Error al convertir la duración: %v", err))
 	}
 
 	videoDetails := &model.MediaDetails{
@@ -149,7 +166,7 @@ func (c *YouTubeClient) SearchVideoID(ctx context.Context, input string) (string
 		videoID, err := ExtractVideoIDFromURL(input)
 		if err != nil {
 			log.Error("Error al extraer ID del video de la URL", zap.Error(err), zap.String("url", input))
-			return "", fmt.Errorf("error al extraer ID del video de la URL: %w", err)
+			return "", errorsApp.ErrCodeSearchVideoIDFailed.WithMessage(fmt.Sprintf("Error al extraer ID del video de la URL: %v", err))
 		}
 		log.Debug("ID del video extraído de la URL", zap.String("video_id", videoID))
 		return videoID, nil
@@ -160,13 +177,13 @@ func (c *YouTubeClient) SearchVideoID(ctx context.Context, input string) (string
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		log.Error("Error al crear la solicitud HTTP", zap.Error(err))
-		return "", fmt.Errorf("error al crear la solicitud: %w", err)
+		return "", errorsApp.ErrCodeSearchVideoIDFailed.Wrap(err)
 	}
 
 	resp, err := c.HttpClient.Do(req)
 	if err != nil {
 		log.Error("Error al ejecutar la solicitud HTTP", zap.Error(err))
-		return "", fmt.Errorf("error al hacer la solicitud a la API de YouTube: %w", err)
+		return "", errorsApp.ErrYouTubeAPIError.WithMessage(fmt.Sprintf("Error al hacer la solicitud a la API de YouTube: %v", err))
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
@@ -195,11 +212,11 @@ func (c *YouTubeClient) SearchVideoID(ctx context.Context, input string) (string
 				for _, e := range youtubeError.Error.Errors {
 					errorDetails = append(errorDetails, fmt.Sprintf("domain: %s, reason: %s, message: %s", e.Domain, e.Reason, e.Message))
 				}
-				return "", errors.ErrYouTubeAPIError.WithMessage(fmt.Sprintf("API de YouTube respondió con código %d: %s. Detalles: %v", resp.StatusCode, youtubeError.Error.Message, strings.Join(errorDetails, "; ")))
+				return "", errorsApp.ErrYouTubeAPIError.WithMessage(fmt.Sprintf("API de YouTube respondió con código %d: %s. Detalles: %v", resp.StatusCode, youtubeError.Error.Message, strings.Join(errorDetails, "; ")))
 			}
-			return "", errors.ErrYouTubeAPIError.WithMessage(fmt.Sprintf("API de YouTube respondió con código %d: %s", resp.StatusCode, youtubeError.Error.Message))
+			return "", errorsApp.ErrYouTubeAPIError.WithMessage(fmt.Sprintf("API de YouTube respondió con código %d: %s", resp.StatusCode, youtubeError.Error.Message))
 		}
-		return "", errors.ErrYouTubeAPIError.WithMessage(fmt.Sprintf("API de YouTube respondió con código %d", resp.StatusCode))
+		return "", errorsApp.ErrYouTubeAPIError.WithMessage(fmt.Sprintf("API de YouTube respondió con código %d", resp.StatusCode))
 	}
 
 	var result struct {
@@ -212,12 +229,12 @@ func (c *YouTubeClient) SearchVideoID(ctx context.Context, input string) (string
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		log.Error("Error al decodificar la respuesta de la API de YouTube", zap.Error(err))
-		return "", fmt.Errorf("error al decodificar la respuesta de la API de YouTube: %w", err)
+		return "", errorsApp.ErrCodeSearchVideoIDFailed.WithMessage(fmt.Sprintf("Error al decodificar la respuesta de la API de YouTube: %v", err))
 	}
 
 	if len(result.Items) == 0 {
 		log.Warn("No se encontraron videos para la consulta", zap.String("input", input))
-		return "", fmt.Errorf("no se encontraron videos para la consulta: %s", input)
+		return "", errorsApp.ErrCodeMediaNotFound.WithMessage(fmt.Sprintf("No se encontraron videos para la consulta: %s", input))
 	}
 	log.Debug("Video encontrado", zap.String("video_id", result.Items[0].ID.VideoID))
 	return result.Items[0].ID.VideoID, nil
@@ -229,7 +246,7 @@ func ExtractVideoIDFromURL(videoURL string) (string, error) {
 	if len(matches) > 1 {
 		return matches[1], nil
 	}
-	return "", fmt.Errorf("URL de YouTube invalida: %s", videoURL)
+	return "", errorsApp.ErrCodeInvalidVideoID.WithMessage(fmt.Sprintf("URL de YouTube inválida: %s", videoURL))
 }
 
 func isValidVideoID(videoID string) bool {
@@ -241,7 +258,7 @@ func parseISODurationToMs(isoDuration string) (int64, error) {
 	durationStr = strings.ToLower(durationStr)
 	duration, err := time.ParseDuration(durationStr)
 	if err != nil {
-		return 0, fmt.Errorf("error al parsear la duracion ISO 8601: %w", err)
+		return 0, errorsApp.ErrCodeGetVideoDetailsFailed.WithMessage(fmt.Sprintf("Error al parsear la duración ISO 8601: %v", err))
 	}
 	return duration.Milliseconds(), nil
 }

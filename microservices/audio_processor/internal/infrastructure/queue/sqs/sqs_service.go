@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
 
@@ -32,17 +32,17 @@ type SQSService struct {
 
 func NewSQSService(cfgApplication *config.Config, log logger.Logger) (*SQSService, error) {
 	if cfgApplication == nil {
-		return nil, errors.New("config no puede ser nil")
+		return nil, errors.ErrInvalidInput.WithMessage("config no puede ser nil")
 	}
 
 	if log == nil {
-		return nil, errors.New("logger no puede ser nil")
+		return nil, errors.ErrInvalidInput.WithMessage("logger no puede ser nil")
 	}
 
 	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(),
 		awsCfg.WithRegion(cfgApplication.AWS.Region))
 	if err != nil {
-		return nil, fmt.Errorf("error cargando configuración AWS: %w", err)
+		return nil, errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("error cargando configuración AWS: %v", err))
 	}
 
 	sqsClient := sqs.NewFromConfig(cfg)
@@ -63,7 +63,7 @@ func (s *SQSService) SendMessage(ctx context.Context, message *model.MediaProces
 	body, err := json.Marshal(message)
 	if err != nil {
 		log.Error("Error al serializar el mensaje", zap.Error(err))
-		return errors.Wrap(err, "error al serializar mensaje")
+		return errors.ErrPublishMessageFailed.WithMessage(fmt.Sprintf("error al serializar mensaje: %v", err))
 	}
 
 	input := &sqs.SendMessageInput{
@@ -74,7 +74,6 @@ func (s *SQSService) SendMessage(ctx context.Context, message *model.MediaProces
 	return s.sendMessageWithRetry(ctx, input, message.VideoID)
 }
 
-// sendMessageWithRetry implementa la lógica de reintento para enviar mensajes
 func (s *SQSService) sendMessageWithRetry(ctx context.Context, input *sqs.SendMessageInput, messageID string) error {
 	log := s.Log.With(
 		zap.String("component", "SQSService"),
@@ -102,14 +101,14 @@ func (s *SQSService) sendMessageWithRetry(ctx context.Context, input *sqs.SendMe
 		select {
 		case <-ctx.Done():
 			log.Error("Contexto cancelado durante el reintento", zap.Error(ctx.Err()))
-			return errors.Wrap(ctx.Err(), "contexto cancelado al reintentar")
+			return errors.ErrPublishMessageFailed.WithMessage(fmt.Sprintf("contexto cancelado al reintentar: %v", ctx.Err()))
 		case <-time.After(backoff):
 			continue
 		}
 	}
 
 	log.Error("No se pudo enviar el mensaje después de todos los reintentos", zap.Error(lastErr))
-	return errors.Wrap(lastErr, "No se pudo enviar el mensaje a SQS después de todos los reintentos.")
+	return errors.ErrPublishMessageFailed.WithMessage(fmt.Sprintf("No se pudo enviar el mensaje a SQS después de todos los reintentos: %v", lastErr))
 }
 
 func (s *SQSService) ReceiveMessage(ctx context.Context) ([]model.MediaProcessingMessage, error) {
@@ -152,14 +151,14 @@ func (s *SQSService) ReceiveMessage(ctx context.Context) ([]model.MediaProcessin
 		select {
 		case <-ctx.Done():
 			log.Error("Contexto cancelado durante la recepción de mensajes", zap.Error(ctx.Err()))
-			return nil, errors.Wrap(ctx.Err(), "contexto cancelado al recibir mensajes")
+			return nil, errors.ErrPublishMessageFailed.WithMessage(fmt.Sprintf("contexto cancelado al recibir mensajes: %v", ctx.Err()))
 		case <-time.After(backoff):
 			continue
 		}
 	}
 
 	log.Error("No se pudieron recibir mensajes después de todos los reintentos", zap.Error(lastErr))
-	return nil, errors.Wrap(lastErr, "No se pudieron recibir mensajes de SQS después de todos los reintentos.")
+	return nil, errors.ErrPublishMessageFailed.WithMessage(fmt.Sprintf("No se pudieron recibir mensajes de SQS después de todos los reintentos: %v", lastErr))
 }
 
 func (s *SQSService) processReceivedMessages(sqsMessages []types.Message) ([]model.MediaProcessingMessage, error) {
@@ -176,7 +175,7 @@ func (s *SQSService) processReceivedMessages(sqsMessages []types.Message) ([]mod
 			log.Error("Error al deserializar el mensaje",
 				zap.Error(err),
 				zap.String("sqs_message_id", *sqsMsg.MessageId))
-			continue
+			return nil, errors.ErrPublishMessageFailed.WithMessage(fmt.Sprintf("error al deserializar el mensaje: %v", err))
 		}
 
 		msg.ReceiptHandle = *sqsMsg.ReceiptHandle
@@ -195,7 +194,7 @@ func (s *SQSService) DeleteMessage(ctx context.Context, receiptHandle string) er
 	)
 	if receiptHandle == "" {
 		log.Error("Receipt handle no puede estar vacío")
-		return errors.New("receipt handle no puede estar vacio")
+		return errors.ErrInvalidInput.WithMessage("receipt handle no puede estar vacio")
 	}
 
 	input := &sqs.DeleteMessageInput{
@@ -221,12 +220,12 @@ func (s *SQSService) DeleteMessage(ctx context.Context, receiptHandle string) er
 		select {
 		case <-ctx.Done():
 			log.Error("Contexto cancelado durante la eliminación del mensaje", zap.Error(ctx.Err()))
-			return errors.Wrap(ctx.Err(), "contexto cancelado mientras eliminaba el mensaje")
+			return errors.ErrPublishMessageFailed.WithMessage(fmt.Sprintf("contexto cancelado mientras eliminaba el mensaje: %v", ctx.Err()))
 		case <-time.After(backoff):
 			continue
 		}
 	}
 
 	log.Error("No se pudo eliminar el mensaje después de todos los reintentos", zap.Error(lastErr))
-	return errors.Wrap(lastErr, "No se pudo eliminar el mensaje de SQS después de todos los reintentos.")
+	return errors.ErrPublishMessageFailed.WithMessage(fmt.Sprintf("No se pudo eliminar el mensaje de SQS después de todos los reintentos: %v", lastErr))
 }

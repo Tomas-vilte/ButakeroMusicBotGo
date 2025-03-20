@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"io"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -38,7 +39,6 @@ func LoggingMiddleware(log logger.Logger) gin.HandlerFunc {
 		c.Next()
 
 		latency := time.Since(start)
-
 		status := c.Writer.Status()
 
 		log.Info("Respuesta enviada",
@@ -58,10 +58,23 @@ func LoggingMiddleware(log logger.Logger) gin.HandlerFunc {
 				errMsgs = append(errMsgs, fmt.Sprintf("Error #%02d: %s", i+1, e.Error()))
 			}
 
-			log.Error("Errores encontrados",
-				zap.String("errors", strings.Join(errMsgs, "\n")),
-				zap.Int("status", status),
-			)
+			switch status {
+			case http.StatusNotFound:
+				log.Warn("Recurso no encontrado",
+					zap.String("errors", strings.Join(errMsgs, "\n")),
+					zap.Int("status", status),
+				)
+			case http.StatusInternalServerError:
+				log.Error("Error interno del servidor",
+					zap.String("errors", strings.Join(errMsgs, "\n")),
+					zap.Int("status", status),
+				)
+			default:
+				log.Warn("Errores encontrados",
+					zap.String("errors", strings.Join(errMsgs, "\n")),
+					zap.Int("status", status),
+				)
+			}
 		}
 	}
 }

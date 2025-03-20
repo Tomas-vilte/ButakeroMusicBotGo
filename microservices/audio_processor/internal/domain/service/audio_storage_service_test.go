@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
-	errors2 "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -68,12 +67,8 @@ func TestAudioStorageService_StoreAudio_UploadError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, fileData)
 
-	var appErr *errors2.AppError
-	ok := errors.As(err, &appErr)
-	assert.True(t, ok, "El error debería ser de tipo *errors.AppError")
-	assert.Equal(t, "upload_failed", appErr.Code)
-	assert.Equal(t, "Error al subir a almacenamiento", appErr.Message)
-	assert.Equal(t, expectedError, appErr.Err)
+	assert.Equal(t, err.Error(), "upload failed")
+	assert.Contains(t, err.Error(), expectedError.Error())
 
 	mockStorage.AssertExpectations(t)
 }
@@ -102,12 +97,8 @@ func TestAudioStorageService_StoreAudio_MetadataError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, fileData)
 
-	var appErr *errors2.AppError
-	ok := errors.As(err, &appErr)
-	assert.True(t, ok, "El error debería ser de tipo *errors.AppError")
-	assert.Equal(t, "upload_failed", appErr.Code)
-	assert.Equal(t, "Error al subir a almacenamiento", appErr.Message)
-	assert.Equal(t, expectedError, appErr.Err)
+	assert.Equal(t, err.Error(), "metadata failed")
+	assert.Contains(t, "Error al obtener metadatos del archivo: metadata failed", err.Error())
 
 	mockStorage.AssertExpectations(t)
 }

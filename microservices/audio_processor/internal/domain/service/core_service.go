@@ -6,14 +6,13 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/cenkalti/backoff/v4"
 	"go.uber.org/zap"
 	"time"
 )
 
-type CoreService struct {
+type coreService struct {
 	mediaService         ports.MediaService
 	audioStorageService  ports.AudioStorageService
 	topicPublisher       ports.TopicPublisherService
@@ -29,8 +28,8 @@ func NewCoreService(
 	audioDownloadService ports.AudioDownloadService,
 	logger logger.Logger,
 	cfg *config.Config,
-) *CoreService {
-	return &CoreService{
+) ports.CoreService {
+	return &coreService{
 		mediaService:         mediaService,
 		audioStorageService:  audioStorageService,
 		topicPublisher:       topicPublisher,
@@ -40,7 +39,7 @@ func NewCoreService(
 	}
 }
 
-func (s *CoreService) ProcessMedia(ctx context.Context, mediaDetails *model.MediaDetails) error {
+func (s *coreService) ProcessMedia(ctx context.Context, mediaDetails *model.MediaDetails) error {
 	log := s.logger.With(
 		zap.String("component", "CoreService"),
 		zap.String("method", "ProcessMedia"),
@@ -74,14 +73,14 @@ func (s *CoreService) ProcessMedia(ctx context.Context, mediaDetails *model.Medi
 		audioBuffer, err := s.audioDownloadService.DownloadAndEncode(ctx, mediaDetails.URL)
 		if err != nil {
 			log.Error("Error al descargar y codificar el audio", zap.Error(err))
-			lastError = errors.ErrDownloadFailed.Wrap(err)
+			lastError = err
 			return lastError
 		}
 
 		fileData, err := s.audioStorageService.StoreAudio(ctx, audioBuffer, mediaDetails.Title)
 		if err != nil {
 			log.Error("Error al almacenar el archivo de audio", zap.Error(err))
-			lastError = errors.ErrUploadFailed.Wrap(err)
+			lastError = err
 			return lastError
 		}
 
@@ -116,14 +115,14 @@ func (s *CoreService) ProcessMedia(ctx context.Context, mediaDetails *model.Medi
 		}
 
 		if err := s.mediaService.UpdateMedia(ctx, media.VideoID, media); err != nil {
-			log.Error("Error al actualizar la operation", zap.String("video_id", media.VideoID), zap.Error(err))
-			lastError = errors.ErrUpdateMediaFailed.Wrap(err)
+			log.Error("Error al actualizar la operación", zap.String("video_id", media.VideoID), zap.Error(err))
+			lastError = err
 			return lastError
 		}
 
 		if err := s.topicPublisher.PublishMediaProcessed(ctx, message); err != nil {
 			log.Error("Error al publicar el evento de procesamiento exitoso", zap.Error(err))
-			lastError = errors.ErrPublishMessageFailed.Wrap(err)
+			lastError = err
 			return lastError
 		}
 

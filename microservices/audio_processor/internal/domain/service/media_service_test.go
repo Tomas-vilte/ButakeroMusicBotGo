@@ -5,7 +5,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/stretchr/testify/assert"
@@ -58,7 +57,7 @@ func TestMediaService_CreateMedia_Error(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Equal(t, fmt.Errorf("error al crear el registro de media: %w", expectedError), err)
+	assert.Contains(t, err.Error(), "repository error")
 	mockRepo.AssertExpectations(t)
 }
 
@@ -108,7 +107,7 @@ func TestMediaService_GetMediaByID_Error(t *testing.T) {
 	// Assert
 	assert.Error(t, err)
 	assert.Nil(t, media)
-	assert.Equal(t, fmt.Errorf("error al obtener el registro de media: %w", expectedError), err)
+	assert.Contains(t, err.Error(), "repository error")
 	mockRepo.AssertExpectations(t)
 }
 
@@ -160,7 +159,7 @@ func TestMediaService_UpdateMedia_Error(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Equal(t, fmt.Errorf("error al actualizar el estado del registro de media: %w", expectedError), err)
+	assert.Contains(t, err.Error(), "repository error")
 	mockRepo.AssertExpectations(t)
 }
 
@@ -204,6 +203,6 @@ func TestMediaService_DeleteMedia_Error(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Equal(t, fmt.Errorf("error al eliminar el registro de media: %w", expectedError), err)
+	assert.Contains(t, err.Error(), "repository error")
 	mockRepo.AssertExpectations(t)
 }

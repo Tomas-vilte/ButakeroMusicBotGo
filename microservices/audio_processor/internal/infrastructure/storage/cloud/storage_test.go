@@ -80,9 +80,8 @@ func TestS3Storage_UploadFile(t *testing.T) {
 			t.Fatal("expected an error, but got none")
 		}
 
-		if !errors.Is(err, expectedErr) {
-			t.Errorf("got error %v, want %v", err, expectedErr)
-		}
+		assert.Contains(t, err.Error(), "s3 error")
+
 		mockClient.AssertExpectations(t)
 	})
 

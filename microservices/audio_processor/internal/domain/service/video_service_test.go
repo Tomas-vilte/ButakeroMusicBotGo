@@ -76,7 +76,7 @@ func TestVideoService_GetMediaDetails(t *testing.T) {
 		// Assert
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "error al buscar ID de video")
+		assert.Contains(t, err.Error(), "search failed")
 		mockProvider.AssertExpectations(t)
 	})
 
@@ -106,7 +106,7 @@ func TestVideoService_GetMediaDetails(t *testing.T) {
 		// Assert
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "error al buscar ID de video")
+		assert.Contains(t, err.Error(), "search failed")
 		mockProvider.AssertExpectations(t)
 	})
 
@@ -138,7 +138,7 @@ func TestVideoService_GetMediaDetails(t *testing.T) {
 		// Assert
 		assert.Error(t, err)
 		assert.Nil(t, result)
-		assert.Contains(t, err.Error(), "error al obtener detalles de la cancion")
+		assert.Contains(t, err.Error(), "details failed")
 		mockProvider.AssertExpectations(t)
 	})
 }

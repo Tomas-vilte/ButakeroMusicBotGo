@@ -4,16 +4,16 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"github.com/IBM/sarama"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/utils"
-	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
 
-// KafkaService proporciona métodos para interactuar con Kafka para producir y consumir mensajes.
 type KafkaService struct {
 	Config   *config.Config
 	Producer sarama.SyncProducer
@@ -21,8 +21,6 @@ type KafkaService struct {
 	Log      logger.Logger
 }
 
-// NewKafkaService crea una nueva instancia de KafkaService.
-// Inicializa el productor y el consumidor de Kafka en base a la configuración y el logger proporcionados.
 func NewKafkaService(cfgApplication *config.Config, log logger.Logger) (*KafkaService, error) {
 	var tlsConfig *tls.Config
 	var err error
@@ -34,7 +32,7 @@ func NewKafkaService(cfgApplication *config.Config, log logger.Logger) (*KafkaSe
 			KeyFile:  cfgApplication.Messaging.Kafka.KeyFile,
 		})
 		if err != nil {
-			return nil, errors.Wrap(err, "Error configurando conexion de TLS de Kafka")
+			return nil, errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("Error configurando conexion de TLS de Kafka: %v", err))
 		}
 	}
 
@@ -51,12 +49,12 @@ func NewKafkaService(cfgApplication *config.Config, log logger.Logger) (*KafkaSe
 
 	producer, err := sarama.NewSyncProducer(cfgApplication.Messaging.Kafka.Brokers, cfg)
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("Error al crear el productor de Kafka: %v", err))
 	}
 
 	consumer, err := sarama.NewConsumer(cfgApplication.Messaging.Kafka.Brokers, cfg)
 	if err != nil {
-		return nil, err
+		return nil, errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("Error al crear el consumidor de Kafka: %v", err))
 	}
 
 	kafkaService := &KafkaService{
@@ -67,13 +65,11 @@ func NewKafkaService(cfgApplication *config.Config, log logger.Logger) (*KafkaSe
 	}
 
 	if err := kafkaService.EnsureTopicExists(cfgApplication.Messaging.Kafka.Topic); err != nil {
-		return nil, err
+		return nil, errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("Error al asegurar que el topic existe: %v", err))
 	}
 	return kafkaService, nil
 }
 
-// SendMessage envía un mensaje al tema de Kafka especificado en la configuración.
-// Serializa el mensaje a JSON y registra el resultado.
 func (k *KafkaService) SendMessage(ctx context.Context, message *model.MediaProcessingMessage) error {
 	log := k.Log.With(
 		zap.String("component", "KafkaService"),
@@ -82,7 +78,7 @@ func (k *KafkaService) SendMessage(ctx context.Context, message *model.MediaProc
 	body, err := json.Marshal(message)
 	if err != nil {
 		log.Error("Error al serializar el mensaje", zap.Error(err))
-		return errors.Wrap(err, "error deserializar mensaje")
+		return errors.ErrPublishMessageFailed.WithMessage(fmt.Sprintf("error al serializar mensaje: %v", err))
 	}
 
 	msg := &sarama.ProducerMessage{
@@ -94,7 +90,7 @@ func (k *KafkaService) SendMessage(ctx context.Context, message *model.MediaProc
 	partition, offset, err := k.Producer.SendMessage(msg)
 	if err != nil {
 		log.Error("Error al enviar el mensaje", zap.Error(err))
-		return errors.Wrap(err, "error al enviar mensaje a kafka")
+		return errors.ErrPublishMessageFailed.WithMessage(fmt.Sprintf("error al enviar mensaje a kafka: %v", err))
 	}
 
 	log.Info("Mensaje enviado con éxito",
@@ -104,8 +100,6 @@ func (k *KafkaService) SendMessage(ctx context.Context, message *model.MediaProc
 	return nil
 }
 
-// ReceiveMessage recibe mensajes del tema de Kafka especificado en la configuración.
-// Deserializa los mensajes de JSON y registra el resultado.
 func (k *KafkaService) ReceiveMessage(ctx context.Context) ([]model.MediaProcessingMessage, error) {
 	log := k.Log.With(
 		zap.String("component", "KafkaService"),
@@ -114,7 +108,7 @@ func (k *KafkaService) ReceiveMessage(ctx context.Context) ([]model.MediaProcess
 	partitionConsumer, err := k.Consumer.ConsumePartition(k.Config.Messaging.Kafka.Topic, 0, sarama.OffsetOldest)
 	if err != nil {
 		log.Error("Error al crear la partición del consumidor", zap.Error(err))
-		return nil, errors.Wrap(err, "error al crear la particion del consumidor")
+		return nil, errors.ErrPublishMessageFailed.WithMessage(fmt.Sprintf("error al crear la particion del consumidor: %v", err))
 	}
 	defer func() {
 		if err := partitionConsumer.Close(); err != nil {
@@ -130,20 +124,18 @@ func (k *KafkaService) ReceiveMessage(ctx context.Context) ([]model.MediaProcess
 		var message model.MediaProcessingMessage
 		if err := json.Unmarshal(msg.Value, &message); err != nil {
 			log.Error("Error al deserializar el mensaje", zap.Error(err))
-			return nil, errors.Wrap(err, "error al deserializar mensaje")
+			return nil, errors.ErrPublishMessageFailed.WithMessage(fmt.Sprintf("error al deserializar mensaje: %v", err))
 		}
 		messages = append(messages, message)
 	case <-ctx.Done():
 		log.Error("Contexto cancelado durante la recepción de mensajes", zap.Error(ctx.Err()))
-		return messages, ctx.Err()
+		return messages, errors.ErrPublishMessageFailed.WithMessage(fmt.Sprintf("contexto cancelado durante la recepción de mensajes: %v", ctx.Err()))
 	}
 
 	log.Info("Mensajes recibidos exitosamente", zap.Int("count", len(messages)))
 	return messages, nil
 }
 
-// DeleteMessage registra un mensaje indicando que Kafka no admite la eliminación de mensajes individuales.
-// Los mensajes se eliminan automáticamente según el período de retención.
 func (k *KafkaService) DeleteMessage(_ context.Context, receiptHandle string) error {
 	log := k.Log.With(
 		zap.String("component", "KafkaService"),
@@ -154,7 +146,6 @@ func (k *KafkaService) DeleteMessage(_ context.Context, receiptHandle string) er
 	return nil
 }
 
-// Close cierra el productor de Kafka.
 func (k *KafkaService) Close() error {
 	log := k.Log.With(
 		zap.String("component", "KafkaService"),
@@ -175,14 +166,18 @@ func (k *KafkaService) EnsureTopicExists(topic string) error {
 	admin, err := sarama.NewClusterAdmin(k.Config.Messaging.Kafka.Brokers, sarama.NewConfig())
 	if err != nil {
 		log.Error("Error al crear el administrador de Kafka", zap.Error(err))
-		return errors.Wrap(err, "error al crear el administrador de Kafka")
+		return errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("error al crear el administrador de Kafka: %v", err))
 	}
-	defer admin.Close()
+	defer func() {
+		if err := admin.Close(); err != nil {
+			log.Error("Error al cerrar el administrador de Kafka", zap.Error(err))
+		}
+	}()
 
 	topics, err := admin.ListTopics()
 	if err != nil {
 		log.Error("Error al listar los topics", zap.Error(err))
-		return errors.Wrap(err, "error al listar los topics")
+		return errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("error al listar los topics: %v", err))
 	}
 
 	if _, exists := topics[topic]; !exists {
@@ -193,7 +188,7 @@ func (k *KafkaService) EnsureTopicExists(topic string) error {
 		}, false)
 		if err != nil {
 			log.Error("Error al crear el topic", zap.Error(err))
-			return errors.Wrap(err, "error al crear el topic")
+			return errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("error al crear el topic: %v", err))
 		}
 		log.Info("Topic creado exitosamente", zap.String("topic", topic))
 	} else {

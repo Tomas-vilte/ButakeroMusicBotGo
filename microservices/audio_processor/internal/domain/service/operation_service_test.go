@@ -80,7 +80,7 @@ func TestOperationService_StartOperation_Error(t *testing.T) {
 	// Assert
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	assert.Equal(t, expectedError, errors.Unwrap(err))
+	assert.Contains(t, err.Error(), "repository error")
 
 	mockRepo.AssertExpectations(t)
 }

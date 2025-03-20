@@ -88,7 +88,7 @@ func TestYouTubeClient_GetVideoDetails(t *testing.T) {
 
 		// Assert
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid video ID")
+		assert.Contains(t, err.Error(), "ID de video inválido: invalid")
 	})
 
 	t.Run("debe retornar error cuando la API devuelve status no OK", func(t *testing.T) {
@@ -138,7 +138,7 @@ func TestYouTubeClient_GetVideoDetails(t *testing.T) {
 
 		// Assert
 		require.Error(t, err)
-		assert.EqualError(t, err, "no se encontró el video con el ID proporcionado")
+		assert.EqualError(t, err, "No se encontró el video con el ID dQw4w9WgXcQ")
 	})
 
 	t.Run("debe retornar error cuando hay un error en la solicitud HTTP", func(t *testing.T) {
@@ -149,14 +149,14 @@ func TestYouTubeClient_GetVideoDetails(t *testing.T) {
 		mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 
 		client := NewYouTubeClient("test-key", mockLogger)
-		client.BaseURL = "http://invalid-url-that-doesnt-exist-123456789.com"
+		client.BaseURL = "https://invalid-url-that-doesnt-exist-123456789.com"
 
 		// Act
 		_, err := client.GetVideoDetails(context.Background(), "dQw4w9WgXcQ")
 
 		// Assert
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "error al hacer la solicitud a la API de YouTube")
+		assert.Contains(t, err.Error(), "Error al hacer la solicitud a la API de YouTube:")
 	})
 
 	t.Run("debe retornar error cuando la respuesta de la API no se puede decodificar", func(t *testing.T) {
@@ -180,7 +180,7 @@ func TestYouTubeClient_GetVideoDetails(t *testing.T) {
 
 		// Assert
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "error al decodificar la respuesta de la API de YouTube")
+		assert.Contains(t, err.Error(), "Error al decodificar la respuesta de la API de YouTube:")
 	})
 	t.Run("debe manejar correctamente errores detallados de la API", func(t *testing.T) {
 		// Arrange
@@ -296,7 +296,7 @@ func TestYouTubeClient_SearchVideoID(t *testing.T) {
 
 		// Assert
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "no se encontraron videos para la consulta")
+		assert.Contains(t, err.Error(), "No se encontraron videos para la consulta:")
 	})
 
 	t.Run("debe manejar error de la API con detalles", func(t *testing.T) {
@@ -355,7 +355,7 @@ func TestYouTubeClient_SearchVideoID(t *testing.T) {
 
 		// Assert
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "error al hacer la solicitud a la API de YouTube")
+		assert.Contains(t, err.Error(), "Error al hacer la solicitud a la API de YouTube:")
 	})
 }
 
@@ -400,7 +400,7 @@ func TestExtractVideoIDFromURL(t *testing.T) {
 			// Assert
 			if tc.hasError {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "URL de YouTube invalida")
+				assert.Contains(t, err.Error(), "URL de YouTube inválida:")
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tc.expected, result)
