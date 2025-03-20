@@ -8,7 +8,7 @@ ARG TARGETARCH
 ARG TARGETOS
 RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o main cmd/local/main.go
 
-FROM alpine:latest
+FROM alpine:3.21.3
 RUN apk --no-cache add ca-certificates ffmpeg python3 py3-pip curl \
     && python3 -m venv /venv \
     && /venv/bin/pip install --upgrade pip \

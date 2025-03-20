@@ -59,12 +59,17 @@ func NewKafkaService(cfgApplication *config.Config, log logger.Logger) (*KafkaSe
 		return nil, err
 	}
 
-	return &KafkaService{
+	kafkaService := &KafkaService{
 		Config:   cfgApplication,
 		Producer: producer,
 		Consumer: consumer,
 		Log:      log,
-	}, nil
+	}
+
+	if err := kafkaService.EnsureTopicExists(cfgApplication.Messaging.Kafka.Topic); err != nil {
+		return nil, err
+	}
+	return kafkaService, nil
 }
 
 // SendMessage envía un mensaje al tema de Kafka especificado en la configuración.
@@ -139,7 +144,7 @@ func (k *KafkaService) ReceiveMessage(ctx context.Context) ([]model.MediaProcess
 
 // DeleteMessage registra un mensaje indicando que Kafka no admite la eliminación de mensajes individuales.
 // Los mensajes se eliminan automáticamente según el período de retención.
-func (k *KafkaService) DeleteMessage(ctx context.Context, receiptHandle string) error {
+func (k *KafkaService) DeleteMessage(_ context.Context, receiptHandle string) error {
 	log := k.Log.With(
 		zap.String("component", "KafkaService"),
 		zap.String("method", "DeleteMessage"),
@@ -158,4 +163,42 @@ func (k *KafkaService) Close() error {
 
 	log.Info("Cerrando el productor de Kafka")
 	return k.Producer.Close()
+}
+
+func (k *KafkaService) EnsureTopicExists(topic string) error {
+	log := k.Log.With(
+		zap.String("component", "KafkaService"),
+		zap.String("method", "EnsureTopicExists"),
+		zap.String("topic", topic),
+	)
+
+	admin, err := sarama.NewClusterAdmin(k.Config.Messaging.Kafka.Brokers, sarama.NewConfig())
+	if err != nil {
+		log.Error("Error al crear el administrador de Kafka", zap.Error(err))
+		return errors.Wrap(err, "error al crear el administrador de Kafka")
+	}
+	defer admin.Close()
+
+	topics, err := admin.ListTopics()
+	if err != nil {
+		log.Error("Error al listar los topics", zap.Error(err))
+		return errors.Wrap(err, "error al listar los topics")
+	}
+
+	if _, exists := topics[topic]; !exists {
+		log.Info("El topic no existe, creándolo...", zap.String("topic", topic))
+		err := admin.CreateTopic(topic, &sarama.TopicDetail{
+			NumPartitions:     1,
+			ReplicationFactor: 1,
+		}, false)
+		if err != nil {
+			log.Error("Error al crear el topic", zap.Error(err))
+			return errors.Wrap(err, "error al crear el topic")
+		}
+		log.Info("Topic creado exitosamente", zap.String("topic", topic))
+	} else {
+		log.Info("El topic ya existe", zap.String("topic", topic))
+	}
+
+	return nil
 }

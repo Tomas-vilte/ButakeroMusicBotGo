@@ -5,7 +5,6 @@ package local_storage
 import (
 	"context"
 	"errors"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/stretchr/testify/mock"
 	"io"
@@ -17,13 +16,6 @@ import (
 
 func TestLocalStorage_GetAudio(t *testing.T) {
 	tempDir := t.TempDir()
-	validCfg := &config.Config{
-		Storage: config.StorageConfig{
-			LocalConfig: config.LocalConfig{
-				Directory: tempDir,
-			},
-		},
-	}
 	mockLogger := new(logging.MockLogger)
 
 	testContent := []byte("test audio content")
@@ -37,12 +29,9 @@ func TestLocalStorage_GetAudio(t *testing.T) {
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 
 	t.Run("Caso exitoso - archivo válido", func(t *testing.T) {
-		storage, err := NewLocalStorage(validCfg, mockLogger)
-		if err != nil {
-			t.Fatalf("Error creando storage: %v", err)
-		}
+		storage := NewLocalStorage(mockLogger)
 
-		rc, err := storage.GetAudio(context.Background(), "test.mp3")
+		rc, err := storage.GetAudio(context.Background(), testFile)
 		if err != nil {
 			t.Fatalf("Error inesperado: %v", err)
 		}
@@ -59,30 +48,30 @@ func TestLocalStorage_GetAudio(t *testing.T) {
 	})
 
 	t.Run("Archivo no encontrado", func(t *testing.T) {
-		storage, _ := NewLocalStorage(validCfg, mockLogger)
+		storage := NewLocalStorage(mockLogger)
 
-		_, err := storage.GetAudio(context.Background(), "inexistente.mp3")
-		if !errors.Is(err, os.ErrNotExist) {
+		_, err := storage.GetAudio(context.Background(), filepath.Join(tempDir, "inexistente.mp3"))
+		if !os.IsNotExist(err) {
 			t.Errorf("Error esperado: %v, Obtenido: %v", os.ErrNotExist, err)
 		}
 	})
 
 	t.Run("Contexto cancelado", func(t *testing.T) {
-		storage, _ := NewLocalStorage(validCfg, mockLogger)
+		storage := NewLocalStorage(mockLogger)
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
-		_, err := storage.GetAudio(ctx, "test.mp3")
+		_, err := storage.GetAudio(ctx, testFile)
 		if !errors.Is(err, context.Canceled) {
 			t.Errorf("Error esperado: %v, Obtenido: %v", context.Canceled, err)
 		}
 	})
 
 	t.Run("Cierre del archivo por contexto", func(t *testing.T) {
-		storage, _ := NewLocalStorage(validCfg, mockLogger)
+		storage := NewLocalStorage(mockLogger)
 		ctx, cancel := context.WithCancel(context.Background())
 
-		rc, err := storage.GetAudio(ctx, "test.mp3")
+		rc, err := storage.GetAudio(ctx, testFile)
 		if err != nil {
 			t.Fatalf("Error inesperado: %v", err)
 		}

@@ -1,0 +1,22 @@
+FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+COPY cmd/ cmd/
+COPY internal/ internal/
+
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+
+RUN go build -gcflags="all=-N -l" -o main cmd/main.go
+
+FROM alpine:3.21.3
+
+WORKDIR /root/
+
+COPY --from=builder /app/main .
+COPY --from=builder /go/bin/dlv /usr/local/bin/dlv
+
+EXPOSE 40000
+
+CMD ["dlv", "exec", "./main", "--headless", "--listen=:40000", "--api-version=2", "--log"]
