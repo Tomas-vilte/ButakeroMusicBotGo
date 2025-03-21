@@ -40,25 +40,20 @@ func setupTestContainer(ctx context.Context) (*TestContainer, error) {
 		return nil, fmt.Errorf("error obteniendo puerto mapeado: %w", err)
 	}
 
-	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-		return aws.Endpoint{
-			URL: fmt.Sprintf("http://localhost:%s", port),
-		}, nil
-	})
-
+	customEndpoint := fmt.Sprintf("http://localhost:%s", port)
 	cfg, err := cfgAws.LoadDefaultConfig(ctx,
 		cfgAws.WithRegion("us-east-1"),
-		cfgAws.WithEndpointResolverWithOptions(customResolver),
 		cfgAws.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
 			"test", "test", "test",
 		)),
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("error cargando config AWS: %w", err)
 	}
 
-	client := sqs.NewFromConfig(cfg)
+	client := sqs.NewFromConfig(cfg, func(o *sqs.Options) {
+		o.BaseEndpoint = aws.String(customEndpoint)
+	})
 
 	queueName := "test-queue"
 	createQueueInput := &sqs.CreateQueueInput{

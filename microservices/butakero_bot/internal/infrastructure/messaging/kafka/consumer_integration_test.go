@@ -4,6 +4,7 @@ package kafka
 
 import (
 	"context"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"testing"
 	"time"
 
@@ -90,7 +91,7 @@ func TestIntegrationKafkaConsumer(t *testing.T) {
 	configKafka := KafkaConfig{
 		Brokers: brokers,
 		Topic:   topic,
-		TLS:     false,
+		TLS:     shared.TLSConfig{},
 	}
 
 	logger, err := logging.NewDevelopmentLogger()
