@@ -19,8 +19,9 @@ func ErrorHandlerMiddleware() gin.HandlerFunc {
 			if errors.As(err, &appErr) {
 				errorResponse := gin.H{
 					"error": gin.H{
-						"code":    appErr.Code,
-						"message": appErr.Message,
+						"code":     appErr.Code,
+						"message":  appErr.Message,
+						"video_id": appErr.VideoID,
 					},
 					"success": false,
 				}

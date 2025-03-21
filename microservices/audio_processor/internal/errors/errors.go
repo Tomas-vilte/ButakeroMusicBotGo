@@ -79,6 +79,7 @@ type AppError struct {
 	Code    string
 	Message string
 	Err     error
+	VideoID string
 }
 
 func NewAppError(code, message string) *AppError {
@@ -88,12 +89,19 @@ func NewAppError(code, message string) *AppError {
 	}
 }
 
-func (e *AppError) WithMessage(msg string) *AppError {
-	return &AppError{
-		Code:    e.Code,
-		Message: msg,
-		Err:     e.Err,
+func (e *AppError) WithMessage(msg ...string) *AppError {
+	result := &AppError{
+		Code: e.Code,
+		Err:  e.Err,
 	}
+
+	if len(msg) > 0 {
+		result.Message = msg[0]
+		if len(msg) > 1 {
+			result.Message = msg[1]
+		}
+	}
+	return result
 }
 
 func IsAppError(err error) bool {

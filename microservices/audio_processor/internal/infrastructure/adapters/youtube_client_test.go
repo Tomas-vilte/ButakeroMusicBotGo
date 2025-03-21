@@ -37,8 +37,8 @@ func TestYouTubeClient_GetVideoDetails(t *testing.T) {
 							"channelTitle": "Test Channel",
 							"publishedAt":  publishedDate,
 							"thumbnails": map[string]interface{}{
-								"default": map[string]interface{}{
-									"url": "http://test.com/thumb.jpg",
+								"maxres": map[string]interface{}{
+									"url": "https://test.com/thumb.jpg",
 								},
 							},
 						},
@@ -70,7 +70,7 @@ func TestYouTubeClient_GetVideoDetails(t *testing.T) {
 		assert.Equal(t, "Test Description", details.Description)
 		assert.Equal(t, "Test Channel", details.Creator)
 		assert.Equal(t, int64(330000), details.DurationMs)
-		assert.Equal(t, "http://test.com/thumb.jpg", details.ThumbnailURL)
+		assert.Equal(t, "https://test.com/thumb.jpg", details.ThumbnailURL)
 		assert.Equal(t, "https://youtube.com/watch?v="+expectedID, details.URL)
 
 		expectedPublishedAt, _ := time.Parse(time.RFC3339, publishedDate)
@@ -343,7 +343,7 @@ func TestYouTubeClient_SearchVideoID(t *testing.T) {
 		// Arrange
 		mockLogger := new(logger.MockLogger)
 		client := NewYouTubeClient("test-key", mockLogger)
-		client.BaseURL = "http://invalid-url-that-doesnt-exist-123456789.com"
+		client.BaseURL = "https://invalid-url-that-doesnt-exist-123456789.com"
 
 		mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 		mockLogger.On("Info", mock.Anything, mock.Anything).Return()

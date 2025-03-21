@@ -100,9 +100,9 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*m
 			ID      string `json:"id"`
 			Snippet struct {
 				Thumbnails struct {
-					Default struct {
+					MaxRes struct {
 						URL string `json:"url"`
-					} `json:"default"`
+					} `json:"maxres"`
 				} `json:"thumbnails"`
 				Title        string `json:"title"`
 				Description  string `json:"description"`
@@ -144,7 +144,7 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*m
 		Description:  item.Snippet.Description,
 		Creator:      item.Snippet.ChannelTitle,
 		DurationMs:   durationMs,
-		ThumbnailURL: item.Snippet.Thumbnails.Default.URL,
+		ThumbnailURL: item.Snippet.Thumbnails.MaxRes.URL,
 		PublishedAt:  publishedAt,
 		URL:          fmt.Sprintf("https://youtube.com/watch?v=%s", videoID),
 		Provider:     "YouTube",
