@@ -21,6 +21,9 @@ func TestMediaService_CreateMedia(t *testing.T) {
 	media := &model.Media{
 		VideoID: "test-video-id",
 		Status:  "starting",
+		Metadata: &model.PlatformMetadata{
+			Title: "test-title",
+		},
 	}
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
@@ -45,6 +48,9 @@ func TestMediaService_CreateMedia_Error(t *testing.T) {
 	media := &model.Media{
 		VideoID: "test-video-id",
 		Status:  "starting",
+		Metadata: &model.PlatformMetadata{
+			Title: "test-title",
+		},
 	}
 
 	expectedError := errors.New("repository error")
@@ -122,6 +128,9 @@ func TestMediaService_UpdateMedia(t *testing.T) {
 	media := &model.Media{
 		VideoID: videoID,
 		Status:  "completed",
+		Metadata: &model.PlatformMetadata{
+			Title: "test-title",
+		},
 	}
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
@@ -147,6 +156,9 @@ func TestMediaService_UpdateMedia_Error(t *testing.T) {
 	media := &model.Media{
 		VideoID: videoID,
 		Status:  "completed",
+		Metadata: &model.PlatformMetadata{
+			Title: "test-title",
+		},
 	}
 
 	expectedError := errors.New("repository error")

@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
-
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	errorsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
@@ -51,15 +49,6 @@ func (r *MediaRepository) SaveMedia(ctx context.Context, media *model.Media) err
 		zap.String("method", "SaveMedia"),
 	)
 
-	if media.VideoID == "" {
-		log.Error("video_id no puede estar vacío")
-		return errorsApp.ErrCodeInvalidVideoID
-	}
-
-	now := time.Now()
-	media.CreatedAt = now
-	media.UpdatedAt = now
-
 	_, err := r.collection.InsertOne(ctx, media)
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
@@ -81,11 +70,6 @@ func (r *MediaRepository) GetMedia(ctx context.Context, videoID string) (*model.
 		zap.String("method", "GetMedia"),
 		zap.String("video_id", videoID),
 	)
-
-	if videoID == "" {
-		log.Error("video_id no puede estar vacío")
-		return nil, errorsApp.ErrCodeInvalidVideoID
-	}
 
 	filter := bson.D{
 		{Key: "_id", Value: videoID},
@@ -114,11 +98,6 @@ func (r *MediaRepository) DeleteMedia(ctx context.Context, videoID string) error
 		zap.String("video_id", videoID),
 	)
 
-	if videoID == "" {
-		log.Error("video_id no puede estar vacío")
-		return errorsApp.ErrCodeInvalidVideoID
-	}
-
 	filter := bson.D{
 		{Key: "_id", Value: videoID},
 	}
@@ -145,20 +124,6 @@ func (r *MediaRepository) UpdateMedia(ctx context.Context, videoID string, media
 		zap.String("method", "UpdateMedia"),
 		zap.String("video_id", videoID),
 	)
-
-	if videoID == "" {
-		log.Error("video_id no puede estar vacío")
-		return errorsApp.ErrCodeInvalidVideoID
-	}
-
-	if media.Metadata == nil || media.Metadata.Title == "" || media.Metadata.Platform == "" {
-		log.Error("Metadatos inválidos", zap.Any("metadata", media.Metadata))
-		return errorsApp.ErrCodeInvalidMetadata
-	}
-
-	media.UpdatedAt = time.Now()
-
-	media.VideoID = videoID
 
 	filter := bson.D{
 		{Key: "_id", Value: videoID},

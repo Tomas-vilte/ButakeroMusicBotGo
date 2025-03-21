@@ -10,7 +10,6 @@ var (
 	errorStatusMap = map[string]int{
 		"invalid_input":                http.StatusBadRequest,
 		"invalid_video_id":             http.StatusBadRequest,
-		"invalid_metadata":             http.StatusBadRequest,
 		"s3_invalid_file":              http.StatusBadRequest,
 		"local_invalid_file":           http.StatusBadRequest,
 		"provider_not_found":           http.StatusNotFound,
@@ -57,7 +56,6 @@ var (
 	ErrCodeDBConnectionFailed = NewAppError("db_connection_failed", "Error de conexión a la base de datos")
 	ErrCodeInvalidVideoID     = NewAppError("invalid_video_id", "ID de video inválido")
 	ErrCodeMediaNotFound      = NewAppError("media_not_found", "Media no encontrado")
-	ErrCodeInvalidMetadata    = NewAppError("invalid_metadata", "Metadata inválido")
 	ErrCodeSaveMediaFailed    = NewAppError("save_media_failed", "Error al guardar el media")
 	ErrCodeDeleteMediaFailed  = NewAppError("delete_media_failed", "Error al eliminar el media")
 

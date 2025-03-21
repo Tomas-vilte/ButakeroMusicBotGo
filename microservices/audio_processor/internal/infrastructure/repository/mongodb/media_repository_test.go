@@ -4,6 +4,7 @@ package mongodb_test
 
 import (
 	"context"
+	errorsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"testing"
 	"time"
 
@@ -113,7 +114,7 @@ func TestMediaRepository_GetMedia_NotFound(t *testing.T) {
 
 	_, err = repo.GetMedia(ctx, nonExistentVideoID)
 	assert.Error(t, err, "Se esperaba un error al obtener un registro inexistente")
-	assert.Equal(t, mongodb.ErrMediaNotFound, err, "El error no es el esperado")
+	assert.Equal(t, errorsApp.ErrCodeMediaNotFound, err, "El error no es el esperado")
 }
 
 func TestMediaRepository_UpdateMedia(t *testing.T) {
@@ -220,5 +221,5 @@ func TestMediaRepository_DeleteMedia(t *testing.T) {
 
 	_, err = repo.GetMedia(ctx, media.VideoID)
 	assert.Error(t, err, "Se esperaba un error al obtener un registro eliminado")
-	assert.Equal(t, mongodb.ErrMediaNotFound, err, "El error no es el esperado")
+	assert.Equal(t, errorsApp.ErrCodeMediaNotFound, err, "El error no es el esperado")
 }
