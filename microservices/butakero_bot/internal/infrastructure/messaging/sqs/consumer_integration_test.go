@@ -1,13 +1,14 @@
-//go:build integration
+////go:build integration
 
 package sqs
 
 import (
 	"context"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
+	cfgAws "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/assert"
@@ -39,25 +40,20 @@ func setupTestContainer(ctx context.Context) (*TestContainer, error) {
 		return nil, fmt.Errorf("error obteniendo puerto mapeado: %w", err)
 	}
 
-	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-		return aws.Endpoint{
-			URL: fmt.Sprintf("http://localhost:%s", port),
-		}, nil
-	})
-
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion("us-east-1"),
-		config.WithEndpointResolverWithOptions(customResolver),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+	customEndpoint := fmt.Sprintf("http://localhost:%s", port)
+	cfg, err := cfgAws.LoadDefaultConfig(ctx,
+		cfgAws.WithRegion("us-east-1"),
+		cfgAws.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
 			"test", "test", "test",
 		)),
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("error cargando config AWS: %w", err)
 	}
 
-	client := sqs.NewFromConfig(cfg)
+	client := sqs.NewFromConfig(cfg, func(o *sqs.Options) {
+		o.BaseEndpoint = aws.String(customEndpoint)
+	})
 
 	queueName := "test-queue"
 	createQueueInput := &sqs.CreateQueueInput{
@@ -92,10 +88,14 @@ func TestSQSConsumerIntegration(t *testing.T) {
 		}
 	}()
 
-	cfg := SQSConfig{
-		QueueURL:        container.QueueURL,
-		MaxMessages:     10,
-		WaitTimeSeconds: 5,
+	cfg := &config.Config{
+		QueueConfig: config.QueueConfig{
+			SQSConfig: config.SQSConfig{
+				QueueURL:        container.QueueURL,
+				MaxMessages:     10,
+				WaitTimeSeconds: 5,
+			},
+		},
 	}
 
 	logger, err := logging.NewDevelopmentLogger()
@@ -137,10 +137,14 @@ func TestSQSConsumerIntegration_ErrorStatus(t *testing.T) {
 		}
 	}()
 
-	cfg := SQSConfig{
-		QueueURL:        container.QueueURL,
-		MaxMessages:     10,
-		WaitTimeSeconds: 5,
+	cfg := &config.Config{
+		QueueConfig: config.QueueConfig{
+			SQSConfig: config.SQSConfig{
+				QueueURL:        container.QueueURL,
+				MaxMessages:     10,
+				WaitTimeSeconds: 5,
+			},
+		},
 	}
 
 	logger, err := logging.NewDevelopmentLogger()

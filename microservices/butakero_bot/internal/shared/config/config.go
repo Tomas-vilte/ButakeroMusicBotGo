@@ -1,6 +1,9 @@
 package config
 
 import (
+	"context"
+	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/secretmanager"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"github.com/spf13/viper"
 	"time"
@@ -12,16 +15,36 @@ type (
 		AWS             AWSConfig
 		CommandPrefix   string
 		Discord         Discord
-		Kafka           Kafka
-		MongoDB         MongoConfig
+		QueueConfig     QueueConfig
+		DatabaseConfig  DatabaseConfig
 		ExternalService ExternalService
+	}
+
+	DatabaseConfig struct {
+		MongoDB  MongoConfig
+		DynamoDB DynamoDBConfig
+	}
+
+	DynamoDBConfig struct {
+		SongsTable string
+	}
+
+	QueueConfig struct {
+		KafkaConfig KafkaConfig
+		SQSConfig   SQSConfig
+	}
+
+	SQSConfig struct {
+		QueueURL        string
+		MaxMessages     int32
+		WaitTimeSeconds int32
 	}
 
 	Discord struct {
 		Token string
 	}
 
-	Kafka struct {
+	KafkaConfig struct {
 		Brokers []string
 		Topic   string
 		TLS     shared.TLSConfig
@@ -101,37 +124,41 @@ func LoadConfig() (*Config, error) {
 
 	cfg := &Config{
 		CommandPrefix: viper.GetString("COMMAND_PREFIX"),
-		Kafka: Kafka{
-			Brokers: viper.GetStringSlice("KAFKA_BROKERS"),
-			Topic:   viper.GetString("KAFKA_TOPIC"),
-			TLS: shared.TLSConfig{
-				Enabled:  viper.GetBool("KAFKA_TLS_ENABLED"),
-				CAFile:   viper.GetString("KAFKA_TLS_CA_FILE"),
-				CertFile: viper.GetString("KAFKA_TLS_CERT_FILE"),
-				KeyFile:  viper.GetString("KAFKA_TLS_KEY_FILE"),
+		QueueConfig: QueueConfig{
+			KafkaConfig: KafkaConfig{
+				Brokers: viper.GetStringSlice("KAFKA_BROKERS"),
+				Topic:   viper.GetString("KAFKA_TOPIC"),
+				TLS: shared.TLSConfig{
+					Enabled:  viper.GetBool("KAFKA_TLS_ENABLED"),
+					CAFile:   viper.GetString("KAFKA_TLS_CA_FILE"),
+					CertFile: viper.GetString("KAFKA_TLS_CERT_FILE"),
+					KeyFile:  viper.GetString("KAFKA_TLS_KEY_FILE"),
+				},
 			},
 		},
 		Discord: Discord{
 			Token: viper.GetString("DISCORD_TOKEN"),
 		},
-		MongoDB: MongoConfig{
-			Hosts:      mongoHosts,
-			ReplicaSet: viper.GetString("MONGO_REPLICA_SET_NAME"),
-			Username:   viper.GetString("MONGO_USERNAME"),
-			Port:       viper.GetInt("MONGO_PORT"),
-			Password:   viper.GetString("MONGO_PASSWORD"),
-			Database:   viper.GetString("MONGO_DATABASE"),
-			Collection: viper.GetString("MONGO_COLLECTION"),
-			AuthSource: viper.GetString("MONGO_AUTH_SOURCE"),
-			Timeout:    viper.GetDuration("MONGO_TIMEOUT"),
-			TLS: shared.TLSConfig{
-				Enabled:  viper.GetBool("MONGO_TLS_ENABLED"),
-				CAFile:   viper.GetString("MONGO_TLS_CA_FILE"),
-				CertFile: viper.GetString("MONGO_TLS_CERT_FILE"),
-				KeyFile:  viper.GetString("MONGO_TLS_KEY_FILE"),
+		DatabaseConfig: DatabaseConfig{
+			MongoDB: MongoConfig{
+				Hosts:      mongoHosts,
+				ReplicaSet: viper.GetString("MONGO_REPLICA_SET_NAME"),
+				Username:   viper.GetString("MONGO_USERNAME"),
+				Port:       viper.GetInt("MONGO_PORT"),
+				Password:   viper.GetString("MONGO_PASSWORD"),
+				Database:   viper.GetString("MONGO_DATABASE"),
+				Collection: viper.GetString("MONGO_COLLECTION"),
+				AuthSource: viper.GetString("MONGO_AUTH_SOURCE"),
+				Timeout:    viper.GetDuration("MONGO_TIMEOUT"),
+				TLS: shared.TLSConfig{
+					Enabled:  viper.GetBool("MONGO_TLS_ENABLED"),
+					CAFile:   viper.GetString("MONGO_TLS_CA_FILE"),
+					CertFile: viper.GetString("MONGO_TLS_CERT_FILE"),
+					KeyFile:  viper.GetString("MONGO_TLS_KEY_FILE"),
+				},
+				DirectConnect: viper.GetBool("MONGO_DIRECT_CONNECT"),
+				RetryWrites:   viper.GetBool("MONGO_RETRY_WRITES"),
 			},
-			DirectConnect: viper.GetBool("MONGO_DIRECT_CONNECT"),
-			RetryWrites:   viper.GetBool("MONGO_RETRY_WRITES"),
 		},
 		Storage: StorageConfig{
 			LocalConfig: LocalConfig{
@@ -143,5 +170,50 @@ func LoadConfig() (*Config, error) {
 		},
 	}
 
+	return cfg, nil
+}
+
+func LoadConfigAws() (*Config, error) {
+	region := viper.GetString("AWS_REGION")
+	secretName := viper.GetString("AWS_SECRET_NAME")
+
+	sm, err := secretmanager.NewSecretsManager(region)
+	if err != nil {
+		return nil, fmt.Errorf("error al inicializar secret manager: %w", err)
+	}
+
+	secrets, err := sm.GetSecret(context.TODO(), secretName)
+	if err != nil {
+		return nil, fmt.Errorf("error al obtener secrets: %w", err)
+	}
+
+	cfg := &Config{
+		CommandPrefix: secrets["COMMAND_PREFIX"],
+		Discord: Discord{
+			Token: secrets["DISCORD_TOKEN"],
+		},
+		Storage: StorageConfig{
+			S3Config: S3Config{
+				BucketName: secrets["S3_BUCKET_NAME"],
+				Region:     region,
+			},
+		},
+		AWS: AWSConfig{
+			Region: region,
+		},
+		DatabaseConfig: DatabaseConfig{
+			DynamoDB: DynamoDBConfig{
+				SongsTable: secrets["DYNAMODB_TABLE_SONGS"],
+			},
+		},
+		ExternalService: ExternalService{
+			BaseURL: secrets["AUDIO_PROCESSOR_URL"],
+		},
+		QueueConfig: QueueConfig{
+			SQSConfig: SQSConfig{
+				QueueURL: secrets["SQS_QUEUE_URL"],
+			},
+		},
+	}
 	return cfg, nil
 }

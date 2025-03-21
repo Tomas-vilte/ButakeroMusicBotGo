@@ -70,7 +70,7 @@ func NewMongoDB(opts MongoOptions) (*MongoDB, error) {
 	}
 
 	opts.Log.Info("Conexion exitosa a MongoDB", zap.String("Database", opts.Config.Database.Mongo.Database),
-		zap.Strings("Collections", []string{opts.Config.Database.Mongo.Collections.Songs, opts.Config.Database.Mongo.Collections.Operations}),
+		zap.Strings("Collections", []string{opts.Config.Database.Mongo.Collections.Songs}),
 		zap.Strings("Hosts", opts.Config.Database.Mongo.Host),
 		zap.String("ReplicaSet", opts.Config.Database.Mongo.ReplicaSetName),
 		zap.Bool("TLS", opts.Config.Database.Mongo.EnableTLS))

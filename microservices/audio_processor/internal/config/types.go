@@ -99,14 +99,12 @@ type (
 
 	// Collections nombres de colecciones para MongoDB
 	Collections struct {
-		Songs      string
-		Operations string
+		Songs string
 	}
 
 	// Tables nombres de tablas para DynamoDB
 	Tables struct {
-		Songs      string
-		Operations string
+		Songs string
 	}
 
 	// APIConfig maneja la configuración de APIs externas

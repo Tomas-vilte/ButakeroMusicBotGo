@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -20,33 +21,29 @@ type ClientSQS interface {
 
 type SQSConsumer struct {
 	client      ClientSQS
-	queueURL    string
 	logger      logging.Logger
 	messageChan chan *entity.MessageQueue
-	maxMessages int32
-	waitTime    int32
 	wg          sync.WaitGroup
+	cfg         *config.Config
 }
 
-func NewSQSConsumer(client ClientSQS, config SQSConfig, logger logging.Logger) *SQSConsumer {
+func NewSQSConsumer(client ClientSQS, config *config.Config, logger logging.Logger) *SQSConsumer {
 	logger = logger.With(
 		zap.String("component", "sqs_consumer"),
-		zap.String("queueURL", config.QueueURL),
-		zap.Int32("maxMessages", config.MaxMessages),
-		zap.Int32("waitTimeSeconds", config.WaitTimeSeconds),
+		zap.String("queueURL", config.QueueConfig.SQSConfig.QueueURL),
+		zap.Int32("maxMessages", config.QueueConfig.SQSConfig.MaxMessages),
+		zap.Int32("waitTimeSeconds", config.QueueConfig.SQSConfig.WaitTimeSeconds),
 	)
 
 	return &SQSConsumer{
 		client:      client,
-		queueURL:    config.QueueURL,
 		logger:      logger,
+		cfg:         config,
 		messageChan: make(chan *entity.MessageQueue),
-		maxMessages: config.MaxMessages,
-		waitTime:    config.WaitTimeSeconds,
 	}
 }
 
-func (s *SQSConsumer) ConsumeMessages(ctx context.Context, offset int64) error {
+func (s *SQSConsumer) ConsumeMessages(ctx context.Context, _ int64) error {
 	logger := s.logger.With(zap.String("method", "ConsumeMessages"))
 	logger.Info("Iniciando consumo de mensajes SQS")
 
@@ -72,9 +69,9 @@ func (s *SQSConsumer) receiveAndProcessMessages(ctx context.Context) {
 	logger := s.logger.With(zap.String("method", "receiveAndProcessMessages"))
 
 	input := &sqs.ReceiveMessageInput{
-		QueueUrl:            aws.String(s.queueURL),
-		MaxNumberOfMessages: s.maxMessages,
-		WaitTimeSeconds:     s.waitTime,
+		QueueUrl:            aws.String(s.cfg.QueueConfig.SQSConfig.QueueURL),
+		MaxNumberOfMessages: s.cfg.QueueConfig.SQSConfig.MaxMessages,
+		WaitTimeSeconds:     s.cfg.QueueConfig.SQSConfig.WaitTimeSeconds,
 		MessageSystemAttributeNames: []types.MessageSystemAttributeName{
 			types.MessageSystemAttributeNameAll,
 		},
@@ -134,7 +131,7 @@ func (s *SQSConsumer) deleteMessage(ctx context.Context, msg types.Message) {
 	)
 
 	deleteInput := &sqs.DeleteMessageInput{
-		QueueUrl:      aws.String(s.queueURL),
+		QueueUrl:      aws.String(s.cfg.QueueConfig.SQSConfig.QueueURL),
 		ReceiptHandle: msg.ReceiptHandle,
 	}
 

@@ -55,8 +55,7 @@ func LoadConfigLocal() *Config {
 				ReplicaSetName: os.Getenv("MONGO_REPLICA_SET_NAME"),
 				EnableTLS:      os.Getenv("MONGO_ENABLE_TLS") == "true",
 				Collections: Collections{
-					Songs:      os.Getenv("MONGO_COLLECTION_SONGS"),
-					Operations: os.Getenv("MONGO_COLLECTION_OPERATIONS"),
+					Songs: os.Getenv("MONGO_COLLECTION_SONGS"),
 				},
 			},
 		},
@@ -111,8 +110,7 @@ func LoadConfigAws() *Config {
 			Type: "Dynamodb",
 			DynamoDB: &DynamoDBConfig{
 				Tables: Tables{
-					Songs:      secrets["DYNAMODB_TABLE_SONGS"],
-					Operations: secrets["DYNAMODB_TABLE_OPERATIONS"],
+					Songs: secrets["DYNAMODB_TABLE_SONGS"],
 				},
 			},
 		},
