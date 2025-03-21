@@ -44,7 +44,9 @@ func GeneratePlayingSongEmbed(playMsg *entity.PlayedSong) *discordgo.MessageEmbe
 
 	if playMsg.DiscordSong.ThumbnailURL != "" {
 		embed.Thumbnail = &discordgo.MessageEmbedThumbnail{
-			URL: playMsg.DiscordSong.ThumbnailURL,
+			URL:    playMsg.DiscordSong.ThumbnailURL,
+			Width:  1280,
+			Height: 720,
 		}
 	}
 

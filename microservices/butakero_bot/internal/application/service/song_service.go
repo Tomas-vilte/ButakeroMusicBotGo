@@ -10,7 +10,7 @@ import (
 	"regexp"
 )
 
-type SongService struct {
+type songService struct {
 	songRepo        ports.SongRepository
 	externalService ports.ExternalSongService
 	messageConsumer ports.MessageConsumer
@@ -22,8 +22,8 @@ func NewSongService(
 	externalService ports.ExternalSongService,
 	messageConsumer ports.MessageConsumer,
 	logger logging.Logger,
-) *SongService {
-	return &SongService{
+) ports.SongService {
+	return &songService{
 		songRepo:        songRepo,
 		externalService: externalService,
 		messageConsumer: messageConsumer,
@@ -31,12 +31,12 @@ func NewSongService(
 	}
 }
 
-func (s *SongService) extractURLOrTitle(input string) (string, bool) {
+func (s *songService) extractURLOrTitle(input string) (string, bool) {
 	urlRegex := regexp.MustCompile(`^(https?://)?(www\.)?(youtube\.com|youtu\.?be)/.+$`)
 	return input, urlRegex.MatchString(input)
 }
 
-func (s *SongService) GetOrDownloadSong(ctx context.Context, songInput, providerType string) (*entity.DiscordEntity, error) {
+func (s *songService) GetOrDownloadSong(ctx context.Context, songInput, providerType string) (*entity.DiscordEntity, error) {
 	input, isURL := s.extractURLOrTitle(songInput)
 	s.logger.Info("Procesando solicitud de canción",
 		zap.String("input", input),
@@ -76,6 +76,26 @@ func (s *SongService) GetOrDownloadSong(ctx context.Context, songInput, provider
 	response, err := s.externalService.RequestDownload(ctx, input, providerType)
 	if err != nil {
 		return nil, fmt.Errorf("%s", err)
+	}
+
+	if response.Status == "duplicate_record" {
+		s.logger.Info("El video ya está registrado, consultando la base de datos",
+			zap.String("videoID", response.VideoID))
+
+		song, err := s.songRepo.GetSongByVideoID(ctx, response.VideoID)
+		if err != nil {
+			return nil, fmt.Errorf("error al obtener la canción de la base de datos: %s", err)
+		}
+
+		if song != nil {
+			return &entity.DiscordEntity{
+				TitleTrack:   song.Metadata.Title,
+				DurationMs:   song.Metadata.DurationMs,
+				Platform:     song.Metadata.Platform,
+				FilePath:     song.FileData.FilePath,
+				ThumbnailURL: song.Metadata.ThumbnailURL,
+			}, nil
+		}
 	}
 
 	if !response.Success {

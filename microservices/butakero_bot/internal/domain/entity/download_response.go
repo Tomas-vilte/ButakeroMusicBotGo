@@ -16,5 +16,6 @@ type (
 	ErrorDetail struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
+		VideoID string `json:"video_id"`
 	}
 )

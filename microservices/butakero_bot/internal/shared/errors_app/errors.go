@@ -145,7 +145,7 @@ func (e *AppError) StatusCode() int {
 
 // apiErrorMapping es un mapa que asocia los códigos de error de la API externa con los errores personalizados.
 var apiErrorMapping = map[string]*AppError{
-	"duplicate_record":       NewAppError(ErrCodeAPIDuplicateRecord, "La canción ya está en la lista de reproducción", nil),
+	"duplicate_record":       NewAppError(ErrCodeAPIDuplicateRecord, "La canción con ID '%s' ya está registrada", nil),
 	"provider_not_found":     NewAppError(ErrCodeProviderNotFound, "El proveedor de música no fue encontrado", nil),
 	"youtube_api_error":      NewAppError(ErrCodeYouTubeAPIError, "Error en la API de YouTube", nil),
 	"download_failed":        NewAppError(ErrCodeDownloadFailed, "Error al descargar la canción", nil),
