@@ -2,6 +2,7 @@ package dynamodb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
@@ -56,10 +57,19 @@ func (r *MediaRepositoryDynamoDB) SaveMedia(ctx context.Context, media *model.Me
 	}
 
 	_, err = r.client.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName: aws.String(r.cfg.Database.DynamoDB.Tables.Songs),
-		Item:      item,
+		TableName:           aws.String(r.cfg.Database.DynamoDB.Tables.Songs),
+		Item:                item,
+		ConditionExpression: aws.String("attribute_not_exists(PK) AND attribute_not_exists(SK)"),
 	})
 	if err != nil {
+		var condCheckErr *types.ConditionalCheckFailedException
+		if errors.As(err, &condCheckErr) {
+			log.Warn("Registro de media ya existe en DynamoDB", zap.String("video_id", media.VideoID))
+			return errorsApp.ErrDuplicateRecord.WithMessage(
+				fmt.Sprintf("El video con ID '%s' ya está registrado.", media.VideoID),
+				media.VideoID,
+			)
+		}
 		log.Error("Error al guardar el registro de media en DynamoDB", zap.Error(err))
 		return errorsApp.ErrCodeSaveMediaFailed.WithMessage(fmt.Sprintf("error al guardar el registro de media en DynamoDB: %v", err))
 	}
