@@ -23,7 +23,6 @@ module "secret_manager" {
     "GIN_MODE": var.gin_mode
     "YOUTUBE_API_KEY": var.youtube_api_key
     "SQS_QUEUE_URL": module.messaging.queue_url
-    "OAUTH2": var.oauth2_enabled
     "S3_BUCKET_NAME": module.storage.bucket_name
     "DYNAMODB_TABLE_SONGS": module.database.songs_table_name
     "SERVICE_MAX_ATTEMPTS": var.service_max_attempts

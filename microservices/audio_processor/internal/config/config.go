@@ -34,9 +34,6 @@ func LoadConfigLocal() *Config {
 				Cookies: os.Getenv("COOKIES_YOUTUBE"),
 				ApiKey:  os.Getenv("YOUTUBE_API_KEY"),
 			},
-			OAuth2: OAuth2Config{
-				Enabled: os.Getenv("OAUTH2"),
-			},
 		},
 		Storage: StorageConfig{
 			Type: "local-storage",
@@ -102,9 +99,6 @@ func LoadConfigAws() *Config {
 			YouTube: YouTubeConfig{
 				ApiKey:  secrets["YOUTUBE_API_KEY"],
 				Cookies: secrets["COOKIES_YOUTUBE"],
-			},
-			OAuth2: OAuth2Config{
-				Enabled: secrets["OAUTH2"],
 			},
 		},
 		Storage: StorageConfig{

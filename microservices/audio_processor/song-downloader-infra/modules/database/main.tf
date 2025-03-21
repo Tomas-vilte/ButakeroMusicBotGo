@@ -15,61 +15,6 @@ resource "aws_dynamodb_table" "songs" {
   }
 
   attribute {
-    name = "title_lower"
-    type = "S"
-  }
-
-  attribute {
-    name = "url"
-    type = "S"
-  }
-
-  attribute {
-    name = "created_at"
-    type = "S"
-  }
-
-  attribute {
-    name = "updated_at"
-    type = "S"
-  }
-
-  attribute {
-    name = "status"
-    type = "S"
-  }
-
-  attribute {
-    name = "message"
-    type = "S"
-  }
-
-  attribute {
-    name = "play_count"
-    type = "N"
-  }
-
-  attribute {
-    name = "attempts"
-    type = "N"
-  }
-
-  attribute {
-    name = "failures"
-    type = "N"
-  }
-
-  attribute {
-    name = "processing_date"
-    type = "S"
-  }
-
-  attribute {
-    name = "success"
-    type = "BOOL"
-  }
-
-  attribute {
     name = "GSI1PK"
     type = "S"
   }
