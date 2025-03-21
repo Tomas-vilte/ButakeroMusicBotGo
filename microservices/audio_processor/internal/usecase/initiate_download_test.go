@@ -1,4 +1,4 @@
-////go:build !integration
+//go:build !integration
 
 package usecase
 
@@ -36,7 +36,7 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 		wg.Add(1)
 
 		mockVideoService.On("GetMediaDetails", ctx, song, providerType).Return(mediaDetails, nil)
-		mockOperationService.On("StartOperation", ctx, mediaDetails.ID).Return(operationResult, nil)
+		mockOperationService.On("StartOperation", ctx, mediaDetails).Return(operationResult, nil)
 		mockCoreService.On("ProcessMedia", context.Background(), mediaDetails).Run(func(args mock.Arguments) {
 			wg.Done()
 		}).Return(nil)
@@ -78,7 +78,7 @@ func TestInitiateDownloadUseCase_Execute(t *testing.T) {
 		wg.Add(1)
 
 		mockVideoService.On("GetMediaDetails", ctx, song, providerType).Return(mediaDetails, nil)
-		mockOperationService.On("StartOperation", ctx, mediaDetails.ID).Return(operationResult, nil)
+		mockOperationService.On("StartOperation", ctx, mediaDetails).Return(operationResult, nil)
 		mockCoreService.On("ProcessMedia", context.Background(), mediaDetails).Run(func(args mock.Arguments) {
 			wg.Done()
 		}).Return(expectedError)

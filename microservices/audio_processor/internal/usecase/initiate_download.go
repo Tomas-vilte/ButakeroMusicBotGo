@@ -27,7 +27,7 @@ func (uc *InitiateDownloadUseCase) Execute(ctx context.Context, song string, pro
 		return nil, err
 	}
 
-	operationResult, err := uc.operationService.StartOperation(ctx, mediaDetails.ID)
+	operationResult, err := uc.operationService.StartOperation(ctx, mediaDetails)
 	if err != nil {
 		return nil, err
 	}

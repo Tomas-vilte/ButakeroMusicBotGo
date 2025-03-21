@@ -139,7 +139,7 @@ resource "null_resource" "docker_push" {
       cd ..
       aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${module.ecr.repository_url}
       docker buildx create --use
-      docker buildx build --platform linux/arm64 -t ${module.ecr.repository_url}:latest --push .
+      docker buildx build --platform linux/arm64 --build-arg ENV=aws -t ${module.ecr.repository_url}:latest --push .
     EOT
   }
   depends_on = [module.ecr]

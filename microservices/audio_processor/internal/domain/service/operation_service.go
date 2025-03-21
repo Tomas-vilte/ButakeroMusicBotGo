@@ -10,24 +10,24 @@ import (
 )
 
 type operationService struct {
-	repo   ports.MediaRepository
-	logger logger.Logger
+	mediaService ports.MediaService
+	logger       logger.Logger
 }
 
-func NewOperationService(repo ports.MediaRepository, logger logger.Logger) ports.OperationService {
+func NewOperationService(mediaService ports.MediaService, logger logger.Logger) ports.OperationService {
 	return &operationService{
-		repo:   repo,
-		logger: logger,
+		mediaService: mediaService,
+		logger:       logger,
 	}
 }
 
-func (s *operationService) StartOperation(ctx context.Context, videoID string) (*model.OperationInitResult, error) {
+func (s *operationService) StartOperation(ctx context.Context, mediaDetails *model.MediaDetails) (*model.OperationInitResult, error) {
 	media := &model.Media{
-		VideoID:    videoID,
+		VideoID:    mediaDetails.ID,
 		Status:     "starting",
 		TitleLower: "",
 		Metadata: &model.PlatformMetadata{
-			Title:        "",
+			Title:        mediaDetails.Title,
 			DurationMs:   0,
 			URL:          "",
 			ThumbnailURL: "",
@@ -47,9 +47,9 @@ func (s *operationService) StartOperation(ctx context.Context, videoID string) (
 		PlayCount:      0,
 	}
 
-	if err := s.repo.SaveMedia(ctx, media); err != nil {
+	if err := s.mediaService.CreateMedia(ctx, media); err != nil {
 		s.logger.Error("Error al iniciar operación",
-			zap.String("songID", videoID),
+			zap.String("songID", media.VideoID),
 			zap.Error(err))
 		return nil, err
 	}

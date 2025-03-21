@@ -5,7 +5,6 @@ gin_mode = "release"
 service_max_attempts = 5
 service_timeout = 2
 youtube_api_key = ""
-oauth2_enabled = "true"
 container_port = 8080
 secret_name = "butakero-audio-service-secrets"
 

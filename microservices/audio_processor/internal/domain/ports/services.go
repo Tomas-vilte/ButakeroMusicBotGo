@@ -35,6 +35,6 @@ type (
 	}
 
 	OperationService interface {
-		StartOperation(ctx context.Context, videoID string) (*model.OperationInitResult, error)
+		StartOperation(ctx context.Context, mediaDetails *model.MediaDetails) (*model.OperationInitResult, error)
 	}
 )

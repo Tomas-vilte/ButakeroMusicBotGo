@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Aca cambialo por tus credenciales
 REPOSITORY_URL=${REPOSITORY_URL}
 AWS_REGION=${AWS_REGION}
 DOCKERFILE_PATH="."

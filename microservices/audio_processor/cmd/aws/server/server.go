@@ -93,7 +93,7 @@ func StartServer() error {
 	topicPublisherService := service.NewMediaProcessingPublisherService(messaging, log)
 	audioDownloadService := service.NewAudioDownloaderService(downloaderMusic, encoderAudio, log)
 	coreService := service.NewCoreService(mediaService, audioStorageService, topicPublisherService, audioDownloadService, log, cfg)
-	operationService := service.NewOperationService(mediaRepository, log)
+	operationService := service.NewOperationService(mediaService, log)
 
 	providerService := service.NewVideoService(providers, log)
 	initiateDownloadUC := usecase.NewInitiateDownloadUseCase(coreService, providerService, operationService)

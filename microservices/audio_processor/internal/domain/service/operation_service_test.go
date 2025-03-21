@@ -15,12 +15,16 @@ import (
 
 func TestOperationService_StartOperation(t *testing.T) {
 	// Arrange
-	mockRepo := new(MockMediaRepository)
+	mockRepo := new(MockMediaService)
 	mockLogger := new(logger.MockLogger)
 
 	service := NewOperationService(mockRepo, mockLogger)
 
 	videoID := "test-video-id"
+	mediaDetails := &model.MediaDetails{
+		ID:       videoID,
+		Provider: "youtube",
+	}
 	expectedMedia := &model.Media{
 		VideoID:    videoID,
 		Status:     "starting",
@@ -45,12 +49,12 @@ func TestOperationService_StartOperation(t *testing.T) {
 		PlayCount:      0,
 	}
 
-	mockRepo.On("SaveMedia", mock.Anything, mock.MatchedBy(func(media *model.Media) bool {
+	mockRepo.On("CreateMedia", mock.Anything, mock.MatchedBy(func(media *model.Media) bool {
 		return media.VideoID == videoID && media.Status == "starting"
 	})).Return(nil)
 
 	// Act
-	result, err := service.StartOperation(context.Background(), videoID)
+	result, err := service.StartOperation(context.Background(), mediaDetails)
 
 	// Assert
 	assert.NoError(t, err)
@@ -63,19 +67,22 @@ func TestOperationService_StartOperation(t *testing.T) {
 
 func TestOperationService_StartOperation_Error(t *testing.T) {
 	// Arrange
-	mockRepo := new(MockMediaRepository)
+	mockRepo := new(MockMediaService)
 	mockLogger := new(logger.MockLogger)
 
 	service := NewOperationService(mockRepo, mockLogger)
 
 	videoID := "test-video-id"
+	mediaDetails := &model.MediaDetails{
+		ID: videoID,
+	}
 	expectedError := errors.New("repository error")
 
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
-	mockRepo.On("SaveMedia", mock.Anything, mock.AnythingOfType("*model.Media")).Return(expectedError)
+	mockRepo.On("CreateMedia", mock.Anything, mock.Anything).Return(expectedError)
 
 	// Act
-	result, err := service.StartOperation(context.Background(), videoID)
+	result, err := service.StartOperation(context.Background(), mediaDetails)
 
 	// Assert
 	assert.Error(t, err)
