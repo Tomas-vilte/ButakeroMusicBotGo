@@ -94,6 +94,10 @@ func StartBot() error {
 		TableName: cfg.DatabaseConfig.DynamoDB.SongsTable,
 		Client:    dynamoClient,
 	})
+	if err != nil {
+		logger.Error("Error al crear repositorio de canciones", zap.Error(err))
+		return err
+	}
 
 	songService := service.NewSongService(songRepo, externalService, messageConsumer, logger)
 	handler := interactions.NewInteractionHandler(
