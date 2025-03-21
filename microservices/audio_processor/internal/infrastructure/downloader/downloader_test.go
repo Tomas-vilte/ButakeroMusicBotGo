@@ -1,4 +1,4 @@
-//go:build !integration
+////go:build !integration
 
 package downloader
 
@@ -24,9 +24,7 @@ func setupTestDownloader(t *testing.T) (*YTDLPDownloader, logger.Logger) {
 	testLogger, err := logger.NewZapLogger()
 	require.NoError(t, err, "Error creando el logger")
 
-	downloaderAudio, err := NewYTDLPDownloader(testLogger, YTDLPOptions{
-		UseOAuth2: false,
-	})
+	downloaderAudio, err := NewYTDLPDownloader(testLogger, YTDLPOptions{})
 	require.NoError(t, err, "Error creando el downloader")
 
 	return downloaderAudio, testLogger
@@ -39,9 +37,7 @@ func TestDownloadAudio(t *testing.T) {
 			testLogger, err := logger.NewZapLogger()
 			require.NoError(t, err)
 
-			_, err = NewYTDLPDownloader(testLogger, YTDLPOptions{
-				UseOAuth2: false,
-			})
+			_, err = NewYTDLPDownloader(testLogger, YTDLPOptions{})
 			assert.NoError(t, err)
 		})
 
@@ -49,9 +45,7 @@ func TestDownloadAudio(t *testing.T) {
 			testLogger, err := logger.NewZapLogger()
 			require.NoError(t, err)
 
-			_, err = NewYTDLPDownloader(testLogger, YTDLPOptions{
-				UseOAuth2: false,
-			})
+			_, err = NewYTDLPDownloader(testLogger, YTDLPOptions{})
 			assert.NoError(t, err)
 		})
 	})
