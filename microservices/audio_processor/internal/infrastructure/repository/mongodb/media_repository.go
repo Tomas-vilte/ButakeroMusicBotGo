@@ -53,7 +53,7 @@ func (r *MediaRepository) SaveMedia(ctx context.Context, media *model.Media) err
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			log.Warn("ID duplicado al guardar el registro de media, intentando actualizar", zap.Error(err))
-			return errorsApp.ErrDuplicateRecord.WithMessage(fmt.Sprintf("El video con ID '%s' ya está registrado.", media.VideoID))
+			return errorsApp.ErrDuplicateRecord.WithMessage(fmt.Sprintf("El video con ID '%s' ya está registrado.", media.VideoID), media.VideoID)
 		}
 		log.Error("Error al guardar el registro de media", zap.Error(err))
 		return errorsApp.ErrCodeSaveMediaFailed.WithMessage(fmt.Sprintf("error al guardar el registro de media: %v", err))
