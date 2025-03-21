@@ -1,7 +1,6 @@
 package config
 
 import (
-	"strconv"
 	"time"
 )
 
@@ -113,7 +112,6 @@ type (
 	// APIConfig maneja la configuración de APIs externas
 	APIConfig struct {
 		YouTube YouTubeConfig
-		OAuth2  OAuth2Config
 	}
 
 	// YouTubeConfig configuración específica de YouTube API
@@ -121,17 +119,4 @@ type (
 		ApiKey  string
 		Cookies string
 	}
-
-	// OAuth2Config configuración de OAuth2
-	OAuth2Config struct {
-		Enabled string
-	}
 )
-
-func (c OAuth2Config) ParseBool() bool {
-	oAuthEnabled, err := strconv.ParseBool(c.Enabled)
-	if err != nil {
-		return false
-	}
-	return oAuthEnabled
-}

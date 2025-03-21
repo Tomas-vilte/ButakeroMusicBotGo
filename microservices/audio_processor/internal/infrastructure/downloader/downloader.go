@@ -17,14 +17,12 @@ import (
 type (
 	YTDLPDownloader struct {
 		log       logger.Logger
-		useOAuth2 bool
 		cookies   string
 		errorChan chan error
 	}
 
 	YTDLPOptions struct {
-		UseOAuth2 bool
-		Cookies   string
+		Cookies string
 	}
 )
 
@@ -34,7 +32,6 @@ func NewYTDLPDownloader(log logger.Logger, options YTDLPOptions) (*YTDLPDownload
 	}
 	return &YTDLPDownloader{
 		log:       log,
-		useOAuth2: options.UseOAuth2,
 		cookies:   options.Cookies,
 		errorChan: make(chan error, 1),
 	}, nil
@@ -48,7 +45,6 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 
 	log.Info("Iniciando descarga de audio",
 		zap.String("url", url),
-		zap.Bool("useOAuth2", d.useOAuth2),
 		zap.String("cookies", d.cookies),
 	)
 

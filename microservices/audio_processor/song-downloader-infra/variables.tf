@@ -20,13 +20,6 @@ variable "youtube_api_key" {
   type        = string
 }
 
-variable "oauth2_enabled" {
-  description = "Habilitar OAuth2"
-  type        = string
-  default     = "false"
-}
-
-
 variable "container_port" {
   description = "Puerto del contenedor donde corre la aplicacion"
   type        = number
