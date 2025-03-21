@@ -20,7 +20,7 @@ import (
 func TestNewAudioAPIClient_ValidConfig(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
 	config := AudioAPIClientConfig{
-		BaseURL:         "http://valid-url.com",
+		BaseURL:         "https://valid-url.com",
 		Timeout:         5 * time.Second,
 		MaxIdleConns:    10,
 		MaxConnsPerHost: 20,
@@ -46,7 +46,7 @@ func TestNewAudioAPIClient_InvalidBaseURL(t *testing.T) {
 
 	// Assert
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), ErrInvalidBaseURL.Error())
+	assert.Contains(t, err.Error(), "La URL base no es válida")
 	assert.Nil(t, client)
 }
 
@@ -58,7 +58,7 @@ func TestDownloadSong_EmptySongName(t *testing.T) {
 	loggerMock.On("Error", mock.Anything, mock.Anything)
 	_, err := client.DownloadSong(context.Background(), "", "youtube")
 
-	assert.Equal(t, ErrEmptyParameters, err)
+	assert.Contains(t, err.Error(), "Faltan algunos parámetros provider_type/song")
 }
 
 func TestDownloadSong_HTTPError(t *testing.T) {
@@ -81,7 +81,7 @@ func TestDownloadSong_HTTPError(t *testing.T) {
 	_, err := client.DownloadSong(context.Background(), "test-song", "youtube")
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "falló la request")
+	assert.Contains(t, err.Error(), "El servicio de música no está disponible en este momento")
 }
 
 func TestDownloadSong_NonOKStatus(t *testing.T) {
@@ -109,7 +109,72 @@ func TestDownloadSong_NonOKStatus(t *testing.T) {
 
 	// Assert
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "código de estado 500")
+	assert.Contains(t, err.Error(), "Error en la solicitud (Código: 500)")
+}
+
+func TestDownloadSong_APIError_DuplicateRecord(t *testing.T) {
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(entity.APIError{
+			Error: entity.ErrorDetail{
+				Code:    "duplicate_record",
+				Message: "El video con ID 'SRXH9AbT280' ya esta registado",
+			},
+		})
+	}))
+	defer testServer.Close()
+
+	mockLogger := new(logging.MockLogger)
+
+	baseURL, _ := url.Parse(testServer.URL)
+	client := &AudioAPIClient{
+		baseURL:    baseURL,
+		logger:     mockLogger,
+		httpClient: &http.Client{},
+	}
+
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
+
+	_, err := client.DownloadSong(context.Background(), "test-song", "youtube")
+
+	require.Error(t, err)
+	assert.Equal(t, "La canción ya está en la lista de reproducción", err.Error())
+}
+
+func TestDownloadSong_APIError_ProviderNotFound(t *testing.T) {
+	// Arrange
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(entity.APIError{
+			Error: entity.ErrorDetail{
+				Code:    "provider_not_found",
+				Message: "El proveedor no fue encontrado",
+			},
+		})
+	}))
+	defer testServer.Close()
+
+	mockLogger := new(logging.MockLogger)
+
+	baseURL, _ := url.Parse(testServer.URL)
+	client := &AudioAPIClient{
+		baseURL:    baseURL,
+		logger:     mockLogger,
+		httpClient: &http.Client{},
+	}
+
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
+
+	// Act
+	_, err := client.DownloadSong(context.Background(), "test-song", "youtube")
+
+	// Assert
+	require.Error(t, err)
+	assert.Equal(t, "El proveedor de música no fue encontrado", err.Error())
 }
 
 func TestDownloadSong_Success(t *testing.T) {
