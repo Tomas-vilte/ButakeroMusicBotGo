@@ -17,11 +17,11 @@ func CheckDynamoDB(ctx context.Context, cfgApplication *config.Config) (*DynamoD
 
 	client := dynamodb.NewFromConfig(cfg)
 
-	_, err = client.DescribeTable(ctx, &dynamodb.DescribeTableInput{TableName: aws.String(cfgApplication.Database.DynamoDB.Tables.Operations)})
+	_, err = client.DescribeTable(ctx, &dynamodb.DescribeTableInput{TableName: aws.String(cfgApplication.Database.DynamoDB.Tables.Songs)})
 	if err != nil {
 		return nil, fmt.Errorf("error al obtener info de la tabla: %w", err)
 	}
 	return &DynamoDBMetadata{
-		TableName: cfgApplication.Database.DynamoDB.Tables.Operations,
+		TableName: cfgApplication.Database.DynamoDB.Tables.Songs,
 	}, nil
 }

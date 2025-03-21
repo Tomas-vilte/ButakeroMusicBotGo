@@ -1,4 +1,4 @@
-package bot_local
+package bot
 
 import (
 	"context"
@@ -41,13 +41,13 @@ func StartBot() error {
 	defer cancel()
 
 	messageConsumer, err := kafka.NewKafkaConsumer(kafka.KafkaConfig{
-		Brokers: cfg.Kafka.Brokers,
-		Topic:   cfg.Kafka.Topic,
+		Brokers: cfg.QueueConfig.KafkaConfig.Brokers,
+		Topic:   cfg.QueueConfig.KafkaConfig.Topic,
 		TLS: shared.TLSConfig{
-			Enabled:  cfg.Kafka.TLS.Enabled,
-			CAFile:   cfg.Kafka.TLS.CAFile,
-			CertFile: cfg.Kafka.TLS.CertFile,
-			KeyFile:  cfg.Kafka.TLS.KeyFile,
+			Enabled:  cfg.QueueConfig.KafkaConfig.TLS.Enabled,
+			CAFile:   cfg.QueueConfig.KafkaConfig.TLS.CAFile,
+			CertFile: cfg.QueueConfig.KafkaConfig.TLS.CertFile,
+			KeyFile:  cfg.QueueConfig.KafkaConfig.TLS.KeyFile,
 		},
 	}, logger)
 	if err != nil {
@@ -70,30 +70,30 @@ func StartBot() error {
 	connManager := mongodb.NewConnectionManager(mongodb.MongoConfig{
 		Hosts: []mongodb.Host{
 			{
-				Address: cfg.MongoDB.Hosts[0].Address,
-				Port:    cfg.MongoDB.Hosts[0].Port,
+				Address: cfg.DatabaseConfig.MongoDB.Hosts[0].Address,
+				Port:    cfg.DatabaseConfig.MongoDB.Hosts[0].Port,
 			},
 		},
-		ReplicaSet:    cfg.MongoDB.ReplicaSet,
-		DirectConnect: cfg.MongoDB.DirectConnect,
-		Username:      cfg.MongoDB.Username,
-		Password:      cfg.MongoDB.Password,
-		Database:      cfg.MongoDB.Database,
-		RetryWrites:   cfg.MongoDB.RetryWrites,
-		AuthSource:    cfg.MongoDB.AuthSource,
+		ReplicaSet:    cfg.DatabaseConfig.MongoDB.ReplicaSet,
+		DirectConnect: cfg.DatabaseConfig.MongoDB.DirectConnect,
+		Username:      cfg.DatabaseConfig.MongoDB.Username,
+		Password:      cfg.DatabaseConfig.MongoDB.Password,
+		Database:      cfg.DatabaseConfig.MongoDB.Database,
+		RetryWrites:   cfg.DatabaseConfig.MongoDB.RetryWrites,
+		AuthSource:    cfg.DatabaseConfig.MongoDB.AuthSource,
 		TLS: shared.TLSConfig{
-			Enabled:  cfg.MongoDB.TLS.Enabled,
-			CAFile:   cfg.MongoDB.TLS.CAFile,
-			CertFile: cfg.MongoDB.TLS.CertFile,
-			KeyFile:  cfg.MongoDB.TLS.KeyFile,
+			Enabled:  cfg.DatabaseConfig.MongoDB.TLS.Enabled,
+			CAFile:   cfg.DatabaseConfig.MongoDB.TLS.CAFile,
+			CertFile: cfg.DatabaseConfig.MongoDB.TLS.CertFile,
+			KeyFile:  cfg.DatabaseConfig.MongoDB.TLS.KeyFile,
 		},
-		Timeout: cfg.MongoDB.Timeout,
+		Timeout: cfg.DatabaseConfig.MongoDB.Timeout,
 	}, logger)
 	err = connManager.Connect(ctx)
 	if err != nil {
 		panic(err)
 	}
-	collection := connManager.GetDatabase().Collection(cfg.MongoDB.Collection)
+	collection := connManager.GetDatabase().Collection(cfg.DatabaseConfig.MongoDB.Collection)
 	externalService := service.NewExternalAudioService(audioClient, logger)
 	songRepo, err := mongodb.NewMongoDBSongRepository(mongodb.Options{
 		Collection: collection,

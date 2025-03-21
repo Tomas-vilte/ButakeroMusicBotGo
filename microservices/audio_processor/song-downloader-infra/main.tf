@@ -27,6 +27,7 @@ module "secret_manager" {
     "DYNAMODB_TABLE_SONGS": module.database.songs_table_name
     "SERVICE_MAX_ATTEMPTS": var.service_max_attempts
     "SERVICE_TIMEOUT": var.service_timeout
+    "AUDIO_PROCESSOR_URL": module.alb.alb_dns_name
   }
   tags = var.sm_tags
   secret_name = var.secret_name

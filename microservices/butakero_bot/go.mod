@@ -4,14 +4,16 @@ go 1.23.0
 
 require (
 	github.com/IBM/sarama v1.45.0
-	github.com/aws/aws-sdk-go-v2 v1.36.1
+	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.29.6
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.59
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.18.3
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.40.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.51.2
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.35.2
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.37.14
 	github.com/bwmarrin/discordgo v0.28.1
+	github.com/spf13/viper v1.20.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.35.0
 	github.com/testcontainers/testcontainers-go/modules/dynamodb v0.35.0
@@ -27,8 +29,8 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.1 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.28 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.32 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.32 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.34 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.34 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.2 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.3.2 // indirect
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.24.20 // indirect
@@ -98,7 +100,6 @@ require (
 	github.com/spf13/afero v1.12.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
-	github.com/spf13/viper v1.20.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.13 // indirect
@@ -119,6 +120,5 @@ require (
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
-	golang.org/x/time v0.8.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

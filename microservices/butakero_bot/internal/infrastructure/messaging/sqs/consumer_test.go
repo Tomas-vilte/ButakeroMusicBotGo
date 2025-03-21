@@ -5,6 +5,7 @@ package sqs
 import (
 	"context"
 	"errors"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -35,23 +36,27 @@ func TestNewSQSConsumer(t *testing.T) {
 	// Arrange
 	mockClient := new(MockSQSClient)
 	mockLogger := new(logging.MockLogger)
-	config := SQSConfig{
-		QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-		MaxMessages:     10,
-		WaitTimeSeconds: 20,
+	cfg := &config.Config{
+		QueueConfig: config.QueueConfig{
+			SQSConfig: config.SQSConfig{
+				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				MaxMessages:     10,
+				WaitTimeSeconds: 20,
+			},
+		},
 	}
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 
 	// Act
-	consumer := NewSQSConsumer(mockClient, config, mockLogger)
+	consumer := NewSQSConsumer(mockClient, cfg, mockLogger)
 
 	// Assert
 	assert.NotNil(t, consumer)
 	assert.Equal(t, mockClient, consumer.client)
-	assert.Equal(t, config.QueueURL, consumer.queueURL)
-	assert.Equal(t, config.MaxMessages, consumer.maxMessages)
-	assert.Equal(t, config.WaitTimeSeconds, consumer.waitTime)
+	assert.Equal(t, cfg.QueueConfig.SQSConfig.QueueURL, consumer.cfg.QueueConfig.SQSConfig.QueueURL)
+	assert.Equal(t, cfg.QueueConfig.SQSConfig.MaxMessages, consumer.cfg.QueueConfig.SQSConfig.MaxMessages)
+	assert.Equal(t, cfg.QueueConfig.SQSConfig.WaitTimeSeconds, consumer.cfg.QueueConfig.SQSConfig.WaitTimeSeconds)
 	assert.NotNil(t, consumer.messageChan)
 }
 
@@ -61,14 +66,18 @@ func TestSQSConsumer_ConsumeMessages(t *testing.T) {
 
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
-	config := SQSConfig{
-		QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-		MaxMessages:     10,
-		WaitTimeSeconds: 20,
+	cfg := &config.Config{
+		QueueConfig: config.QueueConfig{
+			SQSConfig: config.SQSConfig{
+				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				MaxMessages:     10,
+				WaitTimeSeconds: 20,
+			},
+		},
 	}
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 
-	consumer := NewSQSConsumer(mockClient, config, mockLogger)
+	consumer := NewSQSConsumer(mockClient, cfg, mockLogger)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	err := consumer.ConsumeMessages(ctx, 0)
@@ -105,13 +114,17 @@ func TestSQSConsumer_receiveAndProcessMessages_Success(t *testing.T) {
 	mockClient.On("DeleteMessage", mock.Anything, mock.Anything).Return(
 		&sqs.DeleteMessageOutput{}, nil)
 
-	config := SQSConfig{
-		QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-		MaxMessages:     10,
-		WaitTimeSeconds: 20,
+	cfg := &config.Config{
+		QueueConfig: config.QueueConfig{
+			SQSConfig: config.SQSConfig{
+				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				MaxMessages:     10,
+				WaitTimeSeconds: 20,
+			},
+		},
 	}
 
-	consumer := NewSQSConsumer(mockClient, config, mockLogger)
+	consumer := NewSQSConsumer(mockClient, cfg, mockLogger)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -151,12 +164,16 @@ func TestSQSConsumer_receiveAndProcessMessages_Error(t *testing.T) {
 	mockClient.On("ReceiveMessage", mock.Anything, mock.Anything).Return(
 		&sqs.ReceiveMessageOutput{}, errors.New("test error"))
 
-	config := SQSConfig{
-		QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-		MaxMessages:     10,
-		WaitTimeSeconds: 20,
+	cfg := &config.Config{
+		QueueConfig: config.QueueConfig{
+			SQSConfig: config.SQSConfig{
+				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				MaxMessages:     10,
+				WaitTimeSeconds: 20,
+			},
+		},
 	}
-	consumer := NewSQSConsumer(mockClient, config, mockLogger)
+	consumer := NewSQSConsumer(mockClient, cfg, mockLogger)
 
 	// Act
 	consumer.receiveAndProcessMessages(ctx)
@@ -183,12 +200,16 @@ func TestSQSConsumer_handleMessage_Success(t *testing.T) {
 	mockClient.On("DeleteMessage", mock.Anything, mock.Anything).Return(
 		&sqs.DeleteMessageOutput{}, nil)
 
-	config := SQSConfig{
-		QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-		MaxMessages:     10,
-		WaitTimeSeconds: 20,
+	cfg := &config.Config{
+		QueueConfig: config.QueueConfig{
+			SQSConfig: config.SQSConfig{
+				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				MaxMessages:     10,
+				WaitTimeSeconds: 20,
+			},
+		},
 	}
-	consumer := NewSQSConsumer(mockClient, config, mockLogger)
+	consumer := NewSQSConsumer(mockClient, cfg, mockLogger)
 
 	msg := types.Message{
 		MessageId:     aws.String(msgID),
@@ -231,12 +252,16 @@ func TestSQSConsumer_handleMessage_WarningStatus(t *testing.T) {
 	mockClient.On("DeleteMessage", mock.Anything, mock.Anything).Return(
 		&sqs.DeleteMessageOutput{}, nil)
 
-	config := SQSConfig{
-		QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-		MaxMessages:     10,
-		WaitTimeSeconds: 20,
+	cfg := &config.Config{
+		QueueConfig: config.QueueConfig{
+			SQSConfig: config.SQSConfig{
+				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				MaxMessages:     10,
+				WaitTimeSeconds: 20,
+			},
+		},
 	}
-	consumer := NewSQSConsumer(mockClient, config, mockLogger)
+	consumer := NewSQSConsumer(mockClient, cfg, mockLogger)
 
 	msg := types.Message{
 		MessageId:     aws.String(msgID),
@@ -267,12 +292,16 @@ func TestSQSConsumer_handleMessage_UnmarshalError(t *testing.T) {
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 
-	config := SQSConfig{
-		QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-		MaxMessages:     10,
-		WaitTimeSeconds: 20,
+	cfg := &config.Config{
+		QueueConfig: config.QueueConfig{
+			SQSConfig: config.SQSConfig{
+				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				MaxMessages:     10,
+				WaitTimeSeconds: 20,
+			},
+		},
 	}
-	consumer := NewSQSConsumer(mockClient, config, mockLogger)
+	consumer := NewSQSConsumer(mockClient, cfg, mockLogger)
 
 	msg := types.Message{
 		MessageId:     aws.String(msgID),
@@ -292,14 +321,18 @@ func TestSQSConsumer_GetMessagesChannel(t *testing.T) {
 	mockClient := new(MockSQSClient)
 	mockLogger := new(logging.MockLogger)
 
-	config := SQSConfig{
-		QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
-		MaxMessages:     10,
-		WaitTimeSeconds: 20,
+	cfg := &config.Config{
+		QueueConfig: config.QueueConfig{
+			SQSConfig: config.SQSConfig{
+				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				MaxMessages:     10,
+				WaitTimeSeconds: 20,
+			},
+		},
 	}
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 
-	consumer := NewSQSConsumer(mockClient, config, mockLogger)
+	consumer := NewSQSConsumer(mockClient, cfg, mockLogger)
 
 	ch := consumer.GetMessagesChannel()
 
