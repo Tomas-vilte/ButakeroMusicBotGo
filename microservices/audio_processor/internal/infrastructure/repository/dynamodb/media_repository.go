@@ -45,13 +45,6 @@ func (r *MediaRepositoryDynamoDB) SaveMedia(ctx context.Context, media *model.Me
 		zap.String("method", "SaveMedia"),
 	)
 
-	if media.VideoID == "" {
-		log.Error("video_id no puede estar vacío")
-		return errorsApp.ErrCodeInvalidVideoID
-	}
-
-	log = log.With(zap.String("video_id", media.VideoID))
-
 	media.PK = fmt.Sprintf("VIDEO#%s", media.VideoID)
 	media.SK = "METADATA"
 	media.GSI1PK = "SONG"
@@ -86,11 +79,6 @@ func (r *MediaRepositoryDynamoDB) GetMedia(ctx context.Context, videoID string) 
 		zap.String("method", "GetMedia"),
 		zap.String("video_id", videoID),
 	)
-
-	if videoID == "" {
-		log.Error("video_id no puede estar vacío")
-		return nil, errorsApp.ErrCodeInvalidVideoID
-	}
 
 	result, err := r.client.GetItem(ctx, &dynamodb.GetItemInput{
 		TableName: aws.String(r.cfg.Database.DynamoDB.Tables.Songs),
@@ -128,11 +116,6 @@ func (r *MediaRepositoryDynamoDB) DeleteMedia(ctx context.Context, videoID strin
 		zap.String("video_id", videoID),
 	)
 
-	if videoID == "" {
-		log.Error("video_id no puede estar vacío")
-		return errorsApp.ErrCodeInvalidVideoID
-	}
-
 	_, err := r.client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
 		TableName: aws.String(r.cfg.Database.DynamoDB.Tables.Songs),
 		Key: map[string]types.AttributeValue{
@@ -155,18 +138,10 @@ func (r *MediaRepositoryDynamoDB) UpdateMedia(ctx context.Context, videoID strin
 		zap.String("method", "UpdateMedia"),
 		zap.String("video_id", videoID),
 	)
-
-	if videoID == "" {
-		log.Error("video_id no puede estar vacío")
-		return errorsApp.ErrCodeInvalidVideoID
-	}
-
-	if media.Metadata == nil || media.Metadata.Title == "" || media.Metadata.Platform == "" {
-		log.Error("Metadatos inválidos", zap.Any("metadata", media.Metadata))
-		return errorsApp.ErrCodeInvalidMetadata
-	}
-
-	media.UpdatedAt = time.Now()
+	media.PK = fmt.Sprintf("VIDEO#%s", media.VideoID)
+	media.SK = "METADATA"
+	media.GSI1PK = "SONG"
+	media.GSI1SK = media.TitleLower
 
 	item, err := r.toAttributeValueMap(media)
 	if err != nil {

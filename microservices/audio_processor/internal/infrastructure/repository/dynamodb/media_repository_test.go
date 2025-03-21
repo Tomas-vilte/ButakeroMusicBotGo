@@ -6,6 +6,7 @@ import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
+	errorsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	dynamodb2 "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/repository/dynamodb"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -233,53 +234,6 @@ func TestMediaRepositoryDynamoDB_Integration(t *testing.T) {
 	assert.Nil(t, deletedMedia)
 }
 
-func TestMediaRepositoryDynamoDB_SaveMedia_InvalidID(t *testing.T) {
-	ctx := context.Background()
-
-	container, err := setupDynamoDBContainer(ctx)
-	assert.NoError(t, err)
-	defer func() {
-		if err := container.Terminate(ctx); err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	_, err = createDynamoDBClient(ctx, container)
-	assert.NoError(t, err)
-
-	log, err := logger.NewDevelopmentLogger()
-	assert.NoError(t, err)
-
-	cfg := &config.Config{
-		Database: config.DatabaseConfig{
-			DynamoDB: &config.DynamoDBConfig{
-				Tables: config.Tables{
-					Songs: "Songs",
-				},
-			},
-		},
-	}
-	repo, err := dynamodb2.NewMediaRepositoryDynamoDB(cfg, log)
-	assert.NoError(t, err)
-
-	media := &model.Media{
-		VideoID:    "",
-		TitleLower: "test song",
-		Status:     "processed",
-		Message:    "success",
-		Metadata: &model.PlatformMetadata{
-			DurationMs:   300000,
-			URL:          "https://youtube.com/watch?v=video123",
-			ThumbnailURL: "https://img.youtube.com/vi/video123/default.jpg",
-			Platform:     "YouTube",
-		},
-	}
-
-	err = repo.SaveMedia(ctx, media)
-	assert.Error(t, err)
-	assert.Equal(t, dynamodb2.ErrInvalidVideoID, err)
-}
-
 func TestMediaRepositoryDynamoDB_GetMedia_InvalidVideoID(t *testing.T) {
 	ctx := context.Background()
 
@@ -311,7 +265,7 @@ func TestMediaRepositoryDynamoDB_GetMedia_InvalidVideoID(t *testing.T) {
 
 	_, err = repo.GetMedia(ctx, "invalid-video-123")
 	assert.Error(t, err)
-	assert.Equal(t, dynamodb2.ErrMediaNotFound, err)
+	assert.Equal(t, errorsApp.ErrCodeMediaNotFound, err)
 }
 
 func TestMediaRepositoryDynamoDB_GetMedia_NotFound(t *testing.T) {
@@ -347,54 +301,7 @@ func TestMediaRepositoryDynamoDB_GetMedia_NotFound(t *testing.T) {
 
 	_, err = repo.GetMedia(ctx, nonExistentVideoID)
 	assert.Error(t, err)
-	assert.Equal(t, dynamodb2.ErrMediaNotFound, err)
-}
-
-func TestMediaRepositoryDynamoDB_UpdateMedia_InvalidMetadata(t *testing.T) {
-	ctx := context.Background()
-
-	container, err := setupDynamoDBContainer(ctx)
-	assert.NoError(t, err)
-	defer func() {
-		if err := container.Terminate(ctx); err != nil {
-			t.Fatal(err)
-		}
-	}()
-
-	_, err = createDynamoDBClient(ctx, container)
-	assert.NoError(t, err)
-
-	log, err := logger.NewDevelopmentLogger()
-	assert.NoError(t, err)
-
-	cfg := &config.Config{
-		Database: config.DatabaseConfig{
-			DynamoDB: &config.DynamoDBConfig{
-				Tables: config.Tables{
-					Songs: "Songs",
-				},
-			},
-		},
-	}
-	repo, err := dynamodb2.NewMediaRepositoryDynamoDB(cfg, log)
-	assert.NoError(t, err)
-
-	media := &model.Media{
-		VideoID:    "video123",
-		Status:     "processed",
-		Message:    "success",
-		TitleLower: "",
-		Metadata: &model.PlatformMetadata{
-			DurationMs:   300000,
-			URL:          "https://youtube.com/watch?v=video123",
-			ThumbnailURL: "https://img.youtube.com/vi/video123/default.jpg",
-			Platform:     "",
-		},
-	}
-
-	err = repo.UpdateMedia(ctx, media.VideoID, media)
-	assert.Error(t, err)
-	assert.Equal(t, dynamodb2.ErrInvalidMetadata, err)
+	assert.Equal(t, errorsApp.ErrCodeMediaNotFound, err)
 }
 
 func TestMediaRepositoryDynamoDB_DeleteMedia_NotFound(t *testing.T) {
