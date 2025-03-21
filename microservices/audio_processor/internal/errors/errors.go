@@ -98,7 +98,7 @@ func (e *AppError) WithMessage(msg ...string) *AppError {
 	if len(msg) > 0 {
 		result.Message = msg[0]
 		if len(msg) > 1 {
-			result.Message = msg[1]
+			result.VideoID = msg[1]
 		}
 	}
 	return result
