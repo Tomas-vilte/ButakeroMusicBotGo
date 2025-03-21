@@ -1,6 +1,6 @@
 #!/bin/bash
 
-BROWSER="chrome"                     # Cambia esto por el navegador que estas usando por ej firefox, brave, edge
+BROWSER="chrome"
 COOKIES_FILE="cookies.txt"    
 YT_COOKIES_FILE="yt-cookies.txt"
 

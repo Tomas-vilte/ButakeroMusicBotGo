@@ -13,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"go.uber.org/zap"
-	"time"
 )
 
 type (
@@ -49,10 +48,6 @@ func (r *MediaRepositoryDynamoDB) SaveMedia(ctx context.Context, media *model.Me
 	media.SK = "METADATA"
 	media.GSI1PK = "SONG"
 	media.GSI1SK = media.TitleLower
-
-	now := time.Now()
-	media.CreatedAt = now
-	media.UpdatedAt = now
 
 	item, err := r.toAttributeValueMap(media)
 	if err != nil {

@@ -54,7 +54,7 @@ func (m *MockVideoService) GetMediaDetails(ctx context.Context, song string, pro
 	return args.Get(0).(*model.MediaDetails), args.Error(1)
 }
 
-func (m *MockOperationService) StartOperation(ctx context.Context, mediaID string) (*model.OperationInitResult, error) {
-	args := m.Called(ctx, mediaID)
+func (m *MockOperationService) StartOperation(ctx context.Context, mediaDetails *model.MediaDetails) (*model.OperationInitResult, error) {
+	args := m.Called(ctx, mediaDetails)
 	return args.Get(0).(*model.OperationInitResult), args.Error(1)
 }
