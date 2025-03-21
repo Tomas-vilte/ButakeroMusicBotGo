@@ -114,6 +114,17 @@ func (c *AudioAPIClient) DownloadSong(ctx context.Context, songName, providerTyp
 		}
 
 		apiErr := errors_app.GetAPIError(apiError.Error.Code)
+		if apiErr.Code == errors_app.ErrCodeAPIDuplicateRecord {
+			videoID := apiError.Error.VideoID
+			if videoID == "" {
+				logger.Error("El videoID no está presente en la respuesta de error",
+					zap.String("originalMessage", apiError.Error.Message))
+				return nil, errors_app.NewAppError(errors_app.ErrCodeInternalError, "Error al procesar el mensaje de error", nil)
+			}
+
+			apiErr.Message = fmt.Sprintf(apiErr.Message, videoID)
+		}
+
 		logger.Error("Error de API detectado",
 			zap.String("code", string(apiErr.Code)),
 			zap.String("message", apiErr.Message),

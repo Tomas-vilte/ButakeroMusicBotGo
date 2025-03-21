@@ -140,7 +140,7 @@ func TestDownloadSong_APIError_DuplicateRecord(t *testing.T) {
 	_, err := client.DownloadSong(context.Background(), "test-song", "youtube")
 
 	require.Error(t, err)
-	assert.Equal(t, "La canción ya está en la lista de reproducción", err.Error())
+	assert.Equal(t, err.Error(), "Error al procesar el mensaje de error")
 }
 
 func TestDownloadSong_APIError_ProviderNotFound(t *testing.T) {
