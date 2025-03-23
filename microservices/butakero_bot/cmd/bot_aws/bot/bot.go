@@ -85,8 +85,6 @@ func StartBot() error {
 
 	interactionStorage := storage.NewInMemoryInteractionStorage(logger)
 
-	presenceNotifier := discord.NewDiscordPresenceNotifier()
-
 	dynamoClient := dynamodb.NewFromConfig(cfgAppAws)
 
 	songRepo, err := dynamodbApp.NewDynamoSongRepository(dynamodbApp.Options{
@@ -106,7 +104,6 @@ func StartBot() error {
 		logger,
 		discordMessenger,
 		storageAudio,
-		presenceNotifier,
 		songService,
 	)
 
@@ -132,7 +129,6 @@ func StartBot() error {
 				h(ctx, s, i)
 			}
 		}
-		handler.StartPresenceCheck(s)
 	})
 
 	err = discordClient.Open()

@@ -31,7 +31,6 @@ type InteractionHandler struct {
 	logger           logging.Logger
 	discordMessenger ports.DiscordMessenger
 	storageAudio     ports.StorageAudio
-	presenceNotifier ports.PresenceSubject
 	songService      ports.SongService
 }
 
@@ -42,7 +41,6 @@ func NewInteractionHandler(
 	logger logging.Logger,
 	discordMessenger ports.DiscordMessenger,
 	storageAudio ports.StorageAudio,
-	presenceNotifier ports.PresenceSubject,
 	songService ports.SongService,
 ) *InteractionHandler {
 	return &InteractionHandler{
@@ -52,13 +50,12 @@ func NewInteractionHandler(
 		logger:           logger,
 		discordMessenger: discordMessenger,
 		storageAudio:     storageAudio,
-		presenceNotifier: presenceNotifier,
 		songService:      songService,
 	}
 }
 
 // Ready se llama cuando el bot está listo para recibir interacciones.
-func (handler *InteractionHandler) Ready(s *discordgo.Session, event *discordgo.Ready) {
+func (handler *InteractionHandler) Ready(s *discordgo.Session, _ *discordgo.Ready) {
 	if err := s.UpdateGameStatus(0, fmt.Sprintf("con tu vieja /%s", handler.cfg.CommandPrefix)); err != nil {
 		handler.logger.Error("Error al actualizar el estado del juego", zap.Error(err))
 	}
@@ -77,20 +74,6 @@ func (handler *InteractionHandler) GuildCreate(ctx context.Context, s *discordgo
 			handler.logger.Error("Error al ejecutar el reproductor", zap.Error(err))
 		}
 	}()
-}
-
-func (handler *InteractionHandler) StartPresenceCheck(s *discordgo.Session) {
-
-	//for _, guildPlayer := range handler.guildsPlayers {
-	//	handler.presenceNotifier.AddObserver(guildPlayer)
-	//}
-
-	s.AddHandler(func(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
-		handler.logger.Info("Recibido evento VoiceStateUpdate", zap.String("guildID", vs.GuildID), zap.String("channelID", vs.ChannelID))
-		handler.presenceNotifier.NotifyAll(vs)
-	})
-
-	handler.logger.Info("Comenzando a escuchar eventos de presencia en el canal de voz")
 }
 
 // GuildDelete se llama cuando el bot es removido de un servidor.
@@ -286,7 +269,7 @@ func (handler *InteractionHandler) SkipSong(s *discordgo.Session, ic *discordgo.
 }
 
 // ListPlaylist lista las canciones en la lista de reproducción actual.
-func (handler *InteractionHandler) ListPlaylist(s *discordgo.Session, ic *discordgo.InteractionCreate, acido *discordgo.ApplicationCommandInteractionDataOption) {
+func (handler *InteractionHandler) ListPlaylist(s *discordgo.Session, ic *discordgo.InteractionCreate, _ *discordgo.ApplicationCommandInteractionDataOption) {
 	g, err := s.State.Guild(ic.GuildID)
 	if err != nil {
 		handler.logger.Error("Error al obtener el servidor", zap.Error(err))
@@ -471,12 +454,6 @@ func (handler *InteractionHandler) RegisterEventHandlers(s *discordgo.Session, c
 	// Registrar el manejador de eventos GuildCreate
 	s.AddHandler(func(session *discordgo.Session, event *discordgo.GuildCreate) {
 		handler.GuildCreate(ctx, session, event)
-	})
-
-	s.AddHandler(func(session *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
-		if guildPlayer, ok := handler.guildsPlayers[GuildID(vs.GuildID)]; ok {
-			guildPlayer.UpdateVoiceState(session, vs)
-		}
 	})
 
 	// Registrar el manejador de eventos GuildDelete
