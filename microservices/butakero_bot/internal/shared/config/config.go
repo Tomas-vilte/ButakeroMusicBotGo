@@ -174,6 +174,8 @@ func LoadConfig() (*Config, error) {
 }
 
 func LoadConfigAws() (*Config, error) {
+	viper.AutomaticEnv()
+
 	region := viper.GetString("AWS_REGION")
 	secretName := viper.GetString("AWS_SECRET_NAME")
 

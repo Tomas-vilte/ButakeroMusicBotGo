@@ -134,11 +134,11 @@ func StartBot() error {
 		}
 		handler.StartPresenceCheck(s)
 	})
-	discordClient.Identify.Intents = discordgo.IntentsAll
 
 	err = discordClient.Open()
 	if err != nil {
 		logger.Error("Error al abrir conexión con Discord", zap.Error(err))
+		panic(err)
 	}
 	defer func() {
 		if err := discordClient.Close(); err != nil {

@@ -4,9 +4,12 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd/ cmd/
 COPY internal/ internal/
+
 ARG TARGETARCH
 ARG TARGETOS
-RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o main cmd/main.go
+ARG ENV=bot_aws
+
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o main cmd/${ENV}/main.go
 
 FROM alpine:3.21.3
 

@@ -64,22 +64,22 @@ func NewGuildPlayer(session ports.VoiceSession, songStorage ports.SongStorage, s
 }
 
 // UpdatePresence actualiza la presencia en el canal de voz y maneja la desconexión si es necesario.
-func (p *GuildPlayer) UpdatePresence(voiceState *discordgo.VoiceStateUpdate) {
-	p.logger.Debug("Actualización de presencia recibida", zap.String("guildID", voiceState.GuildID))
-
-	voiceChannelInfo, ok := p.voiceChannelMap[voiceState.GuildID]
-	if !ok {
-		p.logger.Info("No se encontró información para el canal de voz", zap.String("guildID", voiceState.GuildID))
-		return
-	}
-	p.logger.Debug("Información del canal de voz", zap.Int("membersCount", len(voiceChannelInfo.Members)))
-	if len(voiceChannelInfo.Members) == 1 && voiceChannelInfo.BotID == voiceChannelInfo.Members[0].User.ID {
-		p.logger.Warn("Desconectando bot debido a la falta de presencia", zap.String("guildID", voiceState.GuildID))
-		if err := p.Stop(); err != nil {
-			p.logger.Error("falló al detener la reproducción", zap.Error(err))
-		}
-	}
-}
+//func (p *GuildPlayer) UpdatePresence(voiceState *discordgo.VoiceStateUpdate) {
+//	p.logger.Debug("Actualización de presencia recibida", zap.String("guildID", voiceState.GuildID))
+//
+//	voiceChannelInfo, ok := p.voiceChannelMap[voiceState.GuildID]
+//	if !ok {
+//		p.logger.Info("No se encontró información para el canal de voz", zap.String("guildID", voiceState.GuildID))
+//		return
+//	}
+//	p.logger.Debug("Información del canal de voz", zap.Int("membersCount", len(voiceChannelInfo.Members)))
+//	if len(voiceChannelInfo.Members) == 1 && voiceChannelInfo.BotID == voiceChannelInfo.Members[0].User.ID {
+//		p.logger.Warn("Desconectando bot debido a la falta de presencia", zap.String("guildID", voiceState.GuildID))
+//		if err := p.Stop(); err != nil {
+//			p.logger.Error("falló al detener la reproducción", zap.Error(err))
+//		}
+//	}
+//}
 
 // UpdateVoiceState actualiza el mapa de información sobre los canales de voz.
 func (p *GuildPlayer) UpdateVoiceState(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
@@ -281,7 +281,7 @@ func (p *GuildPlayer) Run(ctx context.Context) error {
 	}
 
 	for {
-		p.logger.Info("Esperando triggers")
+		p.logger.Debug("Esperando triggers")
 		select {
 		case <-ctx.Done():
 			p.logger.Info("Contexto cancelado, saliendo del bucle principal")
