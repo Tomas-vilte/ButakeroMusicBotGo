@@ -103,7 +103,7 @@ func (s *InmemorySongStorage) GetSongs() ([]*entity.PlayedSong, error) {
 	defer s.mutex.RUnlock()
 
 	logger := s.logger.With(zap.String("method", "GetSongs"))
-	logger.Info("Obteniendo todas las canciones de la lista de reproducción")
+	logger.Debug("Obteniendo todas las canciones de la lista de reproducción")
 
 	// Se copian las canciones para evitar modificaciones inadvertidas.
 	songs := make([]*entity.PlayedSong, len(s.songs))

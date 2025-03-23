@@ -15,3 +15,5 @@
 /microservices/audio_processor/song-downloader-infra/.terraform.lock.hcl
 /microservices/audio_processor/song-downloader-infra/terraform.tfvars
 /microservices/audio_processor/yt-cookies.txt
+/microservices/butakero_bot/butakero_bot_infra/.terraform/
+/microservices/butakero_bot/butakero_bot_infra/.terraform.lock.hcl

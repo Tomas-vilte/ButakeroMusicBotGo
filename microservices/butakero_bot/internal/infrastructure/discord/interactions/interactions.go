@@ -60,7 +60,7 @@ func NewInteractionHandler(
 // Ready se llama cuando el bot está listo para recibir interacciones.
 func (handler *InteractionHandler) Ready(s *discordgo.Session, event *discordgo.Ready) {
 	if err := s.UpdateGameStatus(0, fmt.Sprintf("con tu vieja /%s", handler.cfg.CommandPrefix)); err != nil {
-		handler.logger.Error("falló al actualizar el estado del juego", zap.Error(err))
+		handler.logger.Error("Error al actualizar el estado del juego", zap.Error(err))
 	}
 }
 
@@ -71,7 +71,7 @@ func (handler *InteractionHandler) GuildCreate(ctx context.Context, s *discordgo
 	}
 	guildPlayer := handler.setupGuildPlayer(GuildID(event.Guild.ID), s)
 	handler.guildsPlayers[GuildID(event.Guild.ID)] = guildPlayer
-	handler.logger.Info("Conectando al servidor", zap.String("guildID", event.Guild.ID))
+	handler.logger.Debug("Conectando al servidor", zap.String("guildID", event.Guild.ID))
 	go func() {
 		if err := guildPlayer.Run(ctx); err != nil {
 			handler.logger.Error("Error al ejecutar el reproductor", zap.Error(err))
@@ -81,9 +81,9 @@ func (handler *InteractionHandler) GuildCreate(ctx context.Context, s *discordgo
 
 func (handler *InteractionHandler) StartPresenceCheck(s *discordgo.Session) {
 
-	for _, guildPlayer := range handler.guildsPlayers {
-		handler.presenceNotifier.AddObserver(guildPlayer)
-	}
+	//for _, guildPlayer := range handler.guildsPlayers {
+	//	handler.presenceNotifier.AddObserver(guildPlayer)
+	//}
 
 	s.AddHandler(func(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
 		handler.logger.Info("Recibido evento VoiceStateUpdate", zap.String("guildID", vs.GuildID), zap.String("channelID", vs.ChannelID))
@@ -130,7 +130,7 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 			Content: "🔍 Buscando tu canción... Esto puede tomar unos momentos.",
 		},
 	}); err != nil {
-		handler.logger.Error("fallo al enviar la respuesta inicial", zap.Error(err))
+		handler.logger.Error("Error al enviar la respuesta inicial", zap.Error(err))
 		return
 	}
 
