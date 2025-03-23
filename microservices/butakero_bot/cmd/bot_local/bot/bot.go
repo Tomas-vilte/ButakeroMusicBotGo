@@ -113,8 +113,6 @@ func StartBot() error {
 
 	interactionStorage := storage.NewInMemoryInteractionStorage(logger)
 
-	presenceNotifier := discord.NewDiscordPresenceNotifier()
-
 	songService := service.NewSongService(songRepo, externalService, messageConsumer, logger)
 	handler := interactions.NewInteractionHandler(
 		interactionStorage,
@@ -122,7 +120,6 @@ func StartBot() error {
 		logger,
 		discordMessenger,
 		storageAudio,
-		presenceNotifier,
 		songService,
 	)
 
@@ -148,7 +145,6 @@ func StartBot() error {
 				h(ctx, s, i)
 			}
 		}
-		handler.StartPresenceCheck(s)
 	})
 	discordClient.Identify.Intents = discordgo.IntentsAll
 

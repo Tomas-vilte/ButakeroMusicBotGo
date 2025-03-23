@@ -8,7 +8,6 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/inmemory"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
-	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 	"sync"
 	"time"
@@ -23,119 +22,28 @@ type Trigger struct {
 
 // GuildPlayer es el reproductor de música para un servidor específico en Discord.
 type GuildPlayer struct {
-	triggerCh       chan Trigger
-	session         ports.VoiceSession
-	songCtxCancel   context.CancelFunc
-	songStorage     ports.SongStorage
-	stateStorage    ports.StateStorage
-	logger          logging.Logger
-	voiceChannelMap map[string]VoiceChannelInfo
-	message         ports.DiscordMessenger
-	storageAudio    ports.StorageAudio
-	mu              sync.Mutex
-}
-
-// VoiceChannelInfo contiene información sobre un canal de voz y su estado.
-type VoiceChannelInfo struct {
-	GuildID         string
-	BotID           string
-	GuildName       string
-	VoiceChannelID  string
-	TextChannelID   string
-	TextChannelName string
-	Members         []*discordgo.Member
-	PlayingSong     *entity.PlayedSong
-	LastUpdated     time.Time
+	triggerCh     chan Trigger
+	session       ports.VoiceSession
+	songCtxCancel context.CancelFunc
+	songStorage   ports.SongStorage
+	stateStorage  ports.StateStorage
+	logger        logging.Logger
+	message       ports.DiscordMessenger
+	storageAudio  ports.StorageAudio
+	mu            sync.Mutex
 }
 
 // NewGuildPlayer crea una nueva instancia de GuildPlayer con los parámetros proporcionados.
 func NewGuildPlayer(session ports.VoiceSession, songStorage ports.SongStorage, stateStorage ports.StateStorage,
 	message ports.DiscordMessenger, storageAudio ports.StorageAudio, logger logging.Logger) *GuildPlayer {
 	return &GuildPlayer{
-		songStorage:     songStorage,
-		stateStorage:    stateStorage,
-		triggerCh:       make(chan Trigger),
-		session:         session,
-		logger:          logger,
-		voiceChannelMap: make(map[string]VoiceChannelInfo),
-		message:         message,
-		storageAudio:    storageAudio,
-	}
-}
-
-// UpdatePresence actualiza la presencia en el canal de voz y maneja la desconexión si es necesario.
-//func (p *GuildPlayer) UpdatePresence(voiceState *discordgo.VoiceStateUpdate) {
-//	p.logger.Debug("Actualización de presencia recibida", zap.String("guildID", voiceState.GuildID))
-//
-//	voiceChannelInfo, ok := p.voiceChannelMap[voiceState.GuildID]
-//	if !ok {
-//		p.logger.Info("No se encontró información para el canal de voz", zap.String("guildID", voiceState.GuildID))
-//		return
-//	}
-//	p.logger.Debug("Información del canal de voz", zap.Int("membersCount", len(voiceChannelInfo.Members)))
-//	if len(voiceChannelInfo.Members) == 1 && voiceChannelInfo.BotID == voiceChannelInfo.Members[0].User.ID {
-//		p.logger.Warn("Desconectando bot debido a la falta de presencia", zap.String("guildID", voiceState.GuildID))
-//		if err := p.Stop(); err != nil {
-//			p.logger.Error("falló al detener la reproducción", zap.Error(err))
-//		}
-//	}
-//}
-
-// UpdateVoiceState actualiza el mapa de información sobre los canales de voz.
-func (p *GuildPlayer) UpdateVoiceState(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	// Obtener información sobre el servidor
-	guild, err := s.State.Guild(vs.GuildID)
-	if err != nil {
-		p.logger.Error("Error al obtener información del servidor", zap.Error(err))
-		return
-	}
-
-	// Verificar si el bot está en el canal de voz
-	var voiceChannelID string
-	for _, voiceState := range guild.VoiceStates {
-		if voiceState.UserID == s.State.User.ID {
-			voiceChannelID = voiceState.ChannelID
-			break
-		}
-	}
-
-	if voiceChannelID == "" {
-		//p.logger.Info("El bot no está en ningún canal de voz en este servidor")
-		return
-	}
-
-	// Obtener información sobre el canal de voz
-	channel, err := s.State.Channel(voiceChannelID)
-	if err != nil {
-		p.logger.Error("Error al obtener información del canal de voz", zap.Error(err))
-		return
-	}
-
-	// Obtener los miembros presentes en el canal de voz
-	var members []*discordgo.Member
-	for _, voiceState := range guild.VoiceStates {
-		if voiceState.ChannelID == voiceChannelID {
-			member, err := s.State.Member(guild.ID, voiceState.UserID)
-			if err != nil {
-				p.logger.Error("Error al obtener información del miembro", zap.Error(err))
-			} else {
-				members = append(members, member)
-			}
-		}
-	}
-
-	// Actualizar el mapa de canales de voz
-	p.voiceChannelMap[vs.GuildID] = VoiceChannelInfo{
-		GuildID:         vs.GuildID,
-		GuildName:       guild.Name,
-		VoiceChannelID:  voiceChannelID,
-		TextChannelName: channel.Name,
-		Members:         members,
-		LastUpdated:     time.Now(),
-		BotID:           s.State.User.ID,
+		songStorage:  songStorage,
+		stateStorage: stateStorage,
+		triggerCh:    make(chan Trigger),
+		session:      session,
+		logger:       logger,
+		message:      message,
+		storageAudio: storageAudio,
 	}
 }
 
@@ -149,11 +57,6 @@ func (p *GuildPlayer) getVoiceAndTextChannels() (voiceChannel string, textChanne
 		return "", "", fmt.Errorf("error al obtener el canal de texto: %w", err)
 	}
 	return voiceChannel, textChannel, nil
-}
-
-// GetVoiceChannelInfo devuelve el mapa con toda la información de los canales de voz y su estado.
-func (p *GuildPlayer) GetVoiceChannelInfo() map[string]VoiceChannelInfo {
-	return p.voiceChannelMap
 }
 
 // AddSong agrega una o más canciones a la lista de reproducción.
