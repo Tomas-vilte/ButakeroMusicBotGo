@@ -19,7 +19,12 @@ resource "aws_security_group" "ecs" {
     description = "Permitir todo el trafico saliente"
   }
 
-  tags = var.tags
+  tags = merge(
+    var.tags,
+    {
+      Name = "${var.project_name}-${var.environment}-ecs-sg"
+    }
+  )
 }
 
 resource "aws_security_group" "alb" {
@@ -31,21 +36,22 @@ resource "aws_security_group" "alb" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["${chomp(data.http.myip.response_body)}/32"]
-    description = "Permitir el trafico HTTP desde la IP del usuario"
+    cidr_blocks = ["10.0.0.0/16"]
+    description = "Permitir el trafico HTTP desde dentro de la VPC"
   }
-  
+
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "Permitir todo el trafico saliente"
+    description = "Permitir trafico TCP saliente al puerto 8080"
   }
 
-  tags = var.tags
-}
-
-data "http" "myip" {
-  url = "https://ipv4.icanhazip.com"
+  tags = merge(
+    var.tags,
+    {
+      Name = "${var.project_name}-${var.environment}-alb-sg"
+    }
+  )
 }
