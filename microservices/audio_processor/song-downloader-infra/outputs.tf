@@ -13,11 +13,6 @@ output "s3_bucket_name" {
   value       = module.storage.bucket_name
 }
 
-output "dns_alb" {
-  description = "DNS Del ALB"
-  value = "https://${module.alb.alb_dns_name}"
-}
-
 output "secret_arn" {
   description = "ARN del secreto en Secrets Manager"
   value       = module.secret_manager.secret_arn
@@ -48,8 +43,12 @@ output "sg_alb_id" {
   description = "ID del security group del ALB"
 }
 
-output "subnet_ids" {
+output "public_subnet_ids" {
   value = module.networking.public_subnet_ids
   description = "Lista de IDs de subnets públicas"
 }
 
+output "private_subnet_ids" {
+  value = module.networking.private_subnet_ids
+    description = "Lista de IDs de subnets privadas"
+}

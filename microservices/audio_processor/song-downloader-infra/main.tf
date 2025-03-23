@@ -27,7 +27,7 @@ module "secret_manager" {
     "DYNAMODB_TABLE_SONGS": module.database.songs_table_name
     "SERVICE_MAX_ATTEMPTS": var.service_max_attempts
     "SERVICE_TIMEOUT": var.service_timeout
-    "AUDIO_PROCESSOR_URL": module.alb.alb_dns_name
+    "AUDIO_PROCESSOR_URL": "http://${module.alb.alb_dns_name}"
   }
   tags = var.sm_tags
   secret_name = var.secret_name
@@ -101,6 +101,7 @@ module "alb" {
   subnet_ids         = module.networking.public_subnet_ids
   tags               = var.alb_tags
   security_group_alb = module.security_groups.security_group_alb_id
+  private_subnet_ids = [module.networking.private_subnet_ids[0], module.networking.private_subnet_ids[1]]
 
   logs_bucket = module.storage.bucket_name
 }

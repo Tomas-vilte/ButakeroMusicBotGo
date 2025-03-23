@@ -14,7 +14,12 @@ variable "vpc_id" {
 }
 
 variable "subnet_ids" {
-  description = "IDs de las subnets"
+  description = "IDs de las subnets (para compatibilidad)"
+  type = list(string)
+}
+
+variable "private_subnet_ids" {
+  description = "IDs de las subnets privadas para el ALB interno"
   type = list(string)
 }
 

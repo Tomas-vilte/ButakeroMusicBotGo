@@ -1,9 +1,9 @@
 resource "aws_lb" "main" {
   name = "${var.project_name}-alb-${var.environment}"
-  internal = false
+  internal = true
   load_balancer_type = "application"
   security_groups = [var.security_group_alb]
-  subnets = var.subnet_ids
+  subnets = var.private_subnet_ids
 
   enable_deletion_protection = false
   preserve_host_header = true
@@ -13,7 +13,7 @@ resource "aws_lb" "main" {
     prefix = "alb/alb-prod"
     enabled = true
   }
-  
+
   tags = var.tags
 }
 
@@ -44,7 +44,7 @@ resource "aws_lb_listener" "main" {
   load_balancer_arn = aws_lb.main.arn
   port = "80"
   protocol = "HTTP"
-  
+
   default_action {
     type = "forward"
     target_group_arn = aws_lb_target_group.main.arn
