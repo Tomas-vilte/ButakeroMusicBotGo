@@ -15,5 +15,41 @@ output "s3_bucket_name" {
 
 output "dns_alb" {
   description = "DNS Del ALB"
-  value = module.alb.alb_dns_name
+  value = "https://${module.alb.alb_dns_name}"
 }
+
+output "secret_arn" {
+  description = "ARN del secreto en Secrets Manager"
+  value       = module.secret_manager.secret_arn
+}
+
+output "ecs_cluster_name" {
+  description = "Nombre del cluster ECS"
+  value       = module.ecs.cluster_name
+}
+
+output "secret_name" {
+  description = "Nombre del secreto en Secret Manager"
+  value = module.secret_manager.secret_name
+}
+
+output "ecs_service_name" {
+  description = "Nombre del servicio ECS"
+  value       = module.ecs.service_name
+}
+
+output "vpc_id" {
+  description = "ID del VPC"
+  value       = module.networking.vpc_id
+}
+
+output "sg_alb_id" {
+  value = module.security_groups.security_group_alb_id
+  description = "ID del security group del ALB"
+}
+
+output "subnet_ids" {
+  value = module.networking.public_subnet_ids
+  description = "Lista de IDs de subnets públicas"
+}
+
