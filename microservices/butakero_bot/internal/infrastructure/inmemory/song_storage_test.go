@@ -91,6 +91,7 @@ func TestInmemorySongStorage_RemoveSong(t *testing.T) {
 func TestInmemorySongStorage_GetSongs(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
 	storage := NewInmemorySongStorage(mockLogger)
@@ -161,6 +162,7 @@ func TestInmemorySongStorage_ClearPlaylist(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
 	storage := NewInmemorySongStorage(mockLogger)
 
