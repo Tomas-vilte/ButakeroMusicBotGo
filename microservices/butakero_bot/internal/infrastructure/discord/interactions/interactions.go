@@ -16,8 +16,13 @@ import (
 )
 
 const (
-	ErrorMessageNotInVoiceChannel = "❌ Debes estar en un canal de voz"
-	ErrorMessageFailedToAddSong   = "❌ No se pudo agregar la canción"
+	ErrorMessageNotInVoiceChannel = "❌ Debes estar en un canal de voz para usar este comando"
+	ErrorMessageFailedToAddSong   = "❌ No se pudo agregar la canción. Por favor, inténtalo de nuevo"
+	ErrorMessageServerNotFound    = "❌ No se pudo encontrar el servidor. Intenta de nuevo más tarde"
+	ErrorMessageNoSongSelected    = "❌ No se seleccionó ninguna canción"
+	ErrorMessageNoSongsAvailable  = "📭 No hay canciones disponibles para agregar"
+	ErrorMessageSongRemovalFailed = "❌ No se pudo eliminar la canción. Verifica la posición"
+	ErrorMessageNoCurrentSong     = "🔇 No se está reproduciendo ninguna canción actualmente"
 )
 
 // GuildID representa el ID de un servidor de Discord.
@@ -89,7 +94,7 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 	g, err := s.State.Guild(ic.GuildID)
 	if err != nil {
 		handler.logger.Error("Error al obtener el servidor", zap.Error(err))
-		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Ocurrió un error al obtener la información del servidor"); err != nil {
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, ErrorMessageServerNotFound); err != nil {
 			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
@@ -122,7 +127,7 @@ func (handler *InteractionHandler) PlaySong(s *discordgo.Session, ic *discordgo.
 		if err != nil {
 			handler.logger.Error("Error al obtener canción", zap.Error(err))
 			if err := handler.discordMessenger.EditOriginalResponse(ic.Interaction, &discordgo.WebhookEdit{
-				Content: shared.StringPtr("❌ Error al obtener la canción: " + err.Error()),
+				Content: shared.StringPtr("❌ No se pudo encontrar o descargar la canción. Verifica el enlace o inténtalo de nuevo"),
 			}); err != nil {
 				handler.logger.Error("Error al actualizar mensaje de error", zap.Error(err))
 			}
@@ -163,7 +168,7 @@ func (handler *InteractionHandler) AddSong(s *discordgo.Session, ic *discordgo.I
 	g, err := s.State.Guild(ic.GuildID)
 	if err != nil {
 		handler.logger.Info("Error al obtener el servidor", zap.Error(err))
-		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Ocurrió un error al obtener la información del servidor"); err != nil {
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, ErrorMessageServerNotFound); err != nil {
 			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
@@ -179,7 +184,7 @@ func (handler *InteractionHandler) AddSong(s *discordgo.Session, ic *discordgo.I
 
 	values := ic.MessageComponentData().Values
 	if len(values) == 0 {
-		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "No se seleccionó ninguna canción"); err != nil {
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, ErrorMessageNoSongSelected); err != nil {
 			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
@@ -187,7 +192,7 @@ func (handler *InteractionHandler) AddSong(s *discordgo.Session, ic *discordgo.I
 
 	songs := handler.storage.GetSongList(ic.ChannelID)
 	if len(songs) == 0 {
-		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "No hay canciones disponibles para agregar"); err != nil {
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, ErrorMessageNoSongsAvailable); err != nil {
 			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
@@ -318,7 +323,7 @@ func (handler *InteractionHandler) RemoveSong(s *discordgo.Session, ic *discordg
 	g, err := s.State.Guild(ic.GuildID)
 	if err != nil {
 		handler.logger.Error("Error al obtener el servidor", zap.Error(err))
-		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Ocurrió un error al obtener la información del servidor"); err != nil {
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, ErrorMessageServerNotFound); err != nil {
 			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
@@ -331,7 +336,7 @@ func (handler *InteractionHandler) RemoveSong(s *discordgo.Session, ic *discordg
 	song, err := guildPlayer.RemoveSong(int(position))
 	if err != nil {
 		handler.logger.Error("Error al eliminar la canción", zap.Error(err))
-		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Error al eliminar la canción"); err != nil {
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, ErrorMessageSongRemovalFailed); err != nil {
 			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
@@ -352,7 +357,7 @@ func (handler *InteractionHandler) GetPlayingSong(s *discordgo.Session, ic *disc
 	g, err := s.State.Guild(ic.GuildID)
 	if err != nil {
 		handler.logger.Error("Error al obtener el servidor", zap.Error(err))
-		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Ocurrió un error al obtener la información del servidor"); err != nil {
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, ErrorMessageServerNotFound); err != nil {
 			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
@@ -362,14 +367,14 @@ func (handler *InteractionHandler) GetPlayingSong(s *discordgo.Session, ic *disc
 	song, err := guildPlayer.GetPlayedSong()
 	if err != nil {
 		handler.logger.Error("Error al obtener la canción actual", zap.Error(err))
-		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Error al obtener la canción actual"); err != nil {
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "Error al obtener la información de la canción"); err != nil {
 			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
 	}
 
 	if song == nil {
-		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, "🔇 No se está reproduciendo ninguna canción"); err != nil {
+		if err := handler.discordMessenger.RespondWithMessage(ic.Interaction, ErrorMessageNoCurrentSong); err != nil {
 			handler.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 		}
 		return
