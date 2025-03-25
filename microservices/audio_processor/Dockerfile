@@ -15,7 +15,9 @@ FROM alpine:3.21.3
 RUN apk --no-cache add ca-certificates ffmpeg python3 py3-pip curl \
     && python3 -m venv /venv \
     && /venv/bin/pip install --upgrade pip \
-    && /venv/bin/pip install yt-dlp
+    && /venv/bin/pip install --upgrade yt-dlp
+
+RUN /venv/bin/yt-dlp --version
 
 WORKDIR /root/
 COPY --from=builder /app/main .
