@@ -7,13 +7,9 @@
 /terraform/terraform.tfvars
 .env
 /logs
-/microservices/audio_processor/credentials.env
-/microservices/audio_processor/credentials_aws.env
-/microservices/audio_processor/test_local.env
-/microservices/audio_processor/rs_keyfile
 /microservices/audio_processor/song-downloader-infra/.terraform/
 /microservices/audio_processor/song-downloader-infra/.terraform.lock.hcl
 /microservices/audio_processor/song-downloader-infra/terraform.tfvars
-/microservices/audio_processor/yt-cookies.txt
 /microservices/butakero_bot/butakero_bot_infra/.terraform/
 /microservices/butakero_bot/butakero_bot_infra/.terraform.lock.hcl
+/yt-cookies.txt
