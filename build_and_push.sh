@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 DOCKER_HUB_USERNAME="tomasvilte"
 VERSION="1.0.0"
 
@@ -8,30 +10,36 @@ read -s DOCKER_HUB_PASSWORD
 
 echo "Construyendo la imagen para audio_processor..."
 cd microservices/audio_processor
-docker build -t ${DOCKER_HUB_USERNAME}/audio_processor:${VERSION} -f dockerfile.local .
+docker build -t ${DOCKER_HUB_USERNAME}/audio_processor:${VERSION} --build-arg ENV=local -f Dockerfile .
 cd ../..
 
 echo "Construyendo la imagen para bot..."
 cd microservices/butakero_bot
-docker build -t ${DOCKER_HUB_USERNAME}/butakero_bot:${VERSION} -f Dockerfile .
+docker build -t ${DOCKER_HUB_USERNAME}/butakero_bot:${VERSION} --build-arg ENV=bot_local -f Dockerfile .
 
 echo "Construyendo la imagen del bot para debug..."
-docker build -t ${DOCKER_HUB_USERNAME}/butakero_bot:${VERSION}-debug -f Dockerfile.debug .
+docker build -t ${DOCKER_HUB_USERNAME}/butakero_bot:${VERSION}-debug --build-arg ENV=bot_local -f Dockerfile.debug .
 cd ../..
 
 echo "Verificando las imágenes construidas..."
 docker images | grep ${DOCKER_HUB_USERNAME}
 
 echo "Iniciando sesión en Docker Hub..."
-echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
+if ! echo "${DOCKER_HUB_PASSWORD}" | docker login -u "${DOCKER_HUB_USERNAME}" --password-stdin; then
+    echo "Error al iniciar sesión en Docker Hub"
+    exit 1
+fi
 
-echo "Subiendo audio_processor a Docker Hub..."
-docker push ${DOCKER_HUB_USERNAME}/audio_processor:${VERSION}
-
-echo "Subiendo bot a Docker Hub..."
-docker push ${DOCKER_HUB_USERNAME}/butakero_bot:${VERSION}
-
-echo "Subiendo bot debug a Docker Hub..."
-docker push ${DOCKER_HUB_USERNAME}/butakero_bot:${VERSION}-debug
+for image in \
+    "audio_processor:${VERSION}" \
+    "butakero_bot:${VERSION}" \
+    "butakero_bot:${VERSION}-debug"
+do
+    echo "Subiendo ${DOCKER_HUB_USERNAME}/${image} a Docker Hub..."
+    if ! docker push "${DOCKER_HUB_USERNAME}/${image}"; then
+        echo "Error al subir ${image}"
+        exit 1
+    fi
+done
 
 echo "¡Proceso completado!"
