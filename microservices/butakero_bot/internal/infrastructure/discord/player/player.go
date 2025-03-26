@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+var _ ports.GuildPlayer = (*GuildPlayer)(nil)
+
 // Trigger representa un disparador para comandos relacionados con la reproducción de música.
 type Trigger struct {
 	Command        string

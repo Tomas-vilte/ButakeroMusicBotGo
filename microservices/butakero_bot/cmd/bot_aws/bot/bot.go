@@ -98,7 +98,7 @@ func StartBot() error {
 	}
 
 	songService := service.NewSongService(songRepo, externalService, messageConsumer, logger)
-	handler := interactions.NewInteractionHandler(
+	handler := commands.NewInteractionHandler(
 		interactionStorage,
 		cfg,
 		logger,
