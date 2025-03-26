@@ -114,6 +114,7 @@ func (p *GuildPlayer) Disconnect() error {
 	}
 
 	if err := p.stateStorage.SetCurrentSong(nil); err != nil {
+		p.logger.Error("Error al limpiar la canción actual", zap.Error(err))
 		return fmt.Errorf("error al limpiar la canción actual: %w", err)
 	}
 
@@ -251,7 +252,11 @@ func (p *GuildPlayer) playPlaylist(ctx context.Context) error {
 		}
 
 		if err := p.playSingleSong(ctx, song, textChannel); err != nil {
-			p.logger.Error("Error reproduciendo canción", zap.Error(err))
+			if !errors.Is(err, context.Canceled) {
+				p.logger.Error("Error reproduciendo canción", zap.Error(err))
+			} else {
+				p.logger.Debug("Reproducción cancelada intencionalmente")
+			}
 			continue
 		}
 
@@ -312,7 +317,9 @@ func (p *GuildPlayer) playSingleSong(ctx context.Context, song *entity.PlayedSon
 	}()
 
 	if err := p.session.SendAudio(songCtx, audioData); err != nil {
-		p.logger.Error("Error al enviar datos de audio", zap.Error(err))
+		if !errors.Is(err, context.Canceled) {
+			p.logger.Error("Error al enviar datos de audio", zap.Error(err))
+		}
 		return err
 	}
 
