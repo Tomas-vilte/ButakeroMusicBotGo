@@ -5,7 +5,8 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/application/service"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/adapters"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interactions"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/commands"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/events"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/storage"
 	sqsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/messaging/sqs"
 	dynamodbApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/repository/dynamodb"
@@ -98,12 +99,11 @@ func StartBot() error {
 	}
 
 	songService := service.NewSongService(songRepo, externalService, messageConsumer, logger)
-	handler := commands.NewInteractionHandler(
+	eventsHandler := events.NewEventHandler(cfg, logger, discordMessenger, storageAudio)
+	handler := commands.NewCommandHandler(
+		eventsHandler,
 		interactionStorage,
-		cfg,
 		logger,
-		discordMessenger,
-		storageAudio,
 		songService,
 	)
 
@@ -116,7 +116,7 @@ func StartBot() error {
 		PlayingNowHandler(handler.GetPlayingSong).
 		AddSongOrPlaylistHandler(handler.AddSong)
 
-	handler.RegisterEventHandlers(discordClient, ctx)
+	eventsHandler.RegisterEventHandlers(discordClient, ctx)
 	discordClient.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		switch i.Type {
 		case discordgo.InteractionMessageComponent:
