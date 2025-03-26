@@ -102,10 +102,55 @@ func (h *EventHandler) RegisterEventHandlers(s *discordgo.Session, ctx context.C
 		h.GuildCreate(ctx, session, event)
 	})
 	s.AddHandler(h.GuildDelete)
+	s.AddHandler(h.VoiceStateUpdate)
 }
 
 func (h *EventHandler) VoiceStateUpdate(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
+	if vs.UserID == s.State.User.ID {
+		return
+	}
 
+	guildID := GuildID(vs.GuildID)
+	_, exists := h.guildsPlayers[guildID]
+	if !exists {
+		return
+	}
+
+	h.checkIfBotIsAlone(s, guildID)
+}
+
+func (h *EventHandler) checkIfBotIsAlone(s *discordgo.Session, guildID GuildID) {
+	guild, err := s.State.Guild(string(guildID))
+	if err != nil {
+		h.logger.Error("Error al obtener el servidor", zap.Error(err))
+		return
+	}
+
+	var botVoiceState *discordgo.VoiceState
+	for _, vs := range guild.VoiceStates {
+		if vs.UserID == s.State.User.ID {
+			botVoiceState = vs
+			break
+		}
+	}
+
+	if botVoiceState == nil {
+		return
+	}
+
+	usersInChannel := 0
+	for _, vs := range guild.VoiceStates {
+		if vs.UserID != s.State.User.ID && vs.ChannelID == botVoiceState.ChannelID {
+			usersInChannel++
+		}
+	}
+
+	if usersInChannel == 0 {
+		guildPlayer := h.GetGuildPlayer(guildID, s)
+		if err := guildPlayer.Stop(); err != nil {
+			h.logger.Error("Error al detener la reproducción", zap.Error(err))
+		}
+	}
 }
 
 func (h *EventHandler) Messenger() ports.DiscordMessenger {

@@ -92,12 +92,29 @@ func (p *GuildPlayer) SkipSong() {
 func (p *GuildPlayer) Stop() error {
 	if err := p.songStorage.ClearPlaylist(); err != nil {
 		p.logger.Error("Error al limpiar la lista de reproducción", zap.Error(err))
-		return fmt.Errorf("al limpiar la lista de reproducción: %w", err)
+		return fmt.Errorf("error al limpiar la lista de reproducción: %w", err)
 	}
+
+	return p.Disconnect()
+}
+
+func (p *GuildPlayer) Disconnect() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	if p.songCtxCancel != nil {
 		p.songCtxCancel()
-		p.logger.Info("Reproducción detenida y lista de reproducción limpia")
+		p.songCtxCancel = nil
+	}
+
+	if p.session != nil {
+		if err := p.session.LeaveVoiceChannel(); err != nil {
+			return fmt.Errorf("error al desconectar del canal de voz: %w", err)
+		}
+	}
+
+	if err := p.stateStorage.SetCurrentSong(nil); err != nil {
+		return fmt.Errorf("error al limpiar la canción actual: %w", err)
 	}
 
 	return nil
