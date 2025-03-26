@@ -6,6 +6,9 @@ module "networking" {
   tags = var.networking_tags
 }
 
+data "aws_caller_identity" "current" {}
+
+
 module "storage" {
   source = "./modules/storage"
 
@@ -54,6 +57,10 @@ module "ecr" {
   project_name = var.project_name
   environment  = var.environment
   tags         = var.ecr_tags
+  aws_account_id = data.aws_caller_identity.current.account_id
+  docker_context_path = "."
+  image_tag = "latest"
+  aws_region = var.aws_region
 }
 
 module "cloudwatch_logs" {
@@ -132,16 +139,4 @@ module "ecs" {
   ecr_repository_url    = module.ecr.repository_url
 
   tags = var.ecs_tags
-}
-
-resource "null_resource" "docker_push" {
-  provisioner "local-exec" {
-    command = <<-EOT
-      cd ..
-      aws ecr get-login-password --region ${var.aws_region} | docker login --username AWS --password-stdin ${module.ecr.repository_url}
-      docker buildx create --use
-      docker buildx build --platform linux/arm64 --build-arg ENV=aws -t ${module.ecr.repository_url}:latest --push .
-    EOT
-  }
-  depends_on = [module.ecr]
 }
