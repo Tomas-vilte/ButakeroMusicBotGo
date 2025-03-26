@@ -13,3 +13,4 @@
 /microservices/butakero_bot/butakero_bot_infra/.terraform/
 /microservices/butakero_bot/butakero_bot_infra/.terraform.lock.hcl
 /yt-cookies.txt
+/microservices/audio_processor/yt-cookies.txt
