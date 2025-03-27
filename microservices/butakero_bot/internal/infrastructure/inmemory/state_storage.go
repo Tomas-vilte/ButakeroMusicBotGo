@@ -1,7 +1,6 @@
 package inmemory
 
 import (
-	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"go.uber.org/zap"
@@ -37,21 +36,23 @@ func (s *InmemoryStateStorage) GetCurrentSong() (*entity.PlayedSong, error) {
 
 // SetCurrentSong establece la canción actual que se está reproduciendo.
 func (s *InmemoryStateStorage) SetCurrentSong(song *entity.PlayedSong) error {
-	if song == nil {
-		s.logger.Warn("Intento de establecer una canción nula")
-		return fmt.Errorf("la canción no puede ser nula")
-	}
-
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	logger := s.logger.With(
 		zap.String("method", "SetCurrentSong"),
-		zap.String("songTitle", song.DiscordSong.TitleTrack),
 	)
 
+	if song != nil {
+		logger = logger.With(zap.String("songTitle", song.DiscordSong.TitleTrack))
+	}
+
 	s.currentSong = song
-	logger.Info("Canción actual establecida")
+	if song == nil {
+		logger.Info("Canción actual limpiada")
+	} else {
+		logger.Info("Canción actual establecida")
+	}
 	return nil
 }
 

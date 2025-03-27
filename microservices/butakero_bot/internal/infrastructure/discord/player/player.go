@@ -92,12 +92,30 @@ func (p *GuildPlayer) SkipSong() {
 func (p *GuildPlayer) Stop() error {
 	if err := p.songStorage.ClearPlaylist(); err != nil {
 		p.logger.Error("Error al limpiar la lista de reproducción", zap.Error(err))
-		return fmt.Errorf("al limpiar la lista de reproducción: %w", err)
+		return fmt.Errorf("error al limpiar la lista de reproducción: %w", err)
 	}
+
+	return p.Disconnect()
+}
+
+func (p *GuildPlayer) Disconnect() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	if p.songCtxCancel != nil {
 		p.songCtxCancel()
-		p.logger.Info("Reproducción detenida y lista de reproducción limpia")
+		p.songCtxCancel = nil
+	}
+
+	if p.session != nil {
+		if err := p.session.LeaveVoiceChannel(); err != nil {
+			return fmt.Errorf("error al desconectar del canal de voz: %w", err)
+		}
+	}
+
+	if err := p.stateStorage.SetCurrentSong(nil); err != nil {
+		p.logger.Error("Error al limpiar la canción actual", zap.Error(err))
+		return fmt.Errorf("error al limpiar la canción actual: %w", err)
 	}
 
 	return nil
@@ -234,7 +252,11 @@ func (p *GuildPlayer) playPlaylist(ctx context.Context) error {
 		}
 
 		if err := p.playSingleSong(ctx, song, textChannel); err != nil {
-			p.logger.Error("Error reproduciendo canción", zap.Error(err))
+			if !errors.Is(err, context.Canceled) {
+				p.logger.Error("Error reproduciendo canción", zap.Error(err))
+			} else {
+				p.logger.Debug("Reproducción cancelada intencionalmente")
+			}
 			continue
 		}
 
@@ -295,7 +317,9 @@ func (p *GuildPlayer) playSingleSong(ctx context.Context, song *entity.PlayedSon
 	}()
 
 	if err := p.session.SendAudio(songCtx, audioData); err != nil {
-		p.logger.Error("Error al enviar datos de audio", zap.Error(err))
+		if !errors.Is(err, context.Canceled) {
+			p.logger.Error("Error al enviar datos de audio", zap.Error(err))
+		}
 		return err
 	}
 
