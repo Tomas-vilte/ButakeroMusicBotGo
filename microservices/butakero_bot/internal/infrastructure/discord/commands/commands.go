@@ -92,8 +92,8 @@ func (h *CommandHandler) AddSong(s *discordgo.Session, ic *discordgo.Interaction
 	}
 
 	playedSong := &entity.PlayedSong{
-		DiscordSong: song,
-		RequestedBy: ic.Member.User.Username,
+		DiscordSong:     song,
+		RequestedByName: ic.Member.User.Username,
 	}
 
 	if err := guildPlayer.AddSong(&ic.ChannelID, &vs.ChannelID, playedSong); err != nil {
@@ -320,8 +320,9 @@ func (h *CommandHandler) handleSongRequest(s *discordgo.Session, ic *discordgo.I
 
 		guildPlayer := h.EventHandler.GetGuildPlayer(events.GuildID(g.ID), s)
 		playedSong := &entity.PlayedSong{
-			DiscordSong: song,
-			RequestedBy: ic.Member.User.Username,
+			DiscordSong:     song,
+			RequestedByName: ic.Member.User.Username,
+			RequestedByID:   ic.Member.User.ID,
 		}
 
 		if err := guildPlayer.AddSong(&ic.ChannelID, &vs.ChannelID, playedSong); err != nil {

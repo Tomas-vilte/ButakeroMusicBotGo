@@ -43,5 +43,7 @@ type (
 		RemoveSong(position int) (*entity.DiscordEntity, error)
 		GetPlaylist() ([]string, error)
 		GetPlayedSong() (*entity.PlayedSong, error)
+		Session() VoiceSession
+		StateStorage() StateStorage
 	}
 )

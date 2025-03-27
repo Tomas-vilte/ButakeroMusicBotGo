@@ -22,11 +22,4 @@ type (
 		GSI1PK         string    `bson:"-" dynamodbav:"GSI1PK"`
 		GSI1SK         string    `bson:"-" dynamodbav:"GSI1SK"`
 	}
-
-	PlayedSong struct {
-		DiscordSong   *DiscordEntity
-		Position      int64
-		RequestedBy   string
-		StartPosition int64
-	}
 )

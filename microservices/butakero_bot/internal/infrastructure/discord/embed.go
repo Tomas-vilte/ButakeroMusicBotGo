@@ -36,7 +36,7 @@ func GeneratePlayingSongEmbed(playMsg *entity.PlayedSong) *discordgo.MessageEmbe
 			},
 			{
 				Name:   "**Solicitado por**",
-				Value:  playMsg.RequestedBy,
+				Value:  playMsg.RequestedByName,
 				Inline: true,
 			},
 		},

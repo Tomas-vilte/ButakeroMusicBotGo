@@ -106,17 +106,90 @@ func (h *EventHandler) RegisterEventHandlers(s *discordgo.Session, ctx context.C
 }
 
 func (h *EventHandler) VoiceStateUpdate(s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
+	// Ignorar eventos del propio bot
 	if vs.UserID == s.State.User.ID {
 		return
 	}
 
 	guildID := GuildID(vs.GuildID)
-	_, exists := h.guildsPlayers[guildID]
+	guildPlayer, exists := h.guildsPlayers[guildID]
 	if !exists {
 		return
 	}
 
-	h.checkIfBotIsAlone(s, guildID)
+	// Obtener el estado actual del bot en el servidor
+	guild, err := s.State.Guild(string(guildID))
+	if err != nil {
+		h.logger.Error("Error al obtener el servidor", zap.Error(err))
+		return
+	}
+
+	// Buscar el estado de voz del bot
+	var botVoiceState *discordgo.VoiceState
+	for _, state := range guild.VoiceStates {
+		if state.UserID == s.State.User.ID {
+			botVoiceState = state
+			break
+		}
+	}
+
+	// Si el bot está en un canal de voz
+	if botVoiceState != nil {
+		// Verificar si el usuario estaba en el canal del bot antes del cambio
+		wasInBotChannel := vs.BeforeUpdate != nil && vs.BeforeUpdate.ChannelID == botVoiceState.ChannelID
+
+		// Verificar si el usuario se movió a un canal diferente
+		movedToDifferentChannel := vs.ChannelID != "" && vs.ChannelID != botVoiceState.ChannelID
+
+		// Si el usuario estaba en el canal del bot y ahora está en otro canal
+		if wasInBotChannel && movedToDifferentChannel {
+			newChannelID := vs.ChannelID
+
+			// Verificar si hay otros usuarios en el canal actual del bot
+			usersInCurrentChannel := 0
+			for _, state := range guild.VoiceStates {
+				if state.UserID != s.State.User.ID && state.ChannelID == botVoiceState.ChannelID {
+					usersInCurrentChannel++
+				}
+			}
+
+			// Mover el bot al nuevo canal si no hay otros usuarios
+			if usersInCurrentChannel == 0 {
+				// Actualizar el canal de voz en el stateStorage
+				if err := guildPlayer.(*player.GuildPlayer).StateStorage().SetVoiceChannel(newChannelID); err != nil {
+					h.logger.Error("Error al actualizar el canal de voz", zap.Error(err))
+					return
+				}
+
+				// Mover el bot al nuevo canal
+				if err := guildPlayer.(*player.GuildPlayer).Session().JoinVoiceChannel(newChannelID); err != nil {
+					h.logger.Error("Error al mover el bot al nuevo canal", zap.Error(err))
+					return
+				}
+
+				h.logger.Info("Bot movido al nuevo canal",
+					zap.String("oldChannel", botVoiceState.ChannelID),
+					zap.String("newChannel", newChannelID),
+					zap.String("userID", vs.UserID))
+
+				return
+			}
+		}
+	}
+
+	// Verificar si el usuario que se fue es el solicitante de la canción actual
+	currentSong, err := guildPlayer.GetPlayedSong()
+	if err != nil {
+		h.logger.Error("Error al obtener la canción actual", zap.Error(err))
+		return
+	}
+
+	if currentSong != nil && vs.UserID == currentSong.RequestedByID {
+		// Verificar si el usuario se desconectó o cambió de canal
+		if vs.ChannelID == "" || (botVoiceState != nil && vs.ChannelID != botVoiceState.ChannelID) {
+			h.checkIfBotIsAlone(s, guildID)
+		}
+	}
 }
 
 func (h *EventHandler) checkIfBotIsAlone(s *discordgo.Session, guildID GuildID) {
@@ -138,15 +211,30 @@ func (h *EventHandler) checkIfBotIsAlone(s *discordgo.Session, guildID GuildID) 
 		return
 	}
 
-	usersInChannel := 0
+	// Obtener la canción actual para verificar el solicitante
+	guildPlayer := h.GetGuildPlayer(guildID, s)
+	currentSong, err := guildPlayer.GetPlayedSong()
+	if err != nil {
+		h.logger.Error("Error al obtener la canción actual", zap.Error(err))
+		return
+	}
+
+	// Verificar usuarios en el canal
+	var requesterInChannel bool
+	otherUsersInChannel := 0
+
 	for _, vs := range guild.VoiceStates {
 		if vs.UserID != s.State.User.ID && vs.ChannelID == botVoiceState.ChannelID {
-			usersInChannel++
+			otherUsersInChannel++
+			// Verificar si el solicitante sigue en el canal
+			if currentSong != nil && vs.UserID == currentSong.RequestedByID {
+				requesterInChannel = true
+			}
 		}
 	}
 
-	if usersInChannel == 0 {
-		guildPlayer := h.GetGuildPlayer(guildID, s)
+	// Si el solicitante no está en el canal y no hay otros usuarios
+	if (currentSong == nil || !requesterInChannel) && otherUsersInChannel == 0 {
 		if err := guildPlayer.Stop(); err != nil {
 			h.logger.Error("Error al detener la reproducción", zap.Error(err))
 		}
