@@ -328,6 +328,16 @@ func (p *GuildPlayer) playSingleSong(ctx context.Context, song *entity.PlayedSon
 	return nil
 }
 
+// Session devuelve la sesión de voz del reproductor
+func (p *GuildPlayer) Session() ports.VoiceSession {
+	return p.session
+}
+
+// StateStorage devuelve el almacenamiento de estado del reproductor
+func (p *GuildPlayer) StateStorage() ports.StateStorage {
+	return p.stateStorage
+}
+
 func (p *GuildPlayer) handleTrigger(ctx context.Context, trigger Trigger) error {
 	switch trigger.Command {
 	case "play":
