@@ -115,7 +115,8 @@ func StartBot() error {
 	interactionStorage := storage.NewInMemoryInteractionStorage(logger)
 
 	songService := service.NewSongService(songRepo, externalService, messageConsumer, logger)
-	eventsHandler := events.NewEventHandler(cfg, logger, discordMessenger, storageAudio)
+	voiceStateService := discord.NewVoiceStateService(logger)
+	eventsHandler := events.NewEventHandler(cfg, logger, discordMessenger, storageAudio, voiceStateService)
 	handler := commands.NewCommandHandler(
 		eventsHandler,
 		interactionStorage,

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/inmemory"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"go.uber.org/zap"
@@ -30,14 +31,14 @@ type GuildPlayer struct {
 	songStorage   ports.SongStorage
 	stateStorage  ports.StateStorage
 	logger        logging.Logger
-	message       ports.DiscordMessenger
+	message       interfaces.DiscordMessenger
 	storageAudio  ports.StorageAudio
 	mu            sync.Mutex
 }
 
 // NewGuildPlayer crea una nueva instancia de GuildPlayer con los parámetros proporcionados.
 func NewGuildPlayer(session ports.VoiceSession, songStorage ports.SongStorage, stateStorage ports.StateStorage,
-	message ports.DiscordMessenger, storageAudio ports.StorageAudio, logger logging.Logger) *GuildPlayer {
+	message interfaces.DiscordMessenger, storageAudio ports.StorageAudio, logger logging.Logger) *GuildPlayer {
 	return &GuildPlayer{
 		songStorage:  songStorage,
 		stateStorage: stateStorage,

@@ -2,7 +2,7 @@ package discord
 
 import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
@@ -14,7 +14,7 @@ type MessengerService struct {
 	logger  logging.Logger
 }
 
-func NewDiscordMessengerService(session *discordgo.Session, logger logging.Logger) ports.DiscordMessenger {
+func NewDiscordMessengerService(session *discordgo.Session, logger logging.Logger) interfaces.DiscordMessenger {
 	return &MessengerService{
 		session: session,
 		logger:  logger,
