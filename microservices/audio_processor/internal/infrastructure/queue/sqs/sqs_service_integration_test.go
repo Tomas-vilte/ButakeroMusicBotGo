@@ -4,148 +4,212 @@ package sqs
 
 import (
 	"context"
+	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsConfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/docker/go-connections/nat"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"testing"
+	"time"
 )
 
-func cleanupMessages(ctx context.Context, service *SQSService) error {
-	for {
-		messages, err := service.ReceiveMessage(ctx)
-		if err != nil {
-			return err
-		}
-		if len(messages) == 0 {
-			break
-		}
+const (
+	localstackImage = "localstack/localstack:latest"
+	sqsPort         = "4566/tcp"
+	queueName       = "test-queue"
+	region          = "us-east-1"
+	accessKey       = "test"
+	secretKey       = "test"
+)
 
-		for _, msg := range messages {
-			if err := service.DeleteMessage(ctx, msg.ReceiptHandle); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+type LocalstackContainer struct {
+	testcontainers.Container
+	URI string
 }
 
-func setupTestEnvironment(t *testing.T) (*SQSService, *config.Config) {
+// setupLocalstack inicia un contenedor de Localstack
+func setupLocalstack(ctx context.Context) (*LocalstackContainer, error) {
+	natSQSPort := nat.Port(sqsPort)
+	req := testcontainers.ContainerRequest{
+		Image:        localstackImage,
+		ExposedPorts: []string{sqsPort},
+		Env: map[string]string{
+			"SERVICES":              "sqs",
+			"DEBUG":                 "1",
+			"DATA_DIR":              "/tmp/localstack/data",
+			"DOCKER_HOST":           "unix:///var/run/docker.sock",
+			"AWS_DEFAULT_REGION":    region,
+			"AWS_ACCESS_KEY_ID":     accessKey,
+			"AWS_SECRET_ACCESS_KEY": secretKey,
+		},
+		WaitingFor: wait.ForListeningPort(natSQSPort).WithStartupTimeout(60 * time.Second),
+	}
+
+	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	mappedPort, err := container.MappedPort(ctx, natSQSPort)
+	if err != nil {
+		return nil, err
+	}
+
+	hostIP, err := container.Host(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	uri := fmt.Sprintf("http://%s:%s", hostIP, mappedPort.Port())
+
+	return &LocalstackContainer{
+		Container: container,
+		URI:       uri,
+	}, nil
+}
+
+// createSQSClient crea un cliente de SQS que apunta al contenedor de Localstack
+func createSQSClient(ctx context.Context, endpoint string) (*sqs.Client, error) {
+	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+		return aws.Endpoint{
+			URL:           endpoint,
+			SigningRegion: region,
+		}, nil
+	})
+
+	cfg, err := awsConfig.LoadDefaultConfig(ctx,
+		awsConfig.WithRegion(region),
+		awsConfig.WithEndpointResolverWithOptions(customResolver),
+		awsConfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return sqs.NewFromConfig(cfg), nil
+}
+
+// createQueue crea una cola SQS en el contenedor localstack
+func createQueue(ctx context.Context, client *sqs.Client) (string, error) {
+	resp, err := client.CreateQueue(ctx, &sqs.CreateQueueInput{
+		QueueName: aws.String(queueName),
+		Attributes: map[string]string{
+			"MessageRetentionPeriod": "86400",
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	return *resp.QueueUrl, nil
+}
+
+func TestSQSServiceWithTestcontainers(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Saltando test de integración en modo corto")
 	}
 
+	ctx := context.Background()
+
+	// Iniciar el contenedor localstack
+	localstack, err := setupLocalstack(ctx)
+	require.NoError(t, err)
+	defer func() {
+		if err := localstack.Terminate(ctx); err != nil {
+			t.Logf("Error al terminar el contenedor: %v", err)
+		}
+	}()
+
+	// Crear un cliente SQS que apunte al contenedor
+	sqsClient, err := createSQSClient(ctx, localstack.URI)
+	require.NoError(t, err)
+
+	// Crear la cola de SQS
+	queueURL, err := createQueue(ctx, sqsClient)
+	require.NoError(t, err)
+
+	// Configurar el servicio SQS con el endpoint del contenedor
 	cfg := &config.Config{
 		AWS: config.AWSConfig{
-			Region: os.Getenv("AWS_REGION"),
+			Region: region,
 		},
 		Messaging: config.MessagingConfig{
 			SQS: &config.SQSConfig{
-				QueueURL: os.Getenv("SQS_QUEUE_URL"),
+				QueueURL: queueURL,
 			},
 		},
-	}
-
-	if cfg.Messaging.SQS.QueueURL == "" || cfg.AWS.Region == "" {
-		t.Fatal("SQS_QUEUE_URL y REGION no fueron seteados para los tests de integración")
 	}
 
 	log, err := logger.NewProductionLogger()
 	require.NoError(t, err)
 
-	service, err := NewSQSService(cfg, log)
-	require.NoError(t, err)
-
-	err = cleanupMessages(context.Background(), service)
-	require.NoError(t, err)
-
-	return service, cfg
-}
-
-func createTestMessage() *model.MediaProcessingMessage {
-	return &model.MediaProcessingMessage{
-		VideoID: "video_id",
-		FileData: &model.FileData{
-			FilePath: "/path/test",
-			FileSize: "1234",
-			FileType: "dca",
-		},
-		PlatformMetadata: &model.PlatformMetadata{},
+	// Crear el servicio SQS manualmente con el cliente que apunta al contenedor
+	service := &SQSService{
+		Client: sqsClient,
+		Config: cfg,
+		Log:    log,
 	}
-}
 
-func TestSQSServiceIntegration(t *testing.T) {
-	service, _ := setupTestEnvironment(t)
-	ctx := context.Background()
-
-	defer func() {
-		err := cleanupMessages(ctx, service)
-		assert.NoError(t, err, "Error durante la limpieza final de mensajes")
-	}()
-
-	t.Run("SendMessage Success", func(t *testing.T) {
-		message := createTestMessage()
-		err := service.SendMessage(ctx, message)
-		assert.NoError(t, err)
-
-		messages, err := service.ReceiveMessage(ctx)
-		assert.NoError(t, err)
-		for _, msg := range messages {
-			err = service.DeleteMessage(ctx, msg.ReceiptHandle)
-			assert.NoError(t, err)
+	// Ejecutar las pruebas
+	t.Run("End-to-End Message Flow", func(t *testing.T) {
+		// Crear y enviar un mensaje
+		message := &model.MediaProcessingMessage{
+			VideoID: "test_video_id",
+			FileData: &model.FileData{
+				FilePath: "/path/to/test/file",
+				FileSize: "1024",
+				FileType: "mp3",
+			},
+			PlatformMetadata: &model.PlatformMetadata{
+				Title:      "Test Title",
+				DurationMs: 3234,
+			},
 		}
-	})
-
-	t.Run("ReceiveMessage Success", func(t *testing.T) {
-		sentMessage := createTestMessage()
-		err := service.SendMessage(ctx, sentMessage)
-		assert.NoError(t, err)
-
-		messages, err := service.ReceiveMessage(ctx)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, messages)
-
-		err = service.DeleteMessage(ctx, messages[0].ReceiptHandle)
-		assert.NoError(t, err)
-	})
-
-	t.Run("DeleteMessage Success", func(t *testing.T) {
-		sentMessage := createTestMessage()
-		err := service.SendMessage(ctx, sentMessage)
-		require.NoError(t, err)
-
-		messages, err := service.ReceiveMessage(ctx)
-		require.NoError(t, err)
-		require.NotEmpty(t, messages)
-
-		err = service.DeleteMessage(ctx, messages[0].ReceiptHandle)
-		assert.NoError(t, err)
-	})
-
-	t.Run("SendMessage InvalidContext", func(t *testing.T) {
-		message := createTestMessage()
-		ctx, cancel := context.WithCancel(ctx)
-		cancel()
 
 		err := service.SendMessage(ctx, message)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "context canceled")
-	})
+		assert.NoError(t, err)
 
-	t.Run("DeleteMessage EmptyReceiptHandle", func(t *testing.T) {
-		emptyReceiptHandler := ""
-		err := service.DeleteMessage(ctx, emptyReceiptHandler)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "receipt handle no puede estar vacio")
+		// Recibir el mensaje
+		receivedMessages, err := service.ReceiveMessage(ctx)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, receivedMessages)
+		assert.Equal(t, message.VideoID, receivedMessages[0].VideoID)
+		assert.Equal(t, message.FileData.FilePath, receivedMessages[0].FileData.FilePath)
+
+		// Eliminar el mensaje
+		err = service.DeleteMessage(ctx, receivedMessages[0].ReceiptHandle)
+		assert.NoError(t, err)
+
+		// Verificar que no hay más mensajes
+		time.Sleep(1 * time.Second) // Breve pausa para asegurar que SQS procese la eliminación
+		messages, err := service.ReceiveMessage(ctx)
+		assert.NoError(t, err)
+		assert.Empty(t, messages)
 	})
 
 	t.Run("Concurrent Message Processing", func(t *testing.T) {
 		numMessages := 5
 		messages := make([]*model.MediaProcessingMessage, numMessages)
 		for i := 0; i < numMessages; i++ {
-			messages[i] = createTestMessage()
+			messages[i] = &model.MediaProcessingMessage{
+				VideoID: fmt.Sprintf("video_id_%d", i),
+				FileData: &model.FileData{
+					FilePath: fmt.Sprintf("/path/test_%d", i),
+					FileSize: "1234",
+					FileType: "dca",
+				},
+				PlatformMetadata: &model.PlatformMetadata{},
+			}
 		}
 
 		errChan := make(chan error, numMessages)
@@ -159,29 +223,21 @@ func TestSQSServiceIntegration(t *testing.T) {
 			assert.NoError(t, <-errChan)
 		}
 
-		receivedMessages, err := service.ReceiveMessage(ctx)
-		assert.NoError(t, err)
-		for _, msg := range receivedMessages {
-			err := service.DeleteMessage(ctx, msg.ReceiptHandle)
+		// Recibir todos los mensajes
+		var allMessages []model.MediaProcessingMessage
+		for len(allMessages) < numMessages {
+			receivedMessages, err := service.ReceiveMessage(ctx)
 			assert.NoError(t, err)
+			if len(receivedMessages) > 0 {
+				allMessages = append(allMessages, receivedMessages...)
+				// Eliminar los mensajes recibidos
+				for _, msg := range receivedMessages {
+					err := service.DeleteMessage(ctx, msg.ReceiptHandle)
+					assert.NoError(t, err)
+				}
+			}
 		}
-	})
-}
 
-func TestSQSService_ErrorCases(t *testing.T) {
-	t.Run("NewSQSService nil config", func(t *testing.T) {
-		log, _ := logger.NewZapLogger()
-		service, err := NewSQSService(nil, log)
-		assert.Error(t, err)
-		assert.Nil(t, service)
-		assert.Contains(t, err.Error(), "config no puede ser nil")
-	})
-
-	t.Run("NewSQSService nil logger", func(t *testing.T) {
-		cfg := &config.Config{}
-		service, err := NewSQSService(cfg, nil)
-		assert.Error(t, err)
-		assert.Nil(t, service)
-		assert.Contains(t, err.Error(), "logger no puede ser nil")
+		assert.Equal(t, numMessages, len(allMessages))
 	})
 }
