@@ -3,59 +3,69 @@ package config
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/secretmanager"
-	"os"
+	"github.com/spf13/viper"
 	"strconv"
 	"time"
 )
 
 func LoadConfigLocal() *Config {
+	viper.AutomaticEnv()
+
+	viper.SetDefault("SERVICE_MAX_ATTEMPTS", 1)
+	viper.SetDefault("SERVICE_TIMEOUT", 1)
+	viper.SetDefault("GIN_MODE", "debug")
+	viper.SetDefault("KAFKA_ENABLE_TLS", false)
+	viper.SetDefault("MONGO_ENABLE_TLS", false)
+	viper.SetDefault("LOCAL_STORAGE_PATH", ".")
+	viper.SetDefault("ENVIRONMENT", "local")
+
 	return &Config{
 		Environment: "local",
 		Service: ServiceConfig{
-			MaxAttempts: getEnvAsInt("SERVICE_MAX_ATTEMPTS", 1),
-			Timeout:     time.Duration(getEnvAsInt("SERVICE_TIMEOUT", 1)) * time.Minute,
+			MaxAttempts: viper.GetInt("SERVICE_MAX_ATTEMPTS"),
+			Timeout:     time.Duration(viper.GetInt("SERVICE_TIMEOUT")) * time.Minute,
 		},
 		GinConfig: GinConfig{
-			Mode: os.Getenv("GIN_MODE"),
+			Mode: viper.GetString("GIN_MODE"),
 		},
 		Messaging: MessagingConfig{
 			Type: "kafka",
 			Kafka: &KafkaConfig{
-				Brokers:   []string{os.Getenv("KAFKA_BROKERS")},
-				Topic:     os.Getenv("KAFKA_TOPIC"),
-				CaFile:    os.Getenv("KAFKA_CA_FILE"),
-				CertFile:  os.Getenv("KAFKA_CERT_FILE"),
-				KeyFile:   os.Getenv("KAFKA_KEY_FILE"),
-				EnableTLS: os.Getenv("KAFKA_ENABLE_TLS") == "true",
+				Brokers:   viper.GetStringSlice("KAFKA_BROKERS"),
+				Topic:     viper.GetString("KAFKA_TOPIC"),
+				CaFile:    viper.GetString("KAFKA_CA_FILE"),
+				CertFile:  viper.GetString("KAFKA_CERT_FILE"),
+				KeyFile:   viper.GetString("KAFKA_KEY_FILE"),
+				EnableTLS: viper.GetBool("KAFKA_ENABLE_TLS"),
 			},
 		},
 		API: APIConfig{
 			YouTube: YouTubeConfig{
-				Cookies: os.Getenv("COOKIES_YOUTUBE"),
-				ApiKey:  os.Getenv("YOUTUBE_API_KEY"),
+				Cookies: viper.GetString("COOKIES_YOUTUBE"),
+				ApiKey:  viper.GetString("YOUTUBE_API_KEY"),
 			},
 		},
 		Storage: StorageConfig{
 			Type: "local-storage",
 			LocalConfig: &LocalConfig{
-				BasePath: os.Getenv("LOCAL_STORAGE_PATH"),
+				BasePath: viper.GetString("LOCAL_STORAGE_PATH"),
 			},
 		},
 		Database: DatabaseConfig{
 			Type: "mongodb",
 			Mongo: &MongoConfig{
-				User:           os.Getenv("MONGO_USER"),
-				Password:       os.Getenv("MONGO_PASSWORD"),
-				Port:           os.Getenv("MONGO_PORT"),
-				Host:           []string{os.Getenv("MONGO_HOST")},
-				CaFile:         os.Getenv("MONGO_CA_FILE"),
-				CertFile:       os.Getenv("MONGO_CERT_FILE"),
-				KeyFile:        os.Getenv("MONGO_KEY_FILE"),
-				Database:       os.Getenv("MONGO_DATABASE"),
-				ReplicaSetName: os.Getenv("MONGO_REPLICA_SET_NAME"),
-				EnableTLS:      os.Getenv("MONGO_ENABLE_TLS") == "true",
+				User:           viper.GetString("MONGO_USER"),
+				Password:       viper.GetString("MONGO_PASSWORD"),
+				Port:           viper.GetString("MONGO_PORT"),
+				Host:           viper.GetStringSlice("MONGO_HOST"),
+				CaFile:         viper.GetString("MONGO_CA_FILE"),
+				CertFile:       viper.GetString("MONGO_CERT_FILE"),
+				KeyFile:        viper.GetString("MONGO_KEY_FILE"),
+				Database:       viper.GetString("MONGO_DATABASE"),
+				ReplicaSetName: viper.GetString("MONGO_REPLICA_SET_NAME"),
+				EnableTLS:      viper.GetBool("MONGO_ENABLE_TLS"),
 				Collections: Collections{
-					Songs: os.Getenv("MONGO_COLLECTION_SONGS"),
+					Songs: viper.GetString("MONGO_COLLECTION_SONGS"),
 				},
 			},
 		},
@@ -63,8 +73,9 @@ func LoadConfigLocal() *Config {
 }
 
 func LoadConfigAws() *Config {
-	region := os.Getenv("AWS_REGION")
-	secretName := os.Getenv("AWS_SECRET_NAME")
+	viper.AutomaticEnv()
+	region := viper.GetString("AWS_REGION")
+	secretName := viper.GetString("AWS_SECRET_NAME")
 
 	sm, err := secretmanager.NewSecretsManager(region)
 	if err != nil {
@@ -122,14 +133,6 @@ func getSecretAsInt(secrets map[string]string, key string, defaultValue int) int
 		if value, err := strconv.Atoi(valueStr); err == nil {
 			return value
 		}
-	}
-	return defaultValue
-}
-
-func getEnvAsInt(name string, defaultValue int) int {
-	valueStr := os.Getenv(name)
-	if value, err := strconv.Atoi(valueStr); err == nil {
-		return value
 	}
 	return defaultValue
 }
