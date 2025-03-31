@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/player"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/voice"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/inmemory"
@@ -23,7 +22,7 @@ type EventHandler struct {
 	guildsPlayers     map[GuildID]ports.GuildPlayer
 	cfg               *config.Config
 	logger            logging.Logger
-	discordMessenger  interfaces.DiscordMessenger
+	discordMessenger  ports.DiscordMessenger
 	storageAudio      ports.StorageAudio
 	voiceStateService *discord.VoiceStateService
 }
@@ -32,7 +31,7 @@ type EventHandler struct {
 func NewEventHandler(
 	cfg *config.Config,
 	logger logging.Logger,
-	discordMessenger interfaces.DiscordMessenger,
+	discordMessenger ports.DiscordMessenger,
 	storageAudio ports.StorageAudio,
 	voiceStateService *discord.VoiceStateService,
 ) *EventHandler {
@@ -124,8 +123,4 @@ func (h *EventHandler) VoiceStateUpdate(s *discordgo.Session, vs *discordgo.Voic
 	if err := h.voiceStateService.HandleVoiceStateChange(guildPlayer, s, vs); err != nil {
 		h.logger.Error("Error al manejar cambio de estado de voz", zap.Error(err))
 	}
-}
-
-func (h *EventHandler) Messenger() interfaces.DiscordMessenger {
-	return h.discordMessenger
 }

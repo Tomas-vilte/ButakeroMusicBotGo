@@ -115,9 +115,16 @@ func (l *LocalStorage) GetFileMetadata(ctx context.Context, key string) (*model.
 
 	fullPath := filepath.Join(l.config.Storage.LocalConfig.BasePath, "audio", key)
 	cleanPath := filepath.Clean(fullPath)
-	log.Info("Obteniendo metadatos del archivo", zap.String("full_path", cleanPath))
 
-	fileInfo, err := os.Stat(cleanPath)
+	absPath, err := filepath.Abs(cleanPath)
+	if err != nil {
+		log.Error("Error obteniendo ruta absoluta", zap.Error(err))
+		return nil, errorsApp.ErrLocalGetMetadataFailed.WithMessage(fmt.Sprintf("error obteniendo ruta absoluta para %s: %v", cleanPath, err))
+	}
+
+	log.Info("Obteniendo metadatos del archivo", zap.String("full_path", absPath))
+
+	fileInfo, err := os.Stat(absPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			log.Error("Archivo no encontrado", zap.Error(err))
@@ -131,7 +138,7 @@ func (l *LocalStorage) GetFileMetadata(ctx context.Context, key string) (*model.
 	log.Info("Metadatos obtenidos exitosamente", zap.String("file_size", readableSize))
 
 	return &model.FileData{
-		FilePath: cleanPath,
+		FilePath: absPath,
 		FileType: "audio/dca",
 		FileSize: readableSize,
 	}, nil

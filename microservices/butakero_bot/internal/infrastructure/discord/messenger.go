@@ -2,52 +2,38 @@ package discord
 
 import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 )
 
-// MessengerService implementa la interfaz DiscordMessenger.
-type MessengerService struct {
+type DiscordMessengerAdapter struct {
 	session *discordgo.Session
 	logger  logging.Logger
 }
 
-func NewDiscordMessengerService(session *discordgo.Session, logger logging.Logger) interfaces.DiscordMessenger {
-	return &MessengerService{
+func NewDiscordMessengerAdapter(session *discordgo.Session, logger logging.Logger) ports.DiscordMessenger {
+	return &DiscordMessengerAdapter{
 		session: session,
 		logger:  logger,
 	}
 }
 
-// RespondWithMessage responde a una interacción de Discord con un mensaje de texto.
-func (m *MessengerService) RespondWithMessage(interaction *discordgo.Interaction, message string) error {
-	m.logger.Info("Respondiendo a interacción", zap.String("tipo", interaction.Type.String()))
+func (m *DiscordMessengerAdapter) RespondWithMessage(interaction *entity.Interaction, message string) error {
+	discordInteraction := toDiscordInteraction(interaction)
 
 	response := discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
 			Content: message,
 		},
 	}
-	return m.Respond(interaction, response)
+	return m.session.InteractionRespond(discordInteraction, &response)
 }
 
-// Respond responde a una interacción de Discord con la respuesta proporcionada.
-func (m *MessengerService) Respond(interaction *discordgo.Interaction, response discordgo.InteractionResponse) error {
-	if err := m.session.InteractionRespond(interaction, &response); err != nil {
-		m.logger.Error("No se pudo responder a la interacción", zap.Error(err))
-		return err
-	}
-	return nil
-}
-
-// SendPlayStatus Envía un embed de estado de reproducción a un canal.
-func (m *MessengerService) SendPlayStatus(channelID string, playMsg *entity.PlayedSong) (string, error) {
-	m.logger.Info("Enviando estado de reproducción", zap.String("channelID", channelID))
-
-	embed := GeneratePlayingSongEmbed(playMsg)
+func (m *DiscordMessengerAdapter) SendPlayStatus(channelID string, playMsg *entity.PlayedSong) (string, error) {
+	embed := toDiscordgoEmbed(GeneratePlayingSongEmbed(playMsg))
 	msg, err := m.session.ChannelMessageSendEmbed(channelID, embed)
 	if err != nil {
 		m.logger.Error("Error al enviar estado de reproducción", zap.Error(err))
@@ -56,10 +42,8 @@ func (m *MessengerService) SendPlayStatus(channelID string, playMsg *entity.Play
 	return msg.ID, nil
 }
 
-// UpdatePlayStatus Actualiza un mensaje de estado existente.
-func (m *MessengerService) UpdatePlayStatus(channelID, messageID string, playMsg *entity.PlayedSong) error {
-
-	embed := GeneratePlayingSongEmbed(playMsg)
+func (m *DiscordMessengerAdapter) UpdatePlayStatus(channelID, messageID string, playMsg *entity.PlayedSong) error {
+	embed := toDiscordgoEmbed(GeneratePlayingSongEmbed(playMsg))
 	_, err := m.session.ChannelMessageEditEmbed(channelID, messageID, embed)
 	if err != nil {
 		m.logger.Error("Error al actualizar estado de reproducción", zap.Error(err))
@@ -67,10 +51,7 @@ func (m *MessengerService) UpdatePlayStatus(channelID, messageID string, playMsg
 	return err
 }
 
-// SendText Envía un mensaje de texto simple.
-func (m *MessengerService) SendText(channelID, text string) error {
-	m.logger.Info("Enviando mensaje de texto", zap.String("channelID", channelID))
-
+func (m *DiscordMessengerAdapter) SendText(channelID, text string) error {
 	_, err := m.session.ChannelMessageSend(channelID, text)
 	if err != nil {
 		m.logger.Error("Error al enviar mensaje de texto", zap.Error(err))
@@ -78,20 +59,121 @@ func (m *MessengerService) SendText(channelID, text string) error {
 	return err
 }
 
-// CreateFollowupMessage crea un mensaje de seguimiento para una interacción de Discord.
-func (m *MessengerService) CreateFollowupMessage(interaction *discordgo.Interaction, params discordgo.WebhookParams) error {
-	if _, err := m.session.FollowupMessageCreate(interaction, true, &params); err != nil {
+func (m *DiscordMessengerAdapter) Respond(interaction *entity.Interaction, response entity.InteractionResponse) error {
+	discordInteraction := toDiscordInteraction(interaction)
+	discordResponse := discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseType(response.Type),
+		Data: &discordgo.InteractionResponseData{
+			Content: response.Content,
+			Embeds:  toDiscordgoEmbeds(response.Embeds),
+		},
+	}
+	return m.session.InteractionRespond(discordInteraction, &discordResponse)
+}
+
+func (m *DiscordMessengerAdapter) CreateFollowupMessage(interaction *entity.Interaction, params entity.WebhookParams) error {
+	discordInteraction := toDiscordInteraction(interaction)
+	discordParams := discordgo.WebhookParams{
+		Content: params.Content,
+		Embeds:  toDiscordgoEmbeds(params.Embeds),
+	}
+	_, err := m.session.FollowupMessageCreate(discordInteraction, true, &discordParams)
+	if err != nil {
 		m.logger.Error("No se pudo crear el mensaje de seguimiento", zap.Error(err))
 		return err
 	}
 	return nil
 }
 
-func (m *MessengerService) EditOriginalResponse(interaction *discordgo.Interaction, params *discordgo.WebhookEdit) error {
-	_, err := m.session.InteractionResponseEdit(interaction, params)
+func (m *DiscordMessengerAdapter) EditOriginalResponse(interaction *entity.Interaction, params *entity.WebhookEdit) error {
+	discordInteraction := toDiscordInteraction(interaction)
+	embeds := toDiscordgoEmbeds(params.Embeds)
+	discordParams := &discordgo.WebhookEdit{
+		Content: params.Content,
+		Embeds:  &embeds,
+	}
+	_, err := m.session.InteractionResponseEdit(discordInteraction, discordParams)
 	if err != nil {
 		m.logger.Error("No se pudo editar la respuesta original", zap.Error(err))
 		return err
 	}
 	return nil
+}
+
+// Funciones de conversión
+func toDiscordInteraction(interaction *entity.Interaction) *discordgo.Interaction {
+	if interaction == nil {
+		return nil
+	}
+
+	var member *discordgo.Member
+	if interaction.Member != nil {
+		member = &discordgo.Member{
+			User: &discordgo.User{
+				ID:       interaction.Member.UserID,
+				Username: interaction.Member.Username,
+			},
+		}
+	}
+
+	return &discordgo.Interaction{
+		ID:        interaction.ID,
+		AppID:     interaction.AppID,
+		ChannelID: interaction.ChannelID,
+		GuildID:   interaction.GuildID,
+		Member:    member,
+		Token:     interaction.Token,
+	}
+}
+
+func toDiscordgoEmbeds(embeds []*entity.Embed) []*discordgo.MessageEmbed {
+	if embeds == nil {
+		return nil
+	}
+
+	discordEmbeds := make([]*discordgo.MessageEmbed, len(embeds))
+	for i, embed := range embeds {
+		discordEmbeds[i] = toDiscordgoEmbed(embed)
+	}
+	return discordEmbeds
+}
+
+func toDiscordgoEmbed(embed *entity.Embed) *discordgo.MessageEmbed {
+	if embed == nil {
+		return nil
+	}
+
+	fields := make([]*discordgo.MessageEmbedField, len(embed.Fields))
+	for i, field := range embed.Fields {
+		fields[i] = &discordgo.MessageEmbedField{
+			Name:   field.Name,
+			Value:  field.Value,
+			Inline: field.Inline,
+		}
+	}
+
+	var thumbnail *discordgo.MessageEmbedThumbnail
+	if embed.Thumbnail != nil {
+		thumbnail = &discordgo.MessageEmbedThumbnail{
+			URL:    embed.Thumbnail.URL,
+			Width:  embed.Thumbnail.Width,
+			Height: embed.Thumbnail.Height,
+		}
+	}
+
+	var footer *discordgo.MessageEmbedFooter
+	if embed.Footer != nil {
+		footer = &discordgo.MessageEmbedFooter{
+			Text: embed.Footer.Text,
+		}
+	}
+
+	return &discordgo.MessageEmbed{
+		Title:       embed.Title,
+		Description: embed.Description,
+		Color:       embed.Color,
+		Fields:      fields,
+		Thumbnail:   thumbnail,
+		Footer:      footer,
+	}
 }

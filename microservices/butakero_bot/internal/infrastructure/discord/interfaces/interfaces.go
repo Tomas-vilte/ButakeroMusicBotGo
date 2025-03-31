@@ -29,5 +29,6 @@ type (
 		ListPlaylist(s *discordgo.Session, ic *discordgo.InteractionCreate, opt *discordgo.ApplicationCommandInteractionDataOption)
 		RemoveSong(s *discordgo.Session, ic *discordgo.InteractionCreate, opt *discordgo.ApplicationCommandInteractionDataOption)
 		GetPlayingSong(s *discordgo.Session, ic *discordgo.InteractionCreate, opt *discordgo.ApplicationCommandInteractionDataOption)
+		AddSong(s *discordgo.Session, ic *discordgo.InteractionCreate)
 	}
 )
