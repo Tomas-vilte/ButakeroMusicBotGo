@@ -17,4 +17,21 @@ type (
 		Session() VoiceSession
 		StateStorage() StateStorage
 	}
+
+	DiscordMessenger interface {
+		// RespondWithMessage responde a una interacción con un mensaje
+		RespondWithMessage(interaction *entity.Interaction, message string) error
+		// SendPlayStatus envía un mensaje embed de estado de reproducción
+		SendPlayStatus(channelID string, playMsg *entity.PlayedSong) (messageID string, err error)
+		// UpdatePlayStatus actualiza un mensaje de estado existente
+		UpdatePlayStatus(channelID, messageID string, playMsg *entity.PlayedSong) error
+		// SendText envía un mensaje de texto simple
+		SendText(channelID, text string) error
+		// Respond responde a una interacción con una respuesta estructurada
+		Respond(interaction *entity.Interaction, response entity.InteractionResponse) error
+		// CreateFollowupMessage crea un mensaje de seguimiento
+		CreateFollowupMessage(interaction *entity.Interaction, params entity.WebhookParams) error
+		// EditOriginalResponse edita la respuesta original
+		EditOriginalResponse(interaction *entity.Interaction, params *entity.WebhookEdit) error
+	}
 )

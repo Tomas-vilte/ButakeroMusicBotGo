@@ -16,7 +16,7 @@ func LoadConfigLocal() *Config {
 	viper.SetDefault("GIN_MODE", "debug")
 	viper.SetDefault("KAFKA_ENABLE_TLS", false)
 	viper.SetDefault("MONGO_ENABLE_TLS", false)
-	viper.SetDefault("LOCAL_STORAGE_PATH", ".")
+	viper.SetDefault("LOCAL_STORAGE_PATH", "audio-files/")
 	viper.SetDefault("ENVIRONMENT", "local")
 
 	return &Config{

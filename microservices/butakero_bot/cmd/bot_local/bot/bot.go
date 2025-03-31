@@ -108,7 +108,7 @@ func StartBot() error {
 		panic(err)
 	}
 
-	discordMessenger := discord.NewDiscordMessengerService(discordClient, logger)
+	discordMessenger := discord.NewDiscordMessengerAdapter(discordClient, logger)
 
 	storageAudio := local_storage.NewLocalStorage(logger)
 
@@ -118,10 +118,11 @@ func StartBot() error {
 	voiceStateService := discord.NewVoiceStateService(logger)
 	eventsHandler := events.NewEventHandler(cfg, logger, discordMessenger, storageAudio, voiceStateService)
 	handler := commands.NewCommandHandler(
-		eventsHandler,
 		interactionStorage,
 		logger,
 		songService,
+		discordMessenger,
+		eventsHandler,
 	)
 
 	commandHandler := discord.NewSlashCommandRouter(cfg.CommandPrefix).
@@ -130,8 +131,7 @@ func StartBot() error {
 		StopHandler(handler.StopPlaying).
 		ListHandler(handler.ListPlaylist).
 		RemoveHandler(handler.RemoveSong).
-		PlayingNowHandler(handler.GetPlayingSong).
-		AddSongOrPlaylistHandler(handler.AddSong)
+		PlayingNowHandler(handler.GetPlayingSong)
 
 	eventsHandler.RegisterEventHandlers(discordClient, ctx)
 	discordClient.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {

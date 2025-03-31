@@ -76,7 +76,7 @@ services:
       SERVICE_MAX_ATTEMPTS: 5
       SERVICE_TIMEOUT: 2
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
-      GIN_MODE: "release"
+      GIN_MODE: "debug"
       KAFKA_TOPIC: "notifications"
       KAFKA_BROKERS: "kafka:29092"
       KAFKA_ENABLE_TLS: false
@@ -84,8 +84,8 @@ services:
       MONGO_PASSWORD: "root"
       MONGO_PORT: 27017
       MONGO_HOST: "mongodb"
-      MONGO_DATABASE: "audio_service_db"
-      MONGO_COLLECTION_SONGS: "Songs"
+      MONGO_DATABASE: "audio_service"
+      MONGO_COLLECTION_SONGS: "songs"
       MONGO_ENABLE_TLS: false
       MONGO_REPLICA_SET_NAME: "rs0"
       COOKIES_YOUTUBE: "/root/yt-cookies.txt"
@@ -121,8 +121,8 @@ services:
       KAFKA_TLS_KEY_FILE: ""
       MONGO_HOSTS: "mongodb"
       MONGO_PORT: 27017
-      MONGO_DATABASE: "audio_service_db"
-      MONGO_COLLECTION: "Songs"
+      MONGO_DATABASE: "audio_service"
+      MONGO_COLLECTION_SONGS: "songs"
       MONGO_USERNAME: "root"
       MONGO_PASSWORD: "root"
       MONGO_AUTH_SOURCE: "admin"
@@ -161,7 +161,7 @@ services:
 #      MONGO_HOSTS: "mongodb"
 #      MONGO_PORT: 27017
 #      MONGO_DATABASE: "audio_service_db"
-#      MONGO_COLLECTION: "Songs"
+#      MONGO_COLLECTION: "songs"
 #      MONGO_USERNAME: "root"
 #      MONGO_PASSWORD: "root"
 #      MONGO_AUTH_SOURCE: "admin"
