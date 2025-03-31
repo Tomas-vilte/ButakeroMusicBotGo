@@ -34,4 +34,10 @@ type (
 		// EditOriginalResponse edita la respuesta original
 		EditOriginalResponse(interaction *entity.Interaction, params *entity.WebhookEdit) error
 	}
+
+	GuildManager interface {
+		CreateGuildPlayer(guildID string) (GuildPlayer, error)
+		RemoveGuildPlayer(guildID string) error
+		GetGuildPlayer(guildID string) (GuildPlayer, error)
+	}
 )
