@@ -5,7 +5,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/application/service"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/adapters"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/commands"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/command"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/events"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/storage"
 	sqsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/messaging/sqs"
@@ -103,7 +103,7 @@ func StartBot() error {
 
 	guildManager := discord.NewGuildManager(discordClient, storageAudio, discordMessenger, logger)
 	eventsHandler := events.NewEventHandler(guildManager, voiceStateService, logger, cfg)
-	handler := commands.NewCommandHandler(
+	handler := command.NewCommandHandler(
 		interactionStorage,
 		logger,
 		songService,
