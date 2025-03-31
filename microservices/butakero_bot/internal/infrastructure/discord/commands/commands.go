@@ -287,59 +287,6 @@ func (h *CommandHandler) respondWithError(ic *discordgo.InteractionCreate, messa
 	}
 }
 
-func (h *CommandHandler) handleSongRequest(s *discordgo.Session, ic *discordgo.InteractionCreate, g *discordgo.Guild, vs *discordgo.VoiceState, input string) {
-	domainInteraction := toDomainInteraction(ic.Interaction)
-
-	if err := h.messenger.Respond(domainInteraction, entity.InteractionResponse{
-		Type:    entity.InteractionResponseDeferredChannelMessageWithSource,
-		Content: "🔍 Buscando tu canción... Esto puede tomar unos momentos.",
-	}); err != nil {
-		h.Logger.Error("Error al enviar la respuesta inicial", zap.Error(err))
-		return
-	}
-
-	go func() {
-		song, err := h.SongService.GetOrDownloadSong(context.Background(), input, "youtube")
-		if err != nil {
-			h.Logger.Error("Error al obtener canción", zap.Error(err))
-			if err := h.messenger.EditOriginalResponse(domainInteraction, &entity.WebhookEdit{
-				Content: shared.StringPtr("❌ No se pudo encontrar o descargar la canción. Verifica el enlace o inténtalo de nuevo"),
-			}); err != nil {
-				h.Logger.Error("Error al actualizar mensaje de error", zap.Error(err))
-			}
-			return
-		}
-
-		h.Logger.Info("Canción obtenida o descargada", zap.String("título", song.TitleTrack))
-		h.Storage.SaveSongList(ic.ChannelID, []*entity.DiscordEntity{song})
-
-		guildPlayer := h.EventHandler.GetGuildPlayer(events.GuildID(g.ID), s)
-		playedSong := &entity.PlayedSong{
-			DiscordSong:     song,
-			RequestedByName: ic.Member.User.Username,
-			RequestedByID:   ic.Member.User.ID,
-		}
-
-		if err := guildPlayer.AddSong(&ic.ChannelID, &vs.ChannelID, playedSong); err != nil {
-			h.Logger.Error("Error al agregar la canción:", zap.Error(err))
-			if err := h.messenger.EditOriginalResponse(domainInteraction, &entity.WebhookEdit{
-				Content: shared.StringPtr(ErrorMessageFailedToAddSong),
-			}); err != nil {
-				h.Logger.Error("Error al actualizar mensaje de error", zap.Error(err))
-			}
-			return
-		}
-
-		h.Logger.Info("Canción agregada a la cola", zap.String("título", song.TitleTrack))
-
-		if err := h.messenger.EditOriginalResponse(domainInteraction, &entity.WebhookEdit{
-			Content: shared.StringPtr("✅ Canción agregada a la cola: " + song.TitleTrack),
-		}); err != nil {
-			h.Logger.Error("Error al actualizar mensaje de confirmación", zap.Error(err))
-		}
-	}()
-}
-
 func toDomainInteraction(discordInteraction *discordgo.Interaction) *entity.Interaction {
 	if discordInteraction == nil {
 		return nil
