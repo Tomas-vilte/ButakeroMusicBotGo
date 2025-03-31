@@ -112,25 +112,21 @@ func StartBot() error {
 		eventsHandler,
 	)
 
-	commandHandler := discord.NewSlashCommandRouter(cfg.CommandPrefix).
-		PlayHandler(handler.PlaySong).
-		SkipHandler(handler.SkipSong).
-		StopHandler(handler.StopPlaying).
-		ListHandler(handler.ListPlaylist).
-		RemoveHandler(handler.RemoveSong).
-		PlayingNowHandler(handler.GetPlayingSong)
+	commandRegistry := command.NewCommandRegistry()
+	commands := []command.Command{
+		command.NewPlayCommand(handler, logger),
+		command.NewStopCommand(handler, logger),
+		command.NewSkipCommand(handler, logger),
+		command.NewListCommand(handler, logger),
+		command.NewRemoveCommand(handler, logger),
+		command.NewPlayingCommand(handler, logger),
+	}
 
 	eventsHandler.RegisterEventHandlers(discordClient, ctx)
 	discordClient.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-		switch i.Type {
-		case discordgo.InteractionMessageComponent:
-			if h, ok := commandHandler.GetComponentHandlers()[i.MessageComponentData().CustomID]; ok {
+		if i.Type == discordgo.InteractionApplicationCommand {
+			if h, ok := commandRegistry.GetCommandHandlers()[i.ApplicationCommandData().Name]; ok {
 				h(s, i)
-			}
-
-		default:
-			if h, ok := commandHandler.GetCommandHandlers()[i.ApplicationCommandData().Name]; ok {
-				h(ctx, s, i)
 			}
 		}
 	})
@@ -145,6 +141,17 @@ func StartBot() error {
 			logger.Error("Error al cerrar conexión con Discord", zap.Error(err))
 		}
 	}()
+
+	commandRegistry.Register(command.NewRootCommand(cfg.CommandPrefix, commands, logger))
+	_, err = discordClient.ApplicationCommandBulkOverwrite(
+		discordClient.State.User.ID,
+		"",
+		commandRegistry.GetCommands(),
+	)
+	if err != nil {
+		logger.Error("No se pudieron registrar los comandos", zap.Error(err))
+		return err
+	}
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
