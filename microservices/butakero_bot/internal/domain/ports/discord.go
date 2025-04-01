@@ -15,6 +15,8 @@ type (
 		RemoveSong(position int) (*entity.DiscordEntity, error)
 		GetPlaylist() ([]string, error)
 		GetPlayedSong() (*entity.PlayedSong, error)
+		StateStorage() StateStorage
+		JoinVoiceChannel(channelID string) error
 	}
 
 	DiscordMessenger interface {

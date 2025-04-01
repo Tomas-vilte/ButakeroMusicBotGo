@@ -3,7 +3,6 @@ package discord
 import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/player"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
@@ -55,11 +54,13 @@ func (s *VoiceStateService) HandleVoiceStateChange(
 			}
 
 			if usersInCurrentChannel == 0 {
-				if err := guildPlayer.(*player.GuildPlayer).StateStorage().SetVoiceChannel(newChannelID); err != nil {
+				stateStorage := guildPlayer.StateStorage()
+
+				if err := stateStorage.SetVoiceChannel(newChannelID); err != nil {
 					return fmt.Errorf("error al actualizar el canal de voz: %w", err)
 				}
 
-				if err := guildPlayer.(*player.GuildPlayer).Session().JoinVoiceChannel(newChannelID); err != nil {
+				if err := guildPlayer.JoinVoiceChannel(newChannelID); err != nil {
 					return fmt.Errorf("error al mover el bot al nuevo canal: %w", err)
 				}
 
