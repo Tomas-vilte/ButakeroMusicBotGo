@@ -3,6 +3,7 @@ package ports
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
+	"io"
 )
 
 type (
@@ -14,8 +15,6 @@ type (
 		RemoveSong(position int) (*entity.DiscordEntity, error)
 		GetPlaylist() ([]string, error)
 		GetPlayedSong() (*entity.PlayedSong, error)
-		Session() VoiceSession
-		StateStorage() StateStorage
 	}
 
 	DiscordMessenger interface {
@@ -39,5 +38,15 @@ type (
 		CreateGuildPlayer(guildID string) (GuildPlayer, error)
 		RemoveGuildPlayer(guildID string) error
 		GetGuildPlayer(guildID string) (GuildPlayer, error)
+	}
+
+	// VoiceSession define una interfaz para manejar sesiones de voz.
+	VoiceSession interface {
+		// JoinVoiceChannel une a un canal de voz especificado por channelID.
+		JoinVoiceChannel(channelID string) error
+		// LeaveVoiceChannel deja el canal de voz actual.
+		LeaveVoiceChannel() error
+		// SendAudio envía audio a través de la sesión de voz.
+		SendAudio(ctx context.Context, reader io.ReadCloser) error
 	}
 )

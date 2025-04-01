@@ -41,7 +41,7 @@ func LoggingMiddleware(log logger.Logger) gin.HandlerFunc {
 		latency := time.Since(start)
 		status := c.Writer.Status()
 
-		log.Info("Respuesta enviada",
+		log.Debug("Respuesta enviada",
 			zap.Int("status", status),
 			zap.String("method", c.Request.Method),
 			zap.String("path", path),
