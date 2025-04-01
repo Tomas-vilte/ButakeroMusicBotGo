@@ -145,7 +145,6 @@ func StartBot() error {
 			}
 		}
 	})
-	discordClient.Identify.Intents = discordgo.IntentsAll
 
 	err = discordClient.Open()
 	if err != nil {
