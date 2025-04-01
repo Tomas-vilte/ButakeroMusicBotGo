@@ -43,12 +43,14 @@ func (g *GuildManager) CreateGuildPlayer(guildID string) (ports.GuildPlayer, err
 	stateStorage := inmemory.NewInmemoryStateStorage(g.logger)
 
 	guildPlayer := player.NewGuildPlayer(
-		voiceChat,
-		songStorage,
-		stateStorage,
-		g.messenger,
-		g.storageAudio,
-		g.logger,
+		player.Config{
+			VoiceSession: voiceChat,
+			SongStorage:  songStorage,
+			StateStorage: stateStorage,
+			Messenger:    g.messenger,
+			StorageAudio: g.storageAudio,
+			Logger:       g.logger,
+		},
 	)
 
 	g.players[guildID] = guildPlayer
