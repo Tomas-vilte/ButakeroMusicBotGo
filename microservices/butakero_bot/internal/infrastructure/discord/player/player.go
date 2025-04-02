@@ -45,7 +45,7 @@ func NewGuildPlayer(cfg Config) *GuildPlayer {
 
 func (gp *GuildPlayer) AddSong(textChannelID, voiceChannelID *string, playedSong *entity.PlayedSong) error {
 	if err := gp.playlistHandler.AddSong(playedSong); err != nil {
-		return fmt.Errorf("failed to add song: %w", err)
+		return fmt.Errorf("error al agregar la canción: %w", err)
 	}
 
 	gp.eventCh <- PlayerEvent{
@@ -56,69 +56,69 @@ func (gp *GuildPlayer) AddSong(textChannelID, voiceChannelID *string, playedSong
 		},
 	}
 
-	gp.logger.Info("Song added to playlist", zap.String("title", playedSong.DiscordSong.TitleTrack))
+	gp.logger.Debug("Canción agregada a la lista", zap.String("título", playedSong.DiscordSong.TitleTrack))
 	return nil
 }
 
 func (gp *GuildPlayer) SkipSong() {
 	gp.playbackHandler.Stop()
-	gp.logger.Info("Current song skipped")
+	gp.logger.Debug("Se salteó la canción actual")
 }
 
 func (gp *GuildPlayer) Pause() error {
 	if err := gp.playbackHandler.Pause(); err != nil {
-		gp.logger.Error("Error pausing playback", zap.Error(err))
+		gp.logger.Error("Error al pausar la reproducción", zap.Error(err))
 		return err
 	}
-	gp.logger.Info("Playback paused")
+	gp.logger.Debug("Reproducción pausada")
 	return nil
 }
 
 func (gp *GuildPlayer) Resume() error {
 	if err := gp.playbackHandler.Resume(); err != nil {
-		gp.logger.Error("Error resuming playback", zap.Error(err))
+		gp.logger.Error("Error al reanudar la reproducción", zap.Error(err))
 		return err
 	}
-	gp.logger.Info("Playback resumed")
+	gp.logger.Debug("Reproducción reanudada")
 	return nil
 }
 
 func (gp *GuildPlayer) Stop() error {
 	if err := gp.playlistHandler.ClearPlaylist(); err != nil {
-		gp.logger.Error("Error clearing playlist", zap.Error(err))
-		return fmt.Errorf("error clearing playlist: %w", err)
+		gp.logger.Error("Error al limpiar la lista de reproducción", zap.Error(err))
+		return fmt.Errorf("error al limpiar la lista: %w", err)
 	}
 
 	gp.playbackHandler.Stop()
-	gp.logger.Info("Playback stopped and playlist cleared")
+	gp.logger.Debug("Reproducción detenida y lista limpiada")
 	return nil
 }
 
 func (gp *GuildPlayer) RemoveSong(position int) (*entity.DiscordEntity, error) {
 	song, err := gp.playlistHandler.RemoveSong(position)
 	if err != nil {
-		return nil, fmt.Errorf("error removing song: %w", err)
+		return nil, fmt.Errorf("error al remover la cancion: %w", err)
 	}
 
-	gp.logger.Info("Song removed from playlist", zap.String("title", song.TitleTrack))
+	gp.logger.Debug("Se removio la cancion de la playlist", zap.String("cancion", song.TitleTrack))
 	return song, nil
 }
 
 func (gp *GuildPlayer) GetPlaylist() ([]string, error) {
 	playlist, err := gp.playlistHandler.GetPlaylist()
 	if err != nil {
-		return nil, fmt.Errorf("error getting playlist: %w", err)
+		return nil, fmt.Errorf("error al obtener la playlist: %w", err)
 	}
 
-	gp.logger.Info("Playlist retrieved", zap.Int("count", len(playlist)))
+	gp.logger.Debug("Lista de reproducción obtenida", zap.Int("cantidad", len(playlist)))
 	return playlist, nil
 }
 
 func (gp *GuildPlayer) GetPlayedSong() (*entity.PlayedSong, error) {
 	currentSong, err := gp.stateStorage.GetCurrentSong()
 	if err != nil {
-		gp.logger.Error("Error getting current song", zap.Error(err))
-		return nil, fmt.Errorf("error getting current song: %w", err)
+		gp.logger.Error("Error al obtener la canción actual", zap.Error(err))
+		return nil, fmt.Errorf("error al obtener la cancion actual: %w", err)
 	}
 	return currentSong, nil
 }
@@ -127,7 +127,7 @@ func (gp *GuildPlayer) Run(ctx context.Context) error {
 	gp.mu.Lock()
 	if gp.running {
 		gp.mu.Unlock()
-		return errors.New("player is already running")
+		return errors.New("el reproductor ya está ejecutándose")
 	}
 	gp.running = true
 	gp.mu.Unlock()
@@ -138,29 +138,28 @@ func (gp *GuildPlayer) Run(ctx context.Context) error {
 		gp.mu.Unlock()
 	}()
 
-	// Restaurar estado inicial
 	currentSong, err := gp.stateStorage.GetCurrentSong()
 	if err != nil {
-		gp.logger.Error("Error getting current song state", zap.Error(err))
+		gp.logger.Error("Error al obtener el estado de la canción actual", zap.Error(err))
 	}
 
 	if currentSong != nil {
 		currentSong.StartPosition += currentSong.Position
 		if err := gp.playlistHandler.AddSong(currentSong); err != nil {
-			gp.logger.Error("Error restoring current song to playlist", zap.Error(err))
+			gp.logger.Error("Error al restaurar la canción actual a la lista", zap.Error(err))
 		}
 	}
 
 	for {
 		select {
 		case <-ctx.Done():
-			gp.logger.Info("Player context cancelled, shutting down")
+			gp.logger.Info("Cerrando el reproductor")
 			return nil
 
 		case event := <-gp.eventCh:
 			if err := gp.handleEvent(ctx, event); err != nil {
-				gp.logger.Error("Error handling player event",
-					zap.String("event", event.Type),
+				gp.logger.Error("Error al manejar el evento del reproductor",
+					zap.String("evento", event.Type),
 					zap.Error(err))
 			}
 		}
@@ -181,57 +180,53 @@ func (gp *GuildPlayer) handleEvent(ctx context.Context, event PlayerEvent) error
 		gp.SkipSong()
 		return nil
 	default:
-		return fmt.Errorf("unknown event type: %s", event.Type)
+		return fmt.Errorf("tipo de evento desconocido: %s", event.Type)
 	}
 }
 
 func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayerEvent) error {
 	payload, ok := event.Payload.(EventPayload)
 	if !ok {
-		return errors.New("invalid play event payload")
+		return errors.New("payload de evento para reproduccion no valida")
 	}
 
-	// Actualizar canales si se proporcionaron
 	if payload.TextChannelID != nil {
 		if err := gp.stateStorage.SetTextChannel(*payload.TextChannelID); err != nil {
-			return fmt.Errorf("error setting text channel: %w", err)
+			return fmt.Errorf("error al setear el canal de texto: %w", err)
 		}
 	}
 	if payload.VoiceChannelID != nil {
 		if err := gp.stateStorage.SetVoiceChannel(*payload.VoiceChannelID); err != nil {
-			return fmt.Errorf("error setting voice channel: %w", err)
+			return fmt.Errorf("error al setear el canal de voz: %w", err)
 		}
 	}
 
-	// Obtener canales actuales
 	voiceChannel, textChannel, err := gp.getVoiceAndTextChannels()
 	if err != nil {
-		return fmt.Errorf("error getting channels: %w", err)
+		return fmt.Errorf("error al obtener los canales: %w", err)
 	}
 
 	if err := gp.JoinVoiceChannel(voiceChannel); err != nil {
-		return fmt.Errorf("error joining voice channel: %w", err)
+		return fmt.Errorf("error al unirse al canal de voz: %w", err)
 	}
 
-	// Reproducir la lista de reproducción
 	for {
 		song, err := gp.playlistHandler.GetNextSong()
 		if errors.Is(err, ErrPlaylistEmpty) {
 			return nil
 		}
 		if err != nil {
-			return fmt.Errorf("error getting next song: %w", err)
+			return fmt.Errorf("error al obtener la siguente cancion: %w", err)
 		}
 
 		if err := gp.playbackHandler.Play(ctx, song, textChannel); err != nil {
 			if errors.Is(err, context.Canceled) {
 				return nil
 			}
-			gp.logger.Error("Error playing song", zap.Error(err))
+			gp.logger.Error("Error al reproducir la canción", zap.Error(err))
 			continue
 		}
 
-		// Esperar a que termine la canción o sea interrumpida
 		for gp.playbackHandler.CurrentState() != StateIdle {
 			time.Sleep(500 * time.Millisecond)
 		}
@@ -241,11 +236,11 @@ func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayerEvent) e
 func (gp *GuildPlayer) getVoiceAndTextChannels() (voiceChannel string, textChannel string, err error) {
 	voiceChannel, err = gp.stateStorage.GetVoiceChannel()
 	if err != nil {
-		return "", "", fmt.Errorf("error getting voice channel: %w", err)
+		return "", "", fmt.Errorf("error al obtener el canal de voz: %w", err)
 	}
 	textChannel, err = gp.stateStorage.GetTextChannel()
 	if err != nil {
-		return "", "", fmt.Errorf("error getting text channel: %w", err)
+		return "", "", fmt.Errorf("error al obtener el canal de texto: %w", err)
 	}
 	return voiceChannel, textChannel, nil
 }

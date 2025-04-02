@@ -314,6 +314,66 @@ func (h *CommandHandler) respondWithError(ic *discordgo.InteractionCreate, messa
 	}
 }
 
+func (h *CommandHandler) PauseSong(s *discordgo.Session, ic *discordgo.InteractionCreate) {
+	g, err := s.State.Guild(ic.GuildID)
+	if err != nil {
+		h.logger.Error("Error al obtener el servidor", zap.Error(err))
+		h.respondWithError(ic, ErrorMessageServerNotFound)
+		return
+	}
+
+	guildPlayer, err := h.guildManager.GetGuildPlayer(g.ID)
+	if err != nil {
+		h.logger.Error("Error al obtener GuildPlayer", zap.Error(err))
+		return
+	}
+
+	if err := guildPlayer.Pause(); err != nil {
+		h.logger.Error("Error al pausar la reproducción", zap.Error(err))
+		h.respondWithError(ic, "❌ Ocurrió un error al pausar la reproducción")
+		return
+	}
+
+	domainInteraction := toDomainInteraction(ic.Interaction)
+
+	if err := h.messenger.Respond(domainInteraction, entity.InteractionResponse{
+		Type:    entity.InteractionResponseChannelMessageWithSource,
+		Content: "⏸️ Reproducción pausada",
+	}); err != nil {
+		h.logger.Error("Error al enviar mensaje de confirmación", zap.Error(err))
+	}
+}
+
+func (h *CommandHandler) ResumeSong(s *discordgo.Session, ic *discordgo.InteractionCreate) {
+	g, err := s.State.Guild(ic.GuildID)
+	if err != nil {
+		h.logger.Error("Error al obtener el servidor", zap.Error(err))
+		h.respondWithError(ic, ErrorMessageServerNotFound)
+		return
+	}
+
+	guildPlayer, err := h.guildManager.GetGuildPlayer(g.ID)
+	if err != nil {
+		h.logger.Error("Error al obtener GuildPlayer", zap.Error(err))
+		return
+	}
+
+	if err := guildPlayer.Resume(); err != nil {
+		h.logger.Error("Error al reanudar la reproducción", zap.Error(err))
+		h.respondWithError(ic, "❌ Ocurrió un error al reanudar la reproducción")
+		return
+	}
+
+	domainInteraction := toDomainInteraction(ic.Interaction)
+
+	if err := h.messenger.Respond(domainInteraction, entity.InteractionResponse{
+		Type:    entity.InteractionResponseChannelMessageWithSource,
+		Content: "▶️ Reproducción reanudada",
+	}); err != nil {
+		h.logger.Error("Error al enviar mensaje de confirmación", zap.Error(err))
+	}
+}
+
 func toDomainInteraction(discordInteraction *discordgo.Interaction) *entity.Interaction {
 	if discordInteraction == nil {
 		return nil
