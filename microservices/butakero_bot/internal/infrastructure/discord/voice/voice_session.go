@@ -90,3 +90,7 @@ func (d *DiscordVoiceSession) LeaveVoiceChannel() error {
 	}
 	return nil
 }
+
+func (d *DiscordVoiceSession) GetVoiceConnection() *discordgo.VoiceConnection {
+	return d.vc
+}

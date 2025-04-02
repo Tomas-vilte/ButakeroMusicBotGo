@@ -11,6 +11,8 @@ import (
 	"go.uber.org/zap"
 )
 
+var ErrPlaylistEmpty = errors.New("la playlist está vacía")
+
 type PlaylistManager struct {
 	songStorage ports.SongStorage
 	logger      logging.Logger
@@ -25,26 +27,28 @@ func NewPlaylistManager(songStorage ports.SongStorage, logger logging.Logger) *P
 
 func (pm *PlaylistManager) AddSong(song *entity.PlayedSong) error {
 	if err := pm.songStorage.AppendSong(song); err != nil {
-		pm.logger.Error("Error adding song to playlist", zap.Error(err))
-		return fmt.Errorf("error adding song: %w", err)
+		pm.logger.Error("No se pudo agregar la canción a la playlist", zap.Error(err))
+		return fmt.Errorf("error al agregar la canción: %w", err)
 	}
+	pm.logger.Debug("Canción agregada exitosamente a la playlist", zap.String("titulo", song.DiscordSong.TitleTrack))
 	return nil
 }
 
 func (pm *PlaylistManager) RemoveSong(position int) (*entity.DiscordEntity, error) {
 	song, err := pm.songStorage.RemoveSong(position)
 	if err != nil {
-		pm.logger.Error("Error removing song from playlist", zap.Error(err), zap.Int("position", position))
-		return nil, fmt.Errorf("error removing song: %w", err)
+		pm.logger.Error("No se pudo eliminar la canción de la playlist", zap.Error(err), zap.Int("posicion", position))
+		return nil, fmt.Errorf("error al eliminar la canción: %w", err)
 	}
+	pm.logger.Debug("Canción eliminada exitosamente", zap.String("titulo", song.DiscordSong.TitleTrack))
 	return song.DiscordSong, nil
 }
 
 func (pm *PlaylistManager) GetPlaylist() ([]string, error) {
 	songs, err := pm.songStorage.GetSongs()
 	if err != nil {
-		pm.logger.Error("Error getting playlist", zap.Error(err))
-		return nil, fmt.Errorf("error getting playlist: %w", err)
+		pm.logger.Error("No se pudo obtener la playlist", zap.Error(err))
+		return nil, fmt.Errorf("error al obtener la playlist: %w", err)
 	}
 
 	playlist := make([]string, len(songs))
@@ -56,9 +60,10 @@ func (pm *PlaylistManager) GetPlaylist() ([]string, error) {
 
 func (pm *PlaylistManager) ClearPlaylist() error {
 	if err := pm.songStorage.ClearPlaylist(); err != nil {
-		pm.logger.Error("Error clearing playlist", zap.Error(err))
-		return fmt.Errorf("error clearing playlist: %w", err)
+		pm.logger.Error("No se pudo limpiar la playlist", zap.Error(err))
+		return fmt.Errorf("error al limpiar la playlist: %w", err)
 	}
+	pm.logger.Debug("Playlist limpiada exitosamente")
 	return nil
 }
 
@@ -68,10 +73,9 @@ func (pm *PlaylistManager) GetNextSong() (*entity.PlayedSong, error) {
 		return nil, ErrPlaylistEmpty
 	}
 	if err != nil {
-		pm.logger.Error("Error getting next song", zap.Error(err))
-		return nil, fmt.Errorf("error getting next song: %w", err)
+		pm.logger.Error("No se pudo obtener la siguiente canción", zap.Error(err))
+		return nil, fmt.Errorf("error al obtener la siguiente canción: %w", err)
 	}
+	pm.logger.Debug("Reproduciendo siguiente canción", zap.String("titulo", song.DiscordSong.TitleTrack))
 	return song, nil
 }
-
-var ErrPlaylistEmpty = errors.New("playlist is empty")

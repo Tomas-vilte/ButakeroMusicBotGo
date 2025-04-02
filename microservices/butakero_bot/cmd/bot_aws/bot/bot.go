@@ -120,6 +120,8 @@ func StartBot() error {
 		command.NewListCommand(handler, logger),
 		command.NewRemoveCommand(handler, logger),
 		command.NewPlayingCommand(handler, logger),
+		command.NewPauseCommand(handler, logger),
+		command.NewResumeCommand(handler, logger),
 	}
 
 	eventsHandler.RegisterEventHandlers(discordClient, ctx)
