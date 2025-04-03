@@ -12,17 +12,21 @@ import (
 )
 
 type DiscordVoiceSession struct {
-	session *discordgo.Session
-	guildID string
-	vc      *discordgo.VoiceConnection
-	logger  logging.Logger
+	session  *discordgo.Session
+	guildID  string
+	vc       *discordgo.VoiceConnection
+	logger   logging.Logger
+	pauseCh  chan struct{}
+	resumeCh chan struct{}
 }
 
 func NewDiscordVoiceSession(s *discordgo.Session, guildID string, logger logging.Logger) *DiscordVoiceSession {
 	return &DiscordVoiceSession{
-		session: s,
-		guildID: guildID,
-		logger:  logger,
+		session:  s,
+		guildID:  guildID,
+		logger:   logger,
+		pauseCh:  make(chan struct{}),
+		resumeCh: make(chan struct{}),
 	}
 }
 
@@ -44,6 +48,12 @@ func (d *DiscordVoiceSession) SendAudio(ctx context.Context, reader io.ReadClose
 		return errors.New("no hay conexión de voz activa")
 	}
 
+	defer func() {
+		if err := reader.Close(); err != nil {
+			d.logger.Error("Error al cerrar el reader", zap.Error(err))
+		}
+	}()
+
 	if err := d.vc.Speaking(true); err != nil {
 		d.logger.Error("Error al comenzar a hablar", zap.Error(err))
 		return err
@@ -55,12 +65,28 @@ func (d *DiscordVoiceSession) SendAudio(ctx context.Context, reader io.ReadClose
 	}()
 
 	decoderAudio := decoder.NewBufferedOpusDecoder(reader)
+	isPaused := false
 
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-d.pauseCh:
+			if !isPaused {
+				isPaused = true
+				d.logger.Debug("Reproducción pausada en VoiceSession")
+			}
+		case <-d.resumeCh:
+			if isPaused {
+				isPaused = false
+				d.logger.Debug("Reproducción reanudada en VoiceSession")
+			}
 		default:
+			if isPaused {
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+
 			frame, err := decoderAudio.OpusFrame()
 			if err != nil {
 				if err == io.EOF {
@@ -81,6 +107,14 @@ func (d *DiscordVoiceSession) SendAudio(ctx context.Context, reader io.ReadClose
 	}
 }
 
+func (d *DiscordVoiceSession) Pause() {
+	d.pauseCh <- struct{}{}
+}
+
+func (d *DiscordVoiceSession) Resume() {
+	d.resumeCh <- struct{}{}
+}
+
 // LeaveVoiceChannel desconecta la sesión del canal de voz.
 func (d *DiscordVoiceSession) LeaveVoiceChannel() error {
 	if d.vc != nil {
@@ -89,8 +123,4 @@ func (d *DiscordVoiceSession) LeaveVoiceChannel() error {
 		return err
 	}
 	return nil
-}
-
-func (d *DiscordVoiceSession) GetVoiceConnection() *discordgo.VoiceConnection {
-	return d.vc
 }

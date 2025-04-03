@@ -3,7 +3,6 @@ package ports
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
-	"github.com/bwmarrin/discordgo"
 	"io"
 )
 
@@ -53,6 +52,7 @@ type (
 		LeaveVoiceChannel() error
 		// SendAudio envía audio a través de la sesión de voz.
 		SendAudio(ctx context.Context, reader io.ReadCloser) error
-		GetVoiceConnection() *discordgo.VoiceConnection
+		Pause()
+		Resume()
 	}
 )
