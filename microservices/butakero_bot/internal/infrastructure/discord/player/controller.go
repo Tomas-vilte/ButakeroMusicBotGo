@@ -85,7 +85,7 @@ func (pc *PlaybackController) Resume() error {
 	}
 
 	pc.stateManager.SetState(StatePlaying)
-	pc.voiceSession.Resume() // Delegamos la reanudación al VoiceSession
+	pc.voiceSession.Resume()
 	return nil
 }
 
@@ -191,6 +191,12 @@ func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedS
 			if err != nil && !errors.Is(err, context.Canceled) {
 				pc.logger.Error("Error al reproducir audio", zap.Error(err))
 			}
+
+			pc.mu.Lock()
+			pc.stateManager.SetState(StateIdle)
+			pc.currentSong = nil
+			pc.mu.Unlock()
+
 			return
 		}
 	}
