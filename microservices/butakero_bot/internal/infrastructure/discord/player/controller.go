@@ -3,8 +3,6 @@ package player
 import (
 	"context"
 	"errors"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/decoder"
-	"io"
 	"sync"
 	"time"
 
@@ -74,7 +72,7 @@ func (pc *PlaybackController) Pause() error {
 	}
 
 	pc.stateManager.SetState(StatePaused)
-	pc.pauseCh <- struct{}{}
+	pc.voiceSession.Pause()
 	return nil
 }
 
@@ -87,7 +85,7 @@ func (pc *PlaybackController) Resume() error {
 	}
 
 	pc.stateManager.SetState(StatePlaying)
-	pc.resumeCh <- struct{}{}
+	pc.voiceSession.Resume() // Delegamos la reanudación al VoiceSession
 	return nil
 }
 
@@ -136,8 +134,6 @@ func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedS
 		return
 	}
 
-	decoderAudio := decoder.NewBufferedOpusDecoder(audioData)
-
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
@@ -147,47 +143,36 @@ func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedS
 	isPaused := false
 
 	go func() {
+		defer close(done)
 		for {
 			select {
 			case <-ticker.C:
 				pc.mu.Lock()
-				if pc.currentSong != nil {
-					if !isPaused {
-						pc.currentSong.Position = time.Since(startTime).Milliseconds() - pausedTime.Milliseconds()
-					}
+				if pc.currentSong != nil && !isPaused {
+					pc.currentSong.Position = time.Since(startTime).Milliseconds() - pausedTime.Milliseconds()
 					if err := pc.messenger.UpdatePlayStatus(textChannel, pc.playMsgID, pc.currentSong); err != nil {
 						pc.logger.Error("Error al actualizar el estado de reproducción", zap.Error(err))
 					}
 				}
 				pc.mu.Unlock()
-			case <-done:
+			case <-ctx.Done():
 				return
 			}
 		}
 	}()
 
-	if err := pc.voiceSession.GetVoiceConnection().Speaking(true); err != nil {
-		pc.logger.Error("Error al iniciar la reproducción", zap.Error(err))
-		return
-	}
-	defer func() {
-		if err := pc.voiceSession.GetVoiceConnection().Speaking(false); err != nil {
-			pc.logger.Error("Error al detener la reproducción", zap.Error(err))
-		}
-	}()
-
 	pauseStart := time.Time{}
-
 	for {
 		select {
 		case <-ctx.Done():
-			close(done)
 			return
 
 		case <-pc.pauseCh:
-			isPaused = true
-			pauseStart = time.Now()
-			pc.logger.Debug("Reproducción pausada")
+			if !isPaused {
+				isPaused = true
+				pauseStart = time.Now()
+				pc.logger.Debug("Reproducción pausada")
+			}
 
 		case <-pc.resumeCh:
 			if isPaused {
@@ -202,30 +187,11 @@ func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedS
 				continue
 			}
 
-			frame, err := decoderAudio.OpusFrame()
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					pc.logger.Debug("Fin del archivo de audio")
-					close(done)
-					return
-				}
-				pc.logger.Error("Error al decodificar frame de audio", zap.Error(err))
-				close(done)
-				return
+			err := pc.voiceSession.SendAudio(ctx, audioData)
+			if err != nil && !errors.Is(err, context.Canceled) {
+				pc.logger.Error("Error al reproducir audio", zap.Error(err))
 			}
-
-			select {
-			case pc.voiceSession.GetVoiceConnection().OpusSend <- frame:
-			case <-time.After(time.Second):
-				pc.logger.Error("Tiempo de espera agotado al enviar frame de audio")
-				close(done)
-				return
-			case <-ctx.Done():
-				close(done)
-				return
-			}
-
-			time.Sleep(20 * time.Millisecond)
+			return
 		}
 	}
 }
