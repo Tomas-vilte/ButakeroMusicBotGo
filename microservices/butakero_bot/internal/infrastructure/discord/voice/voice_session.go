@@ -48,12 +48,6 @@ func (d *DiscordVoiceSession) SendAudio(ctx context.Context, reader io.ReadClose
 		return errors.New("no hay conexión de voz activa")
 	}
 
-	defer func() {
-		if err := reader.Close(); err != nil {
-			d.logger.Error("Error al cerrar el reader", zap.Error(err))
-		}
-	}()
-
 	if err := d.vc.Speaking(true); err != nil {
 		d.logger.Error("Error al comenzar a hablar", zap.Error(err))
 		return err
