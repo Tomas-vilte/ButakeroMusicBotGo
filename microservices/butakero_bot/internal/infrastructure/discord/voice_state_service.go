@@ -8,7 +8,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// VoiceStateService maneja la lógica de estado de voz
 type VoiceStateService struct {
 	logger logging.Logger
 }
@@ -81,17 +80,20 @@ func (s *VoiceStateService) HandleVoiceStateChange(
 
 	if currentSong != nil && vs.UserID == currentSong.RequestedByID {
 		if vs.ChannelID == "" || (botVoiceState != nil && vs.ChannelID != botVoiceState.ChannelID) {
-			usersInCurrentChannel := 0
-			for _, state := range guild.VoiceStates {
-				if state.UserID != session.State.User.ID &&
-					(botVoiceState != nil && state.ChannelID == botVoiceState.ChannelID) {
-					usersInCurrentChannel++
+			if botVoiceState != nil {
+				usersInBotChannel := 0
+				for _, state := range guild.VoiceStates {
+					if state.UserID != session.State.User.ID && state.ChannelID == botVoiceState.ChannelID {
+						usersInBotChannel++
+					}
 				}
-			}
 
-			if usersInCurrentChannel == 0 {
-				if err := guildPlayer.Stop(); err != nil {
-					return fmt.Errorf("error al detener la reproducción: %w", err)
+				if usersInBotChannel == 0 {
+					s.logger.Info("No hay usuarios en el canal, deteniendo reproducción",
+						zap.String("channelID", botVoiceState.ChannelID))
+					if err := guildPlayer.Stop(); err != nil {
+						return fmt.Errorf("error al detener la reproducción: %w", err)
+					}
 				}
 			}
 		}

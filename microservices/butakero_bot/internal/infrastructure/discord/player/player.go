@@ -90,6 +90,10 @@ func (gp *GuildPlayer) Stop() error {
 	}
 
 	gp.playbackHandler.Stop()
+	if err := gp.playbackHandler.GetVoiceSession().LeaveVoiceChannel(); err != nil {
+		gp.logger.Error("Error al abandonar el canal de voz", zap.Error(err))
+		return fmt.Errorf("error al abandonar el canal de voz: %w", err)
+	}
 	gp.logger.Debug("Reproducción detenida y lista limpiada")
 	return nil
 }
