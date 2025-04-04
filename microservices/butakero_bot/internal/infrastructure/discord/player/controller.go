@@ -133,8 +133,8 @@ func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedS
 
 	done := make(chan struct{})
 	startTime := time.Now()
-	pausedTime := time.Duration(0)
-	lastPauseStart := time.Time{}
+	var pauseStart time.Time
+	var totalPaused time.Duration
 
 	go func() {
 		defer close(done)
@@ -142,10 +142,20 @@ func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedS
 			select {
 			case <-ticker.C:
 				pc.mu.Lock()
-				if pc.currentSong != nil && !pc.isPaused.Load() {
-					pc.currentSong.Position = time.Since(startTime).Milliseconds() - pausedTime.Milliseconds()
-					if err := pc.messenger.UpdatePlayStatus(textChannel, pc.playMsgID, pc.currentSong); err != nil {
-						pc.logger.Error("Error al actualizar el estado de reproducción", zap.Error(err))
+				if pc.currentSong != nil {
+					if pc.isPaused.Load() {
+						if pauseStart.IsZero() {
+							pauseStart = time.Now()
+						}
+					} else {
+						if !pauseStart.IsZero() {
+							totalPaused += time.Since(pauseStart)
+							pauseStart = time.Time{}
+						}
+						pc.currentSong.Position = time.Since(startTime).Milliseconds() - totalPaused.Milliseconds()
+						if err := pc.messenger.UpdatePlayStatus(textChannel, pc.playMsgID, pc.currentSong); err != nil {
+							pc.logger.Error("Error al actualizar el estado de reproducción", zap.Error(err))
+						}
 					}
 				}
 				pc.mu.Unlock()
@@ -161,21 +171,20 @@ func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedS
 			return
 		default:
 			if pc.isPaused.Load() {
-				if lastPauseStart.IsZero() {
-					lastPauseStart = time.Now()
-				}
 				time.Sleep(100 * time.Millisecond)
 				continue
-			}
-
-			if !lastPauseStart.IsZero() {
-				pausedTime += time.Since(lastPauseStart)
-				lastPauseStart = time.Time{}
 			}
 
 			err := pc.voiceSession.SendAudio(ctx, audioData)
 			if err != nil && !errors.Is(err, context.Canceled) {
 				pc.logger.Error("Error al reproducir audio", zap.Error(err))
+			}
+
+			if pc.currentSong != nil {
+				pc.currentSong.Position = pc.currentSong.DiscordSong.DurationMs
+				if err := pc.messenger.UpdatePlayStatus(textChannel, pc.playMsgID, pc.currentSong); err != nil {
+					pc.logger.Error("Error al actualizar el estado de reproducción final", zap.Error(err))
+				}
 			}
 
 			pc.mu.Lock()

@@ -217,6 +217,21 @@ func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayerEvent) e
 	for {
 		song, err := gp.playlistHandler.GetNextSong()
 		if errors.Is(err, ErrPlaylistEmpty) {
+			gp.logger.Debug("Playlist vacía, terminando reproducción")
+
+			select {
+			case event := <-gp.eventCh:
+				if event.Type == EventPlay {
+					gp.eventCh <- event
+					return nil
+				}
+			default:
+				if err := gp.playbackHandler.GetVoiceSession().LeaveVoiceChannel(); err != nil {
+					gp.logger.Error("Error al salir del canal de voz", zap.Error(err))
+				}
+				gp.logger.Debug("Bot desconectado del canal de voz después de reproducir toda la playlist")
+			}
+
 			return nil
 		}
 		if err != nil {
