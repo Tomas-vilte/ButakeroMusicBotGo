@@ -48,12 +48,9 @@ func (gp *GuildPlayer) AddSong(textChannelID, voiceChannelID *string, playedSong
 		return fmt.Errorf("error al agregar la canción: %w", err)
 	}
 
-	gp.eventCh <- PlayerEvent{
-		Type: EventPlay,
-		Payload: EventPayload{
-			TextChannelID:  textChannelID,
-			VoiceChannelID: voiceChannelID,
-		},
+	gp.eventCh <- PlayEvent{
+		TextChannelID:  textChannelID,
+		VoiceChannelID: voiceChannelID,
 	}
 
 	gp.logger.Debug("Canción agregada a la lista", zap.String("título", playedSong.DiscordSong.TitleTrack))
@@ -163,7 +160,7 @@ func (gp *GuildPlayer) Run(ctx context.Context) error {
 		case event := <-gp.eventCh:
 			if err := gp.handleEvent(ctx, event); err != nil {
 				gp.logger.Error("Error al manejar el evento del reproductor",
-					zap.String("evento", event.Type),
+					zap.String("evento", event.Type()),
 					zap.Error(err))
 			}
 		}
@@ -171,36 +168,53 @@ func (gp *GuildPlayer) Run(ctx context.Context) error {
 }
 
 func (gp *GuildPlayer) handleEvent(ctx context.Context, event PlayerEvent) error {
-	switch event.Type {
-	case EventPlay:
-		return gp.handlePlayEvent(ctx, event)
-	case EventPause:
-		return gp.Pause()
-	case EventResume:
-		return gp.Resume()
-	case EventStop:
-		return gp.Stop()
-	case EventSkip:
-		gp.SkipSong()
+	switch e := event.(type) {
+	case PlayEvent:
+		return gp.handlePlayEvent(ctx, e)
+
+	case PauseEvent:
+		if err := gp.Pause(); err != nil {
+			gp.logger.Error("Error al pausar la reproducción", zap.Error(err))
+			return err
+		}
+		gp.logger.Debug("Reproducción pausada")
 		return nil
+
+	case ResumeEvent:
+		if err := gp.Resume(); err != nil {
+			gp.logger.Error("Error al reanudar la reproducción", zap.Error(err))
+			return err
+		}
+		gp.logger.Debug("Reproducción reanudada")
+		return nil
+
+	case StopEvent:
+		if err := gp.Stop(); err != nil {
+			gp.logger.Error("Error al detener la reproducción", zap.Error(err))
+			return err
+		}
+		gp.logger.Debug("Reproducción detenida")
+		return nil
+
+	case SkipEvent:
+		gp.SkipSong()
+		gp.logger.Debug("Canción saltada")
+		return nil
+
 	default:
-		return fmt.Errorf("tipo de evento desconocido: %s", event.Type)
+		gp.logger.Error("Tipo de evento desconocido", zap.String("tipo", event.Type()))
+		return fmt.Errorf("tipo de evento desconocido: %T", event)
 	}
 }
 
-func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayerEvent) error {
-	payload, ok := event.Payload.(EventPayload)
-	if !ok {
-		return errors.New("payload de evento para reproduccion no valida")
-	}
-
-	if payload.TextChannelID != nil {
-		if err := gp.stateStorage.SetTextChannel(*payload.TextChannelID); err != nil {
+func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayEvent) error {
+	if event.TextChannelID != nil {
+		if err := gp.stateStorage.SetTextChannel(*event.TextChannelID); err != nil {
 			return fmt.Errorf("error al setear el canal de texto: %w", err)
 		}
 	}
-	if payload.VoiceChannelID != nil {
-		if err := gp.stateStorage.SetVoiceChannel(*payload.VoiceChannelID); err != nil {
+	if event.VoiceChannelID != nil {
+		if err := gp.stateStorage.SetVoiceChannel(*event.VoiceChannelID); err != nil {
 			return fmt.Errorf("error al setear el canal de voz: %w", err)
 		}
 	}
@@ -221,7 +235,7 @@ func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayerEvent) e
 
 			select {
 			case event := <-gp.eventCh:
-				if event.Type == EventPlay {
+				if event.Type() == "play" {
 					gp.eventCh <- event
 					return nil
 				}
