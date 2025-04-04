@@ -19,12 +19,12 @@ type EventHandler struct {
 	guildManager      ports.GuildManager
 	cfg               *config.Config
 	logger            logging.Logger
-	voiceStateService *discord.VoiceStateService
+	voiceStateService discord.VoiceStateHandler
 }
 
 func NewEventHandler(
 	guildManager ports.GuildManager,
-	voiceStateService *discord.VoiceStateService,
+	voiceStateService discord.VoiceStateHandler,
 	logger logging.Logger,
 	cfg *config.Config,
 ) *EventHandler {
