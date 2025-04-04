@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
@@ -20,8 +21,7 @@ type PlaybackController struct {
 	logger        logging.Logger
 	stateManager  *StateManager
 	currentCancel context.CancelFunc
-	pauseCh       chan struct{}
-	resumeCh      chan struct{}
+	isPaused      atomic.Bool
 	mu            sync.Mutex
 	currentSong   *entity.PlayedSong
 	playMsgID     string
@@ -41,8 +41,6 @@ func NewPlaybackController(
 		messenger:    messenger,
 		logger:       logger,
 		stateManager: NewStateManager(),
-		pauseCh:      make(chan struct{}),
-		resumeCh:     make(chan struct{}),
 	}
 }
 
@@ -72,6 +70,7 @@ func (pc *PlaybackController) Pause() error {
 	}
 
 	pc.stateManager.SetState(StatePaused)
+	pc.isPaused.Store(true)
 	pc.voiceSession.Pause()
 	return nil
 }
@@ -85,6 +84,7 @@ func (pc *PlaybackController) Resume() error {
 	}
 
 	pc.stateManager.SetState(StatePlaying)
+	pc.isPaused.Store(false)
 	pc.voiceSession.Resume()
 	return nil
 }
@@ -107,12 +107,6 @@ func (pc *PlaybackController) CurrentState() PlayerState {
 
 func (pc *PlaybackController) GetVoiceSession() ports.VoiceSession {
 	return pc.voiceSession
-}
-
-func (pc *PlaybackController) CurrentSong() *entity.PlayedSong {
-	pc.mu.Lock()
-	defer pc.mu.Unlock()
-	return pc.currentSong
 }
 
 func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedSong, textChannel string) {
@@ -139,8 +133,8 @@ func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedS
 
 	done := make(chan struct{})
 	startTime := time.Now()
-	pausedTime := time.Duration(0)
-	isPaused := false
+	var pauseStart time.Time
+	var totalPaused time.Duration
 
 	go func() {
 		defer close(done)
@@ -148,10 +142,20 @@ func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedS
 			select {
 			case <-ticker.C:
 				pc.mu.Lock()
-				if pc.currentSong != nil && !isPaused {
-					pc.currentSong.Position = time.Since(startTime).Milliseconds() - pausedTime.Milliseconds()
-					if err := pc.messenger.UpdatePlayStatus(textChannel, pc.playMsgID, pc.currentSong); err != nil {
-						pc.logger.Error("Error al actualizar el estado de reproducción", zap.Error(err))
+				if pc.currentSong != nil {
+					if pc.isPaused.Load() {
+						if pauseStart.IsZero() {
+							pauseStart = time.Now()
+						}
+					} else {
+						if !pauseStart.IsZero() {
+							totalPaused += time.Since(pauseStart)
+							pauseStart = time.Time{}
+						}
+						pc.currentSong.Position = time.Since(startTime).Milliseconds() - totalPaused.Milliseconds()
+						if err := pc.messenger.UpdatePlayStatus(textChannel, pc.playMsgID, pc.currentSong); err != nil {
+							pc.logger.Error("Error al actualizar el estado de reproducción", zap.Error(err))
+						}
 					}
 				}
 				pc.mu.Unlock()
@@ -161,28 +165,12 @@ func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedS
 		}
 	}()
 
-	pauseStart := time.Time{}
 	for {
 		select {
 		case <-ctx.Done():
 			return
-
-		case <-pc.pauseCh:
-			if !isPaused {
-				isPaused = true
-				pauseStart = time.Now()
-				pc.logger.Debug("Reproducción pausada")
-			}
-
-		case <-pc.resumeCh:
-			if isPaused {
-				isPaused = false
-				pausedTime += time.Since(pauseStart)
-				pc.logger.Debug("Reproducción reanudada")
-			}
-
 		default:
-			if isPaused {
+			if pc.isPaused.Load() {
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
@@ -192,11 +180,17 @@ func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedS
 				pc.logger.Error("Error al reproducir audio", zap.Error(err))
 			}
 
+			if pc.currentSong != nil {
+				pc.currentSong.Position = pc.currentSong.DiscordSong.DurationMs
+				if err := pc.messenger.UpdatePlayStatus(textChannel, pc.playMsgID, pc.currentSong); err != nil {
+					pc.logger.Error("Error al actualizar el estado de reproducción final", zap.Error(err))
+				}
+			}
+
 			pc.mu.Lock()
 			pc.stateManager.SetState(StateIdle)
 			pc.currentSong = nil
 			pc.mu.Unlock()
-
 			return
 		}
 	}
