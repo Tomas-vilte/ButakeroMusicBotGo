@@ -189,10 +189,7 @@ func (gp *GuildPlayer) handleEvent(ctx context.Context, event PlayerEvent) error
 }
 
 func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayerEvent) error {
-	payload, ok := event.Payload.(EventPayload)
-	if !ok {
-		return errors.New("payload de evento para reproduccion no valida")
-	}
+	payload := event.Payload
 
 	if payload.TextChannelID != nil {
 		if err := gp.stateStorage.SetTextChannel(*payload.TextChannelID); err != nil {

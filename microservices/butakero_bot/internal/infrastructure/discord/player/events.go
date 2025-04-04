@@ -1,10 +1,19 @@
 package player
 
-// PlayerEvent representa eventos que pueden ocurrir en el reproductor
-type PlayerEvent struct {
-	Type    string
-	Payload interface{}
-}
+type (
+
+	// PlayerEvent representa eventos que pueden ocurrir en el reproductor
+	PlayerEvent struct {
+		Type    string
+		Payload EventPayload
+	}
+
+	// EventPayload contiene datos adicionales para los eventos
+	EventPayload struct {
+		TextChannelID  *string
+		VoiceChannelID *string
+	}
+)
 
 // Event types
 const (
@@ -14,9 +23,3 @@ const (
 	EventStop   = "stop"
 	EventSkip   = "skip"
 )
-
-// EventPayload contiene datos adicionales para los eventos
-type EventPayload struct {
-	TextChannelID  *string
-	VoiceChannelID *string
-}
