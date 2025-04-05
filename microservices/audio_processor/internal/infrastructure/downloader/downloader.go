@@ -43,6 +43,13 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 		zap.String("method", "DownloadAudio"),
 	)
 
+	//version, err := d.getYTDLPVersion()
+	//if err != nil {
+	//	log.Error("Error al obtener la versión de yt-dlp", zap.Error(err))
+	//} else {
+	//	log.Info("Versión de yt-dlp", zap.String("version", version))
+	//}
+
 	log.Info("Iniciando descarga de audio",
 		zap.String("url", url),
 		zap.String("cookies", d.cookies),
@@ -51,12 +58,13 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 	pr, pw := io.Pipe()
 
 	ytArgs := []string{
-		"-f", "bestaudio",
+		"-f", "bestaudio[ext=m4a]",
 		"--audio-quality", "0",
 		"-o", "-",
 		"--force-overwrites",
 		"--http-chunk-size", "20M",
 		"--newline",
+		//"--verbose",
 	}
 
 	if d.cookies != "" {
@@ -155,6 +163,15 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 	}()
 
 	return readAllAndReturnReader(pr, d.log)
+}
+
+func (d *YTDLPDownloader) getYTDLPVersion() (string, error) {
+	cmd := exec.Command("yt-dlp", "--version")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", errorsApp.ErrYTDLPCommandFailed.WithMessage(fmt.Sprintf("error al obtener la versión de yt-dlp: %v", err))
+	}
+	return strings.TrimSpace(string(output)), nil
 }
 
 func readAllAndReturnReader(r io.Reader, log logger.Logger) (io.Reader, error) {
