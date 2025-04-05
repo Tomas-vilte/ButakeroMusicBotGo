@@ -165,14 +165,14 @@ func (d *YTDLPDownloader) DownloadAudio(ctx context.Context, url string) (io.Rea
 	return readAllAndReturnReader(pr, d.log)
 }
 
-func (d *YTDLPDownloader) getYTDLPVersion() (string, error) {
-	cmd := exec.Command("yt-dlp", "--version")
-	output, err := cmd.Output()
-	if err != nil {
-		return "", errorsApp.ErrYTDLPCommandFailed.WithMessage(fmt.Sprintf("error al obtener la versión de yt-dlp: %v", err))
-	}
-	return strings.TrimSpace(string(output)), nil
-}
+//func (d *YTDLPDownloader) getYTDLPVersion() (string, error) {
+//	cmd := exec.Command("yt-dlp", "--version")
+//	output, err := cmd.Output()
+//	if err != nil {
+//		return "", errorsApp.ErrYTDLPCommandFailed.WithMessage(fmt.Sprintf("error al obtener la versión de yt-dlp: %v", err))
+//	}
+//	return strings.TrimSpace(string(output)), nil
+//}
 
 func readAllAndReturnReader(r io.Reader, log logger.Logger) (io.Reader, error) {
 	log.Debug("Iniciando readAllAndReturnReader")
