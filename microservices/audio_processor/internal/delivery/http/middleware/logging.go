@@ -25,7 +25,7 @@ func LoggingMiddleware(log logger.Logger) gin.HandlerFunc {
 			c.Request.Body = io.NopCloser(bytes.NewBuffer(requestBody))
 		}
 
-		log.Info("Request recibido",
+		log.Debug("Request recibido",
 			zap.String("method", c.Request.Method),
 			zap.String("path", path),
 			zap.String("query", query),
