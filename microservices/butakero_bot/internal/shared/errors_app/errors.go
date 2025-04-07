@@ -53,6 +53,7 @@ const (
 	// Errores relacionados con Discord
 	ErrCodeDiscordNotInVoiceChannel ErrorCode = "discord_not_in_voice_channel"
 	ErrCodeDiscordFailedToAddSong   ErrorCode = "discord_failed_to_add_song"
+	ErrCodeGuildPlayerNotFound      ErrorCode = "guild_player_not_found"
 
 	// Errores relacionados con la base de datos
 	ErrCodeDBConnectionFailed ErrorCode = "db_connection_failed"
@@ -106,6 +107,7 @@ var errorStatusMap = map[ErrorCode]int{
 	ErrCodeYTDLPInvalidOutput:        http.StatusInternalServerError,
 	ErrCodeDiscordNotInVoiceChannel:  http.StatusInternalServerError,
 	ErrCodeDiscordFailedToAddSong:    http.StatusInternalServerError,
+	ErrCodeGuildPlayerNotFound:       http.StatusInternalServerError,
 }
 
 type AppError struct {
