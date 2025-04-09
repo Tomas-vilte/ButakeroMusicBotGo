@@ -6,10 +6,6 @@ import (
 )
 
 type (
-	InitialDownloadUseCase interface {
-		Execute(ctx context.Context, song string, providerType string) (*model.OperationInitResult, error)
-	}
-
 	GetOperationStatusUseCase interface {
 		Execute(ctx context.Context, videoID string) (*model.Media, error)
 	}

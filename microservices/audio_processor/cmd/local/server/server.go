@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/delivery/http/handler"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/delivery/router"
@@ -37,15 +38,26 @@ func StartServer() error {
 		return err
 	}
 
-	messaging, err := kafka.NewKafkaService(cfg, log)
+	kafkaProducer, err := kafka.NewProducer(cfg, log)
 	if err != nil {
-		log.Error("Error al crear queue", zap.Error(err))
+		log.Error("Error al crear el producer", zap.Error(err))
 		return err
 	}
 
 	defer func() {
-		if err := messaging.Close(); err != nil {
-			log.Error("Error al cerrar el queue", zap.Error(err))
+		if err := kafkaProducer.Close(); err != nil {
+			log.Error("Error al cerrar el producidor", zap.Error(err))
+		}
+	}()
+
+	kafkaConsumer, err := kafka.NewConsumer(cfg, log)
+	if err != nil {
+		log.Error("Error al crear el consumer", zap.Error(err))
+		return err
+	}
+	defer func() {
+		if err := kafkaConsumer.Close(); err != nil {
+			log.Error("Error al cerrar el consumidor", zap.Error(err))
 		}
 	}()
 
@@ -84,21 +96,25 @@ func StartServer() error {
 
 	mediaService := service.NewMediaService(mediaRepository, log)
 	audioStorageService := service.NewAudioStorageService(storage, log)
-	topicPublisherService := service.NewMediaProcessingPublisherService(messaging, log)
+	topicPublisherService := service.NewMediaProcessingPublisherService(kafkaProducer, log)
 	audioDownloadService := service.NewAudioDownloaderService(downloaderMusic, encoderAudio, log)
 	coreService := service.NewCoreService(mediaService, audioStorageService, topicPublisherService, audioDownloadService, log, cfg)
 	operationService := service.NewOperationService(mediaService, log)
 
 	providerService := service.NewVideoService(providers, log)
-	initiateDownloadUC := usecase.NewInitiateDownloadUseCase(coreService, providerService, operationService)
 	operationUC := usecase.NewGetOperationStatusUseCase(mediaRepository)
-	audioHandler := handler.NewAudioHandler(initiateDownloadUC)
 	operationHandler := handler.NewOperationHandler(operationUC)
 	healthCheck := handler.NewHealthHandler(cfg)
+	processorService := service.NewDownloadProcessor(kafkaConsumer, mediaService, providerService, coreService, operationService, log)
+
+	if err := processorService.Run(context.Background()); err != nil {
+		log.Error("Error al iniciar el procesador", zap.Error(err))
+		return err
+	}
 
 	gin.SetMode(cfg.GinConfig.Mode)
 	r := gin.New()
-	router.SetupRoutes(r, audioHandler, operationHandler, healthCheck, log)
+	router.SetupRoutes(r, operationHandler, healthCheck, log)
 
 	return r.Run(":8080")
 }

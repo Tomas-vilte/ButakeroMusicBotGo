@@ -52,18 +52,13 @@ func (m *MockVideoProvider) SearchVideoID(ctx context.Context, input string) (st
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockMessageQueue) SendMessage(ctx context.Context, message *model.MediaProcessingMessage) error {
+func (m *MockMessageQueue) Publish(ctx context.Context, message *model.MediaProcessingMessage) error {
 	args := m.Called(ctx, message)
 	return args.Error(0)
 }
 
-func (m *MockMessageQueue) ReceiveMessage(ctx context.Context) ([]model.MediaProcessingMessage, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]model.MediaProcessingMessage), args.Error(1)
-}
-
-func (m *MockMessageQueue) DeleteMessage(ctx context.Context, receiptHandle string) error {
-	args := m.Called(ctx, receiptHandle)
+func (m *MockMessageQueue) Close() error {
+	args := m.Called()
 	return args.Error(0)
 }
 

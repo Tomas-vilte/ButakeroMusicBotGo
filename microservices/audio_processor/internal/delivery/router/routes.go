@@ -8,7 +8,6 @@ import (
 )
 
 func SetupRoutes(router *gin.Engine,
-	audioHandler *handler.AudioHandler,
 	operationHandler *handler.OperationHandler,
 	healthCheck *handler.HealthHandler,
 	log logger.Logger) {
@@ -17,7 +16,6 @@ func SetupRoutes(router *gin.Engine,
 
 	api := router.Group("/api")
 	{
-		api.POST("/v1/audio/start", audioHandler.InitiateDownload)
 		api.GET("/v1/operations/status", operationHandler.GetOperationStatus)
 		api.GET("/v1/health", healthCheck.HealthCheckHandler)
 	}
