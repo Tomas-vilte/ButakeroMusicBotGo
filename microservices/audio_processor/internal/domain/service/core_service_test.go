@@ -47,6 +47,9 @@ func TestCoreService_ProcessMedia_Success(t *testing.T) {
 		Provider:     "youtube",
 	}
 
+	userID := "user_123"
+	interactionID := "interaction_123"
+
 	audioBuffer := bytes.NewBuffer([]byte("test audio data"))
 	fileData := &model.FileData{
 		FilePath: "test-song.dca",
@@ -61,7 +64,7 @@ func TestCoreService_ProcessMedia_Success(t *testing.T) {
 	mockMediaService.On("UpdateMedia", mock.Anything, mediaDetails.ID, mock.AnythingOfType("*model.Media")).Return(nil)
 	mockTopicPublisher.On("PublishMediaProcessed", mock.Anything, mock.AnythingOfType("*model.MediaProcessingMessage")).Return(nil)
 
-	err := service.ProcessMedia(context.Background(), mediaDetails)
+	err := service.ProcessMedia(context.Background(), mediaDetails, userID, interactionID)
 
 	// Assert
 	assert.NoError(t, err)
@@ -103,6 +106,8 @@ func TestCoreService_ProcessMedia_DownloadError(t *testing.T) {
 		ThumbnailURL: "https://example.com/test-thumbnail.jpg",
 		Provider:     "youtube",
 	}
+	userID := "user_123"
+	interactionID := "interaction_123"
 
 	expectedError := errors.New("download failed")
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
@@ -111,7 +116,7 @@ func TestCoreService_ProcessMedia_DownloadError(t *testing.T) {
 	mockAudioDownloadService.On("DownloadAndEncode", mock.Anything, mediaDetails.URL).Return((*bytes.Buffer)(nil), expectedError)
 
 	// Act
-	err := service.ProcessMedia(context.Background(), mediaDetails)
+	err := service.ProcessMedia(context.Background(), mediaDetails, userID, interactionID)
 
 	// Assert
 	assert.Error(t, err)
@@ -157,6 +162,9 @@ func TestCoreService_ProcessMedia_StorageError(t *testing.T) {
 		Provider:     "youtube",
 	}
 
+	userID := "user_123"
+	interactionID := "interaction_123"
+
 	audioBuffer := bytes.NewBuffer([]byte("test audio data"))
 	expectedError := errors.New("storage failed")
 
@@ -167,7 +175,7 @@ func TestCoreService_ProcessMedia_StorageError(t *testing.T) {
 	mockAudioStorageService.On("StoreAudio", mock.Anything, audioBuffer, mediaDetails.Title).Return((*model.FileData)(nil), expectedError)
 
 	// Act
-	err := service.ProcessMedia(context.Background(), mediaDetails)
+	err := service.ProcessMedia(context.Background(), mediaDetails, userID, interactionID)
 
 	// Assert
 	assert.Error(t, err)
@@ -211,6 +219,9 @@ func TestCoreService_ProcessMedia_UpdateMediaError(t *testing.T) {
 		Provider:     "youtube",
 	}
 
+	userID := "user_123"
+	interactionID := "interaction_123"
+
 	audioBuffer := bytes.NewBuffer([]byte("test audio data"))
 	fileData := &model.FileData{
 		FilePath: "test-song.dca",
@@ -227,7 +238,7 @@ func TestCoreService_ProcessMedia_UpdateMediaError(t *testing.T) {
 	mockMediaService.On("UpdateMedia", mock.Anything, mediaDetails.ID, mock.AnythingOfType("*model.Media")).Return(expectedError)
 
 	// Act
-	err := service.ProcessMedia(context.Background(), mediaDetails)
+	err := service.ProcessMedia(context.Background(), mediaDetails, userID, interactionID)
 
 	// Assert
 	assert.Error(t, err)
@@ -272,6 +283,9 @@ func TestCoreService_ProcessMedia_PublishError(t *testing.T) {
 		Provider:     "youtube",
 	}
 
+	userID := "user_123"
+	interactionID := "interaction_123"
+
 	audioBuffer := bytes.NewBuffer([]byte("test audio data"))
 	fileData := &model.FileData{
 		FilePath: "test-song.dca",
@@ -289,7 +303,7 @@ func TestCoreService_ProcessMedia_PublishError(t *testing.T) {
 	mockTopicPublisher.On("PublishMediaProcessed", mock.Anything, mock.AnythingOfType("*model.MediaProcessingMessage")).Return(expectedError)
 
 	// Act
-	err := service.ProcessMedia(context.Background(), mediaDetails)
+	err := service.ProcessMedia(context.Background(), mediaDetails, userID, interactionID)
 
 	// Assert
 	assert.Error(t, err)
