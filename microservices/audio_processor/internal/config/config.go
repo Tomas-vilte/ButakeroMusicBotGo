@@ -21,6 +21,7 @@ func LoadConfigLocal() *Config {
 
 	return &Config{
 		Environment: "local",
+		NumWorkers:  2,
 		Service: ServiceConfig{
 			MaxAttempts: viper.GetInt("SERVICE_MAX_ATTEMPTS"),
 			Timeout:     time.Duration(viper.GetInt("SERVICE_TIMEOUT")) * time.Minute,
@@ -91,6 +92,7 @@ func LoadConfigAws() *Config {
 	}
 	return &Config{
 		Environment: "prod",
+		NumWorkers:  2,
 		Service: ServiceConfig{
 			MaxAttempts: getSecretAsInt(secrets, "SERVICE_MAX_ATTEMPTS", 5),
 			Timeout:     time.Duration(getSecretAsInt(secrets, "SERVICE_TIMEOUT", 1)) * time.Minute,

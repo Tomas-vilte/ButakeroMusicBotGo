@@ -1,8 +1,7 @@
-package service
+package processor
 
 import (
 	"context"
-	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
@@ -10,8 +9,7 @@ import (
 	"time"
 )
 
-type DownloadProcessor struct {
-	consumer         ports.MessageConsumer
+type MediaProcessor struct {
 	mediaService     ports.MediaService
 	videoService     ports.VideoService
 	coreService      ports.CoreService
@@ -19,16 +17,14 @@ type DownloadProcessor struct {
 	logger           logger.Logger
 }
 
-func NewDownloadProcessor(
-	consumer ports.MessageConsumer,
+func NewMediaProcessor(
 	mediaService ports.MediaService,
 	videoService ports.VideoService,
 	coreService ports.CoreService,
 	operationService ports.OperationService,
 	logger logger.Logger,
-) *DownloadProcessor {
-	return &DownloadProcessor{
-		consumer:         consumer,
+) *MediaProcessor {
+	return &MediaProcessor{
 		mediaService:     mediaService,
 		videoService:     videoService,
 		coreService:      coreService,
@@ -37,30 +33,7 @@ func NewDownloadProcessor(
 	}
 }
 
-func (p *DownloadProcessor) Run(ctx context.Context) error {
-	requestChan, err := p.consumer.GetRequestsChannel(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get requests channel: %w", err)
-	}
-
-	p.logger.Info("Starting download processor")
-
-	for {
-		select {
-		case req := <-requestChan:
-			if err := p.processRequest(ctx, req); err != nil {
-				p.logger.Error("Failed to process request",
-					zap.String("interaction_id", req.InteractionID),
-					zap.Error(err))
-			}
-		case <-ctx.Done():
-			p.logger.Info("Shutdown signal received, stopping processor")
-			return nil
-		}
-	}
-}
-
-func (p *DownloadProcessor) processRequest(ctx context.Context, req *model.MediaRequest) error {
+func (p *MediaProcessor) ProcessRequest(ctx context.Context, req *model.MediaRequest) error {
 	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
@@ -71,7 +44,7 @@ func (p *DownloadProcessor) processRequest(ctx context.Context, req *model.Media
 
 	mediaDetails, err := p.videoService.GetMediaDetails(reqCtx, req.Song, req.ProviderType)
 	if err != nil {
-		log.Error("Failed to get media details", zap.Error(err))
+		log.Error("Error al obtener detalles del media", zap.Error(err))
 		return err
 	}
 
@@ -81,10 +54,10 @@ func (p *DownloadProcessor) processRequest(ctx context.Context, req *model.Media
 	}
 
 	if err := p.coreService.ProcessMedia(reqCtx, mediaDetails); err != nil {
-		log.Error("Media processing failed", zap.Error(err))
+		log.Error("Error al procesar media", zap.Error(err))
 		return err
 	}
 
-	log.Info("Media processed successfully")
+	log.Info("Media procesado exitosamente")
 	return nil
 }

@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/delivery/http/handler"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/delivery/queue/processor"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/delivery/router"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/adapters"
@@ -12,6 +13,9 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/storage/cloud"
 	"io"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/service"
@@ -33,6 +37,17 @@ func StartServer() error {
 		if err := log.Close(); err != nil {
 			log.Error("Error al cerrar el logger", zap.Error(err))
 		}
+	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sig := <-sigChan
+		log.Info("Senal recivida cerrando", zap.String("signal", sig.String()))
+		cancel()
 	}()
 
 	storage, err := cloud.NewS3Storage(cfg, log)
@@ -106,11 +121,26 @@ func StartServer() error {
 	operationHandler := handler.NewOperationHandler(operationUC)
 	healthCheck := handler.NewHealthHandler(cfg)
 
-	processorService := service.NewDownloadProcessor(sqsConsumer, mediaService, providerService, coreService, operationService, log)
+	downloadService := processor.NewDownloadService(cfg.NumWorkers, sqsConsumer, mediaService, providerService, coreService, operationService, log)
 
-	if err := processorService.Run(context.Background()); err != nil {
-		log.Error("Error al iniciar el procesador", zap.Error(err))
-		return err
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- downloadService.Run(ctx)
+	}()
+
+	select {
+	case err := <-errChan:
+		if err != nil {
+			log.Error("Error al cerrar el download", zap.Error(err))
+			os.Exit(1)
+		}
+	case <-ctx.Done():
+		log.Info("señal de cancelación recibida, cerrando el servicio")
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Second*30)
+		defer shutdownCancel()
+
+		<-shutdownCtx.Done()
+		log.Info("Servicio cerrado con éxito")
 	}
 
 	gin.SetMode(cfg.GinConfig.Mode)
