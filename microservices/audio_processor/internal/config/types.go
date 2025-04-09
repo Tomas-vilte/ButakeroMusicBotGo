@@ -15,6 +15,7 @@ type (
 		Database    DatabaseConfig
 		API         APIConfig
 		GinConfig   GinConfig
+		NumWorkers  int
 	}
 
 	// ServiceConfig contiene configuración general del servicio
