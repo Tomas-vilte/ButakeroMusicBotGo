@@ -30,7 +30,8 @@ type (
 
 	// AWSConfig contiene todas las configuraciones relacionadas con AWS
 	AWSConfig struct {
-		Region string
+		Region   string
+		Endpoint string
 	}
 
 	// MessagingConfig maneja la configuración de mensajería

@@ -79,32 +79,6 @@ func NewDevelopmentLogger() (*ZapLogger, error) {
 	return &ZapLogger{logger: logger}, nil
 }
 
-// NewZapLogger crea una nueva instancia de ZapLogger.
-func NewZapLogger() (*ZapLogger, error) {
-	config := zap.NewProductionConfig()
-
-	config.EncoderConfig = zapcore.EncoderConfig{
-		TimeKey:        "timestamp",
-		LevelKey:       "level",
-		NameKey:        "logger",
-		CallerKey:      "caller",
-		MessageKey:     "msg",
-		StacktraceKey:  "stacktrace",
-		LineEnding:     zapcore.DefaultLineEnding,
-		EncodeLevel:    zapcore.CapitalColorLevelEncoder,
-		EncodeTime:     customTimeEncoder,
-		EncodeDuration: zapcore.StringDurationEncoder,
-		EncodeCaller:   zapcore.ShortCallerEncoder,
-	}
-	config.Encoding = "console"
-
-	logger, err := config.Build()
-	if err != nil {
-		return nil, err
-	}
-	return &ZapLogger{logger: logger}, nil
-}
-
 // Close cierra el logger.
 func (l *ZapLogger) Close() error {
 	err := l.logger.Sync()
