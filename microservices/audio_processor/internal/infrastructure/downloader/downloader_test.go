@@ -21,7 +21,7 @@ const (
 )
 
 func setupTestDownloader(t *testing.T) (*YTDLPDownloader, logger.Logger) {
-	testLogger, err := logger.NewZapLogger()
+	testLogger, err := logger.NewDevelopmentLogger()
 	require.NoError(t, err, "Error creando el logger")
 
 	downloaderAudio, err := NewYTDLPDownloader(testLogger, YTDLPOptions{})
@@ -34,7 +34,7 @@ func TestDownloadAudio(t *testing.T) {
 	t.Skip("Omitir tests")
 	t.Run("Create a new downloader", func(t *testing.T) {
 		t.Run("Create successful downloader", func(t *testing.T) {
-			testLogger, err := logger.NewZapLogger()
+			testLogger, err := logger.NewDevelopmentLogger()
 			require.NoError(t, err)
 
 			_, err = NewYTDLPDownloader(testLogger, YTDLPOptions{})
@@ -42,7 +42,7 @@ func TestDownloadAudio(t *testing.T) {
 		})
 
 		t.Run("Create with custom timeout", func(t *testing.T) {
-			testLogger, err := logger.NewZapLogger()
+			testLogger, err := logger.NewDevelopmentLogger()
 			require.NoError(t, err)
 
 			_, err = NewYTDLPDownloader(testLogger, YTDLPOptions{})

@@ -15,13 +15,13 @@ import (
 	"go.uber.org/zap"
 )
 
-type consumer struct {
+type ConsumerKafka struct {
 	saramaConsumer sarama.Consumer
 	logger         logger.Logger
 	cfg            *config.Config
 }
 
-func NewConsumer(cfg *config.Config, logger logger.Logger) (ports.MessageConsumer, error) {
+func NewConsumerKafka(cfg *config.Config, logger logger.Logger) (ports.MessageConsumer, error) {
 	logger.Info("Inicializando consumidor Kafka",
 		zap.Strings("brokers", cfg.Messaging.Kafka.Brokers),
 		zap.Bool("tls_enabled", cfg.Messaging.Kafka.EnableTLS))
@@ -59,7 +59,7 @@ func NewConsumer(cfg *config.Config, logger logger.Logger) (ports.MessageConsume
 		return nil, fmt.Errorf("error al crear el consumidor: %w", err)
 	}
 
-	consumerKafka := &consumer{
+	consumerKafka := &ConsumerKafka{
 		saramaConsumer: c,
 		logger:         logger,
 		cfg:            cfg,
@@ -76,9 +76,9 @@ func NewConsumer(cfg *config.Config, logger logger.Logger) (ports.MessageConsume
 	return consumerKafka, nil
 }
 
-func (c *consumer) GetRequestsChannel(ctx context.Context) (<-chan *model.MediaRequest, error) {
+func (c *ConsumerKafka) GetRequestsChannel(ctx context.Context) (<-chan *model.MediaRequest, error) {
 	log := c.logger.With(
-		zap.String("component", "consumer"),
+		zap.String("component", "ConsumerKafka"),
 		zap.String("method", "GetRequestsChannel"),
 		zap.String("topic", c.cfg.Messaging.Kafka.Topics.BotDownloadRequests),
 	)
@@ -88,7 +88,7 @@ func (c *consumer) GetRequestsChannel(ctx context.Context) (<-chan *model.MediaR
 	log.Debug("Consumiendo partición",
 		zap.String("topic", c.cfg.Messaging.Kafka.Topics.BotDownloadRequests),
 		zap.Int32("partition", 0),
-		zap.Int64("offset", int64(sarama.OffsetNewest)))
+		zap.Int64("offset", sarama.OffsetNewest))
 
 	partitionConsumer, err := c.saramaConsumer.ConsumePartition(c.cfg.Messaging.Kafka.Topics.BotDownloadRequests, 0, sarama.OffsetNewest)
 	if err != nil {
@@ -105,9 +105,9 @@ func (c *consumer) GetRequestsChannel(ctx context.Context) (<-chan *model.MediaR
 	return out, nil
 }
 
-func (c *consumer) consumeLoop(ctx context.Context, pc sarama.PartitionConsumer, out chan<- *model.MediaRequest) {
+func (c *ConsumerKafka) consumeLoop(ctx context.Context, pc sarama.PartitionConsumer, out chan<- *model.MediaRequest) {
 	log := c.logger.With(
-		zap.String("component", "consumer"),
+		zap.String("component", "ConsumerKafka"),
 		zap.String("method", "consumeLoop"),
 		zap.String("topic", c.cfg.Messaging.Kafka.Topics.BotDownloadRequests),
 	)
@@ -163,9 +163,9 @@ func (c *consumer) consumeLoop(ctx context.Context, pc sarama.PartitionConsumer,
 	}
 }
 
-func (c *consumer) Close() error {
+func (c *ConsumerKafka) Close() error {
 	log := c.logger.With(
-		zap.String("component", "consumer"),
+		zap.String("component", "ConsumerKafka"),
 		zap.String("method", "Close"),
 	)
 
@@ -180,9 +180,9 @@ func (c *consumer) Close() error {
 	return nil
 }
 
-func (c *consumer) EnsureTopicExists(topic string) error {
+func (c *ConsumerKafka) EnsureTopicExists(topic string) error {
 	log := c.logger.With(
-		zap.String("component", "consumer"),
+		zap.String("component", "ConsumerKafka"),
 		zap.String("method", "EnsureTopicExists"),
 		zap.String("topic", topic),
 	)

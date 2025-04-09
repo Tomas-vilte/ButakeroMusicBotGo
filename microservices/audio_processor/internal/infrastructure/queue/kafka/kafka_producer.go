@@ -13,15 +13,16 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/utils"
 	"go.uber.org/zap"
+	"time"
 )
 
-type producer struct {
+type ProducerKafka struct {
 	saramaProducer sarama.SyncProducer
 	logger         logger.Logger
 	config         *config.Config
 }
 
-func NewProducer(cfg *config.Config, logger logger.Logger) (ports.MessageProducer, error) {
+func NewProducerKafka(cfg *config.Config, logger logger.Logger) (ports.MessageProducer, error) {
 	logger.Info("Inicializando productor Kafka",
 		zap.Strings("brokers", cfg.Messaging.Kafka.Brokers),
 		zap.Bool("tls_enabled", cfg.Messaging.Kafka.EnableTLS))
@@ -59,10 +60,10 @@ func NewProducer(cfg *config.Config, logger logger.Logger) (ports.MessageProduce
 	p, err := sarama.NewSyncProducer(cfg.Messaging.Kafka.Brokers, cfgKafka)
 	if err != nil {
 		logger.Error("Error al crear productor Sarama", zap.Error(err))
-		return nil, fmt.Errorf("error al crear el producer: %w", err)
+		return nil, fmt.Errorf("error al crear el ProducerKafka: %w", err)
 	}
 
-	producerKafka := &producer{
+	producerKafka := &ProducerKafka{
 		saramaProducer: p,
 		logger:         logger,
 		config:         cfg,
@@ -79,14 +80,20 @@ func NewProducer(cfg *config.Config, logger logger.Logger) (ports.MessageProduce
 	return producerKafka, nil
 }
 
-func (p *producer) Publish(ctx context.Context, msg *model.MediaProcessingMessage) error {
+func (p *ProducerKafka) Publish(ctx context.Context, msg *model.MediaProcessingMessage) error {
 	log := p.logger.With(
-		zap.String("component", "producer"),
+		zap.String("component", "ProducerKafka"),
 		zap.String("method", "Publish"),
 		zap.String("topic", p.config.Messaging.Kafka.Topics.BotDownloadStatus),
 		zap.String("video_id", msg.VideoID),
 		zap.String("status", msg.Status),
 	)
+
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("contexto cancelado antes de publicar: %w", ctx.Err())
+	default:
+	}
 
 	log.Debug("Serializando mensaje para publicar")
 	payload, err := json.Marshal(msg)
@@ -95,37 +102,40 @@ func (p *producer) Publish(ctx context.Context, msg *model.MediaProcessingMessag
 		return fmt.Errorf("error al serializar el mensaje: %w", err)
 	}
 
-	log.Debug("Mensaje serializado", zap.Int("payload_size", len(payload)))
-
 	kafkaMsg := &sarama.ProducerMessage{
-		Topic: p.config.Messaging.Kafka.Topics.BotDownloadStatus,
-		Key:   sarama.StringEncoder(msg.VideoID),
-		Value: sarama.ByteEncoder(payload),
+		Topic:     p.config.Messaging.Kafka.Topics.BotDownloadStatus,
+		Key:       sarama.StringEncoder(msg.VideoID),
+		Value:     sarama.ByteEncoder(payload),
+		Timestamp: time.Now(),
 	}
 
-	log.Debug("Enviando mensaje a Kafka")
-	partition, offset, err := p.saramaProducer.SendMessage(kafkaMsg)
+	done := make(chan error, 1)
+	go func() {
+		partition, offset, err := p.saramaProducer.SendMessage(kafkaMsg)
+		if err != nil {
+			done <- err
+			return
+		}
+		log.Info("Mensaje publicado exitosamente",
+			zap.Int32("partition", partition),
+			zap.Int64("offset", offset),
+			zap.String("video_id", msg.VideoID),
+			zap.String("status", msg.Status),
+			zap.Bool("success", msg.Success))
+		done <- nil
+	}()
 
-	if err != nil {
-		log.Error("Error al publicar el mensaje",
-			zap.String("topic", p.config.Messaging.Kafka.Topics.BotDownloadStatus),
-			zap.Error(err))
-		return fmt.Errorf("error al publicar el mensaje: %w", err)
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return fmt.Errorf("operación cancelada mientras se publicaba: %w", ctx.Err())
 	}
-
-	log.Info("Mensaje publicado exitosamente",
-		zap.Int32("partition", partition),
-		zap.Int64("offset", offset),
-		zap.String("video_id", msg.VideoID),
-		zap.String("status", msg.Status),
-		zap.Bool("success", msg.Success))
-
-	return nil
 }
 
-func (p *producer) Close() error {
+func (p *ProducerKafka) Close() error {
 	log := p.logger.With(
-		zap.String("component", "producer"),
+		zap.String("component", "ProducerKafka"),
 		zap.String("method", "Close"),
 	)
 
@@ -133,16 +143,16 @@ func (p *producer) Close() error {
 
 	if err := p.saramaProducer.Close(); err != nil {
 		log.Error("Error al cerrar el productor", zap.Error(err))
-		return fmt.Errorf("error al cerrar el producer: %w", err)
+		return fmt.Errorf("error al cerrar el ProducerKafka: %w", err)
 	}
 
 	log.Info("Productor Kafka cerrado correctamente")
 	return nil
 }
 
-func (p *producer) EnsureTopicExists(topic string) error {
+func (p *ProducerKafka) EnsureTopicExists(topic string) error {
 	log := p.logger.With(
-		zap.String("component", "producer"),
+		zap.String("component", "ProducerKafka"),
 		zap.String("method", "EnsureTopicExists"),
 		zap.String("topic", topic),
 	)

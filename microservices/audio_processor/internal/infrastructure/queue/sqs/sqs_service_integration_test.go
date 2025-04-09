@@ -4,240 +4,347 @@ package sqs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	awsConfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"github.com/docker/go-connections/nat"
+	awsCfg "github.com/aws/aws-sdk-go-v2/config"
+	awsSqs "github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"testing"
-	"time"
+	"go.uber.org/zap"
 )
 
 const (
 	localstackImage = "localstack/localstack:latest"
-	sqsPort         = "4566/tcp"
 	queueName       = "test-queue"
 	region          = "us-east-1"
-	accessKey       = "test"
-	secretKey       = "test"
 )
 
-type LocalstackContainer struct {
-	testcontainers.Container
-	URI string
+type TestingSuite struct {
+	t             *testing.T
+	container     testcontainers.Container
+	cfg           *config.Config
+	logger        logger.Logger
+	sqsClient     *awsSqs.Client
+	sqsEndpoint   string
+	queueURL      string
+	producerSQS   *ProducerSQS
+	consumerSQS   *ConsumerSQS
+	ctx           context.Context
+	cancelContext context.CancelFunc
 }
 
-// setupLocalstack inicia un contenedor de Localstack
-func setupLocalstack(ctx context.Context) (*LocalstackContainer, error) {
-	natSQSPort := nat.Port(sqsPort)
-	req := testcontainers.ContainerRequest{
-		Image:        localstackImage,
-		ExposedPorts: []string{sqsPort},
-		Env: map[string]string{
-			"SERVICES":              "sqs",
-			"DEBUG":                 "1",
-			"DATA_DIR":              "/tmp/localstack/data",
-			"DOCKER_HOST":           "unix:///var/run/docker.sock",
-			"AWS_DEFAULT_REGION":    region,
-			"AWS_ACCESS_KEY_ID":     accessKey,
-			"AWS_SECRET_ACCESS_KEY": secretKey,
-		},
-		WaitingFor: wait.ForListeningPort(natSQSPort).WithStartupTimeout(60 * time.Second),
-	}
+func setupTestingSuite(t *testing.T) *TestingSuite {
+	ctx, cancel := context.WithCancel(context.Background())
 
-	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	mappedPort, err := container.MappedPort(ctx, natSQSPort)
-	if err != nil {
-		return nil, err
-	}
-
-	hostIP, err := container.Host(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	uri := fmt.Sprintf("http://%s:%s", hostIP, mappedPort.Port())
-
-	return &LocalstackContainer{
-		Container: container,
-		URI:       uri,
-	}, nil
-}
-
-// createSQSClient crea un cliente de SQS que apunta al contenedor de Localstack
-func createSQSClient(ctx context.Context, endpoint string) (*sqs.Client, error) {
-	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-		return aws.Endpoint{
-			URL:           endpoint,
-			SigningRegion: region,
-		}, nil
-	})
-
-	cfg, err := awsConfig.LoadDefaultConfig(ctx,
-		awsConfig.WithRegion(region),
-		awsConfig.WithEndpointResolverWithOptions(customResolver),
-		awsConfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, "")),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return sqs.NewFromConfig(cfg), nil
-}
-
-// createQueue crea una cola SQS en el contenedor localstack
-func createQueue(ctx context.Context, client *sqs.Client) (string, error) {
-	resp, err := client.CreateQueue(ctx, &sqs.CreateQueueInput{
-		QueueName: aws.String(queueName),
-		Attributes: map[string]string{
-			"MessageRetentionPeriod": "86400",
-		},
-	})
-	if err != nil {
-		return "", err
-	}
-	return *resp.QueueUrl, nil
-}
-
-func TestSQSServiceWithTestcontainers(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Saltando test de integración en modo corto")
-	}
-
-	ctx := context.Background()
-
-	// Iniciar el contenedor localstack
-	localstack, err := setupLocalstack(ctx)
-	require.NoError(t, err)
-	defer func() {
-		if err := localstack.Terminate(ctx); err != nil {
-			t.Logf("Error al terminar el contenedor: %v", err)
-		}
-	}()
-
-	// Crear un cliente SQS que apunte al contenedor
-	sqsClient, err := createSQSClient(ctx, localstack.URI)
+	log, err := logger.NewDevelopmentLogger()
 	require.NoError(t, err)
 
-	// Crear la cola de SQS
-	queueURL, err := createQueue(ctx, sqsClient)
-	require.NoError(t, err)
+	suite := &TestingSuite{
+		t:             t,
+		logger:        log,
+		ctx:           ctx,
+		cancelContext: cancel,
+	}
 
-	// Configurar el servicio SQS con el endpoint del contenedor
-	cfg := &config.Config{
+	suite.setupLocalstack()
+
+	suite.setupSQSClient()
+	suite.createQueue()
+
+	suite.cfg = &config.Config{
 		AWS: config.AWSConfig{
 			Region: region,
 		},
 		Messaging: config.MessagingConfig{
 			SQS: &config.SQSConfig{
-				QueueURL: queueURL,
+				QueueURL: suite.queueURL,
 			},
 		},
 	}
 
-	log, err := logger.NewProductionLogger()
-	require.NoError(t, err)
+	suite.setupProducerAndConsumer()
 
-	// Crear el servicio SQS manualmente con el cliente que apunta al contenedor
-	service := &SQSService{
-		Client: sqsClient,
-		Config: cfg,
-		Log:    log,
+	return suite
+}
+
+func (suite *TestingSuite) setupLocalstack() {
+
+	// Crear y arrancar contenedor de localstack
+	req := testcontainers.ContainerRequest{
+		Image:        localstackImage,
+		ExposedPorts: []string{"4566/tcp"},
+		Env: map[string]string{
+			"SERVICES":              "sqs",
+			"DEFAULT_REGION":        region,
+			"AWS_ACCESS_KEY_ID":     "test",
+			"AWS_SECRET_ACCESS_KEY": "test",
+		},
+		WaitingFor: wait.ForListeningPort("4566/tcp"),
 	}
 
-	// Ejecutar las pruebas
-	t.Run("End-to-End Message Flow", func(t *testing.T) {
-		// Crear y enviar un mensaje
-		message := &model.MediaProcessingMessage{
-			VideoID: "test_video_id",
-			FileData: &model.FileData{
-				FilePath: "/path/to/test/file",
-				FileSize: "1024",
-				FileType: "mp3",
-			},
-			PlatformMetadata: &model.PlatformMetadata{
-				Title:      "Test Title",
-				DurationMs: 3234,
-			},
-		}
+	container, err := testcontainers.GenericContainer(suite.ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	require.NoError(suite.t, err, "Error al crear container de localstack")
 
-		err := service.SendMessage(ctx, message)
-		assert.NoError(t, err)
+	mappedPort, err := container.MappedPort(suite.ctx, "4566")
+	require.NoError(suite.t, err, "Error al obtener puerto mapeado")
 
-		// Recibir el mensaje
-		receivedMessages, err := service.ReceiveMessage(ctx)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, receivedMessages)
-		assert.Equal(t, message.VideoID, receivedMessages[0].VideoID)
-		assert.Equal(t, message.FileData.FilePath, receivedMessages[0].FileData.FilePath)
+	host, err := container.Host(suite.ctx)
+	require.NoError(suite.t, err, "Error al obtener host")
 
-		// Eliminar el mensaje
-		err = service.DeleteMessage(ctx, receivedMessages[0].ReceiptHandle)
-		assert.NoError(t, err)
+	suite.container = container
+	suite.sqsEndpoint = fmt.Sprintf("http://%s:%s", host, mappedPort.Port())
 
-		// Verificar que no hay más mensajes
-		time.Sleep(1 * time.Second) // Breve pausa para asegurar que SQS procese la eliminación
-		messages, err := service.ReceiveMessage(ctx)
-		assert.NoError(t, err)
-		assert.Empty(t, messages)
+	suite.logger.Info("Localstack container iniciado",
+		zap.String("endpoint", suite.sqsEndpoint))
+}
+
+func (suite *TestingSuite) setupSQSClient() {
+	customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+		return aws.Endpoint{
+			URL:           suite.sqsEndpoint,
+			SigningRegion: region,
+		}, nil
 	})
 
-	t.Run("Concurrent Message Processing", func(t *testing.T) {
-		numMessages := 5
-		messages := make([]*model.MediaProcessingMessage, numMessages)
-		for i := 0; i < numMessages; i++ {
-			messages[i] = &model.MediaProcessingMessage{
-				VideoID: fmt.Sprintf("video_id_%d", i),
-				FileData: &model.FileData{
-					FilePath: fmt.Sprintf("/path/test_%d", i),
-					FileSize: "1234",
-					FileType: "dca",
-				},
-				PlatformMetadata: &model.PlatformMetadata{},
-			}
-		}
+	cfg, err := awsCfg.LoadDefaultConfig(suite.ctx,
+		awsCfg.WithRegion(region),
+		awsCfg.WithEndpointResolverWithOptions(customResolver),
+		awsCfg.WithCredentialsProvider(aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
+			return aws.Credentials{
+				AccessKeyID:     "test",
+				SecretAccessKey: "test",
+			}, nil
+		})),
+	)
+	require.NoError(suite.t, err, "Error al cargar configuración de AWS")
 
-		errChan := make(chan error, numMessages)
-		for _, msg := range messages {
-			go func(m *model.MediaProcessingMessage) {
-				errChan <- service.SendMessage(ctx, m)
-			}(msg)
-		}
+	suite.sqsClient = awsSqs.NewFromConfig(cfg)
+}
 
-		for i := 0; i < numMessages; i++ {
-			assert.NoError(t, <-errChan)
-		}
+func (suite *TestingSuite) createQueue() {
+	createQueueInput := &awsSqs.CreateQueueInput{
+		QueueName: aws.String(queueName),
+		Attributes: map[string]string{
+			"MessageRetentionPeriod": "86400",
+		},
+	}
 
-		// Recibir todos los mensajes
-		var allMessages []model.MediaProcessingMessage
-		for len(allMessages) < numMessages {
-			receivedMessages, err := service.ReceiveMessage(ctx)
-			assert.NoError(t, err)
-			if len(receivedMessages) > 0 {
-				allMessages = append(allMessages, receivedMessages...)
-				// Eliminar los mensajes recibidos
-				for _, msg := range receivedMessages {
-					err := service.DeleteMessage(ctx, msg.ReceiptHandle)
-					assert.NoError(t, err)
-				}
-			}
-		}
+	createQueueOutput, err := suite.sqsClient.CreateQueue(suite.ctx, createQueueInput)
+	require.NoError(suite.t, err, "Error al crear cola SQS")
 
-		assert.Equal(t, numMessages, len(allMessages))
-	})
+	suite.queueURL = *createQueueOutput.QueueUrl
+	suite.logger.Info("Cola SQS creada", zap.String("queue_url", suite.queueURL))
+}
+
+func (suite *TestingSuite) setupProducerAndConsumer() {
+	producer := &ProducerSQS{
+		suite.sqsClient,
+		suite.logger,
+		suite.cfg,
+	}
+	suite.producerSQS = producer
+
+	consumer := &ConsumerSQS{
+		suite.cfg,
+		suite.logger,
+		suite.sqsClient,
+	}
+	suite.consumerSQS = consumer
+}
+
+func (suite *TestingSuite) tearDown() {
+	suite.cancelContext()
+	if suite.container != nil {
+		err := suite.container.Terminate(context.Background())
+		assert.NoError(suite.t, err, "Error al terminar container")
+	}
+}
+
+func (suite *TestingSuite) sendMessageToQueue(msg *model.MediaRequest) {
+	body, err := json.Marshal(msg)
+	require.NoError(suite.t, err, "Error al serializar mensaje")
+
+	input := &awsSqs.SendMessageInput{
+		MessageBody: aws.String(string(body)),
+		QueueUrl:    aws.String(suite.queueURL),
+	}
+
+	_, err = suite.sqsClient.SendMessage(suite.ctx, input)
+	require.NoError(suite.t, err, "Error al enviar mensaje a SQS")
+}
+
+func (suite *TestingSuite) receiveMessagesFromQueue() []string {
+	input := &awsSqs.ReceiveMessageInput{
+		QueueUrl:            aws.String(suite.queueURL),
+		MaxNumberOfMessages: 10,
+		WaitTimeSeconds:     1,
+	}
+
+	result, err := suite.sqsClient.ReceiveMessage(suite.ctx, input)
+	require.NoError(suite.t, err, "Error al recibir mensajes de SQS")
+
+	var messages []string
+	for _, msg := range result.Messages {
+		messages = append(messages, *msg.Body)
+	}
+
+	return messages
+}
+
+func TestProducerSQS_Publish(t *testing.T) {
+	suite := setupTestingSuite(t)
+	defer suite.tearDown()
+
+	testMsg := &model.MediaProcessingMessage{
+		VideoID: "test-video-id",
+		FileData: &model.FileData{
+			FilePath: "test-file.mp3",
+			FileSize: "1024",
+		},
+		PlatformMetadata: &model.PlatformMetadata{
+			Platform: "youtube",
+		},
+		Message: "Test message",
+		Success: true,
+		Status:  "PROCESSING",
+	}
+
+	err := suite.producerSQS.Publish(suite.ctx, testMsg)
+
+	assert.NoError(t, err, "Error al publicar mensaje")
+
+	messages := suite.receiveMessagesFromQueue()
+	assert.Len(t, messages, 1, "Se esperaba 1 mensaje en la cola")
+
+	var receivedMsg model.MediaProcessingMessage
+	err = json.Unmarshal([]byte(messages[0]), &receivedMsg)
+	assert.NoError(t, err, "Error al deserializar mensaje")
+
+	assert.Equal(t, testMsg.VideoID, receivedMsg.VideoID)
+	assert.Equal(t, testMsg.Message, receivedMsg.Message)
+	assert.Equal(t, testMsg.Status, receivedMsg.Status)
+	assert.Equal(t, testMsg.Success, receivedMsg.Success)
+	assert.Equal(t, testMsg.FileData.FilePath, receivedMsg.FileData.FilePath)
+	assert.Equal(t, testMsg.FileData.FileSize, receivedMsg.FileData.FileSize)
+	assert.Equal(t, testMsg.PlatformMetadata.Platform, receivedMsg.PlatformMetadata.Platform)
+}
+
+func TestConsumerSQS_GetRequestsChannel(t *testing.T) {
+	suite := setupTestingSuite(t)
+	defer suite.tearDown()
+
+	testMsg := &model.MediaRequest{
+		InteractionID: "test-interaction-id",
+		UserID:        "test-user-id",
+		Song:          "test-song",
+		ProviderType:  "youtube",
+		Timestamp:     time.Now(),
+	}
+
+	suite.sendMessageToQueue(testMsg)
+
+	msgChan, err := suite.consumerSQS.GetRequestsChannel(suite.ctx)
+	assert.NoError(t, err, "Error al obtener canal de mensajes")
+
+	select {
+	case receivedMsg := <-msgChan:
+		assert.NotNil(t, receivedMsg, "Mensaje recibido no debe ser nil")
+		assert.Equal(t, testMsg.InteractionID, receivedMsg.InteractionID)
+		assert.Equal(t, testMsg.UserID, receivedMsg.UserID)
+		assert.Equal(t, testMsg.Song, receivedMsg.Song)
+		assert.Equal(t, testMsg.ProviderType, receivedMsg.ProviderType)
+	case <-time.After(5 * time.Second):
+		assert.Fail(t, "Timeout esperando mensaje del canal")
+	}
+}
+
+func TestProducerConsumerIntegration(t *testing.T) {
+	suite := setupTestingSuite(t)
+	defer suite.tearDown()
+
+	testMsg := &model.MediaProcessingMessage{
+		VideoID: "integration-test-video-id",
+		FileData: &model.FileData{
+			FilePath: "integration-test.mp3",
+			FileSize: "2048",
+		},
+		PlatformMetadata: &model.PlatformMetadata{
+			Platform: "youtube",
+		},
+		Message: "Integration test message",
+		Success: true,
+		Status:  "COMPLETED",
+	}
+
+	mediaRequest := &model.MediaRequest{
+		InteractionID: "integration-test-interaction-id",
+		UserID:        "integration-test-user",
+		Song:          "integration-test-song",
+		ProviderType:  "youtube",
+		Timestamp:     time.Now(),
+	}
+
+	err := suite.producerSQS.Publish(suite.ctx, testMsg)
+	assert.NoError(t, err, "Error al publicar mensaje con productor")
+
+	messages := suite.receiveMessagesFromQueue()
+	assert.Len(t, messages, 1, "Se esperaba 1 mensaje en la cola")
+
+	suite.sendMessageToQueue(mediaRequest)
+
+	msgChan, err := suite.consumerSQS.GetRequestsChannel(suite.ctx)
+	assert.NoError(t, err, "Error al obtener canal de mensajes")
+
+	select {
+	case receivedMsg := <-msgChan:
+		assert.NotNil(t, receivedMsg, "Mensaje recibido no debe ser nil")
+		assert.Equal(t, mediaRequest.InteractionID, receivedMsg.InteractionID)
+		assert.Equal(t, mediaRequest.UserID, receivedMsg.UserID)
+		assert.Equal(t, mediaRequest.Song, receivedMsg.Song)
+		assert.Equal(t, mediaRequest.ProviderType, receivedMsg.ProviderType)
+	case <-time.After(5 * time.Second):
+		assert.Fail(t, "Timeout esperando mensaje del canal")
+	}
+}
+
+func TestLongPollConsumer(t *testing.T) {
+	suite := setupTestingSuite(t)
+	defer suite.tearDown()
+
+	msgChan, err := suite.consumerSQS.GetRequestsChannel(suite.ctx)
+	assert.NoError(t, err, "Error al obtener canal de mensajes")
+
+	delayedMsg := &model.MediaRequest{
+		InteractionID: "delayed-test-id",
+		UserID:        "delayed-user",
+		Song:          "delayed-song",
+		ProviderType:  "delayed-provider",
+		Timestamp:     time.Now(),
+	}
+
+	go func() {
+		time.Sleep(2 * time.Second)
+		suite.sendMessageToQueue(delayedMsg)
+	}()
+
+	select {
+	case receivedMsg := <-msgChan:
+		assert.NotNil(t, receivedMsg, "Mensaje recibido no debe ser nil")
+		assert.Equal(t, delayedMsg.InteractionID, receivedMsg.InteractionID)
+		assert.Equal(t, delayedMsg.UserID, receivedMsg.UserID)
+	case <-time.After(10 * time.Second):
+		assert.Fail(t, "Timeout esperando mensaje del canal (long polling)")
+	}
 }

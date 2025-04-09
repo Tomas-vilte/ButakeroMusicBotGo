@@ -1,4 +1,4 @@
-//go:build !integration
+////go:build !integration
 
 package encoder
 
@@ -12,20 +12,21 @@ import (
 )
 
 func TestEncoder(t *testing.T) {
-	// Preparar el contexto y el logger
 	ctx := context.Background()
-	logging, _ := logger.NewZapLogger()
+	logging, _ := logger.NewDevelopmentLogger()
 
-	// Abrir el archivo de entrada .ogg
 	inputFile, err := os.Open("./Twenty One Pilots - The Line (from Arcane Season 2) [Official Music Video].ogg")
 	if err != nil {
 		t.Fatalf("Error al abrir el archivo de entrada: %v", err)
 	}
-	defer inputFile.Close()
+	defer func() {
+		if err := inputFile.Close(); err != nil {
+			t.Fatalf("Error al cerrar el archivo de entrada: %v", err)
+		}
+	}()
 
 	sessionEncoder := NewFFmpegEncoder(logging)
 
-	// Crear la sesión de codificación
 	session, err := sessionEncoder.Encode(ctx, inputFile, StdEncodeOptions)
 	if err != nil {
 		t.Fatalf("Error al crear la sesión de codificación: %v", err)
@@ -37,15 +38,17 @@ func TestEncoder(t *testing.T) {
 		t.Fatalf("Error al obtener el directorio actual: %v", err)
 	}
 
-	// Crear el archivo de salida
 	outPath := filepath.Join(currentDir, "test-song.dca")
 	outFile, err := os.Create(outPath)
 	if err != nil {
 		t.Fatalf("Error al crear el archivo de salida: %v", err)
 	}
-	defer outFile.Close()
+	defer func() {
+		if err := outFile.Close(); err != nil {
+			t.Fatalf("Error al cerrar el archivo de salida: %v", err)
+		}
+	}()
 
-	// Leer frames y escribir en el archivo de salida
 	numFrames := 0
 	for {
 		frame, err := session.ReadFrame()
@@ -64,12 +67,10 @@ func TestEncoder(t *testing.T) {
 
 	t.Logf("Número de frames procesados: %d", numFrames)
 
-	// Verificar que se hayan procesado frames
 	if numFrames == 0 {
 		t.Error("No se procesaron frames")
 	}
 
-	// Verificar el tamaño del archivo de salida
 	outInfo, err := outFile.Stat()
 	if err != nil {
 		t.Fatalf("Error al obtener información del archivo de salida: %v", err)

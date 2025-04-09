@@ -44,7 +44,11 @@ func CheckKafka(cfgApplication *config.Config) (*KafkaMetadata, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error conectando a kafka: %w", err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			fmt.Printf("Error cerrando cliente Kafka: %v\n", err)
+		}
+	}()
 
 	metadata := &KafkaMetadata{}
 
