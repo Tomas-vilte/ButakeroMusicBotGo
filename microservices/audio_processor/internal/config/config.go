@@ -31,8 +31,11 @@ func LoadConfigLocal() *Config {
 		Messaging: MessagingConfig{
 			Type: "kafka",
 			Kafka: &KafkaConfig{
-				Brokers:   viper.GetStringSlice("KAFKA_BROKERS"),
-				Topic:     viper.GetString("KAFKA_TOPIC"),
+				Brokers: viper.GetStringSlice("KAFKA_BROKERS"),
+				Topics: &KafkaTopics{
+					BotDownloadStatus:   viper.GetString("KAFKA_BOT_DOWNLOAD_STATUS"),
+					BotDownloadRequests: viper.GetString("KAFKA_BOT_DOWNLOAD_REQUESTS"),
+				},
 				CaFile:    viper.GetString("KAFKA_CA_FILE"),
 				CertFile:  viper.GetString("KAFKA_CERT_FILE"),
 				KeyFile:   viper.GetString("KAFKA_KEY_FILE"),

@@ -42,11 +42,16 @@ type (
 	// KafkaConfig configuración específica de Kafka
 	KafkaConfig struct {
 		Brokers   []string
-		Topic     string
+		Topics    *KafkaTopics
 		CaFile    string
 		CertFile  string
 		KeyFile   string
 		EnableTLS bool
+	}
+
+	KafkaTopics struct {
+		BotDownloadStatus   string
+		BotDownloadRequests string
 	}
 
 	// SQSConfig configuración específica de SQS

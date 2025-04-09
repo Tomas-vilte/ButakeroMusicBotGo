@@ -41,9 +41,15 @@ func StartServer() error {
 		return err
 	}
 
-	messaging, err := sqs.NewSQSService(cfg, log)
+	sqsProducer, err := sqs.NewProducerSQS(cfg, log)
 	if err != nil {
-		log.Error("Error al crear queue", zap.Error(err))
+		log.Error("Error al crear el producer", zap.Error(err))
+		return err
+	}
+
+	sqsConsumer, err := sqs.NewConsumerSQS(cfg, log)
+	if err != nil {
+		log.Error("Error al crear el consumer", zap.Error(err))
 		return err
 	}
 
@@ -90,21 +96,26 @@ func StartServer() error {
 	encoderAudio := encoder.NewFFmpegEncoder(log)
 	mediaService := service.NewMediaService(mediaRepository, log)
 	audioStorageService := service.NewAudioStorageService(storage, log)
-	topicPublisherService := service.NewMediaProcessingPublisherService(messaging, log)
+	topicPublisherService := service.NewMediaProcessingPublisherService(sqsProducer, log)
 	audioDownloadService := service.NewAudioDownloaderService(downloaderMusic, encoderAudio, log)
 	coreService := service.NewCoreService(mediaService, audioStorageService, topicPublisherService, audioDownloadService, log, cfg)
 	operationService := service.NewOperationService(mediaService, log)
 
 	providerService := service.NewVideoService(providers, log)
-	initiateDownloadUC := usecase.NewInitiateDownloadUseCase(coreService, providerService, operationService)
 	operationUC := usecase.NewGetOperationStatusUseCase(mediaRepository)
-	audioHandler := handler.NewAudioHandler(initiateDownloadUC)
 	operationHandler := handler.NewOperationHandler(operationUC)
 	healthCheck := handler.NewHealthHandler(cfg)
 
+	processorService := service.NewDownloadProcessor(sqsConsumer, mediaService, providerService, coreService, operationService, log)
+
+	if err := processorService.Run(context.Background()); err != nil {
+		log.Error("Error al iniciar el procesador", zap.Error(err))
+		return err
+	}
+
 	gin.SetMode(cfg.GinConfig.Mode)
 	r := gin.New()
-	router.SetupRoutes(r, audioHandler, operationHandler, healthCheck, log)
+	router.SetupRoutes(r, operationHandler, healthCheck, log)
 
 	return r.Run(":8080")
 }

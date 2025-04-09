@@ -9,11 +9,11 @@ import (
 )
 
 type topicPublisherService struct {
-	messageQueue ports.MessageQueue
+	messageQueue ports.MessageProducer
 	logger       logger.Logger
 }
 
-func NewMediaProcessingPublisherService(messageQueue ports.MessageQueue, logger logger.Logger) ports.TopicPublisherService {
+func NewMediaProcessingPublisherService(messageQueue ports.MessageProducer, logger logger.Logger) ports.TopicPublisherService {
 	return &topicPublisherService{
 		messageQueue: messageQueue,
 		logger:       logger,
@@ -27,7 +27,7 @@ func (s *topicPublisherService) PublishMediaProcessed(ctx context.Context, messa
 		zap.String("video_id", message.VideoID),
 	)
 
-	if err := s.messageQueue.SendMessage(ctx, message); err != nil {
+	if err := s.messageQueue.Publish(ctx, message); err != nil {
 		log.Error("Error al publicar el mensaje", zap.Error(err))
 		return err
 	}

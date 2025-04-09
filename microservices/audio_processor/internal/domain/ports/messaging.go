@@ -6,10 +6,13 @@ import (
 )
 
 type (
-	// MessageQueue es la interfaz que debe implementar cualquier servicio de mensajeria
-	MessageQueue interface {
-		SendMessage(ctx context.Context, message *model.MediaProcessingMessage) error
-		ReceiveMessage(ctx context.Context) ([]model.MediaProcessingMessage, error)
-		DeleteMessage(ctx context.Context, receiptHandle string) error
+	MessageConsumer interface {
+		GetRequestsChannel(ctx context.Context) (<-chan *model.MediaRequest, error)
+		Close() error
+	}
+
+	MessageProducer interface {
+		Publish(ctx context.Context, message *model.MediaProcessingMessage) error
+		Close() error
 	}
 )
