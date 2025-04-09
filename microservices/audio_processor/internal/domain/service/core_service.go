@@ -39,7 +39,7 @@ func NewCoreService(
 	}
 }
 
-func (s *coreService) ProcessMedia(ctx context.Context, mediaDetails *model.MediaDetails) error {
+func (s *coreService) ProcessMedia(ctx context.Context, mediaDetails *model.MediaDetails, userID, interactionID string) error {
 	log := s.logger.With(
 		zap.String("component", "CoreService"),
 		zap.String("method", "ProcessMedia"),
@@ -106,6 +106,8 @@ func (s *coreService) ProcessMedia(ctx context.Context, mediaDetails *model.Medi
 		}
 
 		message := &model.MediaProcessingMessage{
+			InteractionID:    interactionID,
+			UserID:           userID,
 			VideoID:          media.VideoID,
 			FileData:         media.FileData,
 			PlatformMetadata: media.Metadata,

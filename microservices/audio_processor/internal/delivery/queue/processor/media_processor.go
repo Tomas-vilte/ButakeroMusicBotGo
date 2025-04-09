@@ -53,7 +53,7 @@ func (p *MediaProcessor) ProcessRequest(ctx context.Context, req *model.MediaReq
 		return err
 	}
 
-	if err := p.coreService.ProcessMedia(reqCtx, mediaDetails); err != nil {
+	if err := p.coreService.ProcessMedia(reqCtx, mediaDetails, req.UserID, req.InteractionID); err != nil {
 		log.Error("Error al procesar media", zap.Error(err))
 		return err
 	}
