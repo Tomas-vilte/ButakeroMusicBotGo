@@ -27,14 +27,14 @@ func TestTopicPublisherService_PublishMediaProcessed(t *testing.T) {
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
-	mockMessageQueue.On("SendMessage", ctx, message).Return(nil)
+	mockMessageQueue.On("Publish", ctx, message).Return(nil)
 
 	// Act
 	err := service.PublishMediaProcessed(ctx, message)
 
 	// Assert
 	assert.NoError(t, err, "No se esperaba un error al publicar el mensaje")
-	mockMessageQueue.AssertCalled(t, "SendMessage", ctx, message)
+	mockMessageQueue.AssertCalled(t, "Publish", ctx, message)
 }
 
 func TestTopicPublisherService_PublishMediaProcessed_Error(t *testing.T) {
@@ -54,7 +54,7 @@ func TestTopicPublisherService_PublishMediaProcessed_Error(t *testing.T) {
 	expectedError := errors.New("error al enviar el mensaje")
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
-	mockMessageQueue.On("SendMessage", ctx, message).Return(expectedError)
+	mockMessageQueue.On("Publish", ctx, message).Return(expectedError)
 
 	// Act
 	err := service.PublishMediaProcessed(ctx, message)
@@ -62,5 +62,5 @@ func TestTopicPublisherService_PublishMediaProcessed_Error(t *testing.T) {
 	// Assert
 	assert.Error(t, err, "Se esperaba un error al publicar el mensaje")
 	assert.Contains(t, err.Error(), expectedError.Error(), "El mensaje de error no es el esperado")
-	mockMessageQueue.AssertCalled(t, "SendMessage", ctx, message)
+	mockMessageQueue.AssertCalled(t, "Publish", ctx, message)
 }

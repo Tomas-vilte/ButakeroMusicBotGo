@@ -17,8 +17,6 @@ type DownloadProcessor struct {
 	coreService      ports.CoreService
 	operationService ports.OperationService
 	logger           logger.Logger
-	maxRetries       int
-	retryDelay       time.Duration
 }
 
 func NewDownloadProcessor(
@@ -36,8 +34,6 @@ func NewDownloadProcessor(
 		coreService:      coreService,
 		operationService: operationService,
 		logger:           logger,
-		maxRetries:       3,
-		retryDelay:       2 * time.Second,
 	}
 }
 
