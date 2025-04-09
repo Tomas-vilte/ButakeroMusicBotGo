@@ -54,7 +54,7 @@ func StartServer() error {
 		return err
 	}
 
-	kafkaProducer, err := kafka.NewProducer(cfg, log)
+	kafkaProducer, err := kafka.NewProducerKafka(cfg, log)
 	if err != nil {
 		log.Error("Error al crear el producer", zap.Error(err))
 		return err
@@ -66,7 +66,7 @@ func StartServer() error {
 		}
 	}()
 
-	kafkaConsumer, err := kafka.NewConsumer(cfg, log)
+	kafkaConsumer, err := kafka.NewConsumerKafka(cfg, log)
 	if err != nil {
 		log.Error("Error al crear el consumer", zap.Error(err))
 		return err
