@@ -23,17 +23,7 @@ type ProducerSQS struct {
 
 func NewProducerSQS(cfgApplication *config.Config, log logger.Logger) (ports.MessageProducer, error) {
 	log.Info("Inicializando productor SQS",
-		zap.String("region", cfgApplication.AWS.Region),
 		zap.String("queue_url", cfgApplication.Messaging.SQS.QueueURL))
-
-	if cfgApplication == nil {
-		log.Error("Error: configuración inválida", zap.Error(errors.ErrInvalidInput))
-		return nil, errors.ErrInvalidInput.WithMessage("config no puede ser nil")
-	}
-
-	if log == nil {
-		return nil, errors.ErrInvalidInput.WithMessage("logger no puede ser nil")
-	}
 
 	log.Debug("Cargando configuración AWS", zap.String("region", cfgApplication.AWS.Region))
 	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(),
