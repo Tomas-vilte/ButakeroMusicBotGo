@@ -100,6 +100,9 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*m
 			ID      string `json:"id"`
 			Snippet struct {
 				Thumbnails struct {
+					Default struct {
+						URL string `json:"url"`
+					} `json:"default"`
 					MaxRes struct {
 						URL string `json:"url"`
 					} `json:"maxres"`
@@ -138,13 +141,18 @@ func (c *YouTubeClient) GetVideoDetails(ctx context.Context, videoID string) (*m
 		return nil, errorsApp.ErrCodeGetVideoDetailsFailed.WithMessage(fmt.Sprintf("Error al convertir la duración: %v", err))
 	}
 
+	thumbnailURL := item.Snippet.Thumbnails.MaxRes.URL
+	if thumbnailURL == "" {
+		thumbnailURL = item.Snippet.Thumbnails.Default.URL
+	}
+
 	videoDetails := &model.MediaDetails{
 		Title:        item.Snippet.Title,
 		ID:           item.ID,
 		Description:  item.Snippet.Description,
 		Creator:      item.Snippet.ChannelTitle,
 		DurationMs:   durationMs,
-		ThumbnailURL: item.Snippet.Thumbnails.MaxRes.URL,
+		ThumbnailURL: thumbnailURL,
 		PublishedAt:  publishedAt,
 		URL:          fmt.Sprintf("https://youtube.com/watch?v=%s", videoID),
 		Provider:     "YouTube",
