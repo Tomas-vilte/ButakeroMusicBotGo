@@ -49,6 +49,11 @@ func (h *EventHandler) GuildCreate(ctx context.Context, _ *discordgo.Session, ev
 		return
 	}
 
+	if _, err := h.guildManager.GetGuildPlayer(event.Guild.ID); err == nil {
+		h.logger.Debug("GuildPlayer ya existe", zap.String("guildID", event.Guild.ID))
+		return
+	}
+
 	guildPlayer, err := h.guildManager.CreateGuildPlayer(event.Guild.ID)
 	if err != nil {
 		h.logger.Error("Error al crear GuildPlayer", zap.String("guildID", event.Guild.ID), zap.Error(err))

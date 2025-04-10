@@ -6,6 +6,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/secretmanager"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"github.com/spf13/viper"
+	"strconv"
 	"time"
 )
 
@@ -227,11 +228,22 @@ func LoadConfigAws() (*Config, error) {
 		QueueConfig: QueueConfig{
 			SQSConfig: SQSConfig{
 				Queues: &QueuesSQS{
-					BotDownloadRequestsQueueURL: secrets["QUEUE_BOT_DOWNLOAD_REQUESTS"],
-					BotDownloadStatusQueueURL:   secrets["QUEUE_BOT_DOWNLOAD_STATUS"],
+					BotDownloadRequestsQueueURL: secrets["SQS_BOT_DOWNLOAD_REQUESTS_URL"],
+					BotDownloadStatusQueueURL:   secrets["SQS_BOT_DOWNLOAD_STATUS_URL"],
 				},
+				MaxMessages:     int32(getSecretAsInt(secrets, "SQS_MAX_MESSAGES", 10)),
+				WaitTimeSeconds: int32(getSecretAsInt(secrets, "SQS_WAIT_TIME_SECONDS", 20)),
 			},
 		},
 	}
 	return cfg, nil
+}
+
+func getSecretAsInt(secrets map[string]string, key string, defaultValue int) int {
+	if valueStr, ok := secrets[key]; ok {
+		if value, err := strconv.Atoi(valueStr); err == nil {
+			return value
+		}
+	}
+	return defaultValue
 }
