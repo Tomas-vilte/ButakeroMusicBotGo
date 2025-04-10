@@ -231,18 +231,20 @@ func LoadConfigAws() (*Config, error) {
 					BotDownloadRequestsQueueURL: secrets["SQS_BOT_DOWNLOAD_REQUESTS_URL"],
 					BotDownloadStatusQueueURL:   secrets["SQS_BOT_DOWNLOAD_STATUS_URL"],
 				},
-				MaxMessages:     int32(getSecretAsInt(secrets, "SQS_MAX_MESSAGES", 10)),
-				WaitTimeSeconds: int32(getSecretAsInt(secrets, "SQS_WAIT_TIME_SECONDS", 20)),
+				MaxMessages:     getSecretAsInt(secrets, "SQS_MAX_MESSAGES", 10),
+				WaitTimeSeconds: getSecretAsInt(secrets, "SQS_WAIT_TIME_SECONDS", 20),
 			},
 		},
 	}
 	return cfg, nil
 }
 
-func getSecretAsInt(secrets map[string]string, key string, defaultValue int) int {
+func getSecretAsInt(secrets map[string]string, key string, defaultValue int32) int32 {
 	if valueStr, ok := secrets[key]; ok {
-		if value, err := strconv.Atoi(valueStr); err == nil {
-			return value
+		if value, err := strconv.ParseInt(valueStr, 10, 32); err == nil {
+			if value >= math.MinInt32 && value <= math.MaxInt32 {
+				return int32(value)
+			}
 		}
 	}
 	return defaultValue
