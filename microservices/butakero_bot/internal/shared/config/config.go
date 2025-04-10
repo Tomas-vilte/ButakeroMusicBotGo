@@ -6,6 +6,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/secretmanager"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"github.com/spf13/viper"
+	"math"
 	"strconv"
 	"time"
 )
