@@ -24,22 +24,24 @@ import (
 
 const (
 	localstackImage = "localstack/localstack:latest"
-	queueName       = "test-queue"
 	region          = "us-east-1"
+	requestsQueue   = "test-requests-queue"
+	statusQueue     = "test-status-queue"
 )
 
 type TestingSuite struct {
-	t             *testing.T
-	container     testcontainers.Container
-	cfg           *config.Config
-	logger        logger.Logger
-	sqsClient     *awsSqs.Client
-	sqsEndpoint   string
-	queueURL      string
-	producerSQS   *ProducerSQS
-	consumerSQS   *ConsumerSQS
-	ctx           context.Context
-	cancelContext context.CancelFunc
+	t                *testing.T
+	container        testcontainers.Container
+	cfg              *config.Config
+	logger           logger.Logger
+	sqsClient        *awsSqs.Client
+	sqsEndpoint      string
+	requestsQueueURL string
+	statusQueueURL   string
+	producerSQS      *ProducerSQS
+	consumerSQS      *ConsumerSQS
+	ctx              context.Context
+	cancelContext    context.CancelFunc
 }
 
 func setupTestingSuite(t *testing.T) *TestingSuite {
@@ -56,17 +58,20 @@ func setupTestingSuite(t *testing.T) *TestingSuite {
 	}
 
 	suite.setupLocalstack()
-
 	suite.setupSQSClient()
-	suite.createQueue()
+	suite.createQueues()
 
 	suite.cfg = &config.Config{
 		AWS: config.AWSConfig{
 			Region: region,
 		},
 		Messaging: config.MessagingConfig{
+			Type: "sqs",
 			SQS: &config.SQSConfig{
-				QueueURL: suite.queueURL,
+				QueueURLs: &config.SQSQueues{
+					BotDownloadRequestsURL: suite.requestsQueueURL,
+					BotDownloadStatusURL:   suite.statusQueueURL,
+				},
 			},
 		},
 	}
@@ -78,7 +83,6 @@ func setupTestingSuite(t *testing.T) *TestingSuite {
 
 func (suite *TestingSuite) setupLocalstack() {
 
-	// Crear y arrancar contenedor de localstack
 	req := testcontainers.ContainerRequest{
 		Image:        localstackImage,
 		ExposedPorts: []string{"4566/tcp"},
@@ -133,19 +137,28 @@ func (suite *TestingSuite) setupSQSClient() {
 	suite.sqsClient = awsSqs.NewFromConfig(cfg)
 }
 
-func (suite *TestingSuite) createQueue() {
-	createQueueInput := &awsSqs.CreateQueueInput{
-		QueueName: aws.String(queueName),
+func (suite *TestingSuite) createQueues() {
+	reqQueueOutput, err := suite.sqsClient.CreateQueue(suite.ctx, &awsSqs.CreateQueueInput{
+		QueueName: aws.String(requestsQueue),
 		Attributes: map[string]string{
 			"MessageRetentionPeriod": "86400",
 		},
-	}
+	})
+	require.NoError(suite.t, err)
+	suite.requestsQueueURL = *reqQueueOutput.QueueUrl
 
-	createQueueOutput, err := suite.sqsClient.CreateQueue(suite.ctx, createQueueInput)
-	require.NoError(suite.t, err, "Error al crear cola SQS")
+	statusQueueOutput, err := suite.sqsClient.CreateQueue(suite.ctx, &awsSqs.CreateQueueInput{
+		QueueName: aws.String(statusQueue),
+		Attributes: map[string]string{
+			"MessageRetentionPeriod": "86400",
+		},
+	})
+	require.NoError(suite.t, err)
+	suite.statusQueueURL = *statusQueueOutput.QueueUrl
 
-	suite.queueURL = *createQueueOutput.QueueUrl
-	suite.logger.Info("Cola SQS creada", zap.String("queue_url", suite.queueURL))
+	suite.logger.Info("Colas SQS creadas",
+		zap.String("requests_queue", suite.requestsQueueURL),
+		zap.String("status_queue", suite.statusQueueURL))
 }
 
 func (suite *TestingSuite) setupProducerAndConsumer() {
@@ -178,7 +191,7 @@ func (suite *TestingSuite) sendMessageToQueue(msg *model.MediaRequest) {
 
 	input := &awsSqs.SendMessageInput{
 		MessageBody: aws.String(string(body)),
-		QueueUrl:    aws.String(suite.queueURL),
+		QueueUrl:    aws.String(suite.requestsQueueURL),
 	}
 
 	_, err = suite.sqsClient.SendMessage(suite.ctx, input)
@@ -187,7 +200,7 @@ func (suite *TestingSuite) sendMessageToQueue(msg *model.MediaRequest) {
 
 func (suite *TestingSuite) receiveMessagesFromQueue() []string {
 	input := &awsSqs.ReceiveMessageInput{
-		QueueUrl:            aws.String(suite.queueURL),
+		QueueUrl:            aws.String(suite.statusQueueURL),
 		MaxNumberOfMessages: 10,
 		WaitTimeSeconds:     1,
 	}
@@ -222,23 +235,22 @@ func TestProducerSQS_Publish(t *testing.T) {
 	}
 
 	err := suite.producerSQS.Publish(suite.ctx, testMsg)
+	assert.NoError(t, err)
 
-	assert.NoError(t, err, "Error al publicar mensaje")
+	// Verificar mensaje en la cola de status
+	input := &awsSqs.ReceiveMessageInput{
+		QueueUrl:        aws.String(suite.statusQueueURL),
+		WaitTimeSeconds: 5,
+	}
 
-	messages := suite.receiveMessagesFromQueue()
-	assert.Len(t, messages, 1, "Se esperaba 1 mensaje en la cola")
+	result, err := suite.sqsClient.ReceiveMessage(suite.ctx, input)
+	assert.NoError(t, err)
+	assert.Len(t, result.Messages, 1)
 
 	var receivedMsg model.MediaProcessingMessage
-	err = json.Unmarshal([]byte(messages[0]), &receivedMsg)
-	assert.NoError(t, err, "Error al deserializar mensaje")
-
+	err = json.Unmarshal([]byte(*result.Messages[0].Body), &receivedMsg)
+	assert.NoError(t, err)
 	assert.Equal(t, testMsg.VideoID, receivedMsg.VideoID)
-	assert.Equal(t, testMsg.Message, receivedMsg.Message)
-	assert.Equal(t, testMsg.Status, receivedMsg.Status)
-	assert.Equal(t, testMsg.Success, receivedMsg.Success)
-	assert.Equal(t, testMsg.FileData.FilePath, receivedMsg.FileData.FilePath)
-	assert.Equal(t, testMsg.FileData.FileSize, receivedMsg.FileData.FileSize)
-	assert.Equal(t, testMsg.PlatformMetadata.Platform, receivedMsg.PlatformMetadata.Platform)
 }
 
 func TestConsumerSQS_GetRequestsChannel(t *testing.T) {

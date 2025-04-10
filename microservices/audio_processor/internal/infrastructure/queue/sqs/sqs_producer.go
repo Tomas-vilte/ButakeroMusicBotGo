@@ -23,7 +23,7 @@ type ProducerSQS struct {
 
 func NewProducerSQS(cfgApplication *config.Config, log logger.Logger) (ports.MessageProducer, error) {
 	log.Info("Inicializando productor SQS",
-		zap.String("queue_url", cfgApplication.Messaging.SQS.QueueURL))
+		zap.String("queue_url", cfgApplication.Messaging.SQS.QueueURLs.BotDownloadStatusURL))
 
 	log.Debug("Cargando configuración AWS", zap.String("region", cfgApplication.AWS.Region))
 	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(),
@@ -37,7 +37,7 @@ func NewProducerSQS(cfgApplication *config.Config, log logger.Logger) (ports.Mes
 	sqsClient := sqs.NewFromConfig(cfg)
 
 	log.Info("Productor SQS inicializado correctamente",
-		zap.String("queue_url", cfgApplication.Messaging.SQS.QueueURL))
+		zap.String("queue_url", cfgApplication.Messaging.SQS.QueueURLs.BotDownloadStatusURL))
 	return &ProducerSQS{
 		client: sqsClient,
 		cfg:    cfgApplication,
@@ -64,15 +64,15 @@ func (p *ProducerSQS) Publish(ctx context.Context, msg *model.MediaProcessingMes
 
 	input := &sqs.SendMessageInput{
 		MessageBody: aws.String(string(body)),
-		QueueUrl:    aws.String(p.cfg.Messaging.SQS.QueueURL),
+		QueueUrl:    aws.String(p.cfg.Messaging.SQS.QueueURLs.BotDownloadStatusURL),
 	}
 
 	log.Debug("Enviando mensaje a SQS",
-		zap.String("queue_url", p.cfg.Messaging.SQS.QueueURL))
+		zap.String("queue_url", p.cfg.Messaging.SQS.QueueURLs.BotDownloadStatusURL))
 	result, err := p.client.SendMessage(ctx, input)
 	if err != nil {
 		log.Error("Error publicando mensaje en SQS",
-			zap.String("queue_url", p.cfg.Messaging.SQS.QueueURL),
+			zap.String("queue_url", p.cfg.Messaging.SQS.QueueURLs.BotDownloadStatusURL),
 			zap.Error(err))
 		return err
 	}

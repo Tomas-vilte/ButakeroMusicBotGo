@@ -7,6 +7,8 @@ service_timeout = 2
 youtube_api_key = ""
 container_port = 8080
 secret_name = "butakero-audio-service-secrets"
+ecs_service_desired_count = 1
+workers_count = 2
 
 alb_tags = {
   Project     = "music-downloader"
