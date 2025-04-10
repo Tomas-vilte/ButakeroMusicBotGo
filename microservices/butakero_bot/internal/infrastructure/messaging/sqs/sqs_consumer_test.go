@@ -39,7 +39,9 @@ func TestNewSQSConsumer(t *testing.T) {
 	cfg := &config.Config{
 		QueueConfig: config.QueueConfig{
 			SQSConfig: config.SQSConfig{
-				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				Queues: &config.QueuesSQS{
+					BotDownloadStatusQueueURL: "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				},
 				MaxMessages:     10,
 				WaitTimeSeconds: 20,
 			},
@@ -54,7 +56,7 @@ func TestNewSQSConsumer(t *testing.T) {
 	// Assert
 	assert.NotNil(t, consumer)
 	assert.Equal(t, mockClient, consumer.client)
-	assert.Equal(t, cfg.QueueConfig.SQSConfig.QueueURL, consumer.cfg.QueueConfig.SQSConfig.QueueURL)
+	assert.Equal(t, cfg.QueueConfig.SQSConfig.Queues.BotDownloadStatusQueueURL, consumer.cfg.QueueConfig.SQSConfig.Queues.BotDownloadStatusQueueURL)
 	assert.Equal(t, cfg.QueueConfig.SQSConfig.MaxMessages, consumer.cfg.QueueConfig.SQSConfig.MaxMessages)
 	assert.Equal(t, cfg.QueueConfig.SQSConfig.WaitTimeSeconds, consumer.cfg.QueueConfig.SQSConfig.WaitTimeSeconds)
 	assert.NotNil(t, consumer.messageChan)
@@ -69,7 +71,9 @@ func TestSQSConsumer_ConsumeMessages(t *testing.T) {
 	cfg := &config.Config{
 		QueueConfig: config.QueueConfig{
 			SQSConfig: config.SQSConfig{
-				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				Queues: &config.QueuesSQS{
+					BotDownloadStatusQueueURL: "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				},
 				MaxMessages:     10,
 				WaitTimeSeconds: 20,
 			},
@@ -117,7 +121,9 @@ func TestSQSConsumer_receiveAndProcessMessages_Success(t *testing.T) {
 	cfg := &config.Config{
 		QueueConfig: config.QueueConfig{
 			SQSConfig: config.SQSConfig{
-				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				Queues: &config.QueuesSQS{
+					BotDownloadStatusQueueURL: "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				},
 				MaxMessages:     10,
 				WaitTimeSeconds: 20,
 			},
@@ -167,7 +173,9 @@ func TestSQSConsumer_receiveAndProcessMessages_Error(t *testing.T) {
 	cfg := &config.Config{
 		QueueConfig: config.QueueConfig{
 			SQSConfig: config.SQSConfig{
-				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				Queues: &config.QueuesSQS{
+					BotDownloadStatusQueueURL: "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				},
 				MaxMessages:     10,
 				WaitTimeSeconds: 20,
 			},
@@ -203,7 +211,9 @@ func TestSQSConsumer_handleMessage_Success(t *testing.T) {
 	cfg := &config.Config{
 		QueueConfig: config.QueueConfig{
 			SQSConfig: config.SQSConfig{
-				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				Queues: &config.QueuesSQS{
+					BotDownloadStatusQueueURL: "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				},
 				MaxMessages:     10,
 				WaitTimeSeconds: 20,
 			},
@@ -255,7 +265,9 @@ func TestSQSConsumer_handleMessage_WarningStatus(t *testing.T) {
 	cfg := &config.Config{
 		QueueConfig: config.QueueConfig{
 			SQSConfig: config.SQSConfig{
-				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				Queues: &config.QueuesSQS{
+					BotDownloadStatusQueueURL: "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				},
 				MaxMessages:     10,
 				WaitTimeSeconds: 20,
 			},
@@ -295,7 +307,9 @@ func TestSQSConsumer_handleMessage_UnmarshalError(t *testing.T) {
 	cfg := &config.Config{
 		QueueConfig: config.QueueConfig{
 			SQSConfig: config.SQSConfig{
-				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				Queues: &config.QueuesSQS{
+					BotDownloadStatusQueueURL: "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				},
 				MaxMessages:     10,
 				WaitTimeSeconds: 20,
 			},
@@ -324,7 +338,9 @@ func TestSQSConsumer_GetMessagesChannel(t *testing.T) {
 	cfg := &config.Config{
 		QueueConfig: config.QueueConfig{
 			SQSConfig: config.SQSConfig{
-				QueueURL:        "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				Queues: &config.QueuesSQS{
+					BotDownloadStatusQueueURL: "https://sqs.us-east-1.amazonaws.com/123456789012/test-queue",
+				},
 				MaxMessages:     10,
 				WaitTimeSeconds: 20,
 			},

@@ -1,7 +1,11 @@
 package entity
 
+import "time"
+
 type (
 	MessageQueue struct {
+		InteractionID    string   `json:"interaction_id"`
+		UserID           string   `json:"user_id"`
 		VideoID          string   `json:"video_id"`
 		Message          string   `json:"message"`
 		PlatformMetadata Metadata `json:"platform_metadata"`
@@ -22,5 +26,13 @@ type (
 		FilePath string `json:"file_path" bson:"file_path" dynamodbav:"file_path"`
 		FileSize string `json:"file_size" bson:"file_size" dynamodbav:"file_size"`
 		FileType string `json:"file_type" bson:"file_type" dynamodbav:"file_type"`
+	}
+
+	SongRequestMessage struct {
+		InteractionID string    `json:"interaction_id"`
+		UserID        string    `json:"user_id"`
+		Song          string    `json:"song"`
+		ProviderType  string    `json:"provider_type"`
+		Timestamp     time.Time `json:"timestamp"`
 	}
 )

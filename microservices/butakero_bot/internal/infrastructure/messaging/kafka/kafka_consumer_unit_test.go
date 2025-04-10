@@ -38,7 +38,7 @@ func TestKafkaConsumer_Close(t *testing.T) {
 	config := sarama.NewConfig()
 	mockConsumer := mocks.NewConsumer(t, config)
 	mockLogger := new(logging.MockLogger)
-	consumer := &KafkaConsumer{
+	consumer := &ConsumerKafka{
 		consumer:    mockConsumer,
 		brokers:     []string{"dummy"},
 		topic:       "test-topic",
@@ -76,7 +76,7 @@ func TestHandleSuccessMessage(t *testing.T) {
         "success": true
     }`
 	mockLogger := new(logging.MockLogger)
-	consumer := &KafkaConsumer{
+	consumer := &ConsumerKafka{
 		messageChan: make(chan *entity.MessageQueue, 1),
 		logger:      mockLogger,
 	}
@@ -120,7 +120,7 @@ func TestHandleErrorMessage(t *testing.T) {
         "success": false
     }`
 	mockLogger := new(logging.MockLogger)
-	consumer := &KafkaConsumer{
+	consumer := &ConsumerKafka{
 		messageChan: make(chan *entity.MessageQueue, 1),
 		logger:      mockLogger,
 	}

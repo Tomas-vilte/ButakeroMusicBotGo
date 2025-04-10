@@ -3,7 +3,6 @@ package bot
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/application/service"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/adapters"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/command"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/events"
@@ -21,7 +20,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 func StartBot() error {
@@ -58,18 +56,10 @@ func StartBot() error {
 		}
 	}()
 
-	audioClient, err := adapters.NewAudioAPIClient(adapters.AudioAPIClientConfig{
-		BaseURL:         cfg.ExternalService.BaseURL,
-		Timeout:         10 * time.Second,
-		MaxIdleConns:    10,
-		MaxConnsPerHost: 5,
-	}, logger)
+	messageProducer, err := sqsApp.NewProducerSQS(cfg, logger)
 	if err != nil {
-		logger.Error("Error al crear cliente de audio", zap.Error(err))
-		return err
+		panic(err)
 	}
-
-	externalService := service.NewExternalAudioService(audioClient, logger)
 
 	discordClient, err := discordgo.New("Bot " + cfg.Discord.Token)
 	if err != nil {
@@ -98,7 +88,7 @@ func StartBot() error {
 		return err
 	}
 
-	songService := service.NewSongService(songRepo, externalService, messageConsumer, logger)
+	songService := service.NewSongService(songRepo, messageProducer, messageConsumer, logger)
 	tracker := discord.NewBotChannelTracker(logger)
 	mover := discord.NewBotMover(logger)
 	playback := discord.NewPlaybackController(logger)

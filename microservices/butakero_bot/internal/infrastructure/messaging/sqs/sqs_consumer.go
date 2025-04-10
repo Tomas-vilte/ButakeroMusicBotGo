@@ -30,7 +30,7 @@ type SQSConsumer struct {
 func NewSQSConsumer(client ClientSQS, config *config.Config, logger logging.Logger) *SQSConsumer {
 	logger = logger.With(
 		zap.String("component", "sqs_consumer"),
-		zap.String("queueURL", config.QueueConfig.SQSConfig.QueueURL),
+		zap.String("queueURL", config.QueueConfig.SQSConfig.Queues.BotDownloadStatusQueueURL),
 		zap.Int32("maxMessages", config.QueueConfig.SQSConfig.MaxMessages),
 		zap.Int32("waitTimeSeconds", config.QueueConfig.SQSConfig.WaitTimeSeconds),
 	)
@@ -69,7 +69,7 @@ func (s *SQSConsumer) receiveAndProcessMessages(ctx context.Context) {
 	logger := s.logger.With(zap.String("method", "receiveAndProcessMessages"))
 
 	input := &sqs.ReceiveMessageInput{
-		QueueUrl:            aws.String(s.cfg.QueueConfig.SQSConfig.QueueURL),
+		QueueUrl:            aws.String(s.cfg.QueueConfig.SQSConfig.Queues.BotDownloadStatusQueueURL),
 		MaxNumberOfMessages: s.cfg.QueueConfig.SQSConfig.MaxMessages,
 		WaitTimeSeconds:     s.cfg.QueueConfig.SQSConfig.WaitTimeSeconds,
 		MessageSystemAttributeNames: []types.MessageSystemAttributeName{
@@ -131,7 +131,7 @@ func (s *SQSConsumer) deleteMessage(ctx context.Context, msg types.Message) {
 	)
 
 	deleteInput := &sqs.DeleteMessageInput{
-		QueueUrl:      aws.String(s.cfg.QueueConfig.SQSConfig.QueueURL),
+		QueueUrl:      aws.String(s.cfg.QueueConfig.SQSConfig.Queues.BotDownloadStatusQueueURL),
 		ReceiptHandle: msg.ReceiptHandle,
 	}
 

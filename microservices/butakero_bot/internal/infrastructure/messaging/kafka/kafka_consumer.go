@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"sync"
 
@@ -19,7 +20,7 @@ type ConsumerClient interface {
 	Close() error
 }
 
-type KafkaConsumer struct {
+type ConsumerKafka struct {
 	consumer    sarama.Consumer
 	brokers     []string
 	topic       string
@@ -29,7 +30,7 @@ type KafkaConsumer struct {
 	wg          sync.WaitGroup
 }
 
-func NewKafkaConsumer(config KafkaConfig, logger logging.Logger) (*KafkaConsumer, error) {
+func NewKafkaConsumer(config KafkaConfig, logger logging.Logger) (ports.MessageConsumer, error) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Consumer.Return.Errors = true
 	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetNewest
@@ -67,7 +68,7 @@ func NewKafkaConsumer(config KafkaConfig, logger logging.Logger) (*KafkaConsumer
 		return nil, fmt.Errorf("error creando configuración Kafka consumer: %w", err)
 	}
 
-	return &KafkaConsumer{
+	return &ConsumerKafka{
 		consumer:    consumer,
 		brokers:     config.Brokers,
 		topic:       config.Topic,
@@ -77,7 +78,7 @@ func NewKafkaConsumer(config KafkaConfig, logger logging.Logger) (*KafkaConsumer
 	}, nil
 }
 
-func (k *KafkaConsumer) ConsumeMessages(ctx context.Context, offset int64) error {
+func (k *ConsumerKafka) ConsumeMessages(ctx context.Context, offset int64) error {
 	logger := k.logger.With(zap.String("method", "ConsumeMessages"))
 	logger.Info("Iniciando consumo de mensajes")
 
@@ -120,7 +121,7 @@ func (k *KafkaConsumer) ConsumeMessages(ctx context.Context, offset int64) error
 	return nil
 }
 
-func (k *KafkaConsumer) consumePartition(ctx context.Context, pc sarama.PartitionConsumer, partition int32) {
+func (k *ConsumerKafka) consumePartition(ctx context.Context, pc sarama.PartitionConsumer, partition int32) {
 	defer k.wg.Done()
 	defer func() {
 		if err := pc.Close(); err != nil {
@@ -150,7 +151,7 @@ func (k *KafkaConsumer) consumePartition(ctx context.Context, pc sarama.Partitio
 	}
 }
 
-func (k *KafkaConsumer) handleMessage(msg *sarama.ConsumerMessage) {
+func (k *ConsumerKafka) handleMessage(msg *sarama.ConsumerMessage) {
 	logger := k.logger.With(
 		zap.String("method", "handleMessage"),
 		zap.Int64("offset", msg.Offset),
@@ -177,7 +178,7 @@ func (k *KafkaConsumer) handleMessage(msg *sarama.ConsumerMessage) {
 	}
 }
 
-func (k *KafkaConsumer) TopicExists(topic string) (bool, error) {
+func (k *ConsumerKafka) TopicExists(topic string) (bool, error) {
 	logger := k.logger.With(zap.String("method", "TopicExists"))
 	logger.Debug("Verificando si el topic existe", zap.String("topic", topic))
 
@@ -197,15 +198,15 @@ func (k *KafkaConsumer) TopicExists(topic string) (bool, error) {
 	return false, nil
 }
 
-func (k *KafkaConsumer) GetMessagesChannel() <-chan *entity.MessageQueue {
+func (k *ConsumerKafka) GetMessagesChannel() <-chan *entity.MessageQueue {
 	return k.messageChan
 }
 
-func (k *KafkaConsumer) GetErrorChannel() <-chan error {
+func (k *ConsumerKafka) GetErrorChannel() <-chan error {
 	return k.errorChan
 }
 
-func (k *KafkaConsumer) Close() error {
+func (k *ConsumerKafka) Close() error {
 	logger := k.logger.With(zap.String("method", "Close"))
 	logger.Info("Cerrando consumidor Kafka")
 	return k.consumer.Close()
