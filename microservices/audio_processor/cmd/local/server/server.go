@@ -2,6 +2,13 @@ package server
 
 import (
 	"context"
+	"errors"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/delivery/http/handler"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/delivery/queue/processor"
@@ -18,15 +25,10 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/usecase"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 )
 
 func StartServer() error {
 	cfg := config.LoadConfigLocal()
-
 	log, err := logger.NewDevelopmentLogger()
 	if err != nil {
 		return err
@@ -42,11 +44,6 @@ func StartServer() error {
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		sig := <-sigChan
-		log.Info("Senal recivida cerrando", zap.String("signal", sig.String()))
-		cancel()
-	}()
 
 	storage, err := local.NewLocalStorage(cfg, log)
 	if err != nil {
@@ -102,10 +99,9 @@ func StartServer() error {
 		log.Error("Error al crear downloader", zap.Error(err))
 		return err
 	}
+
 	youtubeAPI := adapters.NewYouTubeClient(cfg.API.YouTube.ApiKey, log)
-
 	encoderAudio := encoder.NewFFmpegEncoder(log)
-
 	providers := map[string]ports.VideoProvider{
 		"youtube": youtubeAPI,
 	}
@@ -116,37 +112,57 @@ func StartServer() error {
 	audioDownloadService := service.NewAudioDownloaderService(downloaderMusic, encoderAudio, log)
 	coreService := service.NewCoreService(mediaService, audioStorageService, topicPublisherService, audioDownloadService, log, cfg)
 	operationService := service.NewOperationService(mediaService, log)
-
 	providerService := service.NewVideoService(providers, log)
+
 	operationUC := usecase.NewGetOperationStatusUseCase(mediaRepository)
 	operationHandler := handler.NewOperationHandler(operationUC)
 	healthCheck := handler.NewHealthHandler(cfg)
 
 	downloadService := processor.NewDownloadService(cfg.NumWorkers, kafkaConsumer, mediaService, providerService, coreService, operationService, log)
 
-	errChan := make(chan error, 1)
-	go func() {
-		errChan <- downloadService.Run(ctx)
-	}()
-
-	select {
-	case err := <-errChan:
-		if err != nil {
-			log.Error("Error al cerrar el download", zap.Error(err))
-			os.Exit(1)
-		}
-	case <-ctx.Done():
-		log.Info("señal de cancelación recibida, cerrando el servicio")
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Second*30)
-		defer shutdownCancel()
-
-		<-shutdownCtx.Done()
-		log.Info("Servicio cerrado con éxito")
-	}
-
 	gin.SetMode(cfg.GinConfig.Mode)
 	r := gin.New()
 	router.SetupRoutes(r, operationHandler, healthCheck, log)
 
-	return r.Run(":8080")
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: r,
+	}
+
+	errChan := make(chan error, 2)
+
+	go func() {
+		log.Info("Iniciando servidor HTTP en :8080")
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errChan <- err
+		}
+	}()
+
+	go func() {
+		if err := downloadService.Run(ctx); err != nil {
+			errChan <- err
+		}
+	}()
+
+	select {
+	case err := <-errChan:
+		log.Error("Error en el servicio", zap.Error(err))
+		return err
+	case sig := <-sigChan:
+		log.Info("Señal recibida, iniciando shutdown", zap.String("signal", sig.String()))
+
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer shutdownCancel()
+
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			log.Error("Error durante el shutdown del servidor HTTP", zap.Error(err))
+			return err
+		}
+
+		cancel()
+		<-shutdownCtx.Done()
+		log.Info("Servicio cerrado con éxito")
+	}
+
+	return nil
 }

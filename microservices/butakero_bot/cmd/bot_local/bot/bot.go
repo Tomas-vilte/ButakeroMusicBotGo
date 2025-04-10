@@ -57,6 +57,11 @@ func StartBot() error {
 			logger.Error("Error al consumir mensajes de kafka")
 		}
 	}()
+	defer func() {
+		if err := messageConsumer.Close(); err != nil {
+			logger.Error("Error al consumir mensajes de kafka")
+		}
+	}()
 	connManager := mongodb.NewConnectionManager(mongodb.MongoConfig{
 		Hosts: []mongodb.Host{
 			{
@@ -84,10 +89,15 @@ func StartBot() error {
 		panic(err)
 	}
 	collection := connManager.GetDatabase().Collection(cfg.DatabaseConfig.MongoDB.Collection)
-	messageProducer, err := kafka.NewSaramaProducer(cfg, logger)
+	messageProducer, err := kafka.NewProducerKafka(cfg, logger)
 	if err != nil {
 		panic(err)
 	}
+	defer func() {
+		if err := messageProducer.Close(); err != nil {
+			logger.Error("Error al cerrar el productor", zap.Error(err))
+		}
+	}()
 	songRepo, err := mongodb.NewMongoDBSongRepository(mongodb.Options{
 		Collection: collection,
 		Logger:     logger,

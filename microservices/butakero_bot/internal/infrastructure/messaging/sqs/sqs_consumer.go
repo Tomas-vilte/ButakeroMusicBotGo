@@ -1,3 +1,5 @@
+// go
+
 package sqs
 
 import (
@@ -139,4 +141,8 @@ func (s *SQSConsumer) deleteMessage(ctx context.Context, msg types.Message) {
 	if err != nil {
 		logger.Error("Error al eliminar mensaje de SQS", zap.Error(err))
 	}
+}
+
+func (s *SQSConsumer) Close() error {
+	return nil
 }
