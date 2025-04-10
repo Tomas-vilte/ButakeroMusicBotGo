@@ -44,6 +44,8 @@ func TestIntegrationKafkaConsumer(t *testing.T) {
 	}()
 
 	successJSON := `{
+		"user_id": "user_123",
+		"interaction_id": "interaction_123",
         "video_id": "19f6c66f-26f3-4ccf-bfc7-967449a95ad4",
         "status": "success",
         "message": "Procesamiento exitoso",

@@ -48,6 +48,9 @@ func NewCommandHandler(
 }
 
 func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.InteractionCreate, opt *discordgo.ApplicationCommandInteractionDataOption) {
+	userID := ic.Member.User.ID
+	interactionID := ic.ID
+
 	vs, ok := h.isUserInVoiceChannel(s, ic)
 	if !ok {
 		return
@@ -72,7 +75,7 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 	}
 
 	go func() {
-		song, err := h.songService.GetOrDownloadSong(context.Background(), input, "youtube")
+		song, err := h.songService.GetOrDownloadSong(context.Background(), interactionID, userID, input, "youtube")
 		if err != nil {
 			h.logger.Error("Error al obtener canción", zap.Error(err))
 			if err := h.messenger.EditOriginalResponse(domainInteraction, &entity.WebhookEdit{

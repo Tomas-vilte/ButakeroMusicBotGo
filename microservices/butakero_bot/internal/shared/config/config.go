@@ -35,9 +35,14 @@ type (
 	}
 
 	SQSConfig struct {
-		QueueURL        string
+		Queues          *QueuesSQS
 		MaxMessages     int32
 		WaitTimeSeconds int32
+	}
+
+	QueuesSQS struct {
+		BotDownloadStatusQueueURL   string
+		BotDownloadRequestsQueueURL string
 	}
 
 	Discord struct {
@@ -46,8 +51,13 @@ type (
 
 	KafkaConfig struct {
 		Brokers []string
-		Topic   string
+		Topics  *KafkaTopics
 		TLS     shared.TLSConfig
+	}
+
+	KafkaTopics struct {
+		BotDownloadStatus  string
+		BotDownloadRequest string
 	}
 
 	StorageConfig struct {
@@ -127,7 +137,10 @@ func LoadConfig() (*Config, error) {
 		QueueConfig: QueueConfig{
 			KafkaConfig: KafkaConfig{
 				Brokers: viper.GetStringSlice("KAFKA_BROKERS"),
-				Topic:   viper.GetString("KAFKA_TOPIC"),
+				Topics: &KafkaTopics{
+					BotDownloadRequest: viper.GetString("KAFKA_BOT_DOWNLOAD_REQUESTS"),
+					BotDownloadStatus:  viper.GetString("KAFKA_BOT_DOWNLOAD_STATUS"),
+				},
 				TLS: shared.TLSConfig{
 					Enabled:  viper.GetBool("KAFKA_TLS_ENABLED"),
 					CAFile:   viper.GetString("KAFKA_TLS_CA_FILE"),
@@ -213,7 +226,10 @@ func LoadConfigAws() (*Config, error) {
 		},
 		QueueConfig: QueueConfig{
 			SQSConfig: SQSConfig{
-				QueueURL: secrets["SQS_QUEUE_URL"],
+				Queues: &QueuesSQS{
+					BotDownloadRequestsQueueURL: secrets["QUEUE_BOT_DOWNLOAD_REQUESTS"],
+					BotDownloadStatusQueueURL:   secrets["QUEUE_BOT_DOWNLOAD_STATUS"],
+				},
 			},
 		},
 	}

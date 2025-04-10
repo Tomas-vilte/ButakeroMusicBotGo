@@ -3,7 +3,6 @@ package bot
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/application/service"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/adapters"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/command"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/events"
@@ -19,7 +18,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 func StartBot() error {
@@ -43,7 +41,7 @@ func StartBot() error {
 
 	messageConsumer, err := kafka.NewKafkaConsumer(kafka.KafkaConfig{
 		Brokers: cfg.QueueConfig.KafkaConfig.Brokers,
-		Topic:   cfg.QueueConfig.KafkaConfig.Topic,
+		Topic:   cfg.QueueConfig.KafkaConfig.Topics.BotDownloadStatus,
 		TLS: shared.TLSConfig{
 			Enabled:  cfg.QueueConfig.KafkaConfig.TLS.Enabled,
 			CAFile:   cfg.QueueConfig.KafkaConfig.TLS.CAFile,
@@ -59,15 +57,6 @@ func StartBot() error {
 			logger.Error("Error al consumir mensajes de kafka")
 		}
 	}()
-	audioClient, err := adapters.NewAudioAPIClient(adapters.AudioAPIClientConfig{
-		BaseURL:         cfg.ExternalService.BaseURL,
-		Timeout:         10 * time.Second,
-		MaxIdleConns:    10,
-		MaxConnsPerHost: 5,
-	}, logger)
-	if err != nil {
-		panic(err)
-	}
 	connManager := mongodb.NewConnectionManager(mongodb.MongoConfig{
 		Hosts: []mongodb.Host{
 			{
@@ -95,7 +84,10 @@ func StartBot() error {
 		panic(err)
 	}
 	collection := connManager.GetDatabase().Collection(cfg.DatabaseConfig.MongoDB.Collection)
-	externalService := service.NewExternalAudioService(audioClient, logger)
+	messageProducer, err := kafka.NewSaramaProducer(cfg, logger)
+	if err != nil {
+		panic(err)
+	}
 	songRepo, err := mongodb.NewMongoDBSongRepository(mongodb.Options{
 		Collection: collection,
 		Logger:     logger,
@@ -114,7 +106,7 @@ func StartBot() error {
 
 	interactionStorage := storage.NewInMemoryInteractionStorage(logger)
 
-	songService := service.NewSongService(songRepo, externalService, messageConsumer, logger)
+	songService := service.NewSongService(songRepo, messageProducer, messageConsumer, logger)
 	tracker := discord.NewBotChannelTracker(logger)
 	mover := discord.NewBotMover(logger)
 	playback := discord.NewPlaybackController(logger)

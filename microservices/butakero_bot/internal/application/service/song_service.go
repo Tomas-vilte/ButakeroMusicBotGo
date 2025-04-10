@@ -8,24 +8,25 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"go.uber.org/zap"
 	"regexp"
+	"time"
 )
 
 type songService struct {
 	songRepo        ports.SongRepository
-	externalService ports.ExternalSongService
+	messageProducer ports.MessageProducer
 	messageConsumer ports.MessageConsumer
 	logger          logging.Logger
 }
 
 func NewSongService(
 	songRepo ports.SongRepository,
-	externalService ports.ExternalSongService,
+	messageProducer ports.MessageProducer,
 	messageConsumer ports.MessageConsumer,
 	logger logging.Logger,
 ) ports.SongService {
 	return &songService{
 		songRepo:        songRepo,
-		externalService: externalService,
+		messageProducer: messageProducer,
 		messageConsumer: messageConsumer,
 		logger:          logger,
 	}
@@ -36,93 +37,76 @@ func (s *songService) extractURLOrTitle(input string) (string, bool) {
 	return input, urlRegex.MatchString(input)
 }
 
-func (s *songService) GetOrDownloadSong(ctx context.Context, songInput, providerType string) (*entity.DiscordEntity, error) {
+func (s *songService) GetOrDownloadSong(ctx context.Context, interactionID, userID, songInput, providerType string) (*entity.DiscordEntity, error) {
 	input, isURL := s.extractURLOrTitle(songInput)
 	s.logger.Info("Procesando solicitud de canción",
+		zap.String("interactionID", interactionID),
+		zap.String("userID", userID),
 		zap.String("input", input),
 		zap.Bool("isURL", isURL))
 
-	var songs []*entity.SongEntity
+	// Primero intentamos buscar la canción en la base de datos
+	var song *entity.SongEntity
 	var err error
 
 	if isURL {
 		videoID := extractVideoID(input)
-		song, err := s.songRepo.GetSongByVideoID(ctx, videoID)
-		if err == nil && song != nil {
-			return &entity.DiscordEntity{
-				TitleTrack:   song.Metadata.Title,
-				DurationMs:   song.Metadata.DurationMs,
-				Platform:     song.Metadata.Platform,
-				FilePath:     song.FileData.FilePath,
-				ThumbnailURL: song.Metadata.ThumbnailURL,
-			}, nil
+		if videoID != "" {
+			song, err = s.songRepo.GetSongByVideoID(ctx, videoID)
+			if err == nil && song != nil {
+				s.logger.Info("Canción encontrada en la base de datos por videoID",
+					zap.String("videoID", videoID))
+				return songEntityToDiscordEntity(song), nil
+			}
 		}
 	} else {
-		songs, err = s.songRepo.SearchSongsByTitle(ctx, input)
+		songs, err := s.songRepo.SearchSongsByTitle(ctx, input)
 		if err == nil && len(songs) > 0 {
-			return &entity.DiscordEntity{
-				TitleTrack:   songs[0].Metadata.Title,
-				DurationMs:   songs[0].Metadata.DurationMs,
-				Platform:     songs[0].Metadata.Platform,
-				FilePath:     songs[0].FileData.FilePath,
-				ThumbnailURL: songs[0].Metadata.ThumbnailURL,
-			}, nil
+			s.logger.Info("Canción encontrada en la base de datos por título",
+				zap.String("title", songs[0].Metadata.Title))
+			return songEntityToDiscordEntity(songs[0]), nil
 		}
 	}
 
-	s.logger.Info("Canción no encontrada en DB, iniciando descarga",
+	s.logger.Info("Canción no encontrada en DB, enviando solicitud a través de Kafka",
 		zap.String("input", input))
 
-	response, err := s.externalService.RequestDownload(ctx, input, providerType)
+	message := &entity.SongRequestMessage{
+		InteractionID: interactionID,
+		UserID:        userID,
+		Song:          input,
+		ProviderType:  providerType,
+		Timestamp:     time.Now(),
+	}
+
+	err = s.messageProducer.PublishSongRequest(ctx, message)
 	if err != nil {
-		return nil, fmt.Errorf("%s", err)
+		s.logger.Error("Error al publicar mensaje en Kafka",
+			zap.String("input", input),
+			zap.Error(err))
+		return nil, fmt.Errorf("error al solicitar la descarga: %w", err)
 	}
 
-	if response.Status == "duplicate_record" {
-		s.logger.Info("El video ya está registrado, consultando la base de datos",
-			zap.String("videoID", response.VideoID))
-
-		song, err := s.songRepo.GetSongByVideoID(ctx, response.VideoID)
-		if err != nil {
-			return nil, fmt.Errorf("error al obtener la canción de la base de datos: %s", err)
-		}
-
-		if song != nil {
-			return &entity.DiscordEntity{
-				TitleTrack:   song.Metadata.Title,
-				DurationMs:   song.Metadata.DurationMs,
-				Platform:     song.Metadata.Platform,
-				FilePath:     song.FileData.FilePath,
-				ThumbnailURL: song.Metadata.ThumbnailURL,
-			}, nil
-		}
-	}
-
-	if !response.Success {
-		return nil, fmt.Errorf("la solicitud de descarga falló: %s", response.Status)
-	}
-
-	videoID := response.VideoID
-	s.logger.Info("Solicitud de descarga enviada",
-		zap.String("video_id", videoID),
-		zap.String("provider", response.Provider),
-		zap.String("status", response.Status))
+	s.logger.Info("Solicitud enviada a través de Kafka, esperando respuesta",
+		zap.String("interactionID", interactionID),
+		zap.String("song", input))
 
 	msgChan := s.messageConsumer.GetMessagesChannel()
 
 	for {
 		select {
 		case msg := <-msgChan:
-			if msg.VideoID != videoID {
+			if msg.InteractionID != interactionID {
 				s.logger.Warn("Mensaje recibido no corresponde a la operación actual",
-					zap.String("esperado", videoID),
-					zap.String("recibido", msg.VideoID))
+					zap.String("esperado", interactionID),
+					zap.String("recibido", msg.InteractionID))
 				continue
 			}
 
 			if msg.Status == "success" {
 				s.logger.Info("Descarga completada exitosamente",
-					zap.String("video_id", videoID))
+					zap.String("interactionID", interactionID),
+					zap.String("video_id", msg.VideoID))
 				return &entity.DiscordEntity{
 					TitleTrack:   msg.PlatformMetadata.Title,
 					DurationMs:   msg.PlatformMetadata.DurationMs,
@@ -133,13 +117,24 @@ func (s *songService) GetOrDownloadSong(ctx context.Context, songInput, provider
 				}, nil
 			} else {
 				s.logger.Error("Error en la descarga",
-					zap.String("video_id", videoID),
+					zap.String("interactionID", interactionID),
 					zap.String("error", msg.Message))
 				return nil, fmt.Errorf("error en la descarga: %s", msg.Message)
 			}
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
+	}
+}
+
+func songEntityToDiscordEntity(song *entity.SongEntity) *entity.DiscordEntity {
+	return &entity.DiscordEntity{
+		TitleTrack:   song.Metadata.Title,
+		DurationMs:   song.Metadata.DurationMs,
+		Platform:     song.Metadata.Platform,
+		FilePath:     song.FileData.FilePath,
+		ThumbnailURL: song.Metadata.ThumbnailURL,
+		URL:          song.Metadata.URL,
 	}
 }
 

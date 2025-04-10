@@ -1,4 +1,4 @@
-////go:build integration
+//go:build integration
 
 package sqs
 
@@ -91,7 +91,9 @@ func TestSQSConsumerIntegration(t *testing.T) {
 	cfg := &config.Config{
 		QueueConfig: config.QueueConfig{
 			SQSConfig: config.SQSConfig{
-				QueueURL:        container.QueueURL,
+				Queues: &config.QueuesSQS{
+					BotDownloadStatusQueueURL: container.QueueURL,
+				},
 				MaxMessages:     10,
 				WaitTimeSeconds: 5,
 			},
@@ -140,7 +142,9 @@ func TestSQSConsumerIntegration_ErrorStatus(t *testing.T) {
 	cfg := &config.Config{
 		QueueConfig: config.QueueConfig{
 			SQSConfig: config.SQSConfig{
-				QueueURL:        container.QueueURL,
+				Queues: &config.QueuesSQS{
+					BotDownloadStatusQueueURL: container.QueueURL,
+				},
 				MaxMessages:     10,
 				WaitTimeSeconds: 5,
 			},

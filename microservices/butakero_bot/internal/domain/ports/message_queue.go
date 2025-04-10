@@ -9,7 +9,13 @@ import (
 // Cuando se inicia la descarga de la canción desde el SongDownloader,
 // el microservicio de descarga envía el resultado a una cola. Los estados posibles
 // son "success" y "error".
-type MessageConsumer interface {
-	ConsumeMessages(ctx context.Context, offset int64) error
-	GetMessagesChannel() <-chan *entity.MessageQueue
-}
+type (
+	MessageConsumer interface {
+		ConsumeMessages(ctx context.Context, offset int64) error
+		GetMessagesChannel() <-chan *entity.MessageQueue
+	}
+
+	MessageProducer interface {
+		PublishSongRequest(ctx context.Context, message *entity.SongRequestMessage) error
+	}
+)
