@@ -20,9 +20,10 @@ type ProducerKafka struct {
 	logger   logging.Logger
 }
 
-func NewSaramaProducer(cfg *config.Config, logger logging.Logger) (ports.MessageProducer, error) {
+func NewProducerKafka(cfg *config.Config, logger logging.Logger) (ports.MessageProducer, error) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Producer.Return.Errors = true
+	saramaConfig.Producer.Return.Successes = true
 
 	logger = logger.With(
 		zap.String("component", "kafka_consumer"),
@@ -95,7 +96,8 @@ func (p *ProducerKafka) PublishSongRequest(ctx context.Context, message *entity.
 	go func() {
 		partition, offset, err := p.producer.SendMessage(msg)
 		if err != nil {
-			done <- err
+			log.Error("Error al enviar el mensaje", zap.Error(err))
+			done <- fmt.Errorf("error al enviar el mensaje: %w", err)
 			return
 		}
 		log.Info("Mensaje publicado exitosamente",
@@ -114,5 +116,7 @@ func (p *ProducerKafka) PublishSongRequest(ctx context.Context, message *entity.
 }
 
 func (p *ProducerKafka) Close() error {
+	logger := p.logger.With(zap.String("method", "Close"))
+	logger.Info("Cerrando producer Kafka")
 	return p.producer.Close()
 }
