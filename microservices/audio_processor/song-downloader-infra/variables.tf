@@ -10,6 +10,12 @@ variable "project_name" {
   default     = "music-downloader"
 }
 
+variable "workers_count" {
+  description = "Numero de workers para procesar cada evento"
+  type = number
+  default = 2
+}
+
 variable "environment" {
   description = "Ambiente de despliegue"
   type        = string

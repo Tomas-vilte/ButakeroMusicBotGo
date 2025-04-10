@@ -25,12 +25,14 @@ module "secret_manager" {
   secret_values = {
     "GIN_MODE": var.gin_mode
     "YOUTUBE_API_KEY": var.youtube_api_key
-    "SQS_QUEUE_URL": module.messaging.queue_url
     "S3_BUCKET_NAME": module.storage.bucket_name
     "DYNAMODB_TABLE_SONGS": module.database.songs_table_name
     "SERVICE_MAX_ATTEMPTS": var.service_max_attempts
     "SERVICE_TIMEOUT": var.service_timeout
     "AUDIO_PROCESSOR_URL": "http://${module.alb.alb_dns_name}"
+    SQS_BOT_DOWNLOAD_STATUS_URL: module.messaging.status_queue_url
+    SQS_BOT_DOWNLOAD_REQUESTS_URL: module.messaging.requests_queue_url
+    NUM_WORKERS: var.workers_count
   }
   tags = var.sm_tags
   secret_name = var.secret_name
@@ -79,7 +81,7 @@ module "iam" {
   environment  = var.environment
 
   s3_bucket_arns      = [module.storage.bucket_arn]
-  sqs_queue_arns      = [module.messaging.queue_arn]
+  sqs_queue_arns      = module.messaging.queues_arn
   secrets_manager_arns = [ module.secret_manager.secret_arn]
   dynamodb_table_arns = module.database.table_arns
   tags                = var.iam_tags

@@ -25,7 +25,7 @@ type ConsumerSQS struct {
 
 func NewConsumerSQS(cfgApplication *config.Config, log logger.Logger) (ports.MessageConsumer, error) {
 	log.Info("Inicializando consumidor SQS",
-		zap.String("queue_url", cfgApplication.Messaging.SQS.QueueURL))
+		zap.String("queue_url", cfgApplication.Messaging.SQS.QueueURLs.BotDownloadRequestsURL))
 
 	log.Debug("Cargando configuración AWS", zap.String("region", cfgApplication.AWS.Region))
 	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(),
@@ -39,7 +39,7 @@ func NewConsumerSQS(cfgApplication *config.Config, log logger.Logger) (ports.Mes
 	sqsClient := sqs.NewFromConfig(cfg)
 
 	log.Info("Consumidor SQS inicializado correctamente",
-		zap.String("queue_url", cfgApplication.Messaging.SQS.QueueURL))
+		zap.String("queue_url", cfgApplication.Messaging.SQS.QueueURLs.BotDownloadRequestsURL))
 	return &ConsumerSQS{
 		client: sqsClient,
 		cfg:    cfgApplication,
@@ -51,7 +51,7 @@ func (c *ConsumerSQS) GetRequestsChannel(ctx context.Context) (<-chan *model.Med
 	log := c.logger.With(
 		zap.String("component", "sqs_consumer"),
 		zap.String("method", "GetRequestsChannel"),
-		zap.String("queue_url", c.cfg.Messaging.SQS.QueueURL),
+		zap.String("queue_url", c.cfg.Messaging.SQS.QueueURLs.BotDownloadRequestsURL),
 	)
 
 	log.Info("Iniciando canal de solicitudes SQS")
@@ -68,7 +68,7 @@ func (c *ConsumerSQS) consumeLoop(ctx context.Context, out chan<- *model.MediaRe
 	log := c.logger.With(
 		zap.String("component", "sqs_consumer"),
 		zap.String("method", "consumeLoop"),
-		zap.String("queue_url", c.cfg.Messaging.SQS.QueueURL),
+		zap.String("queue_url", c.cfg.Messaging.SQS.QueueURLs.BotDownloadRequestsURL),
 	)
 
 	log.Info("Loop de consumo SQS iniciado")
@@ -98,11 +98,11 @@ func (c *ConsumerSQS) receiveMessages(ctx context.Context, out chan<- *model.Med
 	log := c.logger.With(
 		zap.String("component", "sqs_consumer"),
 		zap.String("method", "receiveMessages"),
-		zap.String("queue_url", c.cfg.Messaging.SQS.QueueURL),
+		zap.String("queue_url", c.cfg.Messaging.SQS.QueueURLs.BotDownloadRequestsURL),
 	)
 
 	input := &sqs.ReceiveMessageInput{
-		QueueUrl:            aws.String(c.cfg.Messaging.SQS.QueueURL),
+		QueueUrl:            aws.String(c.cfg.Messaging.SQS.QueueURLs.BotDownloadRequestsURL),
 		MaxNumberOfMessages: 10,
 		WaitTimeSeconds:     20,
 		MessageSystemAttributeNames: []types.MessageSystemAttributeName{
@@ -172,7 +172,7 @@ func (c *ConsumerSQS) deleteMessage(ctx context.Context, receiptHandle *string) 
 
 	log.Debug("Enviando solicitud de eliminación de mensaje")
 	_, err := c.client.DeleteMessage(ctx, &sqs.DeleteMessageInput{
-		QueueUrl:      aws.String(c.cfg.Messaging.SQS.QueueURL),
+		QueueUrl:      aws.String(c.cfg.Messaging.SQS.QueueURLs.BotDownloadRequestsURL),
 		ReceiptHandle: receiptHandle,
 	})
 

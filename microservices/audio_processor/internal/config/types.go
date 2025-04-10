@@ -58,7 +58,12 @@ type (
 
 	// SQSConfig configuración específica de SQS
 	SQSConfig struct {
-		QueueURL string
+		QueueURLs *SQSQueues
+	}
+
+	SQSQueues struct {
+		BotDownloadStatusURL   string
+		BotDownloadRequestsURL string
 	}
 
 	// StorageConfig maneja la configuración de almacenamiento

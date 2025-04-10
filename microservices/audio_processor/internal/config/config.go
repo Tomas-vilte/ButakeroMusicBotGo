@@ -92,7 +92,7 @@ func LoadConfigAws() *Config {
 	}
 	return &Config{
 		Environment: "prod",
-		NumWorkers:  2,
+		NumWorkers:  getSecretAsInt(secrets, "NUM_WORKERS", 2),
 		Service: ServiceConfig{
 			MaxAttempts: getSecretAsInt(secrets, "SERVICE_MAX_ATTEMPTS", 5),
 			Timeout:     time.Duration(getSecretAsInt(secrets, "SERVICE_TIMEOUT", 1)) * time.Minute,
@@ -107,7 +107,10 @@ func LoadConfigAws() *Config {
 		Messaging: MessagingConfig{
 			Type: "sqs",
 			SQS: &SQSConfig{
-				QueueURL: secrets["SQS_QUEUE_URL"],
+				QueueURLs: &SQSQueues{
+					BotDownloadStatusURL:   secrets["SQS_BOT_DOWNLOAD_STATUS_URL"],
+					BotDownloadRequestsURL: secrets["SQS_BOT_DOWNLOAD_REQUESTS_URL"],
+				},
 			},
 		},
 		API: APIConfig{
