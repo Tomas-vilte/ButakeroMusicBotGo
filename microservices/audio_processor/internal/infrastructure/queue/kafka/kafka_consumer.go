@@ -147,7 +147,7 @@ func (c *ConsumerKafka) consumeLoop(ctx context.Context, pc sarama.PartitionCons
 			}
 
 			log.Info("Mensaje procesado correctamente",
-				zap.String("interaction_id", request.InteractionID),
+				zap.String("request_id", request.RequestID),
 				zap.String("user_id", request.UserID),
 				zap.String("provider_type", request.ProviderType))
 

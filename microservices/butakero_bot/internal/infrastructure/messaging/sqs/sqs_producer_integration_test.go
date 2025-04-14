@@ -113,11 +113,11 @@ func TestProducerSQS_PublishSongRequest(t *testing.T) {
 	require.NoError(t, err)
 
 	testMessage := &entity.SongRequestMessage{
-		InteractionID: "test-interaction-123",
-		UserID:        "user-456",
-		Song:          "Never Gonna Give You Up",
-		ProviderType:  "youtube",
-		Timestamp:     time.Now(),
+		RequestID:    "test-interaction-123",
+		UserID:       "user-456",
+		Song:         "Never Gonna Give You Up",
+		ProviderType: "youtube",
+		Timestamp:    time.Now(),
 	}
 
 	err = producer.PublishSongRequest(ctx, testMessage)
@@ -135,15 +135,15 @@ func TestProducerSQS_PublishSongRequest(t *testing.T) {
 	message := receiveResult.Messages[0]
 	assert.NotNil(t, message.MessageId, "Message ID should not be nil")
 
-	interactionID, ok := message.MessageAttributes["InteractionID"]
-	require.True(t, ok, "InteractionID attribute should exist")
-	assert.Equal(t, testMessage.InteractionID, *interactionID.StringValue)
+	interactionID, ok := message.MessageAttributes["RequestID"]
+	require.True(t, ok, "RequestID attribute should exist")
+	assert.Equal(t, testMessage.RequestID, *interactionID.StringValue)
 
 	var receivedMessage entity.SongRequestMessage
 	err = json.Unmarshal([]byte(*message.Body), &receivedMessage)
 	require.NoError(t, err)
 
-	assert.Equal(t, testMessage.InteractionID, receivedMessage.InteractionID)
+	assert.Equal(t, testMessage.RequestID, receivedMessage.RequestID)
 	assert.Equal(t, testMessage.UserID, receivedMessage.UserID)
 	assert.Equal(t, testMessage.Song, receivedMessage.Song)
 	assert.Equal(t, testMessage.ProviderType, receivedMessage.ProviderType)
@@ -189,11 +189,11 @@ func TestProducerSQS_PublishSongRequest_ContextCancelled(t *testing.T) {
 	}
 
 	testMessage := &entity.SongRequestMessage{
-		InteractionID: "test-interaction-123",
-		UserID:        "user-456",
-		Song:          "Never Gonna Give You Up",
-		ProviderType:  "youtube",
-		Timestamp:     time.Now(),
+		RequestID:    "test-interaction-123",
+		UserID:       "user-456",
+		Song:         "Never Gonna Give You Up",
+		ProviderType: "youtube",
+		Timestamp:    time.Now(),
 	}
 
 	cancelledCtx, cancel := context.WithCancel(ctx)

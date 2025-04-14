@@ -145,7 +145,7 @@ func (c *ConsumerSQS) receiveMessages(ctx context.Context, out chan<- *model.Med
 
 		log.Info("Mensaje SQS procesado correctamente",
 			zap.String("message_id", *msg.MessageId),
-			zap.String("interaction_id", req.InteractionID),
+			zap.String("request_id", req.RequestID),
 			zap.String("user_id", req.UserID),
 			zap.String("provider_type", req.ProviderType))
 

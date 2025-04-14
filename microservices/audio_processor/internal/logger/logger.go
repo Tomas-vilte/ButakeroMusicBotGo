@@ -24,26 +24,29 @@ type (
 
 func NewProductionLogger() (*ZapLogger, error) {
 	config := zap.NewProductionConfig()
-
 	config.DisableStacktrace = true
+
 	config.EncoderConfig = zapcore.EncoderConfig{
 		TimeKey:        "timestamp",
 		LevelKey:       "level",
 		NameKey:        "logger",
 		CallerKey:      "caller",
+		FunctionKey:    zapcore.OmitKey,
 		MessageKey:     "msg",
 		StacktraceKey:  "stacktrace",
 		LineEnding:     zapcore.DefaultLineEnding,
 		EncodeLevel:    zapcore.CapitalLevelEncoder,
 		EncodeTime:     customTimeEncoder,
 		EncodeDuration: zapcore.SecondsDurationEncoder,
-		EncodeCaller:   zapcore.ShortCallerEncoder,
+		EncodeCaller:   zapcore.FullCallerEncoder,
 	}
 
 	config.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
 	config.Encoding = "json"
 
-	logger, err := config.Build()
+	logger, err := config.Build(
+		zap.AddCallerSkip(1),
+		zap.AddCaller())
 	if err != nil {
 		return nil, err
 	}

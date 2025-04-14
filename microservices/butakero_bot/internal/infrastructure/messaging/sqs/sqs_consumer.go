@@ -94,8 +94,8 @@ func (s *SQSConsumer) receiveAndProcessMessages(ctx context.Context) {
 
 func (s *SQSConsumer) handleMessage(ctx context.Context, msg types.Message) {
 	logger := s.logger.With(
+		zap.String("component", "SQSConsumer"),
 		zap.String("method", "handleMessage"),
-		zap.String("messageID", *msg.MessageId),
 	)
 
 	logger.Debug("Mensaje recibido")
@@ -128,6 +128,7 @@ func (s *SQSConsumer) GetMessagesChannel() <-chan *entity.MessageQueue {
 
 func (s *SQSConsumer) deleteMessage(ctx context.Context, msg types.Message) {
 	logger := s.logger.With(
+		zap.String("component", "SQSConsumer"),
 		zap.String("method", "deleteMessage"),
 		zap.String("messageID", *msg.MessageId),
 	)

@@ -154,7 +154,7 @@ func (gp *GuildPlayer) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			gp.logger.Info("Cerrando el reproductor")
+			gp.logger.Debug("Cerrando el reproductor")
 			return nil
 
 		case event := <-gp.eventCh:

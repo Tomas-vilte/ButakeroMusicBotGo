@@ -6,6 +6,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"regexp"
 	"time"
@@ -37,15 +38,16 @@ func (s *songService) extractURLOrTitle(input string) (string, bool) {
 	return input, urlRegex.MatchString(input)
 }
 
-func (s *songService) GetOrDownloadSong(ctx context.Context, interactionID, userID, songInput, providerType string) (*entity.DiscordEntity, error) {
+func (s *songService) GetOrDownloadSong(ctx context.Context, userID, songInput, providerType string) (*entity.DiscordEntity, error) {
+	requestID := uuid.New().String()
+
 	input, isURL := s.extractURLOrTitle(songInput)
 	s.logger.Info("Procesando solicitud de canción",
-		zap.String("interactionID", interactionID),
+		zap.String("requestID", requestID),
 		zap.String("userID", userID),
 		zap.String("input", input),
 		zap.Bool("isURL", isURL))
 
-	// Primero intentamos buscar la canción en la base de datos
 	var song *entity.SongEntity
 	var err error
 
@@ -68,27 +70,25 @@ func (s *songService) GetOrDownloadSong(ctx context.Context, interactionID, user
 		}
 	}
 
-	s.logger.Info("Canción no encontrada en DB, enviando solicitud a través de Kafka",
+	s.logger.Info("Canción no encontrada en DB, enviando solicitud a través de la queue",
 		zap.String("input", input))
 
 	message := &entity.SongRequestMessage{
-		InteractionID: interactionID,
-		UserID:        userID,
-		Song:          input,
-		ProviderType:  providerType,
-		Timestamp:     time.Now(),
+		RequestID:    requestID,
+		UserID:       userID,
+		Song:         input,
+		ProviderType: providerType,
+		Timestamp:    time.Now(),
 	}
 
-	err = s.messageProducer.PublishSongRequest(ctx, message)
-	if err != nil {
-		s.logger.Error("Error al publicar mensaje en Kafka",
+	if err := s.messageProducer.PublishSongRequest(ctx, message); err != nil {
+		s.logger.Error("Error al publicar mensaje en la queue",
 			zap.String("input", input),
 			zap.Error(err))
 		return nil, fmt.Errorf("error al solicitar la descarga: %w", err)
 	}
-
-	s.logger.Info("Solicitud enviada a través de Kafka, esperando respuesta",
-		zap.String("interactionID", interactionID),
+	s.logger.Info("Solicitud enviada a través de la queue, esperando respuesta",
+		zap.String("requestID", requestID),
 		zap.String("song", input))
 
 	msgChan := s.messageConsumer.GetMessagesChannel()
@@ -96,16 +96,15 @@ func (s *songService) GetOrDownloadSong(ctx context.Context, interactionID, user
 	for {
 		select {
 		case msg := <-msgChan:
-			if msg.InteractionID != interactionID {
-				s.logger.Warn("Mensaje recibido no corresponde a la operación actual",
-					zap.String("esperado", interactionID),
-					zap.String("recibido", msg.InteractionID))
-				continue
+			if msg.RequestID == requestID {
+				s.logger.Info("Mensaje recibido para solicitud actual",
+					zap.String("requestID", requestID),
+					zap.String("status", msg.Status))
 			}
 
 			if msg.Status == "success" {
 				s.logger.Info("Descarga completada exitosamente",
-					zap.String("interactionID", interactionID),
+					zap.String("requestID", requestID),
 					zap.String("video_id", msg.VideoID))
 				return &entity.DiscordEntity{
 					TitleTrack:   msg.PlatformMetadata.Title,
@@ -117,7 +116,7 @@ func (s *songService) GetOrDownloadSong(ctx context.Context, interactionID, user
 				}, nil
 			} else {
 				s.logger.Error("Error en la descarga",
-					zap.String("interactionID", interactionID),
+					zap.String("requestID", requestID),
 					zap.String("error", msg.Message))
 				return nil, fmt.Errorf("error en la descarga: %s", msg.Message)
 			}
