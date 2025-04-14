@@ -35,10 +35,10 @@ func (w *Worker) Start(ctx context.Context, wg *sync.WaitGroup, requestChan <-ch
 				return
 			}
 
-			w.logger.Info("Procesando requests", zap.Int("worker_id", w.id), zap.String("interaction_id", req.InteractionID))
+			w.logger.Info("Procesando requests", zap.Int("worker_id", w.id), zap.String("requests_id", req.RequestID))
 
 			if err := w.processor.ProcessRequest(ctx, req); err != nil {
-				w.logger.Error("Error al procesar la solicitud", zap.Int("worker_id", w.id), zap.String("interaction_id", req.InteractionID), zap.Error(err))
+				w.logger.Error("Error al procesar la solicitud", zap.Int("worker_id", w.id), zap.String("requests_id", req.RequestID), zap.Error(err))
 			}
 		case <-ctx.Done():
 			w.logger.Info("Cerrando senal, finalizando worker", zap.Int("worker_id", w.id))

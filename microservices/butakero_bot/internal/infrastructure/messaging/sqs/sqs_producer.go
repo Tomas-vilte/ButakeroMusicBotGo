@@ -51,7 +51,6 @@ func (p *ProducerSQS) PublishSongRequest(ctx context.Context, message *entity.So
 		zap.String("component", "SQSProducer"),
 		zap.String("method", "PublishSongRequest"),
 		zap.String("queue_url", p.cfg.QueueConfig.SQSConfig.Queues.BotDownloadRequestsQueueURL),
-		zap.String("interaction_id", message.InteractionID),
 	)
 
 	select {
@@ -70,9 +69,9 @@ func (p *ProducerSQS) PublishSongRequest(ctx context.Context, message *entity.So
 		QueueUrl:    aws.String(p.cfg.QueueConfig.SQSConfig.Queues.BotDownloadRequestsQueueURL),
 		MessageBody: aws.String(string(jsonData)),
 		MessageAttributes: map[string]types.MessageAttributeValue{
-			"InteractionID": {
+			"RequestID": {
 				DataType:    aws.String("String"),
-				StringValue: aws.String(message.InteractionID),
+				StringValue: aws.String(message.RequestID),
 			},
 		},
 	}
@@ -86,7 +85,7 @@ func (p *ProducerSQS) PublishSongRequest(ctx context.Context, message *entity.So
 		}
 		log.Info("Mensaje publicado exitosamente",
 			zap.String("message_id", *resp.MessageId),
-			zap.String("interaction_id", message.InteractionID))
+			zap.String("interaction_id", message.RequestID))
 		done <- nil
 	}()
 

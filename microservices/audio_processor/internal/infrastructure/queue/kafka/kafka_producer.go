@@ -85,8 +85,6 @@ func (p *ProducerKafka) Publish(ctx context.Context, msg *model.MediaProcessingM
 		zap.String("component", "ProducerKafka"),
 		zap.String("method", "Publish"),
 		zap.String("topic", p.config.Messaging.Kafka.Topics.BotDownloadStatus),
-		zap.String("video_id", msg.VideoID),
-		zap.String("status", msg.Status),
 	)
 
 	select {

@@ -3,7 +3,7 @@ package model
 type (
 	MediaProcessingMessage struct {
 		UserID           string            `json:"user_id"`
-		InteractionID    string            `json:"interaction_id"`
+		RequestID        string            `json:"request_id"`
 		VideoID          string            `json:"video_id"`
 		FileData         *FileData         `json:"file_data"`
 		PlatformMetadata *PlatformMetadata `json:"platform_metadata"`

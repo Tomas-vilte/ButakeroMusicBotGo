@@ -14,6 +14,6 @@ type (
 	}
 
 	SongService interface {
-		GetOrDownloadSong(ctx context.Context, interactionID, userID, songInput, providerType string) (*entity.DiscordEntity, error)
+		GetOrDownloadSong(ctx context.Context, userID, songInput, providerType string) (*entity.DiscordEntity, error)
 	}
 )

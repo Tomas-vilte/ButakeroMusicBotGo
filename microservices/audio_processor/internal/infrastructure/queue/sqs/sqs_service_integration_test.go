@@ -258,11 +258,11 @@ func TestConsumerSQS_GetRequestsChannel(t *testing.T) {
 	defer suite.tearDown()
 
 	testMsg := &model.MediaRequest{
-		InteractionID: "test-interaction-id",
-		UserID:        "test-user-id",
-		Song:          "test-song",
-		ProviderType:  "youtube",
-		Timestamp:     time.Now(),
+		RequestID:    "test-interaction-id",
+		UserID:       "test-user-id",
+		Song:         "test-song",
+		ProviderType: "youtube",
+		Timestamp:    time.Now(),
 	}
 
 	suite.sendMessageToQueue(testMsg)
@@ -273,7 +273,7 @@ func TestConsumerSQS_GetRequestsChannel(t *testing.T) {
 	select {
 	case receivedMsg := <-msgChan:
 		assert.NotNil(t, receivedMsg, "Mensaje recibido no debe ser nil")
-		assert.Equal(t, testMsg.InteractionID, receivedMsg.InteractionID)
+		assert.Equal(t, testMsg.RequestID, receivedMsg.RequestID)
 		assert.Equal(t, testMsg.UserID, receivedMsg.UserID)
 		assert.Equal(t, testMsg.Song, receivedMsg.Song)
 		assert.Equal(t, testMsg.ProviderType, receivedMsg.ProviderType)
@@ -301,11 +301,11 @@ func TestProducerConsumerIntegration(t *testing.T) {
 	}
 
 	mediaRequest := &model.MediaRequest{
-		InteractionID: "integration-test-interaction-id",
-		UserID:        "integration-test-user",
-		Song:          "integration-test-song",
-		ProviderType:  "youtube",
-		Timestamp:     time.Now(),
+		RequestID:    "integration-test-interaction-id",
+		UserID:       "integration-test-user",
+		Song:         "integration-test-song",
+		ProviderType: "youtube",
+		Timestamp:    time.Now(),
 	}
 
 	err := suite.producerSQS.Publish(suite.ctx, testMsg)
@@ -322,7 +322,7 @@ func TestProducerConsumerIntegration(t *testing.T) {
 	select {
 	case receivedMsg := <-msgChan:
 		assert.NotNil(t, receivedMsg, "Mensaje recibido no debe ser nil")
-		assert.Equal(t, mediaRequest.InteractionID, receivedMsg.InteractionID)
+		assert.Equal(t, mediaRequest.RequestID, receivedMsg.RequestID)
 		assert.Equal(t, mediaRequest.UserID, receivedMsg.UserID)
 		assert.Equal(t, mediaRequest.Song, receivedMsg.Song)
 		assert.Equal(t, mediaRequest.ProviderType, receivedMsg.ProviderType)
@@ -339,11 +339,11 @@ func TestLongPollConsumer(t *testing.T) {
 	assert.NoError(t, err, "Error al obtener canal de mensajes")
 
 	delayedMsg := &model.MediaRequest{
-		InteractionID: "delayed-test-id",
-		UserID:        "delayed-user",
-		Song:          "delayed-song",
-		ProviderType:  "delayed-provider",
-		Timestamp:     time.Now(),
+		RequestID:    "delayed-test-id",
+		UserID:       "delayed-user",
+		Song:         "delayed-song",
+		ProviderType: "delayed-provider",
+		Timestamp:    time.Now(),
 	}
 
 	go func() {
@@ -354,7 +354,7 @@ func TestLongPollConsumer(t *testing.T) {
 	select {
 	case receivedMsg := <-msgChan:
 		assert.NotNil(t, receivedMsg, "Mensaje recibido no debe ser nil")
-		assert.Equal(t, delayedMsg.InteractionID, receivedMsg.InteractionID)
+		assert.Equal(t, delayedMsg.RequestID, receivedMsg.RequestID)
 		assert.Equal(t, delayedMsg.UserID, receivedMsg.UserID)
 	case <-time.After(10 * time.Second):
 		assert.Fail(t, "Timeout esperando mensaje del canal (long polling)")

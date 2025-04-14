@@ -38,7 +38,7 @@ func (p *MediaProcessor) ProcessRequest(ctx context.Context, req *model.MediaReq
 	defer cancel()
 
 	log := p.logger.With(
-		zap.String("interaction_id", req.InteractionID),
+		zap.String("request_id", req.RequestID),
 		zap.String("user_id", req.UserID),
 	)
 
@@ -53,7 +53,7 @@ func (p *MediaProcessor) ProcessRequest(ctx context.Context, req *model.MediaReq
 		return err
 	}
 
-	if err := p.coreService.ProcessMedia(reqCtx, mediaDetails, req.UserID, req.InteractionID); err != nil {
+	if err := p.coreService.ProcessMedia(reqCtx, mediaDetails, req.UserID, req.RequestID); err != nil {
 		log.Error("Error al procesar media", zap.Error(err))
 		return err
 	}

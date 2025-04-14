@@ -70,7 +70,7 @@ func (p *ProducerKafka) PublishSongRequest(ctx context.Context, message *entity.
 		zap.String("component", "ProducerKafka"),
 		zap.String("method", "PublishSongRequest"),
 		zap.String("topic", p.cfg.QueueConfig.KafkaConfig.Topics.BotDownloadRequest),
-		zap.String("interaction_id", message.InteractionID),
+		zap.String("request_id", message.RequestID),
 	)
 
 	select {
@@ -87,7 +87,7 @@ func (p *ProducerKafka) PublishSongRequest(ctx context.Context, message *entity.
 
 	msg := &sarama.ProducerMessage{
 		Topic:     p.cfg.QueueConfig.KafkaConfig.Topics.BotDownloadRequest,
-		Key:       sarama.StringEncoder(message.InteractionID),
+		Key:       sarama.StringEncoder(message.RequestID),
 		Value:     sarama.ByteEncoder(jsonData),
 		Timestamp: time.Now(),
 	}
@@ -103,7 +103,7 @@ func (p *ProducerKafka) PublishSongRequest(ctx context.Context, message *entity.
 		log.Info("Mensaje publicado exitosamente",
 			zap.Int32("partition", partition),
 			zap.Int64("offset", offset),
-			zap.String("interaction_id", message.InteractionID))
+			zap.String("request_id", message.RequestID))
 		done <- nil
 	}()
 

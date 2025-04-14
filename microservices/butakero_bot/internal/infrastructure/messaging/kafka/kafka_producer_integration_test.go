@@ -129,11 +129,11 @@ func TestProducerKafka_PublishSongRequest(t *testing.T) {
 	}()
 
 	testMessage := &entity.SongRequestMessage{
-		InteractionID: "test-interaction-123",
-		UserID:        "user123",
-		Song:          "Despacito",
-		ProviderType:  "youtube",
-		Timestamp:     time.Now(),
+		RequestID:    "test-interaction-123",
+		UserID:       "user123",
+		Song:         "Despacito",
+		ProviderType: "youtube",
+		Timestamp:    time.Now(),
 	}
 
 	err = producer.PublishSongRequest(testContext, testMessage)
@@ -169,10 +169,10 @@ func TestProducerKafka_PublishSongRequest_ContextCancellation(t *testing.T) {
 
 	cancelCtx, cancel := context.WithCancel(testContext)
 	testMessage := &entity.SongRequestMessage{
-		InteractionID: "test-canceled-interaction",
-		UserID:        "user123",
-		ProviderType:  "youtube",
-		Timestamp:     time.Now(),
+		RequestID:    "test-canceled-interaction",
+		UserID:       "user123",
+		ProviderType: "youtube",
+		Timestamp:    time.Now(),
 	}
 
 	cancel()

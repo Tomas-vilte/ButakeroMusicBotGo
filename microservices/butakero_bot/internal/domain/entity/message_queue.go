@@ -4,7 +4,7 @@ import "time"
 
 type (
 	MessageQueue struct {
-		InteractionID    string   `json:"interaction_id"`
+		RequestID        string   `json:"request_id"`
 		UserID           string   `json:"user_id"`
 		VideoID          string   `json:"video_id"`
 		Message          string   `json:"message"`
@@ -29,10 +29,10 @@ type (
 	}
 
 	SongRequestMessage struct {
-		InteractionID string    `json:"interaction_id"`
-		UserID        string    `json:"user_id"`
-		Song          string    `json:"song"`
-		ProviderType  string    `json:"provider_type"`
-		Timestamp     time.Time `json:"timestamp"`
+		RequestID    string    `json:"request_id"`
+		UserID       string    `json:"user_id"`
+		Song         string    `json:"song"`
+		ProviderType string    `json:"provider_type"`
+		Timestamp    time.Time `json:"timestamp"`
 	}
 )

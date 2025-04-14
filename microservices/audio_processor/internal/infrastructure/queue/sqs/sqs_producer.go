@@ -48,10 +48,7 @@ func NewProducerSQS(cfgApplication *config.Config, log logger.Logger) (ports.Mes
 func (p *ProducerSQS) Publish(ctx context.Context, msg *model.MediaProcessingMessage) error {
 	log := p.logger.With(
 		zap.String("component", "sqs_producer"),
-		zap.String("method", "Publish"),
-		zap.String("video_id", msg.VideoID),
-		zap.String("status", msg.Status),
-	)
+		zap.String("method", "Publish"))
 
 	log.Debug("Serializando mensaje para publicar")
 	body, err := json.Marshal(msg)

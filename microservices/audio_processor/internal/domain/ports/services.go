@@ -31,7 +31,7 @@ type (
 	}
 
 	CoreService interface {
-		ProcessMedia(ctx context.Context, mediaDetails *model.MediaDetails, userID, interactionID string) error
+		ProcessMedia(ctx context.Context, mediaDetails *model.MediaDetails, userID, requestID string) error
 	}
 
 	OperationService interface {
