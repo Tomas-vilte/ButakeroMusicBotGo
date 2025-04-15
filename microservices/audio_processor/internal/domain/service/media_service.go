@@ -26,7 +26,7 @@ func NewMediaService(repo ports.MediaRepository, logger logger.Logger) ports.Med
 
 func (s *mediaService) CreateMedia(ctx context.Context, media *model.Media) error {
 	log := s.logger.With(
-		zap.String("component", "MediaService"),
+		zap.String("component", "mediaService"),
 		zap.String("method", "CreateMedia"),
 	)
 
@@ -50,12 +50,12 @@ func (s *mediaService) CreateMedia(ctx context.Context, media *model.Media) erro
 
 func (s *mediaService) GetMediaByID(ctx context.Context, videoID string) (*model.Media, error) {
 	log := s.logger.With(
-		zap.String("component", "MediaService"),
+		zap.String("component", "mediaService"),
 		zap.String("method", "GetMediaByID"),
 		zap.String("video_id", videoID),
 	)
 
-	media, err := s.repo.GetMedia(ctx, videoID)
+	media, err := s.repo.GetMediaByID(ctx, videoID)
 	if err != nil {
 		log.Error("Error al obtener el registro de media", zap.Error(err))
 		return nil, err
@@ -66,7 +66,7 @@ func (s *mediaService) GetMediaByID(ctx context.Context, videoID string) (*model
 
 func (s *mediaService) UpdateMedia(ctx context.Context, videoID string, media *model.Media) error {
 	log := s.logger.With(
-		zap.String("component", "MediaService"),
+		zap.String("component", "mediaService"),
 		zap.String("method", "UpdateMedia"),
 		zap.String("video_id", videoID),
 	)
@@ -88,9 +88,26 @@ func (s *mediaService) UpdateMedia(ctx context.Context, videoID string, media *m
 	return nil
 }
 
+func (s *mediaService) GetMediaByTitle(ctx context.Context, title string) ([]*model.Media, error) {
+	log := s.logger.With(
+		zap.String("component", "mediaService"),
+		zap.String("method", "GetMediaByTitle"),
+		zap.String("title", title),
+	)
+
+	media, err := s.repo.GetMediaByTitle(ctx, title)
+	if err != nil {
+		log.Error("Error al obtener el registro de media", zap.Error(err))
+		return nil, err
+	}
+
+	log.Info("Registro de media obtenido exitosamente")
+	return media, nil
+}
+
 func (s *mediaService) DeleteMedia(ctx context.Context, videoID string) error {
 	log := s.logger.With(
-		zap.String("component", "MediaService"),
+		zap.String("component", "mediaService"),
 		zap.String("method", "DeleteMedia"),
 		zap.String("video_id", videoID),
 	)

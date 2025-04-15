@@ -26,6 +26,7 @@ type (
 	MediaService interface {
 		CreateMedia(ctx context.Context, media *model.Media) error
 		GetMediaByID(ctx context.Context, videoID string) (*model.Media, error)
+		GetMediaByTitle(ctx context.Context, title string) ([]*model.Media, error)
 		UpdateMedia(ctx context.Context, videoID string, status *model.Media) error
 		DeleteMedia(ctx context.Context, videoID string) error
 	}
