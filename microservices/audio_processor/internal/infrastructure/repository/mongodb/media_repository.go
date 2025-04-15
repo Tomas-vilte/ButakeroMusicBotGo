@@ -11,6 +11,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
+	"strings"
+	"time"
 )
 
 type (
@@ -34,6 +36,19 @@ func NewMediaRepository(opts MediaRepositoryOptions) (*MediaRepository, error) {
 	}
 	if opts.Log == nil {
 		return nil, errorsApp.ErrInvalidInput.WithMessage("logger no puede ser nil")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	indexModel := mongo.IndexModel{
+		Keys:    bson.D{{Key: "title_lower", Value: "text"}},
+		Options: options.Index().SetName("title_text"),
+	}
+
+	_, err := opts.Collection.Indexes().CreateOne(ctx, indexModel)
+	if err != nil {
+		opts.Log.Warn("Error al crear el índice", zap.Error(err))
 	}
 
 	return &MediaRepository{
@@ -63,11 +78,50 @@ func (r *MediaRepository) SaveMedia(ctx context.Context, media *model.Media) err
 	return nil
 }
 
-// GetMedia obtiene un registro de procesamiento multimedia por su ID y video_id.
-func (r *MediaRepository) GetMedia(ctx context.Context, videoID string) (*model.Media, error) {
+func (r *MediaRepository) GetMediaByTitle(ctx context.Context, title string) ([]*model.Media, error) {
+	log := r.log.With(
+		zap.String("method", "SearchSongsByTitle"),
+		zap.String("title", title),
+	)
+
+	title = strings.ToLower(title)
+
+	filter := bson.M{
+		"title_lower": bson.M{
+			"$regex":   fmt.Sprintf(".*%s.*", title),
+			"$options": "i",
+		},
+	}
+
+	findOptions := options.Find().
+		SetLimit(10)
+
+	cursor, err := r.collection.Find(ctx, filter, findOptions)
+	if err != nil {
+		log.Error("Error al buscar canciones", zap.Error(err))
+		return nil, err
+	}
+	defer func() {
+		if err := cursor.Close(ctx); err != nil {
+			log.Error("Error al cerrar el cursor", zap.Error(err))
+		}
+	}()
+
+	var songs []*model.Media
+	if err = cursor.All(ctx, &songs); err != nil {
+		log.Error("Error al decodificar canciones", zap.Error(err))
+		return nil, err
+	}
+
+	log.Info("Búsqueda de canciones completada", zap.Int("count", len(songs)))
+	return songs, nil
+}
+
+// GetMediaByID obtiene un registro de procesamiento multimedia por su ID y video_id.
+func (r *MediaRepository) GetMediaByID(ctx context.Context, videoID string) (*model.Media, error) {
 	log := r.log.With(
 		zap.String("component", "MediaRepository"),
-		zap.String("method", "GetMedia"),
+		zap.String("method", "GetMediaByID"),
 		zap.String("video_id", videoID),
 	)
 
