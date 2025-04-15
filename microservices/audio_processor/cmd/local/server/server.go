@@ -22,7 +22,6 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/repository/mongodb"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/storage/local"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/usecase"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -114,15 +113,13 @@ func StartServer() error {
 	operationService := service.NewOperationService(mediaService, log)
 	providerService := service.NewVideoService(providers, log)
 
-	operationUC := usecase.NewGetOperationStatusUseCase(mediaRepository)
-	operationHandler := handler.NewOperationHandler(operationUC)
 	healthCheck := handler.NewHealthHandler(cfg)
 
 	downloadService := processor.NewDownloadService(cfg.NumWorkers, kafkaConsumer, mediaService, providerService, coreService, operationService, log)
 
 	gin.SetMode(cfg.GinConfig.Mode)
 	r := gin.New()
-	router.SetupRoutes(r, operationHandler, healthCheck, log)
+	router.SetupRoutes(r, healthCheck, log)
 
 	srv := &http.Server{
 		Addr:    ":8080",
