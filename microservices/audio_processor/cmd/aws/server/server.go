@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/delivery/http/handler"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/delivery/http/controller"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/delivery/queue/processor"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/delivery/router"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
@@ -108,13 +108,14 @@ func StartServer() error {
 	coreService := service.NewCoreService(mediaService, audioStorageService, topicPublisherService, audioDownloadService, log, cfg)
 	operationService := service.NewOperationService(mediaService, log)
 	providerService := service.NewVideoService(providers, log)
-	healthCheck := handler.NewHealthHandler(cfg)
+	healthCheck := controller.NewHealthHandler(cfg)
+	mediaController := controller.NewMediaController(mediaService)
 
 	downloadService := processor.NewDownloadService(cfg.NumWorkers, sqsConsumer, mediaService, providerService, coreService, operationService, log)
 
 	gin.SetMode(cfg.GinConfig.Mode)
 	r := gin.New()
-	router.SetupRoutes(r, healthCheck, log)
+	router.SetupRoutes(r, healthCheck, mediaController, log)
 
 	srv := &http.Server{
 		Addr:    ":8080",

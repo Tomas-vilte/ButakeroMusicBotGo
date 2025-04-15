@@ -14,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"go.uber.org/zap"
-	"strings"
 )
 
 type (
@@ -121,7 +120,10 @@ func (r *MediaRepositoryDynamoDB) GetMediaByID(ctx context.Context, videoID stri
 
 	if result.Item == nil {
 		log.Warn("Registro de media no encontrado en DynamoDB")
-		return nil, errorsApp.ErrCodeMediaNotFound
+		return nil, errorsApp.ErrCodeMediaNotFound.WithMessage(
+			"Media no encontrado",
+			videoID,
+		)
 	}
 
 	media, err := r.fromAttributeValueMap(result.Item)
@@ -166,16 +168,17 @@ func (r *MediaRepositoryDynamoDB) GetMediaByTitle(ctx context.Context, title str
 		zap.String("title", title),
 	)
 
-	normalizedTitle := strings.ToLower(title)
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(r.cfg.Database.DynamoDB.Tables.Songs),
 		IndexName:              aws.String("GSI1"),
 		KeyConditionExpression: aws.String("GSI1PK = :pk AND begins_with(GSI1SK, :sk)"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
 			":pk": &types.AttributeValueMemberS{Value: "SONG"},
-			":sk": &types.AttributeValueMemberS{Value: normalizedTitle},
+			":sk": &types.AttributeValueMemberS{Value: title},
 		},
 	}
+
+	songs := make([]*model.Media, 0)
 
 	result, err := r.client.Query(ctx, input)
 	if err != nil {
@@ -183,7 +186,6 @@ func (r *MediaRepositoryDynamoDB) GetMediaByTitle(ctx context.Context, title str
 		return nil, err
 	}
 
-	var songs []*model.Media
 	if err := attributevalue.UnmarshalListOfMaps(result.Items, &songs); err != nil {
 		log.Error("Error de deserialización", zap.Error(err))
 		return nil, err
