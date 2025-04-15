@@ -28,7 +28,8 @@ func (as *audioStorageService) StoreAudio(ctx context.Context, buffer *bytes.Buf
 		zap.String("method", "StoreAudio"),
 		zap.String("songName", songName),
 	)
-	keyName := fmt.Sprintf("%s%s", songName, ".dca")
+	songNameNormalized := normalizedTitle(songName)
+	keyName := fmt.Sprintf("%s%s", songNameNormalized, ".dca")
 
 	if err := as.storage.UploadFile(ctx, keyName, buffer); err != nil {
 		log.Error("Error al subir el archivo", zap.Error(err))
