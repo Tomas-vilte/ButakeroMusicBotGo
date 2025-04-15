@@ -175,6 +175,28 @@ func TestMediaService_UpdateMedia_Error(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 }
 
+func TestNormalizedTitle(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"Elimina barras", "test/title", "testtitle"},
+		{"Elimina puntos", "test.title", "testtitle"},
+		{"Elimina múltiples especiales", "test/title.with$special#chars", "testtitlewithspecialchars"},
+		{"Mantiene espacios", "test title", "test title"},
+		{"Convierte a minúsculas", "TEST Title", "test title"},
+		{"Elimina emojis", "test 😊 title", "test  title"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := normalizedTitle(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func TestMediaService_DeleteMedia(t *testing.T) {
 	// Arrange
 	mockRepo := new(MockMediaRepository)
