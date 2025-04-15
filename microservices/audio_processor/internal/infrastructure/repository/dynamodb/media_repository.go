@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"go.uber.org/zap"
+	"strings"
 )
 
 type (
@@ -22,21 +23,42 @@ type (
 		log    logger.Logger
 		cfg    *config.Config
 	}
+
+	Option func(*MediaRepositoryDynamoDB)
 )
 
-func NewMediaRepositoryDynamoDB(cfgApplication *config.Config, log logger.Logger) (*MediaRepositoryDynamoDB, error) {
-	cfg, err := awsCfg.LoadDefaultConfig(context.Background(), awsCfg.WithRegion(cfgApplication.AWS.Region))
-	if err != nil {
-		return nil, errorsApp.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("error cargando configuración AWS: %v", err))
+func WithClient(client *dynamodb.Client) Option {
+	return func(r *MediaRepositoryDynamoDB) {
+		r.client = client
+	}
+}
+
+func WithDefaultClient(cfgApplication *config.Config) Option {
+	return func(r *MediaRepositoryDynamoDB) {
+		cfg, err := awsCfg.LoadDefaultConfig(context.Background(), awsCfg.WithRegion(cfgApplication.AWS.Region))
+		if err != nil {
+			r.log.Error("Error cargando configuración AWS", zap.Error(err))
+			return
+		}
+		r.client = dynamodb.NewFromConfig(cfg)
+	}
+}
+
+func NewMediaRepositoryDynamoDB(cfgApplication *config.Config, log logger.Logger, opts ...Option) *MediaRepositoryDynamoDB {
+	repo := &MediaRepositoryDynamoDB{
+		cfg: cfgApplication,
+		log: log,
 	}
 
-	client := dynamodb.NewFromConfig(cfg)
+	for _, opt := range opts {
+		opt(repo)
+	}
 
-	return &MediaRepositoryDynamoDB{
-		cfg:    cfgApplication,
-		client: client,
-		log:    log,
-	}, nil
+	if repo.client == nil {
+		WithDefaultClient(cfgApplication)(repo)
+	}
+
+	return repo
 }
 
 func (r *MediaRepositoryDynamoDB) SaveMedia(ctx context.Context, media *model.Media) error {
@@ -78,10 +100,10 @@ func (r *MediaRepositoryDynamoDB) SaveMedia(ctx context.Context, media *model.Me
 	return nil
 }
 
-func (r *MediaRepositoryDynamoDB) GetMedia(ctx context.Context, videoID string) (*model.Media, error) {
+func (r *MediaRepositoryDynamoDB) GetMediaByID(ctx context.Context, videoID string) (*model.Media, error) {
 	log := r.log.With(
 		zap.String("component", "MediaRepository"),
-		zap.String("method", "GetMedia"),
+		zap.String("method", "GetMediaByID"),
 		zap.String("video_id", videoID),
 	)
 
@@ -135,6 +157,40 @@ func (r *MediaRepositoryDynamoDB) DeleteMedia(ctx context.Context, videoID strin
 
 	log.Info("Registro de media eliminado exitosamente de DynamoDB")
 	return nil
+}
+
+// GetMediaByTitle implementa la búsqueda de canciones por título en DynamoDB
+func (r *MediaRepositoryDynamoDB) GetMediaByTitle(ctx context.Context, title string) ([]*model.Media, error) {
+	log := r.log.With(
+		zap.String("method", "SearchSongsByTitle"),
+		zap.String("title", title),
+	)
+
+	normalizedTitle := strings.ToLower(title)
+	input := &dynamodb.QueryInput{
+		TableName:              aws.String(r.cfg.Database.DynamoDB.Tables.Songs),
+		IndexName:              aws.String("GSI1"),
+		KeyConditionExpression: aws.String("GSI1PK = :pk AND begins_with(GSI1SK, :sk)"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":pk": &types.AttributeValueMemberS{Value: "SONG"},
+			":sk": &types.AttributeValueMemberS{Value: normalizedTitle},
+		},
+	}
+
+	result, err := r.client.Query(ctx, input)
+	if err != nil {
+		log.Error("Error al buscar canciones", zap.Error(err))
+		return nil, err
+	}
+
+	var songs []*model.Media
+	if err := attributevalue.UnmarshalListOfMaps(result.Items, &songs); err != nil {
+		log.Error("Error de deserialización", zap.Error(err))
+		return nil, err
+	}
+
+	log.Info("Búsqueda de canciones completada", zap.Int("count", len(songs)))
+	return songs, nil
 }
 
 func (r *MediaRepositoryDynamoDB) UpdateMedia(ctx context.Context, videoID string, media *model.Media) error {

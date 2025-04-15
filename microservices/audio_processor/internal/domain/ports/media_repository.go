@@ -10,8 +10,11 @@ type MediaRepository interface {
 	// SaveMedia guarda un registro de procesamiento multimedia.
 	SaveMedia(ctx context.Context, media *model.Media) error
 
-	// GetMedia obtiene un registro de procesamiento multimedia por su ID y video_id.
-	GetMedia(ctx context.Context, videoID string) (*model.Media, error)
+	// GetMediaByID obtiene un registro de procesamiento multimedia por su ID y video_id.
+	GetMediaByID(ctx context.Context, videoID string) (*model.Media, error)
+
+	// GetMediaByTitle obtiene un registro de procesamiento multimedia por su título.
+	GetMediaByTitle(ctx context.Context, title string) ([]*model.Media, error)
 
 	// DeleteMedia elimina un registro de procesamiento multimedia por su ID y video_id.
 	DeleteMedia(ctx context.Context, videoID string) error

@@ -82,7 +82,7 @@ func TestMediaService_GetMediaByID(t *testing.T) {
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
-	mockRepo.On("GetMedia", mock.Anything, videoID).Return(expectedMedia, nil)
+	mockRepo.On("GetMediaByID", mock.Anything, videoID).Return(expectedMedia, nil)
 
 	// Act
 	media, err := service.GetMediaByID(context.Background(), videoID)
@@ -105,7 +105,7 @@ func TestMediaService_GetMediaByID_Error(t *testing.T) {
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
-	mockRepo.On("GetMedia", mock.Anything, videoID).Return(&model.Media{}, expectedError)
+	mockRepo.On("GetMediaByID", mock.Anything, videoID).Return(&model.Media{}, expectedError)
 
 	// Act
 	media, err := service.GetMediaByID(context.Background(), videoID)

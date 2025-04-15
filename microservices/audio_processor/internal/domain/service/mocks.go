@@ -67,9 +67,14 @@ func (m *MockMediaRepository) SaveMedia(ctx context.Context, media *model.Media)
 	return args.Error(0)
 }
 
-func (m *MockMediaRepository) GetMedia(ctx context.Context, videoID string) (*model.Media, error) {
+func (m *MockMediaRepository) GetMediaByID(ctx context.Context, videoID string) (*model.Media, error) {
 	args := m.Called(ctx, videoID)
 	return args.Get(0).(*model.Media), args.Error(1)
+}
+
+func (m *MockMediaRepository) GetMediaByTitle(ctx context.Context, title string) ([]*model.Media, error) {
+	args := m.Called(ctx, title)
+	return args.Get(0).([]*model.Media), args.Error(1)
 }
 
 func (m *MockMediaRepository) DeleteMedia(ctx context.Context, videoID string) error {
@@ -109,6 +114,11 @@ func (m *MockMediaService) GetMediaByID(ctx context.Context, videoID string) (*m
 func (m *MockMediaService) UpdateMedia(ctx context.Context, videoID string, status *model.Media) error {
 	args := m.Called(ctx, videoID, status)
 	return args.Error(0)
+}
+
+func (m *MockMediaService) GetMediaByTitle(ctx context.Context, title string) ([]*model.Media, error) {
+	args := m.Called(ctx, title)
+	return args.Get(0).([]*model.Media), args.Error(1)
 }
 
 func (m *MockMediaService) DeleteMedia(ctx context.Context, videoID string) error {

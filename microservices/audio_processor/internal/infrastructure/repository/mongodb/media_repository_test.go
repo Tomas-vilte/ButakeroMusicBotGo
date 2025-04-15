@@ -5,6 +5,7 @@ package mongodb_test
 import (
 	"context"
 	errorsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
+	"go.mongodb.org/mongo-driver/bson"
 	"testing"
 	"time"
 
@@ -75,7 +76,7 @@ func TestMediaRepository_SaveMedia(t *testing.T) {
 	err = repo.SaveMedia(ctx, media)
 	assert.NoError(t, err, "Error al guardar el registro de media")
 
-	retrievedMedia, err := repo.GetMedia(ctx, media.VideoID)
+	retrievedMedia, err := repo.GetMediaByID(ctx, media.VideoID)
 	assert.NoError(t, err, "Error al obtener el registro de media")
 	assert.Equal(t, media.VideoID, retrievedMedia.VideoID)
 	assert.Equal(t, media.Status, retrievedMedia.Status)
@@ -112,7 +113,7 @@ func TestMediaRepository_GetMedia_NotFound(t *testing.T) {
 
 	nonExistentVideoID := "non-existent-video"
 
-	_, err = repo.GetMedia(ctx, nonExistentVideoID)
+	_, err = repo.GetMediaByID(ctx, nonExistentVideoID)
 	assert.Error(t, err, "Se esperaba un error al obtener un registro inexistente")
 	assert.Equal(t, errorsApp.ErrCodeMediaNotFound, err, "El error no es el esperado")
 }
@@ -166,10 +167,79 @@ func TestMediaRepository_UpdateMedia(t *testing.T) {
 	err = repo.UpdateMedia(ctx, media.VideoID, media)
 	assert.NoError(t, err, "Error al actualizar el registro de media")
 
-	updatedMedia, err := repo.GetMedia(ctx, media.VideoID)
+	updatedMedia, err := repo.GetMediaByID(ctx, media.VideoID)
 	assert.NoError(t, err, "Error al obtener el registro de media actualizado")
 	assert.Equal(t, "updated", updatedMedia.Status)
 	assert.Equal(t, "updated message", updatedMedia.Message)
+}
+
+func TestMediaRepository_GetMediaByTitle(t *testing.T) {
+	client, cleanup := setupMongoDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	log, err := logger.NewDevelopmentLogger()
+	require.NoError(t, err, "Error al crear el logger")
+
+	collection := client.Database("test_db").Collection("songs")
+	repo, err := mongodb.NewMediaRepository(mongodb.MediaRepositoryOptions{
+		Collection: collection,
+		Log:        log,
+	})
+	require.NoError(t, err, "Error al crear el repositorio")
+
+	t.Run("SearchSongsByTitle", func(t *testing.T) {
+		testSongs := []*model.Media{
+			{
+				VideoID:    "video123",
+				TitleLower: "test song one",
+				Metadata: &model.PlatformMetadata{
+					Title:      "Test Song One",
+					DurationMs: 3245,
+					URL:        "https://youtube.com/video123",
+				},
+			},
+			{
+				VideoID:    "video456",
+				TitleLower: "another test song",
+				Metadata: &model.PlatformMetadata{
+					Title:      "Another Test Song",
+					DurationMs: 2323,
+					URL:        "https://youtube.com/video456",
+				},
+			},
+			{
+				VideoID:    "video789",
+				TitleLower: "something completely different",
+				Metadata: &model.PlatformMetadata{
+					Title:      "Something Completely Different",
+					DurationMs: 4242,
+					URL:        "https://youtube.com/video789",
+				},
+			},
+		}
+
+		for _, song := range testSongs {
+			_, err := collection.InsertOne(ctx, song)
+			assert.NoError(t, err)
+		}
+
+		defer func() {
+			_, err := collection.DeleteMany(ctx, bson.M{
+				"_id": bson.M{"$in": []string{"video123", "video456", "video789"}},
+			})
+			assert.NoError(t, err)
+		}()
+
+		// Act
+		results, err := repo.GetMediaByTitle(ctx, "Test")
+
+		// Assert
+		assert.NoError(t, err)
+		assert.Len(t, results, 2)
+		assert.Contains(t, []string{results[0].Metadata.Title, results[1].Metadata.Title}, "Test Song One")
+		assert.Contains(t, []string{results[0].Metadata.Title, results[1].Metadata.Title}, "Another Test Song")
+	})
 }
 
 func TestMediaRepository_DeleteMedia(t *testing.T) {
@@ -219,7 +289,7 @@ func TestMediaRepository_DeleteMedia(t *testing.T) {
 	err = repo.DeleteMedia(ctx, media.VideoID)
 	assert.NoError(t, err, "Error al eliminar el registro de media")
 
-	_, err = repo.GetMedia(ctx, media.VideoID)
+	_, err = repo.GetMediaByID(ctx, media.VideoID)
 	assert.Error(t, err, "Se esperaba un error al obtener un registro eliminado")
 	assert.Equal(t, errorsApp.ErrCodeMediaNotFound, err, "El error no es el esperado")
 }
