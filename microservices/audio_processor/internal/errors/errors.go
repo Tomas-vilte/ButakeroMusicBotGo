@@ -13,14 +13,12 @@ var (
 		"s3_invalid_file":              http.StatusBadRequest,
 		"local_invalid_file":           http.StatusBadRequest,
 		"provider_not_found":           http.StatusNotFound,
-		"operation_not_found":          http.StatusNotFound,
 		"media_not_found":              http.StatusNotFound,
 		"local_file_not_found":         http.StatusNotFound,
 		"youtube_api_error":            http.StatusServiceUnavailable,
 		"duplicate_record":             http.StatusConflict,
 		"get_media_details_failed":     http.StatusInternalServerError,
 		"update_media_failed":          http.StatusInternalServerError,
-		"publish_message_failed":       http.StatusInternalServerError,
 		"start_operation_failed":       http.StatusInternalServerError,
 		"search_video_id_failed":       http.StatusInternalServerError,
 		"get_video_details_failed":     http.StatusInternalServerError,
@@ -47,9 +45,7 @@ var (
 	ErrGetMediaDetailsFailed = NewAppError("get_media_details_failed", "Error al obtener detalles del media")
 
 	ErrDuplicateRecord           = NewAppError("duplicate_record", "El registro ya existe")
-	ErrOperationNotFound         = NewAppError("operation_not_found", "No se encontró la operación solicitada")
 	ErrUpdateMediaFailed         = NewAppError("update_media_failed", "Error al actualizar el media")
-	ErrPublishMessageFailed      = NewAppError("publish_message_failed", "Error al publicar el mensaje")
 	ErrCodeSearchVideoIDFailed   = NewAppError("search_video_id_failed", "Error al buscar el ID del video")
 	ErrCodeGetVideoDetailsFailed = NewAppError("get_video_details_failed", "Error al obtener detalles del video")
 

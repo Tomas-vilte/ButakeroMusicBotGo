@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"go.uber.org/zap"
 	"strings"
@@ -95,7 +96,12 @@ func (s *mediaService) GetMediaByTitle(ctx context.Context, title string) ([]*mo
 		zap.String("title", title),
 	)
 
-	media, err := s.repo.GetMediaByTitle(ctx, title)
+	titleNormalized := normalizedTitle(title)
+	if titleNormalized == "" {
+		return nil, errors.ErrInvalidInput.WithMessage("El título no puede estar vacío")
+	}
+
+	media, err := s.repo.GetMediaByTitle(ctx, titleNormalized)
 	if err != nil {
 		log.Error("Error al obtener el registro de media", zap.Error(err))
 		return nil, err

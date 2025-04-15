@@ -11,7 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
-	"strings"
 	"time"
 )
 
@@ -84,7 +83,7 @@ func (r *MediaRepository) GetMediaByTitle(ctx context.Context, title string) ([]
 		zap.String("title", title),
 	)
 
-	title = strings.ToLower(title)
+	result := make([]*model.Media, 0)
 
 	filter := bson.M{
 		"title_lower": bson.M{
@@ -99,7 +98,7 @@ func (r *MediaRepository) GetMediaByTitle(ctx context.Context, title string) ([]
 	cursor, err := r.collection.Find(ctx, filter, findOptions)
 	if err != nil {
 		log.Error("Error al buscar canciones", zap.Error(err))
-		return nil, err
+		return result, err
 	}
 	defer func() {
 		if err := cursor.Close(ctx); err != nil {
@@ -107,14 +106,13 @@ func (r *MediaRepository) GetMediaByTitle(ctx context.Context, title string) ([]
 		}
 	}()
 
-	var songs []*model.Media
-	if err = cursor.All(ctx, &songs); err != nil {
+	if err = cursor.All(ctx, &result); err != nil {
 		log.Error("Error al decodificar canciones", zap.Error(err))
-		return nil, err
+		return result, err
 	}
 
-	log.Info("Búsqueda de canciones completada", zap.Int("count", len(songs)))
-	return songs, nil
+	log.Info("Búsqueda de canciones completada", zap.Int("count", len(result)))
+	return result, nil
 }
 
 // GetMediaByID obtiene un registro de procesamiento multimedia por su ID y video_id.
@@ -134,7 +132,10 @@ func (r *MediaRepository) GetMediaByID(ctx context.Context, videoID string) (*mo
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			log.Warn("Registro de media no encontrado")
-			return nil, errorsApp.ErrCodeMediaNotFound
+			return nil, errorsApp.ErrCodeMediaNotFound.WithMessage(
+				"Media no encontrado",
+				videoID,
+			)
 		}
 		log.Error("Error al obtener el registro de media", zap.Error(err))
 		return nil, errorsApp.ErrGetMediaDetailsFailed.WithMessage(fmt.Sprintf("error al obtener el registro de media: %v", err))
