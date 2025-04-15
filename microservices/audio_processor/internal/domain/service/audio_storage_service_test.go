@@ -21,7 +21,7 @@ func TestAudioStorageService_StoreAudio(t *testing.T) {
 
 	service := NewAudioStorageService(mockStorage, mockLogger)
 
-	songName := "test-song"
+	songName := "testsong"
 	keyName := fmt.Sprintf("%s%s", songName, ".dca")
 	buffer := bytes.NewBuffer([]byte("test audio data"))
 	expectedFileData := &model.FileData{
@@ -51,7 +51,7 @@ func TestAudioStorageService_StoreAudio_UploadError(t *testing.T) {
 
 	service := NewAudioStorageService(mockStorage, mockLogger)
 
-	songName := "test-song"
+	songName := "testsong"
 	keyName := fmt.Sprintf("%s%s", songName, ".dca")
 	buffer := bytes.NewBuffer([]byte("test audio data"))
 	expectedError := errors.New("upload failed")
@@ -80,7 +80,7 @@ func TestAudioStorageService_StoreAudio_MetadataError(t *testing.T) {
 
 	service := NewAudioStorageService(mockStorage, mockLogger)
 
-	songName := "test-song"
+	songName := "testsong"
 	keyName := fmt.Sprintf("%s%s", songName, ".dca")
 	buffer := bytes.NewBuffer([]byte("test audio data"))
 	expectedError := errors.New("metadata failed")
