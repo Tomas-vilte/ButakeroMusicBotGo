@@ -23,7 +23,6 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/repository/dynamodb"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/storage/cloud"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/usecase"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -64,11 +63,7 @@ func StartServer() error {
 		return err
 	}
 
-	mediaRepository, err := dynamodb.NewMediaRepositoryDynamoDB(cfg, log)
-	if err != nil {
-		log.Error("Error al crear metadata repository", zap.Error(err))
-		return err
-	}
+	mediaRepository := dynamodb.NewMediaRepositoryDynamoDB(cfg, log)
 
 	cookiesContent, err := storage.GetFileContent(context.Background(), "", "yt-cookies.txt")
 	if err != nil {
@@ -113,15 +108,13 @@ func StartServer() error {
 	coreService := service.NewCoreService(mediaService, audioStorageService, topicPublisherService, audioDownloadService, log, cfg)
 	operationService := service.NewOperationService(mediaService, log)
 	providerService := service.NewVideoService(providers, log)
-	operationUC := usecase.NewGetOperationStatusUseCase(mediaRepository)
-	operationHandler := handler.NewOperationHandler(operationUC)
 	healthCheck := handler.NewHealthHandler(cfg)
 
 	downloadService := processor.NewDownloadService(cfg.NumWorkers, sqsConsumer, mediaService, providerService, coreService, operationService, log)
 
 	gin.SetMode(cfg.GinConfig.Mode)
 	r := gin.New()
-	router.SetupRoutes(r, operationHandler, healthCheck, log)
+	router.SetupRoutes(r, healthCheck, log)
 
 	srv := &http.Server{
 		Addr:    ":8080",
