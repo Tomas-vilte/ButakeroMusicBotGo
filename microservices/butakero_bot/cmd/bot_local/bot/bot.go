@@ -3,12 +3,12 @@ package bot
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/application/service"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/adapters/api"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/command"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/events"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/storage"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/messaging/kafka"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/repository/mongodb"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/storage/local"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/config"
@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func StartBot() error {
@@ -62,33 +63,6 @@ func StartBot() error {
 			logger.Error("Error al consumir mensajes de kafka")
 		}
 	}()
-	connManager := mongodb.NewConnectionManager(mongodb.MongoConfig{
-		Hosts: []mongodb.Host{
-			{
-				Address: cfg.DatabaseConfig.MongoDB.Hosts[0].Address,
-				Port:    cfg.DatabaseConfig.MongoDB.Hosts[0].Port,
-			},
-		},
-		ReplicaSet:    cfg.DatabaseConfig.MongoDB.ReplicaSet,
-		DirectConnect: cfg.DatabaseConfig.MongoDB.DirectConnect,
-		Username:      cfg.DatabaseConfig.MongoDB.Username,
-		Password:      cfg.DatabaseConfig.MongoDB.Password,
-		Database:      cfg.DatabaseConfig.MongoDB.Database,
-		RetryWrites:   cfg.DatabaseConfig.MongoDB.RetryWrites,
-		AuthSource:    cfg.DatabaseConfig.MongoDB.AuthSource,
-		TLS: shared.TLSConfig{
-			Enabled:  cfg.DatabaseConfig.MongoDB.TLS.Enabled,
-			CAFile:   cfg.DatabaseConfig.MongoDB.TLS.CAFile,
-			CertFile: cfg.DatabaseConfig.MongoDB.TLS.CertFile,
-			KeyFile:  cfg.DatabaseConfig.MongoDB.TLS.KeyFile,
-		},
-		Timeout: cfg.DatabaseConfig.MongoDB.Timeout,
-	}, logger)
-	err = connManager.Connect(ctx)
-	if err != nil {
-		panic(err)
-	}
-	collection := connManager.GetDatabase().Collection(cfg.DatabaseConfig.MongoDB.Collection)
 	messageProducer, err := kafka.NewProducerKafka(cfg, logger)
 	if err != nil {
 		panic(err)
@@ -98,13 +72,6 @@ func StartBot() error {
 			logger.Error("Error al cerrar el productor", zap.Error(err))
 		}
 	}()
-	songRepo, err := mongodb.NewMongoDBSongRepository(mongodb.Options{
-		Collection: collection,
-		Logger:     logger,
-	})
-	if err != nil {
-		panic(err)
-	}
 	discordClient, err := discordgo.New("Bot " + cfg.Discord.Token)
 	if err != nil {
 		panic(err)
@@ -116,7 +83,15 @@ func StartBot() error {
 
 	interactionStorage := storage.NewInMemoryInteractionStorage(logger)
 
-	songService := service.NewSongService(songRepo, messageProducer, messageConsumer, logger)
+	mediaClient, err := api.NewMediaAPIClient(api.AudioAPIClientConfig{
+		BaseURL: cfg.ExternalService.BaseURL,
+		Timeout: 1 * time.Minute,
+	}, logger)
+	if err != nil {
+		panic(err)
+	}
+
+	songService := service.NewSongService(mediaClient, messageProducer, messageConsumer, logger)
 	tracker := discord.NewBotChannelTracker(logger)
 	mover := discord.NewBotMover(logger)
 	playback := discord.NewPlaybackController(logger)

@@ -34,7 +34,10 @@ func (mc *MediaController) GetMediaByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, media)
+	c.JSON(http.StatusOK, gin.H{
+		"data":    media,
+		"success": true,
+	})
 }
 
 func (mc *MediaController) SearchMediaByTitle(c *gin.Context) {
