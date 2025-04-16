@@ -8,9 +8,9 @@ type (
 
 	// Media representa un modelo de procesamiento multimedia.
 	Media struct {
-		PK             string            `json:"-" bson:"-" dynamodbav:"PK"`
+		PK             string            `json:"pk,omitempty" bson:"-" dynamodbav:"PK"`
 		SK             string            `json:"-" bson:"-" dynamodbav:"SK"`
-		VideoID        string            `json:"video_id" bson:"_id" dynamodbav:"-"`
+		VideoID        string            `json:"video_id,omitempty" bson:"_id" dynamodbav:"-"`
 		TitleLower     string            `json:"title_lower" bson:"title_lower" dynamodbav:"title_lower"`
 		Status         string            `json:"status" bson:"status" dynamodbav:"status"`
 		Message        string            `json:"message" bson:"message" dynamodbav:"message"`
