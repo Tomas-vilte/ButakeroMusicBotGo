@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/google/uuid"
@@ -13,20 +14,20 @@ import (
 )
 
 type songService struct {
-	songRepo        ports.SongRepository
+	mediaClient     ports.MediaClient
 	messageProducer ports.MessageProducer
 	messageConsumer ports.MessageConsumer
 	logger          logging.Logger
 }
 
 func NewSongService(
-	songRepo ports.SongRepository,
+	mediaClient ports.MediaClient,
 	messageProducer ports.MessageProducer,
 	messageConsumer ports.MessageConsumer,
 	logger logging.Logger,
 ) ports.SongService {
 	return &songService{
-		songRepo:        songRepo,
+		mediaClient:     mediaClient,
 		messageProducer: messageProducer,
 		messageConsumer: messageConsumer,
 		logger:          logger,
@@ -48,29 +49,29 @@ func (s *songService) GetOrDownloadSong(ctx context.Context, userID, songInput, 
 		zap.String("input", input),
 		zap.Bool("isURL", isURL))
 
-	var song *entity.SongEntity
+	var media *model.Media
 	var err error
 
 	if isURL {
 		videoID := extractVideoID(input)
 		if videoID != "" {
-			song, err = s.songRepo.GetSongByVideoID(ctx, videoID)
-			if err == nil && song != nil {
-				s.logger.Info("Canción encontrada en la base de datos por videoID",
+			media, err = s.mediaClient.GetMediaByID(ctx, videoID)
+			if err == nil && media != nil {
+				s.logger.Info("Media encontrada a través de la API por videoID",
 					zap.String("videoID", videoID))
-				return songEntityToDiscordEntity(song), nil
+				return mediaToDiscordEntity(media), nil
 			}
 		}
 	} else {
-		songs, err := s.songRepo.SearchSongsByTitle(ctx, input)
-		if err == nil && len(songs) > 0 {
-			s.logger.Info("Canción encontrada en la base de datos por título",
-				zap.String("title", songs[0].Metadata.Title))
-			return songEntityToDiscordEntity(songs[0]), nil
+		mediaList, err := s.mediaClient.SearchMediaByTitle(ctx, input)
+		if err == nil && len(mediaList) > 0 {
+			s.logger.Info("Media encontrada a través de la API por título",
+				zap.String("title", mediaList[0].Metadata.Title))
+			return mediaToDiscordEntity(mediaList[0]), nil
 		}
 	}
 
-	s.logger.Info("Canción no encontrada en DB, enviando solicitud a través de la queue",
+	s.logger.Info("Media no encontrada a través de la API, enviando solicitud a través de la queue",
 		zap.String("input", input))
 
 	message := &entity.SongRequestMessage{
@@ -126,14 +127,14 @@ func (s *songService) GetOrDownloadSong(ctx context.Context, userID, songInput, 
 	}
 }
 
-func songEntityToDiscordEntity(song *entity.SongEntity) *entity.DiscordEntity {
+func mediaToDiscordEntity(media *model.Media) *entity.DiscordEntity {
 	return &entity.DiscordEntity{
-		TitleTrack:   song.Metadata.Title,
-		DurationMs:   song.Metadata.DurationMs,
-		Platform:     song.Metadata.Platform,
-		FilePath:     song.FileData.FilePath,
-		ThumbnailURL: song.Metadata.ThumbnailURL,
-		URL:          song.Metadata.URL,
+		TitleTrack:   media.Metadata.Title,
+		DurationMs:   media.Metadata.DurationMs,
+		Platform:     media.Metadata.Platform,
+		FilePath:     media.FileData.FilePath,
+		ThumbnailURL: media.Metadata.ThumbnailURL,
+		URL:          media.Metadata.URL,
 	}
 }
 

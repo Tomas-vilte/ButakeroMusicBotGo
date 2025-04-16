@@ -3,23 +3,23 @@ package bot
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/application/service"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/adapters/api"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/command"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/events"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/storage"
 	sqsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/messaging/sqs"
-	dynamodbApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/repository/dynamodb"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/storage/s3_storage"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	cfgAws "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func StartBot() error {
@@ -76,19 +76,15 @@ func StartBot() error {
 
 	interactionStorage := storage.NewInMemoryInteractionStorage(logger)
 
-	dynamoClient := dynamodb.NewFromConfig(cfgAppAws)
-
-	songRepo, err := dynamodbApp.NewDynamoSongRepository(dynamodbApp.Options{
-		Logger:    logger,
-		TableName: cfg.DatabaseConfig.DynamoDB.SongsTable,
-		Client:    dynamoClient,
-	})
+	mediaClient, err := api.NewMediaAPIClient(api.AudioAPIClientConfig{
+		BaseURL: cfg.ExternalService.BaseURL,
+		Timeout: 1 * time.Minute,
+	}, logger)
 	if err != nil {
-		logger.Error("Error al crear repositorio de canciones", zap.Error(err))
-		return err
+		panic(err)
 	}
 
-	songService := service.NewSongService(songRepo, messageProducer, messageConsumer, logger)
+	songService := service.NewSongService(mediaClient, messageProducer, messageConsumer, logger)
 	tracker := discord.NewBotChannelTracker(logger)
 	mover := discord.NewBotMover(logger)
 	playback := discord.NewPlaybackController(logger)
