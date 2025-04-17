@@ -182,7 +182,7 @@ func (c *MediaAPIClient) SearchMediaByTitle(ctx context.Context, title string) (
 	}
 
 	logger.Info("Cancion con el titulo encontrado con exito",
-		zap.String("title", response.Data[0].Metadata.Title),
+		zap.String("title", title),
 	)
 
 	return response.Data, nil
