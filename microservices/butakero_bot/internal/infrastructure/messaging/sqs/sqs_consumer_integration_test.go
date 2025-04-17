@@ -113,7 +113,7 @@ func TestSQSConsumerIntegration(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = consumer.ConsumeMessages(ctx, 0)
+	err = consumer.SubscribeToDownloadEvents(ctx)
 	require.NoError(t, err)
 
 	select {
@@ -164,7 +164,7 @@ func TestSQSConsumerIntegration_ErrorStatus(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = consumer.ConsumeMessages(ctx, 0)
+	err = consumer.SubscribeToDownloadEvents(ctx)
 	require.NoError(t, err)
 
 	select {

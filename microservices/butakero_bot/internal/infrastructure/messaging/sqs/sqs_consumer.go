@@ -5,7 +5,7 @@ package sqs
 import (
 	"context"
 	"encoding/json"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/queue"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -21,32 +21,34 @@ type ClientSQS interface {
 	DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
 }
 
-type SQSConsumer struct {
+type ConsumerSQS struct {
 	client      ClientSQS
 	logger      logging.Logger
-	messageChan chan *entity.MessageQueue
+	messageChan chan *queue.DownloadStatusMessage
 	wg          sync.WaitGroup
 	cfg         *config.Config
 }
 
-func NewSQSConsumer(client ClientSQS, config *config.Config, logger logging.Logger) *SQSConsumer {
+func NewSQSConsumer(client ClientSQS, config *config.Config, logger logging.Logger) *ConsumerSQS {
 	logger = logger.With(
-		zap.String("component", "sqs_consumer"),
+		zap.String("component", "ConsumerSQS"),
 		zap.String("queueURL", config.QueueConfig.SQSConfig.Queues.BotDownloadStatusQueueURL),
 		zap.Int32("maxMessages", config.QueueConfig.SQSConfig.MaxMessages),
 		zap.Int32("waitTimeSeconds", config.QueueConfig.SQSConfig.WaitTimeSeconds),
 	)
 
-	return &SQSConsumer{
+	return &ConsumerSQS{
 		client:      client,
 		logger:      logger,
 		cfg:         config,
-		messageChan: make(chan *entity.MessageQueue),
+		messageChan: make(chan *queue.DownloadStatusMessage),
 	}
 }
 
-func (s *SQSConsumer) ConsumeMessages(ctx context.Context, _ int64) error {
-	logger := s.logger.With(zap.String("method", "ConsumeMessages"))
+func (s *ConsumerSQS) SubscribeToDownloadEvents(ctx context.Context) error {
+	logger := s.logger.With(
+		zap.String("component", "ConsumerSQS"),
+		zap.String("method", "SubscribeToDownloadEvents"))
 	logger.Info("Iniciando consumo de mensajes SQS")
 
 	s.wg.Add(1)
@@ -67,8 +69,10 @@ func (s *SQSConsumer) ConsumeMessages(ctx context.Context, _ int64) error {
 	return nil
 }
 
-func (s *SQSConsumer) receiveAndProcessMessages(ctx context.Context) {
-	logger := s.logger.With(zap.String("method", "receiveAndProcessMessages"))
+func (s *ConsumerSQS) receiveAndProcessMessages(ctx context.Context) {
+	logger := s.logger.With(
+		zap.String("component", "ConsumerSQS"),
+		zap.String("method", "receiveAndProcessMessages"))
 
 	input := &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(s.cfg.QueueConfig.SQSConfig.Queues.BotDownloadStatusQueueURL),
@@ -92,15 +96,15 @@ func (s *SQSConsumer) receiveAndProcessMessages(ctx context.Context) {
 	}
 }
 
-func (s *SQSConsumer) handleMessage(ctx context.Context, msg types.Message) {
+func (s *ConsumerSQS) handleMessage(ctx context.Context, msg types.Message) {
 	logger := s.logger.With(
-		zap.String("component", "SQSConsumer"),
+		zap.String("component", "ConsumerSQS"),
 		zap.String("method", "handleMessage"),
 	)
 
 	logger.Debug("Mensaje recibido")
 
-	var statusMessage entity.MessageQueue
+	var statusMessage queue.DownloadStatusMessage
 	if err := json.Unmarshal([]byte(*msg.Body), &statusMessage); err != nil {
 		logger.Error("Error al deserializar mensaje",
 			zap.Error(err),
@@ -122,13 +126,13 @@ func (s *SQSConsumer) handleMessage(ctx context.Context, msg types.Message) {
 	s.deleteMessage(ctx, msg)
 }
 
-func (s *SQSConsumer) GetMessagesChannel() <-chan *entity.MessageQueue {
+func (s *ConsumerSQS) DownloadEventsChannel() <-chan *queue.DownloadStatusMessage {
 	return s.messageChan
 }
 
-func (s *SQSConsumer) deleteMessage(ctx context.Context, msg types.Message) {
+func (s *ConsumerSQS) deleteMessage(ctx context.Context, msg types.Message) {
 	logger := s.logger.With(
-		zap.String("component", "SQSConsumer"),
+		zap.String("component", "ConsumerSQS"),
 		zap.String("method", "deleteMessage"),
 		zap.String("messageID", *msg.MessageId),
 	)
@@ -144,6 +148,6 @@ func (s *SQSConsumer) deleteMessage(ctx context.Context, msg types.Message) {
 	}
 }
 
-func (s *SQSConsumer) Close() error {
+func (s *ConsumerSQS) CloseSubscription() error {
 	return nil
 }

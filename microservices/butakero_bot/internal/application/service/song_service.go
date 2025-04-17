@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/queue"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/google/uuid"
@@ -15,15 +16,15 @@ import (
 
 type songService struct {
 	mediaClient     ports.MediaClient
-	messageProducer ports.MessageProducer
-	messageConsumer ports.MessageConsumer
+	messageProducer ports.SongDownloadRequestPublisher
+	messageConsumer ports.SongDownloadEventSubscriber
 	logger          logging.Logger
 }
 
 func NewSongService(
 	mediaClient ports.MediaClient,
-	messageProducer ports.MessageProducer,
-	messageConsumer ports.MessageConsumer,
+	messageProducer ports.SongDownloadRequestPublisher,
+	messageConsumer ports.SongDownloadEventSubscriber,
 	logger logging.Logger,
 ) ports.SongService {
 	return &songService{
@@ -74,7 +75,7 @@ func (s *songService) GetOrDownloadSong(ctx context.Context, userID, songInput, 
 	s.logger.Info("Media no encontrada a través de la API, enviando solicitud a través de la queue",
 		zap.String("input", input))
 
-	message := &entity.SongRequestMessage{
+	message := &queue.DownloadRequestMessage{
 		RequestID:    requestID,
 		UserID:       userID,
 		Song:         input,
@@ -82,7 +83,7 @@ func (s *songService) GetOrDownloadSong(ctx context.Context, userID, songInput, 
 		Timestamp:    time.Now(),
 	}
 
-	if err := s.messageProducer.PublishSongRequest(ctx, message); err != nil {
+	if err := s.messageProducer.PublishDownloadRequest(ctx, message); err != nil {
 		s.logger.Error("Error al publicar mensaje en la queue",
 			zap.String("input", input),
 			zap.Error(err))
@@ -92,7 +93,7 @@ func (s *songService) GetOrDownloadSong(ctx context.Context, userID, songInput, 
 		zap.String("requestID", requestID),
 		zap.String("song", input))
 
-	msgChan := s.messageConsumer.GetMessagesChannel()
+	msgChan := s.messageConsumer.DownloadEventsChannel()
 
 	for {
 		select {

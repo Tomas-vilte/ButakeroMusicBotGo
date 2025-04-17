@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/queue"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"sync"
 
 	"github.com/IBM/sarama"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"go.uber.org/zap"
 )
@@ -25,12 +25,13 @@ type ConsumerKafka struct {
 	brokers     []string
 	topic       string
 	logger      logging.Logger
-	messageChan chan *entity.MessageQueue
+	offset      int64
+	messageChan chan *queue.DownloadStatusMessage
 	errorChan   chan error
 	wg          sync.WaitGroup
 }
 
-func NewKafkaConsumer(config KafkaConfig, logger logging.Logger) (ports.MessageConsumer, error) {
+func NewKafkaConsumer(config ConfigKafka, logger logging.Logger) (ports.SongDownloadEventSubscriber, error) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Consumer.Return.Errors = true
 	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetNewest
@@ -72,14 +73,17 @@ func NewKafkaConsumer(config KafkaConfig, logger logging.Logger) (ports.MessageC
 		consumer:    consumer,
 		brokers:     config.Brokers,
 		topic:       config.Topic,
+		offset:      config.Offset,
 		logger:      logger,
-		messageChan: make(chan *entity.MessageQueue),
+		messageChan: make(chan *queue.DownloadStatusMessage),
 		errorChan:   make(chan error),
 	}, nil
 }
 
-func (k *ConsumerKafka) ConsumeMessages(ctx context.Context, offset int64) error {
-	logger := k.logger.With(zap.String("method", "ConsumeMessages"))
+func (k *ConsumerKafka) SubscribeToDownloadEvents(ctx context.Context) error {
+	logger := k.logger.With(
+		zap.String("component", "ConsumerKafka"),
+		zap.String("method", "SubscribeToDownloadEvents"))
 	logger.Info("Iniciando consumo de mensajes")
 
 	exists, err := k.TopicExists(k.topic)
@@ -102,7 +106,7 @@ func (k *ConsumerKafka) ConsumeMessages(ctx context.Context, offset int64) error
 	logger.Info("Particiones obtenidas", zap.Int("amount", len(partitionList)))
 
 	for _, partition := range partitionList {
-		pc, err := k.consumer.ConsumePartition(k.topic, partition, offset)
+		pc, err := k.consumer.ConsumePartition(k.topic, partition, k.offset)
 		if err != nil {
 			logger.Error("Error al crear consumidor de partición", zap.Int32("partition", partition), zap.Error(err))
 			return fmt.Errorf("error al crear la particion del consumidor: %w", err)
@@ -130,6 +134,7 @@ func (k *ConsumerKafka) consumePartition(ctx context.Context, pc sarama.Partitio
 	}()
 
 	logger := k.logger.With(
+		zap.String("component", "ConsumerKafka"),
 		zap.String("method", "consumePartition"),
 		zap.Int32("partition", partition),
 	)
@@ -153,13 +158,14 @@ func (k *ConsumerKafka) consumePartition(ctx context.Context, pc sarama.Partitio
 
 func (k *ConsumerKafka) handleMessage(msg *sarama.ConsumerMessage) {
 	logger := k.logger.With(
+		zap.String("component", "ConsumerKafka"),
 		zap.String("method", "handleMessage"),
 		zap.Int64("offset", msg.Offset),
 	)
 
 	logger.Debug("Mensaje recibido")
 
-	var statusMessage entity.MessageQueue
+	var statusMessage queue.DownloadStatusMessage
 	if err := json.Unmarshal(msg.Value, &statusMessage); err != nil {
 		logger.Error("Error al deserializar mensaje", zap.Error(err), zap.ByteString("contenido_mensaje", msg.Value))
 		k.errorChan <- err
@@ -179,7 +185,9 @@ func (k *ConsumerKafka) handleMessage(msg *sarama.ConsumerMessage) {
 }
 
 func (k *ConsumerKafka) TopicExists(topic string) (bool, error) {
-	logger := k.logger.With(zap.String("method", "TopicExists"))
+	logger := k.logger.With(
+		zap.String("component", "ConsumerKafka"),
+		zap.String("method", "TopicExists"))
 	logger.Debug("Verificando si el topic existe", zap.String("topic", topic))
 
 	topics, err := k.consumer.Topics()
@@ -198,7 +206,7 @@ func (k *ConsumerKafka) TopicExists(topic string) (bool, error) {
 	return false, nil
 }
 
-func (k *ConsumerKafka) GetMessagesChannel() <-chan *entity.MessageQueue {
+func (k *ConsumerKafka) DownloadEventsChannel() <-chan *queue.DownloadStatusMessage {
 	return k.messageChan
 }
 
@@ -206,8 +214,10 @@ func (k *ConsumerKafka) GetErrorChannel() <-chan error {
 	return k.errorChan
 }
 
-func (k *ConsumerKafka) Close() error {
-	logger := k.logger.With(zap.String("method", "Close"))
+func (k *ConsumerKafka) CloseSubscription() error {
+	logger := k.logger.With(
+		zap.String("component", "ConsumerKafka"),
+		zap.String("method", "CloseSubscription"))
 	logger.Info("Cerrando consumidor Kafka")
 	return k.consumer.Close()
 }

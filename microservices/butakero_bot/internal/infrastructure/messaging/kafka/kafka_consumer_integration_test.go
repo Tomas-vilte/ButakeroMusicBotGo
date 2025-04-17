@@ -90,9 +90,10 @@ func TestIntegrationKafkaConsumer(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	configKafka := KafkaConfig{
+	configKafka := ConfigKafka{
 		Brokers: brokers,
 		Topic:   topic,
+		Offset:  -2,
 		TLS:     shared.TLSConfig{},
 	}
 
@@ -103,11 +104,11 @@ func TestIntegrationKafkaConsumer(t *testing.T) {
 
 	ctxConsume, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	err = consumer.ConsumeMessages(ctxConsume, sarama.OffsetOldest)
+	err = consumer.SubscribeToDownloadEvents(ctxConsume)
 	require.NoError(t, err)
 
 	select {
-	case received := <-consumer.GetMessagesChannel():
+	case received := <-consumer.DownloadEventsChannel():
 		assert.Equal(t, "success", received.Status, "Se esperaba un mensaje con estado 'success'")
 		assert.Equal(t, "Procesamiento exitoso", received.Message, "El mensaje debe coincidir")
 	case <-time.After(5 * time.Second):

@@ -4,6 +4,7 @@ package kafka
 
 import (
 	"github.com/IBM/sarama/mocks"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/queue"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/stretchr/testify/assert"
 )
@@ -43,16 +43,16 @@ func TestKafkaConsumer_Close(t *testing.T) {
 		brokers:     []string{"dummy"},
 		topic:       "test-topic",
 		logger:      mockLogger,
-		messageChan: make(chan *entity.MessageQueue, 1),
+		messageChan: make(chan *queue.DownloadStatusMessage, 1),
 	}
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
-	err := consumer.Close()
+	err := consumer.CloseSubscription()
 
 	// Assert
-	require.NoError(t, err, "El método Close() no debe retornar error")
+	require.NoError(t, err, "El método CloseSubscription() no debe retornar error")
 }
 
 func TestHandleSuccessMessage(t *testing.T) {
@@ -77,7 +77,7 @@ func TestHandleSuccessMessage(t *testing.T) {
     }`
 	mockLogger := new(logging.MockLogger)
 	consumer := &ConsumerKafka{
-		messageChan: make(chan *entity.MessageQueue, 1),
+		messageChan: make(chan *queue.DownloadStatusMessage, 1),
 		logger:      mockLogger,
 	}
 
@@ -95,7 +95,7 @@ func TestHandleSuccessMessage(t *testing.T) {
 
 	// Assert
 	select {
-	case msg := <-consumer.GetMessagesChannel():
+	case msg := <-consumer.DownloadEventsChannel():
 		assert.Equal(t, "success", msg.Status, "El estado debe ser success")
 		assert.True(t, msg.Success, "El campo success debe ser true")
 	case <-time.After(1 * time.Second):
@@ -121,7 +121,7 @@ func TestHandleErrorMessage(t *testing.T) {
     }`
 	mockLogger := new(logging.MockLogger)
 	consumer := &ConsumerKafka{
-		messageChan: make(chan *entity.MessageQueue, 1),
+		messageChan: make(chan *queue.DownloadStatusMessage, 1),
 		logger:      mockLogger,
 	}
 
@@ -138,7 +138,7 @@ func TestHandleErrorMessage(t *testing.T) {
 	consumer.handleMessage(testMsg)
 
 	select {
-	case msg := <-consumer.GetMessagesChannel():
+	case msg := <-consumer.DownloadEventsChannel():
 		t.Fatalf("No se esperaba recibir mensaje, pero se obtuvo: %+v", msg)
 	case <-time.After(500 * time.Millisecond):
 	}

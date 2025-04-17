@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/queue"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
@@ -22,7 +22,7 @@ type ProducerSQS struct {
 	logger logging.Logger
 }
 
-func NewProducerSQS(cfgApplication *config.Config, log logging.Logger) (ports.MessageProducer, error) {
+func NewProducerSQS(cfgApplication *config.Config, log logging.Logger) (ports.SongDownloadRequestPublisher, error) {
 	log.Info("Inicializando productor SQS",
 		zap.String("queue_url", cfgApplication.QueueConfig.SQSConfig.Queues.BotDownloadRequestsQueueURL))
 
@@ -46,10 +46,10 @@ func NewProducerSQS(cfgApplication *config.Config, log logging.Logger) (ports.Me
 	}, nil
 }
 
-func (p *ProducerSQS) PublishSongRequest(ctx context.Context, message *entity.SongRequestMessage) error {
+func (p *ProducerSQS) PublishDownloadRequest(ctx context.Context, message *queue.DownloadRequestMessage) error {
 	log := p.logger.With(
-		zap.String("component", "SQSProducer"),
-		zap.String("method", "PublishSongRequest"),
+		zap.String("component", "ProducerSQS"),
+		zap.String("method", "PublishDownloadRequest"),
 		zap.String("queue_url", p.cfg.QueueConfig.SQSConfig.Queues.BotDownloadRequestsQueueURL),
 	)
 
@@ -97,6 +97,6 @@ func (p *ProducerSQS) PublishSongRequest(ctx context.Context, message *entity.So
 	}
 }
 
-func (p *ProducerSQS) Close() error {
+func (p *ProducerSQS) ClosePublisher() error {
 	return nil
 }
