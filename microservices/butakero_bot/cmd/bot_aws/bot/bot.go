@@ -51,7 +51,7 @@ func StartBot() error {
 
 	messageConsumer := sqsApp.NewSQSConsumer(sqsClient, cfg, logger)
 	go func() {
-		if err := messageConsumer.ConsumeMessages(ctx, -1); err != nil {
+		if err := messageConsumer.SubscribeToDownloadEvents(ctx); err != nil {
 			logger.Error("Error al consumir mensajes de kafka")
 		}
 	}()

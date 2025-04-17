@@ -4,6 +4,7 @@ package kafka
 
 import (
 	"context"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/queue"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/kafka"
@@ -108,7 +108,7 @@ func TestProducerKafka_PublishSongRequest(t *testing.T) {
 	producer, err := NewProducerKafka(cfg, testLogger)
 	require.NoError(t, err, "Error al crear el productor Kafka")
 	defer func() {
-		if err := producer.Close(); err != nil {
+		if err := producer.ClosePublisher(); err != nil {
 			t.Fatalf("Error al cerrar productor: %v", err)
 		}
 	}()
@@ -128,7 +128,7 @@ func TestProducerKafka_PublishSongRequest(t *testing.T) {
 		}
 	}()
 
-	testMessage := &entity.SongRequestMessage{
+	testMessage := &queue.DownloadRequestMessage{
 		RequestID:    "test-interaction-123",
 		UserID:       "user123",
 		Song:         "Despacito",
@@ -136,7 +136,7 @@ func TestProducerKafka_PublishSongRequest(t *testing.T) {
 		Timestamp:    time.Now(),
 	}
 
-	err = producer.PublishSongRequest(testContext, testMessage)
+	err = producer.PublishDownloadRequest(testContext, testMessage)
 	require.NoError(t, err, "Error al publicar el mensaje")
 
 	select {
@@ -162,13 +162,13 @@ func TestProducerKafka_PublishSongRequest_ContextCancellation(t *testing.T) {
 	producer, err := NewProducerKafka(cfg, testLogger)
 	require.NoError(t, err, "Error al crear el productor Kafka")
 	defer func() {
-		if err := producer.Close(); err != nil {
+		if err := producer.ClosePublisher(); err != nil {
 			t.Fatalf("Error al cerrar productor: %v", err)
 		}
 	}()
 
 	cancelCtx, cancel := context.WithCancel(testContext)
-	testMessage := &entity.SongRequestMessage{
+	testMessage := &queue.DownloadRequestMessage{
 		RequestID:    "test-canceled-interaction",
 		UserID:       "user123",
 		ProviderType: "youtube",
@@ -177,7 +177,7 @@ func TestProducerKafka_PublishSongRequest_ContextCancellation(t *testing.T) {
 
 	cancel()
 
-	err = producer.PublishSongRequest(cancelCtx, testMessage)
+	err = producer.PublishDownloadRequest(cancelCtx, testMessage)
 	assert.Error(t, err, "Se esperaba un error debido a la cancelación del contexto")
 	assert.Contains(t, err.Error(), "contexto cancelado")
 }

@@ -40,9 +40,10 @@ func StartBot() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	messageConsumer, err := kafka.NewKafkaConsumer(kafka.KafkaConfig{
+	messageConsumer, err := kafka.NewKafkaConsumer(kafka.ConfigKafka{
 		Brokers: cfg.QueueConfig.KafkaConfig.Brokers,
 		Topic:   cfg.QueueConfig.KafkaConfig.Topics.BotDownloadStatus,
+		Offset:  -1,
 		TLS: shared.TLSConfig{
 			Enabled:  cfg.QueueConfig.KafkaConfig.TLS.Enabled,
 			CAFile:   cfg.QueueConfig.KafkaConfig.TLS.CAFile,
@@ -54,12 +55,12 @@ func StartBot() error {
 		panic(err)
 	}
 	go func() {
-		if err := messageConsumer.ConsumeMessages(ctx, -1); err != nil {
+		if err := messageConsumer.SubscribeToDownloadEvents(ctx); err != nil {
 			logger.Error("Error al consumir mensajes de kafka")
 		}
 	}()
 	defer func() {
-		if err := messageConsumer.Close(); err != nil {
+		if err := messageConsumer.CloseSubscription(); err != nil {
 			logger.Error("Error al consumir mensajes de kafka")
 		}
 	}()
@@ -68,7 +69,7 @@ func StartBot() error {
 		panic(err)
 	}
 	defer func() {
-		if err := messageProducer.Close(); err != nil {
+		if err := messageProducer.ClosePublisher(); err != nil {
 			logger.Error("Error al cerrar el productor", zap.Error(err))
 		}
 	}()

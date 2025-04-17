@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/IBM/sarama"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/queue"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/config"
@@ -20,7 +20,7 @@ type ProducerKafka struct {
 	logger   logging.Logger
 }
 
-func NewProducerKafka(cfg *config.Config, logger logging.Logger) (ports.MessageProducer, error) {
+func NewProducerKafka(cfg *config.Config, logger logging.Logger) (ports.SongDownloadRequestPublisher, error) {
 	saramaConfig := sarama.NewConfig()
 	saramaConfig.Producer.Return.Errors = true
 	saramaConfig.Producer.Return.Successes = true
@@ -65,10 +65,10 @@ func NewProducerKafka(cfg *config.Config, logger logging.Logger) (ports.MessageP
 	}, nil
 }
 
-func (p *ProducerKafka) PublishSongRequest(ctx context.Context, message *entity.SongRequestMessage) error {
+func (p *ProducerKafka) PublishDownloadRequest(ctx context.Context, message *queue.DownloadRequestMessage) error {
 	log := p.logger.With(
 		zap.String("component", "ProducerKafka"),
-		zap.String("method", "PublishSongRequest"),
+		zap.String("method", "PublishDownloadRequest"),
 		zap.String("topic", p.cfg.QueueConfig.KafkaConfig.Topics.BotDownloadRequest),
 		zap.String("request_id", message.RequestID),
 	)
@@ -115,8 +115,10 @@ func (p *ProducerKafka) PublishSongRequest(ctx context.Context, message *entity.
 	}
 }
 
-func (p *ProducerKafka) Close() error {
-	logger := p.logger.With(zap.String("method", "Close"))
+func (p *ProducerKafka) ClosePublisher() error {
+	logger := p.logger.With(
+		zap.String("component", "ProducerKafka"),
+		zap.String("method", "ClosePublisher"))
 	logger.Info("Cerrando producer Kafka")
 	return p.producer.Close()
 }

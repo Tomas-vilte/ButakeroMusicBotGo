@@ -6,13 +6,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/queue"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	cfgAws "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/testcontainers/testcontainers-go/modules/localstack"
 	"testing"
 	"time"
 
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/config"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -112,7 +112,7 @@ func TestProducerSQS_PublishSongRequest(t *testing.T) {
 	}
 	require.NoError(t, err)
 
-	testMessage := &entity.SongRequestMessage{
+	testMessage := &queue.DownloadRequestMessage{
 		RequestID:    "test-interaction-123",
 		UserID:       "user-456",
 		Song:         "Never Gonna Give You Up",
@@ -120,7 +120,7 @@ func TestProducerSQS_PublishSongRequest(t *testing.T) {
 		Timestamp:    time.Now(),
 	}
 
-	err = producer.PublishSongRequest(ctx, testMessage)
+	err = producer.PublishDownloadRequest(ctx, testMessage)
 	require.NoError(t, err)
 
 	receiveResult, err := container.Client.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
@@ -139,7 +139,7 @@ func TestProducerSQS_PublishSongRequest(t *testing.T) {
 	require.True(t, ok, "RequestID attribute should exist")
 	assert.Equal(t, testMessage.RequestID, *interactionID.StringValue)
 
-	var receivedMessage entity.SongRequestMessage
+	var receivedMessage queue.DownloadRequestMessage
 	err = json.Unmarshal([]byte(*message.Body), &receivedMessage)
 	require.NoError(t, err)
 
@@ -188,7 +188,7 @@ func TestProducerSQS_PublishSongRequest_ContextCancelled(t *testing.T) {
 		logger,
 	}
 
-	testMessage := &entity.SongRequestMessage{
+	testMessage := &queue.DownloadRequestMessage{
 		RequestID:    "test-interaction-123",
 		UserID:       "user-456",
 		Song:         "Never Gonna Give You Up",
@@ -199,7 +199,7 @@ func TestProducerSQS_PublishSongRequest_ContextCancelled(t *testing.T) {
 	cancelledCtx, cancel := context.WithCancel(ctx)
 	cancel()
 
-	err = producer.PublishSongRequest(cancelledCtx, testMessage)
+	err = producer.PublishDownloadRequest(cancelledCtx, testMessage)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "contexto cancelado")

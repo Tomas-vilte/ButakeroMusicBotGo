@@ -45,32 +45,32 @@ func (h *EventHandler) Ready(s *discordgo.Session, _ *discordgo.Ready) {
 
 // GuildCreate se llama cuando el bot se une a un nuevo servidor.
 func (h *EventHandler) GuildCreate(ctx context.Context, _ *discordgo.Session, event *discordgo.GuildCreate) {
-	if event.Guild.Unavailable {
+	if event.Unavailable {
 		return
 	}
 
-	if _, err := h.guildManager.GetGuildPlayer(event.Guild.ID); err == nil {
-		h.logger.Debug("GuildPlayer ya existe", zap.String("guildID", event.Guild.ID))
+	if _, err := h.guildManager.GetGuildPlayer(event.ID); err == nil {
+		h.logger.Debug("GuildPlayer ya existe", zap.String("guildID", event.ID))
 		return
 	}
 
-	guildPlayer, err := h.guildManager.CreateGuildPlayer(event.Guild.ID)
+	guildPlayer, err := h.guildManager.CreateGuildPlayer(event.ID)
 	if err != nil {
-		h.logger.Error("Error al crear GuildPlayer", zap.String("guildID", event.Guild.ID), zap.Error(err))
+		h.logger.Error("Error al crear GuildPlayer", zap.String("guildID", event.ID), zap.Error(err))
 		return
 	}
 
 	go func() {
 		if err := guildPlayer.Run(ctx); err != nil {
-			h.logger.Error("Error al iniciar GuildPlayer", zap.String("guildID", event.Guild.ID), zap.Error(err))
+			h.logger.Error("Error al iniciar GuildPlayer", zap.String("guildID", event.ID), zap.Error(err))
 		}
 	}()
 }
 
 // GuildDelete se llama cuando el bot es removido de un servidor.
 func (h *EventHandler) GuildDelete(_ *discordgo.Session, event *discordgo.GuildDelete) {
-	if err := h.guildManager.RemoveGuildPlayer(event.Guild.ID); err != nil {
-		h.logger.Error("Error al eliminar GuildPlayer", zap.String("guildID", event.Guild.ID), zap.Error(err))
+	if err := h.guildManager.RemoveGuildPlayer(event.ID); err != nil {
+		h.logger.Error("Error al eliminar GuildPlayer", zap.String("guildID", event.ID), zap.Error(err))
 	}
 }
 

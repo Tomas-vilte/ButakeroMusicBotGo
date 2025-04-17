@@ -2,6 +2,7 @@ package discord
 
 import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/discord"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/bwmarrin/discordgo"
@@ -20,7 +21,7 @@ func NewDiscordMessengerAdapter(session *discordgo.Session, logger logging.Logge
 	}
 }
 
-func (m *DiscordMessengerAdapter) RespondWithMessage(interaction *entity.Interaction, message string) error {
+func (m *DiscordMessengerAdapter) RespondWithMessage(interaction *discord.Interaction, message string) error {
 	discordInteraction := toDiscordInteraction(interaction)
 
 	response := discordgo.InteractionResponse{
@@ -59,7 +60,7 @@ func (m *DiscordMessengerAdapter) SendText(channelID, text string) error {
 	return err
 }
 
-func (m *DiscordMessengerAdapter) Respond(interaction *entity.Interaction, response entity.InteractionResponse) error {
+func (m *DiscordMessengerAdapter) Respond(interaction *discord.Interaction, response discord.InteractionResponse) error {
 	discordInteraction := toDiscordInteraction(interaction)
 	discordResponse := discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseType(response.Type),
@@ -71,7 +72,7 @@ func (m *DiscordMessengerAdapter) Respond(interaction *entity.Interaction, respo
 	return m.session.InteractionRespond(discordInteraction, &discordResponse)
 }
 
-func (m *DiscordMessengerAdapter) CreateFollowupMessage(interaction *entity.Interaction, params entity.WebhookParams) error {
+func (m *DiscordMessengerAdapter) CreateFollowupMessage(interaction *discord.Interaction, params discord.WebhookParams) error {
 	discordInteraction := toDiscordInteraction(interaction)
 	discordParams := discordgo.WebhookParams{
 		Content: params.Content,
@@ -85,7 +86,7 @@ func (m *DiscordMessengerAdapter) CreateFollowupMessage(interaction *entity.Inte
 	return nil
 }
 
-func (m *DiscordMessengerAdapter) EditOriginalResponse(interaction *entity.Interaction, params *entity.WebhookEdit) error {
+func (m *DiscordMessengerAdapter) EditOriginalResponse(interaction *discord.Interaction, params *discord.WebhookEdit) error {
 	discordInteraction := toDiscordInteraction(interaction)
 	embeds := toDiscordgoEmbeds(params.Embeds)
 	discordParams := &discordgo.WebhookEdit{
@@ -101,7 +102,7 @@ func (m *DiscordMessengerAdapter) EditOriginalResponse(interaction *entity.Inter
 }
 
 // Funciones de conversión
-func toDiscordInteraction(interaction *entity.Interaction) *discordgo.Interaction {
+func toDiscordInteraction(interaction *discord.Interaction) *discordgo.Interaction {
 	if interaction == nil {
 		return nil
 	}
@@ -126,7 +127,7 @@ func toDiscordInteraction(interaction *entity.Interaction) *discordgo.Interactio
 	}
 }
 
-func toDiscordgoEmbeds(embeds []*entity.Embed) []*discordgo.MessageEmbed {
+func toDiscordgoEmbeds(embeds []*discord.Embed) []*discordgo.MessageEmbed {
 	if embeds == nil {
 		return nil
 	}
@@ -138,7 +139,7 @@ func toDiscordgoEmbeds(embeds []*entity.Embed) []*discordgo.MessageEmbed {
 	return discordEmbeds
 }
 
-func toDiscordgoEmbed(embed *entity.Embed) *discordgo.MessageEmbed {
+func toDiscordgoEmbed(embed *discord.Embed) *discordgo.MessageEmbed {
 	if embed == nil {
 		return nil
 	}

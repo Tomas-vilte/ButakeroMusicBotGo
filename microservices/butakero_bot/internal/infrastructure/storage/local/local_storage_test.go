@@ -35,7 +35,11 @@ func TestLocalStorage_GetAudio(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error inesperado: %v", err)
 		}
-		defer rc.Close()
+		defer func() {
+			if err := rc.Close(); err != nil {
+				t.Fatalf("Error cerrando el archivo: %v", err)
+			}
+		}()
 
 		content, err := io.ReadAll(rc)
 		if err != nil {

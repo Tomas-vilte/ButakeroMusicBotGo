@@ -3,6 +3,7 @@ package ports
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/discord"
 	"io"
 )
 
@@ -23,7 +24,7 @@ type (
 
 	DiscordMessenger interface {
 		// RespondWithMessage responde a una interacción con un mensaje
-		RespondWithMessage(interaction *entity.Interaction, message string) error
+		RespondWithMessage(interaction *discord.Interaction, message string) error
 		// SendPlayStatus envía un mensaje embed de estado de reproducción
 		SendPlayStatus(channelID string, playMsg *entity.PlayedSong) (messageID string, err error)
 		// UpdatePlayStatus actualiza un mensaje de estado existente
@@ -31,11 +32,11 @@ type (
 		// SendText envía un mensaje de texto simple
 		SendText(channelID, text string) error
 		// Respond responde a una interacción con una respuesta estructurada
-		Respond(interaction *entity.Interaction, response entity.InteractionResponse) error
+		Respond(interaction *discord.Interaction, response discord.InteractionResponse) error
 		// CreateFollowupMessage crea un mensaje de seguimiento
-		CreateFollowupMessage(interaction *entity.Interaction, params entity.WebhookParams) error
+		CreateFollowupMessage(interaction *discord.Interaction, params discord.WebhookParams) error
 		// EditOriginalResponse edita la respuesta original
-		EditOriginalResponse(interaction *entity.Interaction, params *entity.WebhookEdit) error
+		EditOriginalResponse(interaction *discord.Interaction, params *discord.WebhookEdit) error
 	}
 
 	GuildManager interface {

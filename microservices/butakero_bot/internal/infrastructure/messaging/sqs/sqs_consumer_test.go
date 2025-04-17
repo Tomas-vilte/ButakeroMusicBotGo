@@ -84,7 +84,7 @@ func TestSQSConsumer_ConsumeMessages(t *testing.T) {
 	consumer := NewSQSConsumer(mockClient, cfg, mockLogger)
 	ctx, cancel := context.WithCancel(context.Background())
 
-	err := consumer.ConsumeMessages(ctx, 0)
+	err := consumer.SubscribeToDownloadEvents(ctx)
 
 	assert.NoError(t, err)
 	mockLogger.AssertCalled(t, "Info", "Iniciando consumo de mensajes SQS", mock.Anything)
@@ -350,7 +350,7 @@ func TestSQSConsumer_GetMessagesChannel(t *testing.T) {
 
 	consumer := NewSQSConsumer(mockClient, cfg, mockLogger)
 
-	ch := consumer.GetMessagesChannel()
+	ch := consumer.DownloadEventsChannel()
 
 	assert.NotNil(t, ch)
 }
