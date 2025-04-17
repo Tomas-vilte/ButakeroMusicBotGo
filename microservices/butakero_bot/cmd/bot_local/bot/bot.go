@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/application/service"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/adapters/api"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord"
@@ -24,16 +25,16 @@ import (
 func StartBot() error {
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("error al cargar la configuración: %v", err)
 	}
 
 	logger, err := logging.NewDevelopmentLogger()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("error al inicializar el logger: %v", err)
 	}
 	defer func() {
 		if err := logger.Close(); err != nil {
-			panic(err)
+			logger.Error("Error al cerrar el logger", zap.Error(err))
 		}
 	}()
 
@@ -52,36 +53,37 @@ func StartBot() error {
 		},
 	}, logger)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("error al crear el consumidor de Kafka: %v", err)
 	}
+
 	go func() {
 		if err := messageConsumer.SubscribeToDownloadEvents(ctx); err != nil {
-			logger.Error("Error al consumir mensajes de kafka")
+			logger.Error("Error al suscribirse a eventos de descarga de Kafka", zap.Error(err))
 		}
 	}()
 	defer func() {
 		if err := messageConsumer.CloseSubscription(); err != nil {
-			logger.Error("Error al consumir mensajes de kafka")
+			logger.Error("Error al cerrar la suscripción a Kafka", zap.Error(err))
 		}
 	}()
+
 	messageProducer, err := kafka.NewProducerKafka(cfg, logger)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("error al crear el productor de Kafka: %v", err)
 	}
 	defer func() {
 		if err := messageProducer.ClosePublisher(); err != nil {
-			logger.Error("Error al cerrar el productor", zap.Error(err))
+			logger.Error("Error al cerrar el productor de Kafka", zap.Error(err))
 		}
 	}()
+
 	discordClient, err := discordgo.New("Bot " + cfg.Discord.Token)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("error al crear el cliente de Discord: %v", err)
 	}
 
 	discordMessenger := discord.NewDiscordMessengerAdapter(discordClient, logger)
-
 	storageAudio := local_storage.NewLocalStorage(logger)
-
 	interactionStorage := storage.NewInMemoryInteractionStorage(logger)
 
 	mediaClient, err := api.NewMediaAPIClient(api.AudioAPIClientConfig{
@@ -89,7 +91,7 @@ func StartBot() error {
 		Timeout: 1 * time.Minute,
 	}, logger)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("error al crear el cliente de la API de medios: %v", err)
 	}
 
 	songService := service.NewSongService(mediaClient, messageProducer, messageConsumer, logger)
@@ -130,33 +132,32 @@ func StartBot() error {
 		}
 	})
 
-	err = discordClient.Open()
-	if err != nil {
-		logger.Error("Error al abrir conexión con Discord", zap.Error(err))
-		return err
+	if err := discordClient.Open(); err != nil {
+		logger.Error("Error al abrir la conexión con Discord", zap.Error(err))
+		return fmt.Errorf("error al conectar con Discord: %v", err)
 	}
 	defer func() {
 		if err := discordClient.Close(); err != nil {
-			logger.Error("Error al cerrar conexión con Discord", zap.Error(err))
+			logger.Error("Error al cerrar la conexión con Discord", zap.Error(err))
 		}
 	}()
 
 	commandRegistry.Register(command.NewRootCommand(cfg.CommandPrefix, commands, logger))
-	_, err = discordClient.ApplicationCommandBulkOverwrite(
+	if _, err := discordClient.ApplicationCommandBulkOverwrite(
 		discordClient.State.User.ID,
 		"",
 		commandRegistry.GetCommands(),
-	)
-	if err != nil {
-		logger.Error("No se pudieron registrar los comandos", zap.Error(err))
-		return err
+	); err != nil {
+		logger.Error("Error al registrar los comandos en Discord", zap.Error(err))
+		return fmt.Errorf("error al registrar comandos en Discord: %v", err)
 	}
+
+	logger.Info("Bot iniciado correctamente")
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 
 	logger.Info("Cerrando bot...")
-
-	return err
+	return nil
 }
