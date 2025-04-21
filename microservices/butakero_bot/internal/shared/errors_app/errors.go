@@ -9,13 +9,11 @@ import (
 type ErrorCode string
 
 const (
-	// Errores generales
 	ErrCodeInternalError   ErrorCode = "internal_error"
 	ErrCodeInvalidInput    ErrorCode = "invalid_input"
 	ErrCodeInvalidVideoID  ErrorCode = "invalid_video_id"
 	ErrCodeInvalidMetadata ErrorCode = "invalid_metadata"
 
-	// Errores relacionados con la API externa
 	ErrCodeProviderNotFound      ErrorCode = "provider_not_found"
 	ErrCodeYouTubeAPIError       ErrorCode = "youtube_api_error"
 	ErrCodeAPIDuplicateRecord    ErrorCode = "duplicate_record"
@@ -31,7 +29,6 @@ const (
 	ErrCodeGetVideoDetailsFailed ErrorCode = "get_video_details_failed"
 	ErrCodeGetMediaDetailsFailed ErrorCode = "get_media_details_failed"
 
-	// Errores relacionados con almacenamiento
 	ErrCodeS3UploadFailed            ErrorCode = "s3_upload_failed"
 	ErrCodeS3GetMetadataFailed       ErrorCode = "s3_get_metadata_failed"
 	ErrCodeS3GetContentFailed        ErrorCode = "s3_get_content_failed"
@@ -46,18 +43,13 @@ const (
 	ErrCodeDeleteMediaFailed         ErrorCode = "delete_media_failed"
 	ErrCodeGetMediaFailed            ErrorCode = "get_media_failed"
 
-	// Errores relacionados con yt-dlp
 	ErrCodeYTDLPCommandFailed ErrorCode = "ytdlp_command_failed"
 	ErrCodeYTDLPInvalidOutput ErrorCode = "ytdlp_invalid_output"
 
-	// Errores relacionados con Discord
-	ErrCodeDiscordNotInVoiceChannel ErrorCode = "discord_not_in_voice_channel"
-	ErrCodeDiscordFailedToAddSong   ErrorCode = "discord_failed_to_add_song"
 	ErrCodeGuildPlayerNotFound      ErrorCode = "guild_player_not_found"
-
-	// Errores relacionados con la base de datos
-	ErrCodeDBConnectionFailed ErrorCode = "db_connection_failed"
-	ErrCodeDBRecordNotFound   ErrorCode = "db_record_not_found"
+	ErrCodeInvalidGuildID           ErrorCode = "invalid_guild_id"
+	ErrCodeGuildPlayerAlreadyExists ErrorCode = "guild_player_already_exists"
+	ErrCodeGuildPlayerCreateFailed  ErrorCode = "guild_player_create_failed"
 )
 
 var errorStatusMap = map[ErrorCode]int{
@@ -73,7 +65,6 @@ var errorStatusMap = map[ErrorCode]int{
 	ErrCodeOperationNotFound: http.StatusNotFound,
 	ErrCodeMediaNotFound:     http.StatusNotFound,
 	ErrCodeLocalFileNotFound: http.StatusNotFound,
-	ErrCodeDBRecordNotFound:  http.StatusNotFound,
 
 	// 409 Conflict
 	ErrCodeAPIDuplicateRecord: http.StatusConflict,
@@ -92,7 +83,6 @@ var errorStatusMap = map[ErrorCode]int{
 	ErrCodeSearchVideoIDFailed:       http.StatusInternalServerError,
 	ErrCodeGetVideoDetailsFailed:     http.StatusInternalServerError,
 	ErrCodeGetMediaDetailsFailed:     http.StatusInternalServerError,
-	ErrCodeDBConnectionFailed:        http.StatusInternalServerError,
 	ErrCodeSaveMediaFailed:           http.StatusInternalServerError,
 	ErrCodeDeleteMediaFailed:         http.StatusInternalServerError,
 	ErrCodeGetMediaFailed:            http.StatusInternalServerError,
@@ -105,9 +95,10 @@ var errorStatusMap = map[ErrorCode]int{
 	ErrCodeLocalDirectoryNotWritable: http.StatusInternalServerError,
 	ErrCodeYTDLPCommandFailed:        http.StatusInternalServerError,
 	ErrCodeYTDLPInvalidOutput:        http.StatusInternalServerError,
-	ErrCodeDiscordNotInVoiceChannel:  http.StatusInternalServerError,
-	ErrCodeDiscordFailedToAddSong:    http.StatusInternalServerError,
-	ErrCodeGuildPlayerNotFound:       http.StatusInternalServerError,
+	ErrCodeGuildPlayerNotFound:       http.StatusNotFound,
+	ErrCodeInvalidGuildID:            http.StatusBadRequest,
+	ErrCodeGuildPlayerCreateFailed:   http.StatusInternalServerError,
+	ErrCodeGuildPlayerAlreadyExists:  http.StatusConflict,
 }
 
 type AppError struct {
@@ -165,7 +156,6 @@ var apiErrorMapping = map[string]*AppError{
 	"get_media_details_failed": NewAppError(ErrCodeGetMediaDetailsFailed, "Error al obtener detalles del media", nil),
 	"search_video_id_failed":   NewAppError(ErrCodeSearchVideoIDFailed, "Error al buscar el ID del video", nil),
 	"get_video_details_failed": NewAppError(ErrCodeGetVideoDetailsFailed, "Error al obtener detalles del video", nil),
-	"db_connection_failed":     NewAppError(ErrCodeDBConnectionFailed, "Error de conexión a la base de datos", nil),
 	"save_media_failed":        NewAppError(ErrCodeSaveMediaFailed, "Error al guardar el media", nil),
 	"delete_media_failed":      NewAppError(ErrCodeDeleteMediaFailed, "Error al eliminar el media", nil),
 	"get_media_failed":         NewAppError(ErrCodeGetMediaFailed, "Error al obtener el media", nil),
@@ -183,6 +173,11 @@ var apiErrorMapping = map[string]*AppError{
 
 	"ytdlp_command_failed": NewAppError(ErrCodeYTDLPCommandFailed, "Error al ejecutar el comando yt-dlp", nil),
 	"ytdlp_invalid_output": NewAppError(ErrCodeYTDLPInvalidOutput, "Salida inválida de yt-dlp", nil),
+
+	"guild_player_not_found":      NewAppError(ErrCodeGuildPlayerNotFound, "Reproductor no encontrado para el guild especificado", nil),
+	"invalid_guild_id":            NewAppError(ErrCodeInvalidGuildID, "El ID del guild proporcionado no es válido", nil),
+	"guild_player_create_failed":  NewAppError(ErrCodeGuildPlayerCreateFailed, "Error al crear el reproductor para el guild", nil),
+	"guild_player_already_exists": NewAppError(ErrCodeGuildPlayerAlreadyExists, "El reproductor para este guild ya existe", nil),
 }
 
 // GetAPIError devuelve un AppError basado en el código de error de la API externa.

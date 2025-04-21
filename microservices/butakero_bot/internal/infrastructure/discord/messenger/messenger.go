@@ -1,9 +1,10 @@
-package discord
+package messenger
 
 import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/discord"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
+	discord2 "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
@@ -34,7 +35,7 @@ func (m *DiscordMessengerAdapter) RespondWithMessage(interaction *discord.Intera
 }
 
 func (m *DiscordMessengerAdapter) SendPlayStatus(channelID string, playMsg *entity.PlayedSong) (string, error) {
-	embed := toDiscordgoEmbed(GeneratePlayingSongEmbed(playMsg))
+	embed := toDiscordgoEmbed(discord2.GeneratePlayingSongEmbed(playMsg))
 	msg, err := m.session.ChannelMessageSendEmbed(channelID, embed)
 	if err != nil {
 		m.logger.Error("Error al enviar estado de reproducción", zap.Error(err))
@@ -44,7 +45,7 @@ func (m *DiscordMessengerAdapter) SendPlayStatus(channelID string, playMsg *enti
 }
 
 func (m *DiscordMessengerAdapter) UpdatePlayStatus(channelID, messageID string, playMsg *entity.PlayedSong) error {
-	embed := toDiscordgoEmbed(GeneratePlayingSongEmbed(playMsg))
+	embed := toDiscordgoEmbed(discord2.GeneratePlayingSongEmbed(playMsg))
 	_, err := m.session.ChannelMessageEditEmbed(channelID, messageID, embed)
 	if err != nil {
 		m.logger.Error("Error al actualizar estado de reproducción", zap.Error(err))

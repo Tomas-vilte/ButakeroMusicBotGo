@@ -8,6 +8,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/command"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/events"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/messenger"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/storage"
 	sqsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/messaging/sqs"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/storage/s3_storage"
@@ -78,7 +79,7 @@ func StartBot() error {
 		return fmt.Errorf("error en el almacenamiento S3: %v", err)
 	}
 
-	discordMessenger := discord.NewDiscordMessengerAdapter(discordClient, logger)
+	discordMessenger := messenger.NewDiscordMessengerAdapter(discordClient, logger)
 	interactionStorage := storage.NewInMemoryInteractionStorage(logger)
 
 	mediaClient, err := api.NewMediaAPIClient(api.AudioAPIClientConfig{
