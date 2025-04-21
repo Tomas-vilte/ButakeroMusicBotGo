@@ -8,6 +8,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/command"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/events"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/messenger"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/storage"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/messaging/kafka"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/storage/local"
@@ -82,7 +83,7 @@ func StartBot() error {
 		return fmt.Errorf("error al crear el cliente de Discord: %v", err)
 	}
 
-	discordMessenger := discord.NewDiscordMessengerAdapter(discordClient, logger)
+	discordMessenger := messenger.NewDiscordMessengerAdapter(discordClient, logger)
 	storageAudio := local_storage.NewLocalStorage(logger)
 	interactionStorage := storage.NewInMemoryInteractionStorage(logger)
 
