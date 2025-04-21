@@ -112,11 +112,7 @@ func NewVoiceStateService(tracker *BotChannelTracker, mover *BotMover, playback 
 	}
 }
 
-func (s *VoiceStateService) HandleVoiceStateChange(
-	guildPlayer ports.GuildPlayer,
-	session *discordgo.Session,
-	vs *discordgo.VoiceStateUpdate,
-) error {
+func (s *VoiceStateService) HandleVoiceStateChange(guildPlayer ports.GuildPlayer, session *discordgo.Session, vs *discordgo.VoiceStateUpdate) error {
 	guildID := vs.GuildID
 	guild, err := session.State.Guild(guildID)
 	if err != nil {
