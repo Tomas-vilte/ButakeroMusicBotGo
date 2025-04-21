@@ -67,15 +67,14 @@ func NewProductionLogger() (*ZapLogger, error) {
 		EncodeLevel:    zapcore.CapitalLevelEncoder,
 		EncodeTime:     customTimeEncoder,
 		EncodeDuration: zapcore.SecondsDurationEncoder,
-		EncodeCaller:   zapcore.FullCallerEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
 
 	config.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
 	config.Encoding = "json"
 
 	logger, err := config.Build(
-		zap.AddCallerSkip(1),
-		zap.AddCaller())
+		zap.AddCallerSkip(1))
 	if err != nil {
 		return nil, err
 	}
