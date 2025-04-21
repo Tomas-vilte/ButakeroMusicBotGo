@@ -67,7 +67,7 @@ func NewProductionLogger() (*ZapLogger, error) {
 		EncodeLevel:    zapcore.CapitalLevelEncoder,
 		EncodeTime:     customTimeEncoder,
 		EncodeDuration: zapcore.SecondsDurationEncoder,
-		EncodeCaller:   zapcore.FullCallerEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
 
 	config.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
