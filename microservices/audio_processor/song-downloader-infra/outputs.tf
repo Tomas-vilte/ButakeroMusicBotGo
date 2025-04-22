@@ -48,7 +48,7 @@ output "public_subnet_ids" {
   description = "Lista de IDs de subnets públicas"
 }
 
-output "private_subnet_ids" {
-  value = module.networking.private_subnet_ids
-    description = "Lista de IDs de subnets privadas"
-}
+# output "private_subnet_ids" {
+#   value = module.networking.private_subnet_ids
+#     description = "Lista de IDs de subnets privadas"
+# }

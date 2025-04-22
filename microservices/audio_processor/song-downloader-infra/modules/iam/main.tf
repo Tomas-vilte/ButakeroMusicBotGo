@@ -73,7 +73,10 @@ resource "aws_iam_role_policy" "ecs_task_role_policy" {
           "dynamodb:DescribeTable"
 
         ]
-        Resource = var.dynamodb_table_arns
+        Resource = flatten([
+          var.dynamodb_table_arns,
+          [for table in var.dynamodb_table_arns : "${table}/index/GSI1"]
+        ])
       },
       {
         Effect = "Allow"

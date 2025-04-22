@@ -36,8 +36,8 @@ resource "aws_security_group" "alb" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
-    description = "Permitir el trafico HTTP desde dentro de la VPC"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Permitir el trafico HTTP desde internet"
   }
 
   egress {
@@ -54,4 +54,9 @@ resource "aws_security_group" "alb" {
       Name = "${var.project_name}-${var.environment}-alb-sg"
     }
   )
+}
+
+
+data "http" "myip" {
+  url = "https://ipv4.icanhazip.com"
 }

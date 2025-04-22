@@ -1,9 +1,9 @@
 resource "aws_lb" "main" {
   name = "${var.project_name}-alb-${var.environment}"
-  internal = true
+  internal = false
   load_balancer_type = "application"
   security_groups = [var.security_group_alb]
-  subnets = var.private_subnet_ids
+  subnets = var.public_subnet_ids
 
   enable_deletion_protection = false
   preserve_host_header = true

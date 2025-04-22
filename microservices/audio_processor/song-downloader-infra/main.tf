@@ -107,12 +107,12 @@ module "alb" {
   environment  = var.environment
 
   vpc_id             = module.networking.vpc_id
-  subnet_ids         = module.networking.public_subnet_ids
   tags               = var.alb_tags
   security_group_alb = module.security_groups.security_group_alb_id
-  private_subnet_ids = [module.networking.private_subnet_ids[0], module.networking.private_subnet_ids[1]]
+  #private_subnet_ids = [module.networking.private_subnet_ids[0], module.networking.private_subnet_ids[1]]
 
   logs_bucket = module.storage.bucket_name
+  public_subnet_ids = module.networking.public_subnet_ids
 }
 
 module "ecs" {

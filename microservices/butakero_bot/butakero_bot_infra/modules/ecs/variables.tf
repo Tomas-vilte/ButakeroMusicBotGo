@@ -26,7 +26,7 @@ variable "desired_count" {
   default     = 1
 }
 
-variable "subnets" {
+variable "public_subnet_ids" {
   description = "Lista de subnets donde se desplegará el bot de música"
   type        = list(string)
 }

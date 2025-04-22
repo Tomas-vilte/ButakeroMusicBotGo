@@ -43,7 +43,7 @@ resource "aws_iam_role" "ecs_task_role" {
 
 resource "aws_iam_policy" "ecs_task_policy" {
   name        = "ecsTaskPolicy"
-  description = "Permite acceso a DynamoDB, S3, SQS y Secrets Manager"
+  description = "Permite acceso a S3, SQS y Secrets Manager"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -51,7 +51,6 @@ resource "aws_iam_policy" "ecs_task_policy" {
       {
         Effect = "Allow"
         Action = [
-          "dynamodb:*",
           "s3:*",
           "sqs:*",
           "secretsmanager:GetSecretValue",
