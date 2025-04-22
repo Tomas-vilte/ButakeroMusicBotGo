@@ -13,15 +13,15 @@ variable "vpc_id" {
   type = string
 }
 
-variable "subnet_ids" {
-  description = "IDs de las subnets (para compatibilidad)"
+variable "public_subnet_ids" {
+  description = "IDs de las subnets publicas para el ALB publico"
   type = list(string)
 }
 
-variable "private_subnet_ids" {
-  description = "IDs de las subnets privadas para el ALB interno"
-  type = list(string)
-}
+# variable "private_subnet_ids" {
+#   description = "IDs de las subnets privadas para el ALB interno"
+#   type = list(string)
+# }
 
 variable "container_port" {
   description = "Puerto del contenedor"

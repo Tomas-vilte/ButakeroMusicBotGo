@@ -17,7 +17,7 @@ module "ecs" {
   cpu                       = "256"
   memory                    = "512"
   desired_count             = 1
-  subnets                   = module.networking.private_subnet_ids
+  public_subnet_ids         = module.networking.public_subnet_ids
   security_group_id         = aws_security_group.music_bot_sg.id
   ecs_task_execution_role_arn = module.iam.ecs_task_execution_role_arn
   aws_region                = var.aws_region

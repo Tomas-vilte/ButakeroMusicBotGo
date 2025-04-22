@@ -52,7 +52,7 @@ resource "aws_ecs_service" "music_bot_service" {
   force_new_deployment = true
 
   network_configuration {
-    subnets          = var.subnets
+    subnets          = var.public_subnet_ids
     security_groups  = [var.security_group_id]
     assign_public_ip = true
   }
