@@ -94,7 +94,7 @@ func StartBot() error {
 	tracker := discord.NewBotChannelTracker(logger)
 	mover := discord.NewBotMover(logger)
 	playback := discord.NewPlaybackController(logger)
-	voiceStateService := discord.NewVoiceStateService(tracker, mover, playback)
+	voiceStateService := discord.NewVoiceStateService(tracker, mover, playback, logger)
 	playerFactory := discord.NewGuildPlayerFactory(discordClient, storageAudio, discordMessenger, logger)
 	guildManager := discord.NewGuildManager(playerFactory, logger)
 	eventsHandler := events.NewEventHandler(guildManager, voiceStateService, logger, cfg)

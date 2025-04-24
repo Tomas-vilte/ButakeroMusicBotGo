@@ -49,20 +49,26 @@ func NewBotMover(logger logging.Logger) *BotMover {
 }
 
 func (m *BotMover) MoveBotToNewChannel(guildPlayer ports.GuildPlayer, newChannelID string, oldChannelID string, userID string) error {
+	logger := m.logger.With(
+		zap.String("component", "BotMover"),
+		zap.String("method", "MoveBotToNewChannel"),
+		zap.String("oldChannel", oldChannelID),
+		zap.String("newChannel", newChannelID),
+		zap.String("userID", userID),
+	)
+
 	stateStorage := guildPlayer.StateStorage()
 	if err := stateStorage.SetVoiceChannel(newChannelID); err != nil {
+		logger.Error("Error al actualizar el canal de voz en el storage", zap.Error(err))
 		return fmt.Errorf("error al actualizar el canal de voz: %w", err)
 	}
 
 	if err := guildPlayer.JoinVoiceChannel(newChannelID); err != nil {
+		logger.Error("Error al mover el bot al nuevo canal", zap.Error(err))
 		return fmt.Errorf("error al mover el bot al nuevo canal: %w", err)
 	}
 
-	m.logger.Info("Bot movido al nuevo canal",
-		zap.String("oldChannel", oldChannelID),
-		zap.String("newChannel", newChannelID),
-		zap.String("userID", userID))
-
+	logger.Info("Bot movido exitosamente al nuevo canal")
 	return nil
 }
 
@@ -75,6 +81,13 @@ func NewPlaybackController(logger logging.Logger) *PlaybackController {
 }
 
 func (c *PlaybackController) HandlePlayback(guildPlayer ports.GuildPlayer, currentSong *entity.PlayedSong, vs *discordgo.VoiceStateUpdate, botVoiceState *discordgo.VoiceState, guild *discordgo.Guild, session *discordgo.Session) error {
+	logger := c.logger.With(
+		zap.String("component", "PlaybackController"),
+		zap.String("method", "HandlePlayback"),
+		zap.String("guildID", vs.GuildID),
+		zap.String("userID", vs.UserID),
+	)
+
 	if currentSong != nil && vs.UserID == currentSong.RequestedByID {
 		if vs.ChannelID == "" || (botVoiceState != nil && vs.ChannelID != botVoiceState.ChannelID) {
 			if botVoiceState != nil {
@@ -86,14 +99,22 @@ func (c *PlaybackController) HandlePlayback(guildPlayer ports.GuildPlayer, curre
 				}
 
 				if usersInBotChannel == 0 {
-					c.logger.Info("No hay usuarios en el canal, deteniendo reproducción",
-						zap.String("channelID", botVoiceState.ChannelID))
+					logger.Info("Deteniendo reproducción por falta de usuarios en el canal",
+						zap.String("channelID", botVoiceState.ChannelID),
+						zap.String("track", currentSong.DiscordSong.TitleTrack))
+
 					if err := guildPlayer.Stop(); err != nil {
+						logger.Error("Error al detener la reproducción", zap.Error(err))
 						return fmt.Errorf("error al detener la reproducción: %w", err)
 					}
+				} else {
+					logger.Debug("Usuarios aún presentes en el canal, continuando reproducción",
+						zap.Int("usersCount", usersInBotChannel))
 				}
 			}
 		}
+	} else {
+		logger.Debug("Cambio de estado de voz no relevante para la reproducción actual")
 	}
 	return nil
 }
@@ -102,24 +123,36 @@ type VoiceStateService struct {
 	tracker  *BotChannelTracker
 	mover    *BotMover
 	playback *PlaybackController
+	logger   logging.Logger
 }
 
-func NewVoiceStateService(tracker *BotChannelTracker, mover *BotMover, playback *PlaybackController) *VoiceStateService {
+func NewVoiceStateService(tracker *BotChannelTracker, mover *BotMover, playback *PlaybackController, logger logging.Logger) *VoiceStateService {
 	return &VoiceStateService{
 		tracker:  tracker,
 		mover:    mover,
 		playback: playback,
+		logger:   logger,
 	}
 }
 
 func (s *VoiceStateService) HandleVoiceStateChange(guildPlayer ports.GuildPlayer, session *discordgo.Session, vs *discordgo.VoiceStateUpdate) error {
-	guildID := vs.GuildID
-	guild, err := session.State.Guild(guildID)
+	logger := s.logger.With(
+		zap.String("component", "VoiceStateService"),
+		zap.String("method", "HandleVoiceStateChange"),
+		zap.String("guildID", vs.GuildID),
+		zap.String("userID", vs.UserID),
+	)
+
+	guild, err := session.State.Guild(vs.GuildID)
 	if err != nil {
+		logger.Error("Error al obtener el servidor", zap.Error(err))
 		return fmt.Errorf("error al obtener el servidor: %w", err)
 	}
 
 	botVoiceState := s.tracker.GetBotVoiceState(guild, session)
+	logger.Debug("Estado de voz del bot obtenido",
+		zap.Bool("botInVoice", botVoiceState != nil),
+		zap.String("botChannel", getChannelID(botVoiceState)))
 
 	if botVoiceState != nil {
 		wasInBotChannel := vs.BeforeUpdate != nil && vs.BeforeUpdate.ChannelID == botVoiceState.ChannelID
@@ -128,8 +161,12 @@ func (s *VoiceStateService) HandleVoiceStateChange(guildPlayer ports.GuildPlayer
 		if wasInBotChannel && movedToDifferentChannel {
 			newChannelID := vs.ChannelID
 			usersInCurrentChannel := s.tracker.CountUsersInChannel(guild, botVoiceState.ChannelID, session.State.User.ID)
+			logger.Debug("Usuario moviéndose desde el canal del bot",
+				zap.Int("remainingUsers", usersInCurrentChannel),
+				zap.String("newChannel", newChannelID))
 
 			if usersInCurrentChannel == 0 {
+				logger.Info("Moviendo bot a nuevo canal por falta de usuarios")
 				return s.mover.MoveBotToNewChannel(guildPlayer, newChannelID, botVoiceState.ChannelID, vs.UserID)
 			}
 		}
@@ -137,8 +174,20 @@ func (s *VoiceStateService) HandleVoiceStateChange(guildPlayer ports.GuildPlayer
 
 	currentSong, err := guildPlayer.GetPlayedSong()
 	if err != nil {
+		logger.Error("Error al obtener la canción actual", zap.Error(err))
 		return fmt.Errorf("error al obtener la canción actual: %w", err)
 	}
 
+	logger.Debug("Canción actual obtenida",
+		zap.Bool("hasCurrentSong", currentSong != nil),
+		zap.String("track", currentSong.DiscordSong.TitleTrack))
+
 	return s.playback.HandlePlayback(guildPlayer, currentSong, vs, botVoiceState, guild, session)
+}
+
+func getChannelID(state *discordgo.VoiceState) string {
+	if state == nil {
+		return ""
+	}
+	return state.ChannelID
 }

@@ -11,25 +11,110 @@ import (
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"io"
-	"os"
 	"strings"
 	"testing"
 	"time"
 )
 
-func TestS3StorageIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Saltando test de integración en modo corto")
+const (
+	testBucket  = "test-bucket"
+	awsEndpoint = "http://localhost:4566"
+	region      = "us-east-1"
+)
+
+type localstackContainer struct {
+	testcontainers.Container
+	optsFunc func(service, region string, options ...interface{}) (aws.Endpoint, error)
+}
+
+func setupLocalstack(ctx context.Context) (*localstackContainer, error) {
+	port := "4566:4566/tcp"
+	req := testcontainers.ContainerRequest{
+		Image:        "localstack/localstack:latest",
+		ExposedPorts: []string{port},
+		WaitingFor: wait.ForAll(
+			wait.ForLog("Ready"),
+		),
 	}
 
-	cfgApp := &config.Config{
+	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	optsFunc := func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+		return aws.Endpoint{
+			URL:           awsEndpoint,
+			SigningRegion: region,
+		}, nil
+	}
+
+	return &localstackContainer{
+		Container: container,
+		optsFunc:  optsFunc,
+	}, nil
+}
+
+func setupS3Client(ctx context.Context, optsFunc func(service, region string, options ...interface{}) (aws.Endpoint, error)) (*s3.Client, error) {
+	customResolver := aws.EndpointResolverWithOptionsFunc(optsFunc)
+
+	cfg, err := awsCfg.LoadDefaultConfig(ctx,
+		awsCfg.WithRegion(region),
+		awsCfg.WithEndpointResolverWithOptions(customResolver),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	client := s3.NewFromConfig(cfg, func(options *s3.Options) {
+		options.UsePathStyle = true
+	})
+
+	return client, nil
+}
+
+func createBucket(ctx context.Context, client *s3.Client, bucket string) error {
+	_, err := client.CreateBucket(ctx, &s3.CreateBucketInput{
+		Bucket: aws.String(bucket),
+	})
+	return err
+}
+
+func TestS3StorageIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Saltando prueba de integración en modo corto")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	localstack, err := setupLocalstack(ctx)
+	require.NoError(t, err, "Error iniciando contenedor de Localstack")
+	defer func() {
+		if err := localstack.Terminate(ctx); err != nil {
+			t.Fatalf("Error terminando contenedor de Localstack: %v", err)
+		}
+	}()
+
+	s3Client, err := setupS3Client(ctx, localstack.optsFunc)
+	require.NoError(t, err, "Error creando cliente S3")
+
+	err = createBucket(ctx, s3Client, testBucket)
+	require.NoError(t, err, "Error creando bucket de prueba")
+
+	testConfig := &config.Config{
 		AWS: config.AWSConfig{
-			Region: os.Getenv("AWS_REGION"),
+			Region: region,
 		},
 		Storage: config.StorageConfig{
 			S3Config: &config.S3Config{
-				BucketName: os.Getenv("AWS_BUCKET_NAME"),
+				BucketName: testBucket,
 			},
 		},
 	}
@@ -38,20 +123,15 @@ func TestS3StorageIntegration(t *testing.T) {
 	require.NoError(t, err)
 
 	// config
-	if cfgApp.Storage.S3Config.BucketName == "" || cfgApp.AWS.Region == "" {
+	if testConfig.Storage.S3Config.BucketName == "" || testConfig.AWS.Region == "" {
 		t.Fatal("BUCKET_NAME y REGION deben estar configurados para los tests de integración")
 	}
 
-	s3Storage, err := NewS3Storage(cfgApp, log)
-	if err != nil {
-		t.Fatalf("Error al crear S3Storage: %v", err)
+	s3Storage := S3Storage{
+		log:    log,
+		Client: s3Client,
+		Config: testConfig,
 	}
-
-	cfg, err := awsCfg.LoadDefaultConfig(context.TODO(), awsCfg.WithRegion(cfgApp.AWS.Region))
-	if err != nil {
-		t.Fatalf("Error al cargar la configuración de AWS: %v", err)
-	}
-	s3Client := s3.NewFromConfig(cfg)
 
 	t.Run("Submit and verify file", func(t *testing.T) {
 		// arrange
@@ -66,14 +146,18 @@ func TestS3StorageIntegration(t *testing.T) {
 
 		// assert
 		getObjectInput := &s3.GetObjectInput{
-			Bucket: aws.String(cfgApp.Storage.S3Config.BucketName),
+			Bucket: aws.String(testConfig.Storage.S3Config.BucketName),
 			Key:    aws.String("audio/" + fileName),
 		}
 		result, err := s3Client.GetObject(context.Background(), getObjectInput)
 		if err != nil {
 			t.Fatalf("Error al obtener el objeto de S3: %v", err)
 		}
-		defer result.Body.Close()
+		defer func() {
+			if err := result.Body.Close(); err != nil {
+				t.Fatalf("Error al cerrar el cuerpo del objeto: %v", err)
+			}
+		}()
 
 		downloadedContent, err := io.ReadAll(result.Body)
 		if err != nil {
@@ -86,7 +170,7 @@ func TestS3StorageIntegration(t *testing.T) {
 
 		// clear
 		deleteObjectInput := &s3.DeleteObjectInput{
-			Bucket: aws.String(cfgApp.Storage.S3Config.BucketName),
+			Bucket: aws.String(testConfig.Storage.S3Config.BucketName),
 			Key:    aws.String("audio/" + fileName),
 		}
 
@@ -148,7 +232,7 @@ func TestS3StorageIntegration(t *testing.T) {
 		}
 		// clear
 		deleteObjectInput := &s3.DeleteObjectInput{
-			Bucket: aws.String(cfgApp.Storage.S3Config.BucketName),
+			Bucket: aws.String(testConfig.Storage.S3Config.BucketName),
 			Key:    aws.String("audio/" + fileName),
 		}
 
@@ -192,7 +276,11 @@ func TestS3StorageIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error al obtener el contenido del archivo: %v", err)
 		}
-		defer fileContent.Close()
+		defer func() {
+			if err := fileContent.Close(); err != nil {
+				t.Fatalf("Error al cerrar el lector: %v", err)
+			}
+		}()
 
 		downloadedContent, err := io.ReadAll(fileContent)
 		if err != nil {
@@ -206,7 +294,7 @@ func TestS3StorageIntegration(t *testing.T) {
 
 		// clear
 		deleteObjectInput := &s3.DeleteObjectInput{
-			Bucket: aws.String(cfgApp.Storage.S3Config.BucketName),
+			Bucket: aws.String(testConfig.Storage.S3Config.BucketName),
 			Key:    aws.String("audio/" + fileName),
 		}
 

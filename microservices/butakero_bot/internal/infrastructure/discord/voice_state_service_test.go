@@ -1,3 +1,5 @@
+//go:build !integration
+
 package discord
 
 import (
@@ -56,6 +58,7 @@ func TestBotMover_MoveBotToNewChannel_Success(t *testing.T) {
 	guildPlayer := new(MockGuildPlayer)
 	stateStorage := new(MockStateStorage)
 
+	logger.On("With", mock.Anything, mock.Anything).Return(logger)
 	logger.On("Info", mock.Anything, mock.Anything).Return()
 	guildPlayer.On("StateStorage").Return(stateStorage)
 	stateStorage.On("SetVoiceChannel", "newChannel").Return(nil)
@@ -77,7 +80,7 @@ func TestPlaybackController_HandlePlayback_StopWhenRequesterLeaves(t *testing.T)
 	session := &discordgo.Session{State: discordgo.NewState()}
 	session.State.User = &discordgo.User{ID: "bot123"}
 
-	currentSong := &entity.PlayedSong{RequestedByID: "user123"}
+	currentSong := &entity.PlayedSong{RequestedByID: "user123", DiscordSong: &entity.DiscordEntity{TitleTrack: "titleTrack"}}
 	vs := &discordgo.VoiceStateUpdate{
 		VoiceState: &discordgo.VoiceState{
 			UserID:    "user123",
@@ -95,6 +98,7 @@ func TestPlaybackController_HandlePlayback_StopWhenRequesterLeaves(t *testing.T)
 		},
 	}
 
+	logger.On("With", mock.Anything, mock.Anything).Return(logger)
 	logger.On("Info", mock.Anything, mock.Anything).Return()
 	guildPlayer.On("Stop").Return(nil)
 
@@ -109,7 +113,7 @@ func TestVoiceStateService_HandleVoiceStateChange_BotNotInVoiceChannel(t *testin
 	tracker := NewBotChannelTracker(logger)
 	mover := NewBotMover(logger)
 	playback := NewPlaybackController(logger)
-	service := NewVoiceStateService(tracker, mover, playback)
+	service := NewVoiceStateService(tracker, mover, playback, logger)
 
 	// Escenario: Cambio de estado de voz cuando el bot no está en ningún canal
 	guildPlayer := new(MockGuildPlayer)
@@ -137,7 +141,9 @@ func TestVoiceStateService_HandleVoiceStateChange_BotNotInVoiceChannel(t *testin
 		},
 	}
 
-	currentSong := &entity.PlayedSong{RequestedByID: "user123"}
+	currentSong := &entity.PlayedSong{RequestedByID: "user123", DiscordSong: &entity.DiscordEntity{TitleTrack: "titleTrack"}}
+	logger.On("With", mock.Anything, mock.Anything).Return(logger)
+	logger.On("Debug", mock.Anything, mock.Anything).Return()
 	guildPlayer.On("GetPlayedSong").Return(currentSong, nil)
 
 	err = service.HandleVoiceStateChange(guildPlayer, session, vs)
@@ -151,7 +157,7 @@ func TestHandleVoiceStateChange_BotMovesWhenChannelEmpty(t *testing.T) {
 	tracker := NewBotChannelTracker(logger)
 	mover := NewBotMover(logger)
 	playback := NewPlaybackController(logger)
-	service := NewVoiceStateService(tracker, mover, playback)
+	service := NewVoiceStateService(tracker, mover, playback, logger)
 
 	// Escenario: El bot se mueve cuando el usuario abandona dejando el canal vacío
 	guildPlayer := new(MockGuildPlayer)
@@ -182,7 +188,9 @@ func TestHandleVoiceStateChange_BotMovesWhenChannelEmpty(t *testing.T) {
 		},
 	}
 
+	logger.On("With", mock.Anything, mock.Anything).Return(logger)
 	logger.On("Info", mock.Anything, mock.Anything).Return()
+	logger.On("Debug", mock.Anything, mock.Anything).Return()
 	guildPlayer.On("StateStorage").Return(stateStorage)
 	stateStorage.On("SetVoiceChannel", "channel2").Return(nil)
 	guildPlayer.On("JoinVoiceChannel", "channel2").Return(nil)
@@ -199,7 +207,7 @@ func TestHandleVoiceStateChange_StopsPlaybackWhenRequesterLeaves(t *testing.T) {
 	tracker := NewBotChannelTracker(logger)
 	mover := NewBotMover(logger)
 	playback := NewPlaybackController(logger)
-	service := NewVoiceStateService(tracker, mover, playback)
+	service := NewVoiceStateService(tracker, mover, playback, logger)
 
 	// Escenario: Detener la reproducción cuando el solicitante abandona el canal
 	guildPlayer := new(MockGuildPlayer)
@@ -229,8 +237,10 @@ func TestHandleVoiceStateChange_StopsPlaybackWhenRequesterLeaves(t *testing.T) {
 		},
 	}
 
-	currentSong := &entity.PlayedSong{RequestedByID: "user123"}
+	currentSong := &entity.PlayedSong{RequestedByID: "user123", DiscordSong: &entity.DiscordEntity{TitleTrack: "titleTrack"}}
+	logger.On("With", mock.Anything, mock.Anything).Return(logger)
 	logger.On("Info", mock.Anything, mock.Anything).Return()
+	logger.On("Debug", mock.Anything, mock.Anything).Return()
 	guildPlayer.On("GetPlayedSong").Return(currentSong, nil)
 	guildPlayer.On("Stop").Return(nil)
 
@@ -245,7 +255,7 @@ func TestHandleVoiceStateChange_BotDoesNotMoveWhenChannelNotEmpty(t *testing.T) 
 	tracker := NewBotChannelTracker(logger)
 	mover := NewBotMover(logger)
 	playback := NewPlaybackController(logger)
-	service := NewVoiceStateService(tracker, mover, playback)
+	service := NewVoiceStateService(tracker, mover, playback, logger)
 
 	// Escenario: El bot no se mueve cuando quedan otros usuarios en el canal
 	guildPlayer := new(MockGuildPlayer)
@@ -276,7 +286,9 @@ func TestHandleVoiceStateChange_BotDoesNotMoveWhenChannelNotEmpty(t *testing.T) 
 		},
 	}
 
-	guildPlayer.On("GetPlayedSong").Return(&entity.PlayedSong{}, nil)
+	logger.On("With", mock.Anything, mock.Anything).Return(logger)
+	logger.On("Debug", mock.Anything, mock.Anything).Return()
+	guildPlayer.On("GetPlayedSong").Return(&entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "titleTrack"}}, nil)
 
 	err = service.HandleVoiceStateChange(guildPlayer, session, vs)
 
@@ -289,7 +301,10 @@ func TestHandleVoiceStateChange_ErrorGettingGuild(t *testing.T) {
 	tracker := NewBotChannelTracker(logger)
 	mover := NewBotMover(logger)
 	playback := NewPlaybackController(logger)
-	service := NewVoiceStateService(tracker, mover, playback)
+	service := NewVoiceStateService(tracker, mover, playback, logger)
+
+	logger.On("With", mock.Anything, mock.Anything).Return(logger)
+	logger.On("Error", mock.Anything, mock.Anything).Return()
 
 	// Escenario: Error al obtener el servidor del estado de la sesión
 	guildPlayer := new(MockGuildPlayer)
@@ -314,7 +329,7 @@ func TestHandleVoiceStateChange_UserWasNotInBotChannel(t *testing.T) {
 	tracker := NewBotChannelTracker(logger)
 	mover := NewBotMover(logger)
 	playback := NewPlaybackController(logger)
-	service := NewVoiceStateService(tracker, mover, playback)
+	service := NewVoiceStateService(tracker, mover, playback, logger)
 
 	// Escenario: Usuario cambia de canal pero nunca estuvo en el canal del bot
 	guildPlayer := new(MockGuildPlayer)
@@ -344,7 +359,9 @@ func TestHandleVoiceStateChange_UserWasNotInBotChannel(t *testing.T) {
 		},
 	}
 
-	guildPlayer.On("GetPlayedSong").Return(&entity.PlayedSong{}, nil)
+	logger.On("With", mock.Anything, mock.Anything).Return(logger)
+	logger.On("Debug", mock.Anything, mock.Anything).Return()
+	guildPlayer.On("GetPlayedSong").Return(&entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "titleTrack"}}, nil)
 
 	err = service.HandleVoiceStateChange(guildPlayer, session, vs)
 
