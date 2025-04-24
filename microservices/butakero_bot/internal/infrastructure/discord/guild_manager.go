@@ -35,11 +35,19 @@ func NewGuildPlayerFactory(session *discordgo.Session, storageAudio ports.Storag
 }
 
 func (f *GuildPlayerFactory) CreatePlayer(guildID string) (ports.GuildPlayer, error) {
+	logger := f.logger.With(
+		zap.String("component", "GuildPlayerFactory"),
+		zap.String("method", "CreatePlayer"),
+		zap.String("guildID", guildID),
+	)
+
+	logger.Debug("Creando nuevo GuildPlayer")
+
 	voiceChat := voice.NewDiscordVoiceSession(f.discordSession, guildID, f.logger)
 	songStorage := inmemory.NewInmemorySongStorage(f.logger)
 	stateStorage := inmemory.NewInmemoryStateStorage(f.logger)
 
-	return player.NewGuildPlayer(
+	guildPlayer := player.NewGuildPlayer(
 		player.Config{
 			VoiceSession: voiceChat,
 			SongStorage:  songStorage,
@@ -48,7 +56,10 @@ func (f *GuildPlayerFactory) CreatePlayer(guildID string) (ports.GuildPlayer, er
 			StorageAudio: f.storageAudio,
 			Logger:       f.logger,
 		},
-	), nil
+	)
+
+	logger.Info("GuildPlayer creado exitosamente")
+	return guildPlayer, nil
 }
 
 type GuildManager struct {
@@ -67,18 +78,27 @@ func NewGuildManager(playerFactory PlayerFactory, logger logging.Logger) ports.G
 }
 
 func (g *GuildManager) CreateGuildPlayer(guildID string) (ports.GuildPlayer, error) {
+	logger := g.logger.With(
+		zap.String("component", "GuildManager"),
+		zap.String("method", "CreateGuildPlayer"),
+		zap.String("guildID", guildID),
+	)
 	if guildID == "" {
-		return nil, errors_app.NewAppError(
+		err := errors_app.NewAppError(
 			errors_app.ErrCodeInvalidGuildID,
 			"El ID del guild no puede estar vacío",
 			nil,
 		)
+		logger.Error("Error al crear GuildPlayer", zap.Error(err))
+		return nil, err
 	}
 
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
 	if guildPlayer, exists := g.players[guildID]; exists {
+		logger.Warn("Intento de crear GuildPlayer que ya existe",
+			zap.Int("total_players", len(g.players)))
 		return guildPlayer, errors_app.NewAppError(
 			errors_app.ErrCodeGuildPlayerAlreadyExists,
 			fmt.Sprintf("El reproductor para el guild %s ya existe", guildID),
@@ -86,11 +106,13 @@ func (g *GuildManager) CreateGuildPlayer(guildID string) (ports.GuildPlayer, err
 		)
 	}
 
+	logger.Info("Creando nuevo GuildPlayer para guild")
+
 	newGuildPlayer, err := g.playerFactory.CreatePlayer(guildID)
 	if err != nil {
-		g.logger.Error("Error creando guild player",
-			zap.String("guildID", guildID),
-			zap.Error(err))
+		logger.Error("Error al crear GuildPlayer",
+			zap.Error(err),
+			zap.Int("total_players", len(g.players)))
 
 		return nil, errors_app.NewAppError(
 			errors_app.ErrCodeGuildPlayerCreateFailed,
@@ -100,28 +122,34 @@ func (g *GuildManager) CreateGuildPlayer(guildID string) (ports.GuildPlayer, err
 	}
 
 	g.players[guildID] = newGuildPlayer
-	g.logger.Debug("Nuevo GuildPlayer creado",
-		zap.String("guildID", guildID),
+	logger.Info("GuildPlayer creado exitosamente",
 		zap.Int("total_players", len(g.players)))
 
 	return newGuildPlayer, nil
 }
 
 func (g *GuildManager) RemoveGuildPlayer(guildID string) error {
+	logger := g.logger.With(
+		zap.String("component", "GuildManager"),
+		zap.String("method", "RemoveGuildPlayer"),
+		zap.String("guildID", guildID),
+	)
 	if guildID == "" {
-		return errors_app.NewAppError(
+		err := errors_app.NewAppError(
 			errors_app.ErrCodeInvalidGuildID,
 			"El ID del guild no puede estar vacío",
 			nil,
 		)
+		logger.Error("Error al eliminar GuildPlayer", zap.Error(err))
+		return err
 	}
 
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
 	if _, exists := g.players[guildID]; !exists {
-		g.logger.Debug("Intento de eliminar un guild player inexistente",
-			zap.String("guildID", guildID))
+		logger.Warn("Intento de eliminar GuildPlayer inexistente",
+			zap.Int("total_players", len(g.players)))
 		return errors_app.NewAppError(
 			errors_app.ErrCodeGuildPlayerNotFound,
 			fmt.Sprintf("Reproductor no encontrado para el guild %s", guildID),
@@ -130,20 +158,27 @@ func (g *GuildManager) RemoveGuildPlayer(guildID string) error {
 	}
 
 	delete(g.players, guildID)
-	g.logger.Debug("GuildPlayer eliminado",
-		zap.String("guildID", guildID),
+	logger.Info("GuildPlayer eliminado exitosamente",
 		zap.Int("total_players", len(g.players)))
 
 	return nil
 }
 
 func (g *GuildManager) GetGuildPlayer(guildID string) (ports.GuildPlayer, error) {
+	logger := g.logger.With(
+		zap.String("component", "GuildManager"),
+		zap.String("method", "GetGuildPlayer"),
+		zap.String("guildID", guildID),
+	)
+
 	if guildID == "" {
-		return nil, errors_app.NewAppError(
+		err := errors_app.NewAppError(
 			errors_app.ErrCodeInvalidGuildID,
 			"El ID del guild no puede estar vacío",
 			nil,
 		)
+		logger.Error("Error al obtener GuildPlayer", zap.Error(err))
+		return nil, err
 	}
 
 	g.mu.RLock()
@@ -151,8 +186,10 @@ func (g *GuildManager) GetGuildPlayer(guildID string) (ports.GuildPlayer, error)
 	g.mu.RUnlock()
 
 	if exists {
+		logger.Debug("GuildPlayer encontrado en cache")
 		return guildPlayer, nil
 	}
 
+	logger.Info("GuildPlayer no encontrado, creando nuevo")
 	return g.CreateGuildPlayer(guildID)
 }
