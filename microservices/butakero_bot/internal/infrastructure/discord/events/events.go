@@ -15,6 +15,12 @@ import (
 // GuildID representa el ID de un servidor de Discord.
 type GuildID string
 
+type ContextKey string
+
+const (
+	TraceIDKey ContextKey = "trace_id"
+)
+
 // EventHandler maneja los eventos de Discord.
 type EventHandler struct {
 	guildManager      ports.GuildManager
@@ -116,7 +122,7 @@ func (h *EventHandler) RegisterEventHandlers(ctx context.Context, s *discordgo.S
 	})
 	s.AddHandler(h.GuildDelete)
 	s.AddHandler(func(session *discordgo.Session, event *discordgo.VoiceStateUpdate) {
-		voiceCtx := context.WithValue(ctx, "trace_id", trace.GenerateTraceID())
+		voiceCtx := context.WithValue(ctx, TraceIDKey, trace.GenerateTraceID())
 		h.VoiceStateUpdate(voiceCtx, session, event)
 	})
 
