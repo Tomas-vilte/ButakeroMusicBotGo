@@ -3,6 +3,7 @@
 package discord
 
 import (
+	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/bwmarrin/discordgo"
@@ -58,13 +59,15 @@ func TestBotMover_MoveBotToNewChannel_Success(t *testing.T) {
 	guildPlayer := new(MockGuildPlayer)
 	stateStorage := new(MockStateStorage)
 
+	ctx := context.Background()
+
 	logger.On("With", mock.Anything, mock.Anything).Return(logger)
 	logger.On("Info", mock.Anything, mock.Anything).Return()
 	guildPlayer.On("StateStorage").Return(stateStorage)
-	stateStorage.On("SetVoiceChannel", "newChannel").Return(nil)
+	stateStorage.On("SetVoiceChannelID", mock.Anything, "newChannel").Return(nil)
 	guildPlayer.On("JoinVoiceChannel", "newChannel").Return(nil)
 
-	err := mover.MoveBotToNewChannel(guildPlayer, "newChannel", "oldChannel", "user123")
+	err := mover.MoveBotToNewChannel(ctx, guildPlayer, "newChannel", "oldChannel", "user123")
 
 	assert.NoError(t, err)
 	guildPlayer.AssertExpectations(t)
@@ -100,7 +103,7 @@ func TestPlaybackController_HandlePlayback_StopWhenRequesterLeaves(t *testing.T)
 
 	logger.On("With", mock.Anything, mock.Anything).Return(logger)
 	logger.On("Info", mock.Anything, mock.Anything).Return()
-	guildPlayer.On("Stop").Return(nil)
+	guildPlayer.On("Stop", mock.Anything).Return(nil)
 
 	err := controller.HandlePlayback(guildPlayer, currentSong, vs, botVoiceState, guild, session)
 
@@ -119,6 +122,7 @@ func TestVoiceStateService_HandleVoiceStateChange_BotNotInVoiceChannel(t *testin
 	guildPlayer := new(MockGuildPlayer)
 	session := &discordgo.Session{State: discordgo.NewState()}
 	session.State.User = &discordgo.User{ID: "bot123"}
+	ctx := context.Background()
 
 	guild := &discordgo.Guild{
 		ID:          "guild123",
@@ -144,9 +148,9 @@ func TestVoiceStateService_HandleVoiceStateChange_BotNotInVoiceChannel(t *testin
 	currentSong := &entity.PlayedSong{RequestedByID: "user123", DiscordSong: &entity.DiscordEntity{TitleTrack: "titleTrack"}}
 	logger.On("With", mock.Anything, mock.Anything).Return(logger)
 	logger.On("Debug", mock.Anything, mock.Anything).Return()
-	guildPlayer.On("GetPlayedSong").Return(currentSong, nil)
+	guildPlayer.On("GetPlayedSong", ctx).Return(currentSong, nil)
 
-	err = service.HandleVoiceStateChange(guildPlayer, session, vs)
+	err = service.HandleVoiceStateChange(ctx, guildPlayer, session, vs)
 
 	assert.NoError(t, err)
 	guildPlayer.AssertExpectations(t)
@@ -164,6 +168,7 @@ func TestHandleVoiceStateChange_BotMovesWhenChannelEmpty(t *testing.T) {
 	stateStorage := new(MockStateStorage)
 	session := &discordgo.Session{State: discordgo.NewState()}
 	session.State.User = &discordgo.User{ID: "bot123"}
+	ctx := context.Background()
 
 	guild := &discordgo.Guild{
 		ID: "guild123",
@@ -192,10 +197,10 @@ func TestHandleVoiceStateChange_BotMovesWhenChannelEmpty(t *testing.T) {
 	logger.On("Info", mock.Anything, mock.Anything).Return()
 	logger.On("Debug", mock.Anything, mock.Anything).Return()
 	guildPlayer.On("StateStorage").Return(stateStorage)
-	stateStorage.On("SetVoiceChannel", "channel2").Return(nil)
+	stateStorage.On("SetVoiceChannelID", mock.Anything, "channel2").Return(nil)
 	guildPlayer.On("JoinVoiceChannel", "channel2").Return(nil)
 
-	err = service.HandleVoiceStateChange(guildPlayer, session, vs)
+	err = service.HandleVoiceStateChange(ctx, guildPlayer, session, vs)
 
 	assert.NoError(t, err)
 	guildPlayer.AssertExpectations(t)
@@ -236,15 +241,16 @@ func TestHandleVoiceStateChange_StopsPlaybackWhenRequesterLeaves(t *testing.T) {
 			ChannelID: "channel1",
 		},
 	}
+	ctx := context.Background()
 
 	currentSong := &entity.PlayedSong{RequestedByID: "user123", DiscordSong: &entity.DiscordEntity{TitleTrack: "titleTrack"}}
 	logger.On("With", mock.Anything, mock.Anything).Return(logger)
 	logger.On("Info", mock.Anything, mock.Anything).Return()
 	logger.On("Debug", mock.Anything, mock.Anything).Return()
-	guildPlayer.On("GetPlayedSong").Return(currentSong, nil)
-	guildPlayer.On("Stop").Return(nil)
+	guildPlayer.On("GetPlayedSong", mock.Anything).Return(currentSong, nil)
+	guildPlayer.On("Stop", mock.Anything).Return(nil)
 
-	err = service.HandleVoiceStateChange(guildPlayer, session, vs)
+	err = service.HandleVoiceStateChange(ctx, guildPlayer, session, vs)
 
 	assert.NoError(t, err)
 	guildPlayer.AssertExpectations(t)
@@ -285,12 +291,13 @@ func TestHandleVoiceStateChange_BotDoesNotMoveWhenChannelNotEmpty(t *testing.T) 
 			ChannelID: "channel1",
 		},
 	}
+	ctx := context.Background()
 
 	logger.On("With", mock.Anything, mock.Anything).Return(logger)
 	logger.On("Debug", mock.Anything, mock.Anything).Return()
-	guildPlayer.On("GetPlayedSong").Return(&entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "titleTrack"}}, nil)
+	guildPlayer.On("GetPlayedSong", ctx).Return(&entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "titleTrack"}}, nil)
 
-	err = service.HandleVoiceStateChange(guildPlayer, session, vs)
+	err = service.HandleVoiceStateChange(ctx, guildPlayer, session, vs)
 
 	assert.NoError(t, err)
 	guildPlayer.AssertNotCalled(t, "JoinVoiceChannel")
@@ -317,8 +324,9 @@ func TestHandleVoiceStateChange_ErrorGettingGuild(t *testing.T) {
 			GuildID:   "guild123",
 		},
 	}
+	ctx := context.Background()
 
-	err := service.HandleVoiceStateChange(guildPlayer, session, vs)
+	err := service.HandleVoiceStateChange(ctx, guildPlayer, session, vs)
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "error al obtener el servidor")
@@ -358,12 +366,13 @@ func TestHandleVoiceStateChange_UserWasNotInBotChannel(t *testing.T) {
 			ChannelID: "channel3",
 		},
 	}
+	ctx := context.Background()
 
 	logger.On("With", mock.Anything, mock.Anything).Return(logger)
 	logger.On("Debug", mock.Anything, mock.Anything).Return()
-	guildPlayer.On("GetPlayedSong").Return(&entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "titleTrack"}}, nil)
+	guildPlayer.On("GetPlayedSong", ctx).Return(&entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "titleTrack"}}, nil)
 
-	err = service.HandleVoiceStateChange(guildPlayer, session, vs)
+	err = service.HandleVoiceStateChange(ctx, guildPlayer, session, vs)
 
 	assert.NoError(t, err)
 	guildPlayer.AssertNotCalled(t, "JoinVoiceChannel")

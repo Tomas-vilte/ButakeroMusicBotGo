@@ -44,8 +44,8 @@ func (f *GuildPlayerFactory) CreatePlayer(guildID string) (ports.GuildPlayer, er
 	logger.Debug("Creando nuevo GuildPlayer")
 
 	voiceChat := voice.NewDiscordVoiceSession(f.discordSession, guildID, f.logger)
-	songStorage := inmemory.NewInmemorySongStorage(f.logger)
-	stateStorage := inmemory.NewInmemoryStateStorage(f.logger)
+	songStorage := inmemory.NewInmemoryPlaylistStorage(f.logger)
+	stateStorage := inmemory.NewInmemoryPlayerStateStorage(f.logger)
 
 	guildPlayer := player.NewGuildPlayer(
 		player.Config{

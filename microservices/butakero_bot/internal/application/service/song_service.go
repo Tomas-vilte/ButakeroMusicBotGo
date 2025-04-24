@@ -109,12 +109,14 @@ func (s *songService) GetOrDownloadSong(ctx context.Context, userID, songInput, 
 					zap.String("requestID", requestID),
 					zap.String("video_id", msg.VideoID))
 				return &entity.DiscordEntity{
+					ID:           uuid.New().String(),
 					TitleTrack:   msg.PlatformMetadata.Title,
 					DurationMs:   msg.PlatformMetadata.DurationMs,
 					ThumbnailURL: msg.PlatformMetadata.ThumbnailURL,
 					Platform:     msg.PlatformMetadata.Platform,
 					FilePath:     msg.FileData.FilePath,
 					URL:          msg.PlatformMetadata.URL,
+					AddedAt:      time.Now(),
 				}, nil
 			} else {
 				s.logger.Error("Error en la descarga",
