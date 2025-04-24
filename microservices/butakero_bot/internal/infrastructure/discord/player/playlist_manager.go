@@ -1,8 +1,10 @@
 package player
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
@@ -14,40 +16,69 @@ import (
 var ErrPlaylistEmpty = errors.New("la playlist está vacía")
 
 type PlaylistManager struct {
-	songStorage ports.SongStorage
+	songStorage ports.PlaylistStorage
 	logger      logging.Logger
 }
 
-func NewPlaylistManager(songStorage ports.SongStorage, logger logging.Logger) *PlaylistManager {
+func NewPlaylistManager(songStorage ports.PlaylistStorage, logger logging.Logger) *PlaylistManager {
 	return &PlaylistManager{
 		songStorage: songStorage,
 		logger:      logger,
 	}
 }
 
-func (pm *PlaylistManager) AddSong(song *entity.PlayedSong) error {
-	if err := pm.songStorage.AppendSong(song); err != nil {
-		pm.logger.Error("No se pudo agregar la canción a la playlist", zap.Error(err))
+func (pm *PlaylistManager) AddSong(ctx context.Context, song *entity.PlayedSong) error {
+	logger := pm.logger.With(
+		zap.String("trace_id", trace.GetTraceID(ctx)),
+		zap.String("method", "AddSong"),
+	)
+
+	if song == nil || song.DiscordSong == nil {
+		logger.Error("Intento de agregar canción inválida")
+		return errors.New("canción inválida")
+	}
+
+	if err := pm.songStorage.AppendTrack(ctx, song); err != nil {
+		logger.Error("No se pudo agregar la canción a la playlist",
+			zap.String("song_id", song.DiscordSong.ID),
+			zap.Error(err))
 		return fmt.Errorf("error al agregar la canción: %w", err)
 	}
-	pm.logger.Debug("Canción agregada exitosamente a la playlist", zap.String("titulo", song.DiscordSong.TitleTrack))
+
+	logger.Info("Canción agregada exitosamente",
+		zap.String("song_id", song.DiscordSong.ID),
+		zap.String("title", song.DiscordSong.TitleTrack))
 	return nil
 }
 
-func (pm *PlaylistManager) RemoveSong(position int) (*entity.DiscordEntity, error) {
-	song, err := pm.songStorage.RemoveSong(position)
+func (pm *PlaylistManager) RemoveSong(ctx context.Context, position int) (*entity.DiscordEntity, error) {
+	logger := pm.logger.With(
+		zap.String("trace_id", trace.GetTraceID(ctx)),
+		zap.String("method", "RemoveSong"),
+		zap.Int("position", position),
+	)
+
+	song, err := pm.songStorage.RemoveTrack(ctx, position)
 	if err != nil {
-		pm.logger.Error("No se pudo eliminar la canción de la playlist", zap.Error(err), zap.Int("posicion", position))
+		logger.Error("Error al eliminar canción", zap.Error(err))
 		return nil, fmt.Errorf("error al eliminar la canción: %w", err)
 	}
-	pm.logger.Debug("Canción eliminada exitosamente", zap.String("titulo", song.DiscordSong.TitleTrack))
+
+	logger.Info("Canción eliminada exitosamente",
+		zap.String("song_id", song.DiscordSong.ID),
+		zap.String("title", song.DiscordSong.TitleTrack))
 	return song.DiscordSong, nil
 }
 
-func (pm *PlaylistManager) GetPlaylist() ([]string, error) {
-	songs, err := pm.songStorage.GetSongs()
+func (pm *PlaylistManager) GetPlaylist(ctx context.Context) ([]string, error) {
+	logger := pm.logger.With(
+		zap.String("trace_id", trace.GetTraceID(ctx)),
+		zap.String("method", "GetPlaylist"),
+	)
+
+	songs, err := pm.songStorage.GetAllTracks(ctx)
 	if err != nil {
-		pm.logger.Error("No se pudo obtener la playlist", zap.Error(err))
+		logger.Error("Error al obtener playlist", zap.Error(err))
 		return nil, fmt.Errorf("error al obtener la playlist: %w", err)
 	}
 
@@ -55,27 +86,44 @@ func (pm *PlaylistManager) GetPlaylist() ([]string, error) {
 	for i, song := range songs {
 		playlist[i] = song.DiscordSong.TitleTrack
 	}
+
+	logger.Debug("Playlist obtenida", zap.Int("count", len(playlist)))
 	return playlist, nil
 }
 
-func (pm *PlaylistManager) ClearPlaylist() error {
-	if err := pm.songStorage.ClearPlaylist(); err != nil {
-		pm.logger.Error("No se pudo limpiar la playlist", zap.Error(err))
+func (pm *PlaylistManager) ClearPlaylist(ctx context.Context) error {
+	logger := pm.logger.With(
+		zap.String("trace_id", trace.GetTraceID(ctx)),
+		zap.String("method", "ClearPlaylist"),
+	)
+
+	if err := pm.songStorage.ClearPlaylist(ctx); err != nil {
+		logger.Error("Error al limpiar playlist", zap.Error(err))
 		return fmt.Errorf("error al limpiar la playlist: %w", err)
 	}
-	pm.logger.Debug("Playlist limpiada exitosamente")
+
+	logger.Info("Playlist limpiada exitosamente")
 	return nil
 }
 
-func (pm *PlaylistManager) GetNextSong() (*entity.PlayedSong, error) {
-	song, err := pm.songStorage.PopFirstSong()
-	if errors.Is(err, inmemory.ErrNoSongs) {
-		return nil, ErrPlaylistEmpty
-	}
+func (pm *PlaylistManager) GetNextSong(ctx context.Context) (*entity.PlayedSong, error) {
+	logger := pm.logger.With(
+		zap.String("trace_id", trace.GetTraceID(ctx)),
+		zap.String("method", "GetNextSong"),
+	)
+
+	song, err := pm.songStorage.PopNextTrack(ctx)
 	if err != nil {
-		pm.logger.Error("No se pudo obtener la siguiente canción", zap.Error(err))
+		if errors.Is(err, inmemory.ErrNoSongs) {
+			logger.Debug("Playlist vacía")
+			return nil, ErrPlaylistEmpty
+		}
+		logger.Error("Error al obtener siguiente canción", zap.Error(err))
 		return nil, fmt.Errorf("error al obtener la siguiente canción: %w", err)
 	}
-	pm.logger.Debug("Reproduciendo siguiente canción", zap.String("titulo", song.DiscordSong.TitleTrack))
+
+	logger.Info("Siguiente canción obtenida",
+		zap.String("song_id", song.DiscordSong.ID),
+		zap.String("title", song.DiscordSong.TitleTrack))
 	return song, nil
 }

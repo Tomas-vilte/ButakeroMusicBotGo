@@ -119,7 +119,7 @@ func StartBot() error {
 		command.NewResumeCommand(handler, logger),
 	}
 
-	eventsHandler.RegisterEventHandlers(discordClient, ctx)
+	eventsHandler.RegisterEventHandlers(ctx, discordClient)
 	discordClient.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if i.Type == discordgo.InteractionApplicationCommand {
 			if h, ok := commandRegistry.GetCommandHandlers()[i.ApplicationCommandData().Name]; ok {

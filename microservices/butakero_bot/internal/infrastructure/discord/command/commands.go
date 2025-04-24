@@ -9,6 +9,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/events"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 )
@@ -49,14 +50,18 @@ func NewCommandHandler(
 }
 
 func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.InteractionCreate, opt *discordgo.ApplicationCommandInteractionDataOption) {
+	ctx := trace.WithTraceID(context.Background())
+
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "PlaySong"),
+		zap.String("trace_id", ctx.Value("trace_id").(string)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),
 		zap.String("command", "play"),
 	)
+
 	userID := ic.Member.User.ID
 
 	vs, ok := h.isUserInVoiceChannel(s, ic)
@@ -84,7 +89,7 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 	}
 
 	go func() {
-		song, err := h.songService.GetOrDownloadSong(context.Background(), userID, input, "youtube")
+		song, err := h.songService.GetOrDownloadSong(ctx, userID, input, "youtube")
 		if err != nil {
 			logger.Error("Error al obtener canción", zap.Error(err))
 			if err := h.messenger.EditOriginalResponse(domainInteraction, &discord.WebhookEdit{
@@ -109,7 +114,7 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 			RequestedByID:   ic.Member.User.ID,
 		}
 
-		if err := guildPlayer.AddSong(&ic.ChannelID, &vs.ChannelID, playedSong); err != nil {
+		if err := guildPlayer.AddSong(ctx, &ic.ChannelID, &vs.ChannelID, playedSong); err != nil {
 			logger.Error("Error al agregar la canción", zap.String("voice_channel_id", vs.ChannelID), zap.Error(err))
 			if err := h.messenger.EditOriginalResponse(domainInteraction, &discord.WebhookEdit{
 				Content: shared.StringPtr(ErrorMessageFailedToAddSong),
@@ -133,9 +138,12 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 }
 
 func (h *CommandHandler) StopPlaying(s *discordgo.Session, ic *discordgo.InteractionCreate, _ *discordgo.ApplicationCommandInteractionDataOption) {
+	ctx := trace.WithTraceID(context.Background())
+
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "StopPlaying"),
+		zap.String("trace_id", ctx.Value("trace_id").(string)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),
@@ -157,7 +165,7 @@ func (h *CommandHandler) StopPlaying(s *discordgo.Session, ic *discordgo.Interac
 		return
 	}
 
-	if err := guildPlayer.Stop(); err != nil {
+	if err := guildPlayer.Stop(ctx); err != nil {
 		logger.Error("Error al detener la reproducción", zap.Error(err))
 		h.respondWithError(ic, "Ocurrió un error al detener la reproducción")
 		return
@@ -175,9 +183,12 @@ func (h *CommandHandler) StopPlaying(s *discordgo.Session, ic *discordgo.Interac
 }
 
 func (h *CommandHandler) isUserInVoiceChannel(s *discordgo.Session, ic *discordgo.InteractionCreate) (*discordgo.VoiceState, bool) {
+	ctx := trace.WithTraceID(context.Background())
+
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "isUserInVoiceChannel"),
+		zap.String("trace_id", ctx.Value("trace_id").(string)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("user_id", ic.Member.User.ID),
 		zap.String("method", "isUserInVoiceChannel"),
@@ -223,9 +234,12 @@ func (h *CommandHandler) isUserInVoiceChannel(s *discordgo.Session, ic *discordg
 }
 
 func (h *CommandHandler) SkipSong(s *discordgo.Session, ic *discordgo.InteractionCreate, _ *discordgo.ApplicationCommandInteractionDataOption) {
+	ctx := trace.WithTraceID(context.Background())
+
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "SkipSong"),
+		zap.String("trace_id", ctx.Value("trace_id").(string)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),
@@ -246,15 +260,18 @@ func (h *CommandHandler) SkipSong(s *discordgo.Session, ic *discordgo.Interactio
 		)
 		return
 	}
-	guildPlayer.SkipSong()
+	guildPlayer.SkipSong(ctx)
 	logger.Debug("Canción omitida exitosamente")
 	h.respondWithError(ic, "⏭️ Canción omitida")
 }
 
 func (h *CommandHandler) ListPlaylist(s *discordgo.Session, ic *discordgo.InteractionCreate, _ *discordgo.ApplicationCommandInteractionDataOption) {
+	ctx := trace.WithTraceID(context.Background())
+
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "ListPlaylist"),
+		zap.String("trace_id", ctx.Value("trace_id").(string)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),
@@ -275,7 +292,7 @@ func (h *CommandHandler) ListPlaylist(s *discordgo.Session, ic *discordgo.Intera
 		)
 		return
 	}
-	songs, err := guildPlayer.GetPlaylist()
+	songs, err := guildPlayer.GetPlaylist(ctx)
 	if err != nil {
 		logger.Error("Error al obtener la lista de reproducción", zap.Error(err))
 		h.respondWithError(ic, "Error al obtener la lista de reproducción")
@@ -307,9 +324,12 @@ func (h *CommandHandler) ListPlaylist(s *discordgo.Session, ic *discordgo.Intera
 }
 
 func (h *CommandHandler) RemoveSong(s *discordgo.Session, ic *discordgo.InteractionCreate, opt *discordgo.ApplicationCommandInteractionDataOption) {
+	ctx := trace.WithTraceID(context.Background())
+
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "RemoveSong"),
+		zap.String("trace_id", ctx.Value("trace_id").(string)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),
@@ -332,7 +352,7 @@ func (h *CommandHandler) RemoveSong(s *discordgo.Session, ic *discordgo.Interact
 	}
 	position := opt.Options[0].IntValue()
 
-	song, err := guildPlayer.RemoveSong(int(position))
+	song, err := guildPlayer.RemoveSong(ctx, int(position))
 	if err != nil {
 		logger.Error("Error al eliminar la canción", zap.Error(err))
 		h.respondWithError(ic, ErrorMessageSongRemovalFailed)
@@ -353,9 +373,12 @@ func (h *CommandHandler) RemoveSong(s *discordgo.Session, ic *discordgo.Interact
 }
 
 func (h *CommandHandler) GetPlayingSong(s *discordgo.Session, ic *discordgo.InteractionCreate, _ *discordgo.ApplicationCommandInteractionDataOption) {
+	ctx := trace.WithTraceID(context.Background())
+
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "GetPlayingSong"),
+		zap.String("trace_id", ctx.Value("trace_id").(string)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),
@@ -376,7 +399,7 @@ func (h *CommandHandler) GetPlayingSong(s *discordgo.Session, ic *discordgo.Inte
 		)
 		return
 	}
-	song, err := guildPlayer.GetPlayedSong()
+	song, err := guildPlayer.GetPlayedSong(ctx)
 	if err != nil {
 		logger.Error("Error al obtener la canción actual", zap.Error(err))
 		h.respondWithError(ic, "Error al obtener la información de la canción")
@@ -409,9 +432,12 @@ func (h *CommandHandler) respondWithError(ic *discordgo.InteractionCreate, messa
 }
 
 func (h *CommandHandler) PauseSong(s *discordgo.Session, ic *discordgo.InteractionCreate) {
+	ctx := trace.WithTraceID(context.Background())
+
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "PauseSong"),
+		zap.String("trace_id", ctx.Value("trace_id").(string)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),
@@ -433,7 +459,7 @@ func (h *CommandHandler) PauseSong(s *discordgo.Session, ic *discordgo.Interacti
 		return
 	}
 
-	if err := guildPlayer.Pause(); err != nil {
+	if err := guildPlayer.Pause(ctx); err != nil {
 		logger.Error("Error al pausar la reproducción", zap.Error(err))
 		h.respondWithError(ic, "❌ Ocurrió un error al pausar la reproducción")
 		return
@@ -451,9 +477,12 @@ func (h *CommandHandler) PauseSong(s *discordgo.Session, ic *discordgo.Interacti
 }
 
 func (h *CommandHandler) ResumeSong(s *discordgo.Session, ic *discordgo.InteractionCreate) {
+	ctx := trace.WithTraceID(context.Background())
+
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "ResumeSong"),
+		zap.String("trace_id", ctx.Value("trace_id").(string)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),
@@ -475,7 +504,7 @@ func (h *CommandHandler) ResumeSong(s *discordgo.Session, ic *discordgo.Interact
 		return
 	}
 
-	if err := guildPlayer.Resume(); err != nil {
+	if err := guildPlayer.Resume(ctx); err != nil {
 		logger.Error("Error al reanudar la reproducción", zap.Error(err))
 		h.respondWithError(ic, "❌ Ocurrió un error al reanudar la reproducción")
 		return

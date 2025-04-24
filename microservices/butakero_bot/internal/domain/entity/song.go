@@ -1,13 +1,17 @@
 package entity
 
+import "time"
+
 type (
 	DiscordEntity struct {
+		ID           string
 		TitleTrack   string
 		DurationMs   int64
 		ThumbnailURL string
 		Platform     string
 		FilePath     string
 		URL          string
+		AddedAt      time.Time
 	}
 
 	PlayedSong struct {

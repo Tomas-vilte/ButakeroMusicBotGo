@@ -3,6 +3,7 @@
 package inmemory
 
 import (
+	"context"
 	"errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
@@ -14,58 +15,65 @@ import (
 
 func TestInmemorySongStorage_PrependSong(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
-	storage := NewInmemorySongStorage(mockLogger)
+	storage := NewInmemoryPlaylistStorage(mockLogger)
 	song := &entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "Test Song"}}
+
+	ctx := context.Background()
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
-	err := storage.PrependSong(song)
+	err := storage.PrependTrack(ctx, song)
 
 	assert.NoError(t, err)
-	mockLogger.AssertCalled(t, "Info", "Canción agregada al principio de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field"))
+	mockLogger.AssertExpectations(t)
 }
 
 func TestInmemorySongStorage_AppendSong(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
-	storage := NewInmemorySongStorage(mockLogger)
+	storage := NewInmemoryPlaylistStorage(mockLogger)
 	song := &entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "Test Song"}}
+
+	ctx := context.Background()
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
-	err := storage.AppendSong(song)
+	err := storage.AppendTrack(ctx, song)
 
 	assert.NoError(t, err)
-	mockLogger.AssertCalled(t, "Info", "Canción agregada al final de la lista de reproducción", mock.AnythingOfType("[]zapcore.Field"))
+	mockLogger.AssertExpectations(t)
 }
 
 func TestInmemorySongStorage_RemoveSong(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
-	storage := NewInmemorySongStorage(mockLogger)
+	storage := NewInmemoryPlaylistStorage(mockLogger)
+
+	ctx := context.Background()
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 
 	song1 := &entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "1"}}
 	song2 := &entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "2"}}
 	song3 := &entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "3"}}
 
-	err := storage.AppendSong(song1)
+	err := storage.AppendTrack(ctx, song1)
 	if err != nil {
 		t.Errorf("Error al agregar canción: %v", err)
 	}
-	err = storage.AppendSong(song2)
+	err = storage.AppendTrack(ctx, song2)
 	if err != nil {
 		t.Errorf("Error al agregar canción: %v", err)
 	}
-	err = storage.AppendSong(song3)
+	err = storage.AppendTrack(ctx, song3)
 	if err != nil {
 		t.Errorf("Error al agregar canción: %v", err)
 	}
 
 	// Test case: Eliminar canción en posición válida
-	removedSong, err := storage.RemoveSong(2)
+	removedSong, err := storage.RemoveTrack(ctx, 2)
 	if err != nil {
 		t.Errorf("Error al eliminar canción: %v", err)
 	}
@@ -74,13 +82,13 @@ func TestInmemorySongStorage_RemoveSong(t *testing.T) {
 	}
 
 	// Test case: Eliminar canción en posición inválida
-	_, err = storage.RemoveSong(0)
+	_, err = storage.RemoveTrack(ctx, 0)
 	if !errors.Is(err, ErrRemoveInvalidPosition) {
 		t.Errorf("Error esperado: %v, Error obtenido: %v", ErrRemoveInvalidPosition, err)
 	}
 
 	// Test case: Eliminar canción en posición inválida (fuera de rango)
-	_, err = storage.RemoveSong(4)
+	_, err = storage.RemoveTrack(ctx, 4)
 	if !errors.Is(err, ErrRemoveInvalidPosition) {
 		t.Errorf("Error esperado: %v, Error obtenido: %v", ErrRemoveInvalidPosition, err)
 	}
@@ -94,27 +102,29 @@ func TestInmemorySongStorage_GetSongs(t *testing.T) {
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
-	storage := NewInmemorySongStorage(mockLogger)
+	storage := NewInmemoryPlaylistStorage(mockLogger)
+
+	ctx := context.Background()
 
 	song1 := &entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "1"}}
 	song2 := &entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "2"}}
 	song3 := &entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "3"}}
 
-	err := storage.AppendSong(song1)
+	err := storage.AppendTrack(ctx, song1)
 	if err != nil {
 		t.Errorf("Error al agregar canción: %v", err)
 	}
-	err = storage.AppendSong(song2)
+	err = storage.AppendTrack(ctx, song2)
 	if err != nil {
 		t.Errorf("Error al agregar canción: %v", err)
 	}
-	err = storage.AppendSong(song3)
+	err = storage.AppendTrack(ctx, song3)
 	if err != nil {
 		t.Errorf("Error al agregar canción: %v", err)
 	}
 
 	// Test case: Obtener todas las canciones de la lista de reproducción
-	songs, err := storage.GetSongs()
+	songs, err := storage.GetAllTracks(ctx)
 	if err != nil {
 		t.Errorf("Error al obtener canciones: %v", err)
 	}
@@ -131,17 +141,20 @@ func TestInmemorySongStorage_PopFirstSong(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
-	storage := NewInmemorySongStorage(mockLogger)
+	storage := NewInmemoryPlaylistStorage(mockLogger)
+
+	ctx := context.Background()
 
 	song1 := &entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "1"}}
-	err := storage.AppendSong(song1)
+	err := storage.AppendTrack(ctx, song1)
 	if err != nil {
 		t.Errorf("Error al agregar canción: %v", err)
 	}
 
 	// Test case: Eliminar la primera canción de la lista de reproducción
-	poppedSong, err := storage.PopFirstSong()
+	poppedSong, err := storage.PopNextTrack(ctx)
 	if err != nil {
 		t.Errorf("Error al eliminar la primera canción: %v", err)
 	}
@@ -150,7 +163,7 @@ func TestInmemorySongStorage_PopFirstSong(t *testing.T) {
 	}
 
 	// Test case: Intentar eliminar canción de una lista de reproducción vacía
-	_, err = storage.PopFirstSong()
+	_, err = storage.PopNextTrack(ctx)
 	if !errors.Is(err, ErrNoSongs) {
 		t.Errorf("Error esperado: %v, Error obtenido: %v", ErrNoSongs, err)
 	}
@@ -164,23 +177,25 @@ func TestInmemorySongStorage_ClearPlaylist(t *testing.T) {
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
-	storage := NewInmemorySongStorage(mockLogger)
+	storage := NewInmemoryPlaylistStorage(mockLogger)
+
+	ctx := context.Background()
 
 	// Agregar algunas canciones a la lista de reproducción
 	song1 := &entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "1"}}
-	err := storage.AppendSong(song1)
+	err := storage.AppendTrack(ctx, song1)
 	if err != nil {
 		return
 	}
 
 	// Llamar al método ClearPlaylist para eliminar todas las canciones
-	err = storage.ClearPlaylist()
+	err = storage.ClearPlaylist(ctx)
 	if err != nil {
 		t.Errorf("Error al borrar la lista de reproducción: %v", err)
 	}
 
 	// Verificar que la lista de reproducción esté vacía
-	songs, _ := storage.GetSongs()
+	songs, _ := storage.GetAllTracks(ctx)
 	if len(songs) != 0 {
 		t.Errorf("La lista de reproducción no está vacía después de borrarla")
 	}

@@ -3,6 +3,7 @@
 package inmemory
 
 import (
+	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/stretchr/testify/mock"
@@ -11,19 +12,22 @@ import (
 
 func TestInmemoryStateStorage_GetCurrentSong(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
-	storage := NewInmemoryStateStorage(mockLogger)
+	storage := NewInmemoryPlayerStateStorage(mockLogger)
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Warn", mock.Anything, mock.Anything).Return()
+
+	ctx := context.Background()
 
 	currentSong := &entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "Test Song"}}
-	err := storage.SetCurrentSong(currentSong)
+	err := storage.SetCurrentTrack(ctx, currentSong)
 	if err != nil {
 		t.Errorf("Error al establecer la canción actual: %v", err)
 	}
 
-	song, err := storage.GetCurrentSong()
+	song, err := storage.GetCurrentTrack(ctx)
 	if err != nil {
 		t.Errorf("Error al obtener la canción actual: %v", err)
 	}
@@ -41,15 +45,16 @@ func TestInmemoryStateStorage_GetVoiceChannel(t *testing.T) {
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
-	storage := NewInmemoryStateStorage(mockLogger)
+	storage := NewInmemoryPlayerStateStorage(mockLogger)
+	ctx := context.Background()
 
 	voiceChannelID := "123456789"
-	err := storage.SetVoiceChannel(voiceChannelID)
+	err := storage.SetVoiceChannelID(ctx, voiceChannelID)
 	if err != nil {
 		t.Errorf("Error al establecer el canal de voz: %v", err)
 	}
 
-	channelID, err := storage.GetVoiceChannel()
+	channelID, err := storage.GetVoiceChannelID(ctx)
 	if err != nil {
 		t.Errorf("Error al obtener el canal de voz: %v", err)
 	}
@@ -68,15 +73,17 @@ func TestInmemoryStateStorage_GetTextChannel(t *testing.T) {
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
-	storage := NewInmemoryStateStorage(mockLogger)
+	storage := NewInmemoryPlayerStateStorage(mockLogger)
+
+	ctx := context.Background()
 
 	textChannelID := "987654321"
-	err := storage.SetTextChannel(textChannelID)
+	err := storage.SetTextChannelID(ctx, textChannelID)
 	if err != nil {
 		t.Errorf("Error al establecer el canal de texto: %v", err)
 	}
 
-	channelID, err := storage.GetTextChannel()
+	channelID, err := storage.GetTextChannelID(ctx)
 	if err != nil {
 		t.Errorf("Error al obtener el canal de texto: %v", err)
 	}

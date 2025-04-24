@@ -17,8 +17,8 @@ const (
 // Config contiene todas las dependencias necesarias para el reproductor
 type Config struct {
 	VoiceSession ports.VoiceSession
-	SongStorage  ports.SongStorage
-	StateStorage ports.StateStorage
+	SongStorage  ports.PlaylistStorage
+	StateStorage ports.PlayerStateStorage
 	Messenger    ports.DiscordMessenger
 	StorageAudio ports.StorageAudio
 	Logger       logging.Logger

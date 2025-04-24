@@ -1,16 +1,18 @@
 package discord
 
 import (
+	"context"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 )
 
 type VoiceStateHandler interface {
-	HandleVoiceStateChange(guildPlayer ports.GuildPlayer, session *discordgo.Session, vs *discordgo.VoiceStateUpdate) error
+	HandleVoiceStateChange(ctx context.Context, guildPlayer ports.GuildPlayer, session *discordgo.Session, vs *discordgo.VoiceStateUpdate) error
 }
 
 type BotChannelTracker struct {
@@ -48,17 +50,18 @@ func NewBotMover(logger logging.Logger) *BotMover {
 	return &BotMover{logger: logger}
 }
 
-func (m *BotMover) MoveBotToNewChannel(guildPlayer ports.GuildPlayer, newChannelID string, oldChannelID string, userID string) error {
+func (m *BotMover) MoveBotToNewChannel(ctx context.Context, guildPlayer ports.GuildPlayer, newChannelID string, oldChannelID string, userID string) error {
 	logger := m.logger.With(
 		zap.String("component", "BotMover"),
 		zap.String("method", "MoveBotToNewChannel"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("oldChannel", oldChannelID),
 		zap.String("newChannel", newChannelID),
 		zap.String("userID", userID),
 	)
 
 	stateStorage := guildPlayer.StateStorage()
-	if err := stateStorage.SetVoiceChannel(newChannelID); err != nil {
+	if err := stateStorage.SetVoiceChannelID(ctx, newChannelID); err != nil {
 		logger.Error("Error al actualizar el canal de voz en el storage", zap.Error(err))
 		return fmt.Errorf("error al actualizar el canal de voz: %w", err)
 	}
@@ -81,9 +84,12 @@ func NewPlaybackController(logger logging.Logger) *PlaybackController {
 }
 
 func (c *PlaybackController) HandlePlayback(guildPlayer ports.GuildPlayer, currentSong *entity.PlayedSong, vs *discordgo.VoiceStateUpdate, botVoiceState *discordgo.VoiceState, guild *discordgo.Guild, session *discordgo.Session) error {
+	ctx := trace.WithTraceID(context.Background())
+
 	logger := c.logger.With(
 		zap.String("component", "PlaybackController"),
 		zap.String("method", "HandlePlayback"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("guildID", vs.GuildID),
 		zap.String("userID", vs.UserID),
 	)
@@ -103,7 +109,7 @@ func (c *PlaybackController) HandlePlayback(guildPlayer ports.GuildPlayer, curre
 						zap.String("channelID", botVoiceState.ChannelID),
 						zap.String("track", currentSong.DiscordSong.TitleTrack))
 
-					if err := guildPlayer.Stop(); err != nil {
+					if err := guildPlayer.Stop(ctx); err != nil {
 						logger.Error("Error al detener la reproducción", zap.Error(err))
 						return fmt.Errorf("error al detener la reproducción: %w", err)
 					}
@@ -135,10 +141,11 @@ func NewVoiceStateService(tracker *BotChannelTracker, mover *BotMover, playback 
 	}
 }
 
-func (s *VoiceStateService) HandleVoiceStateChange(guildPlayer ports.GuildPlayer, session *discordgo.Session, vs *discordgo.VoiceStateUpdate) error {
+func (s *VoiceStateService) HandleVoiceStateChange(ctx context.Context, guildPlayer ports.GuildPlayer, session *discordgo.Session, vs *discordgo.VoiceStateUpdate) error {
 	logger := s.logger.With(
 		zap.String("component", "VoiceStateService"),
 		zap.String("method", "HandleVoiceStateChange"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("guildID", vs.GuildID),
 		zap.String("userID", vs.UserID),
 	)
@@ -167,20 +174,25 @@ func (s *VoiceStateService) HandleVoiceStateChange(guildPlayer ports.GuildPlayer
 
 			if usersInCurrentChannel == 0 {
 				logger.Info("Moviendo bot a nuevo canal por falta de usuarios")
-				return s.mover.MoveBotToNewChannel(guildPlayer, newChannelID, botVoiceState.ChannelID, vs.UserID)
+				return s.mover.MoveBotToNewChannel(ctx, guildPlayer, newChannelID, botVoiceState.ChannelID, vs.UserID)
 			}
 		}
 	}
 
-	currentSong, err := guildPlayer.GetPlayedSong()
+	currentSong, err := guildPlayer.GetPlayedSong(ctx)
 	if err != nil {
 		logger.Error("Error al obtener la canción actual", zap.Error(err))
 		return fmt.Errorf("error al obtener la canción actual: %w", err)
 	}
 
+	var trackTitle string
+	if currentSong != nil && currentSong.DiscordSong != nil {
+		trackTitle = currentSong.DiscordSong.TitleTrack
+	}
+
 	logger.Debug("Canción actual obtenida",
 		zap.Bool("hasCurrentSong", currentSong != nil),
-		zap.String("track", currentSong.DiscordSong.TitleTrack))
+		zap.String("track", trackTitle))
 
 	return s.playback.HandlePlayback(guildPlayer, currentSong, vs, botVoiceState, guild, session)
 }

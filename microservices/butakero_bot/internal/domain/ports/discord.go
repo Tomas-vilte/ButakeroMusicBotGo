@@ -10,15 +10,15 @@ import (
 type (
 	GuildPlayer interface {
 		Run(ctx context.Context) error
-		Stop() error
-		Pause() error
-		Resume() error
-		SkipSong()
-		AddSong(textChannelID, voiceChannelID *string, playedSong *entity.PlayedSong) error
-		RemoveSong(position int) (*entity.DiscordEntity, error)
-		GetPlaylist() ([]string, error)
-		GetPlayedSong() (*entity.PlayedSong, error)
-		StateStorage() StateStorage
+		Stop(ctx context.Context) error
+		Pause(ctx context.Context) error
+		Resume(ctx context.Context) error
+		SkipSong(ctx context.Context)
+		AddSong(ctx context.Context, textChannelID, voiceChannelID *string, playedSong *entity.PlayedSong) error
+		RemoveSong(ctx context.Context, position int) (*entity.DiscordEntity, error)
+		GetPlaylist(ctx context.Context) ([]string, error)
+		GetPlayedSong(ctx context.Context) (*entity.PlayedSong, error)
+		StateStorage() PlayerStateStorage
 		JoinVoiceChannel(channelID string) error
 	}
 
