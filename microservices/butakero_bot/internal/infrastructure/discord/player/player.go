@@ -208,7 +208,7 @@ func (gp *GuildPlayer) Stop(ctx context.Context) error {
 	}
 
 	gp.playbackHandler.Stop(ctx)
-	if err := gp.playbackHandler.GetVoiceSession().LeaveVoiceChannel(); err != nil {
+	if err := gp.playbackHandler.GetVoiceSession().LeaveVoiceChannel(ctx); err != nil {
 		logger.Error("Error al abandonar el canal de voz",
 			zap.Error(err))
 		return fmt.Errorf("error al abandonar el canal de voz: %w", err)
@@ -428,7 +428,7 @@ func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayEvent) err
 		zap.String("text_channel", textChannel),
 	)
 
-	if err := gp.JoinVoiceChannel(voiceChannel); err != nil {
+	if err := gp.JoinVoiceChannel(ctx, voiceChannel); err != nil {
 		logger.Error("Error al unirse al canal de voz",
 			zap.Error(err))
 		return fmt.Errorf("error al unirse al canal de voz: %w", err)
@@ -449,7 +449,7 @@ func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayEvent) err
 					return nil
 				}
 			default:
-				if err := gp.playbackHandler.GetVoiceSession().LeaveVoiceChannel(); err != nil {
+				if err := gp.playbackHandler.GetVoiceSession().LeaveVoiceChannel(ctx); err != nil {
 					logger.Error("Error al salir del canal de voz",
 						zap.Error(err))
 				}
@@ -513,9 +513,9 @@ func (gp *GuildPlayer) getVoiceAndTextChannels(ctx context.Context) (voiceChanne
 	return voiceChannel, textChannel, nil
 }
 
-func (gp *GuildPlayer) JoinVoiceChannel(channelID string) error {
+func (gp *GuildPlayer) JoinVoiceChannel(ctx context.Context, channelID string) error {
 	voiceSession := gp.playbackHandler.GetVoiceSession()
-	return voiceSession.JoinVoiceChannel(channelID)
+	return voiceSession.JoinVoiceChannel(ctx, channelID)
 }
 
 func (gp *GuildPlayer) StateStorage() ports.PlayerStateStorage {

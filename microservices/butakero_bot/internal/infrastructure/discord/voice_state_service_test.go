@@ -65,7 +65,7 @@ func TestBotMover_MoveBotToNewChannel_Success(t *testing.T) {
 	logger.On("Info", mock.Anything, mock.Anything).Return()
 	guildPlayer.On("StateStorage").Return(stateStorage)
 	stateStorage.On("SetVoiceChannelID", mock.Anything, "newChannel").Return(nil)
-	guildPlayer.On("JoinVoiceChannel", "newChannel").Return(nil)
+	guildPlayer.On("JoinVoiceChannel", mock.Anything, "newChannel").Return(nil)
 
 	err := mover.MoveBotToNewChannel(ctx, guildPlayer, "newChannel", "oldChannel", "user123")
 
@@ -198,7 +198,7 @@ func TestHandleVoiceStateChange_BotMovesWhenChannelEmpty(t *testing.T) {
 	logger.On("Debug", mock.Anything, mock.Anything).Return()
 	guildPlayer.On("StateStorage").Return(stateStorage)
 	stateStorage.On("SetVoiceChannelID", mock.Anything, "channel2").Return(nil)
-	guildPlayer.On("JoinVoiceChannel", "channel2").Return(nil)
+	guildPlayer.On("JoinVoiceChannel", mock.Anything, "channel2").Return(nil)
 
 	err = service.HandleVoiceStateChange(ctx, guildPlayer, session, vs)
 

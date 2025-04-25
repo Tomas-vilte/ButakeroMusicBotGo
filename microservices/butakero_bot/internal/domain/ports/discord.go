@@ -9,7 +9,6 @@ import (
 
 type (
 	GuildPlayer interface {
-		Run(ctx context.Context) error
 		Stop(ctx context.Context) error
 		Pause(ctx context.Context) error
 		Resume(ctx context.Context) error
@@ -19,7 +18,7 @@ type (
 		GetPlaylist(ctx context.Context) ([]string, error)
 		GetPlayedSong(ctx context.Context) (*entity.PlayedSong, error)
 		StateStorage() PlayerStateStorage
-		JoinVoiceChannel(channelID string) error
+		JoinVoiceChannel(ctx context.Context, channelID string) error
 	}
 
 	DiscordMessenger interface {
@@ -48,12 +47,14 @@ type (
 	// VoiceSession define una interfaz para manejar sesiones de voz.
 	VoiceSession interface {
 		// JoinVoiceChannel une a un canal de voz especificado por channelID.
-		JoinVoiceChannel(channelID string) error
+		JoinVoiceChannel(ctx context.Context, channelID string) error
 		// LeaveVoiceChannel deja el canal de voz actual.
-		LeaveVoiceChannel() error
+		LeaveVoiceChannel(ctx context.Context) error
 		// SendAudio envía audio a través de la sesión de voz.
 		SendAudio(ctx context.Context, reader io.ReadCloser) error
+		// Pause pausa la sesión de voz.
 		Pause()
+		// Resume reanuda la sesión de voz.
 		Resume()
 	}
 )

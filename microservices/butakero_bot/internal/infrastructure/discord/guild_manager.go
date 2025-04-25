@@ -11,6 +11,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
 	"sync"
+	"time"
 )
 
 type PlayerFactory interface {
@@ -43,7 +44,8 @@ func (f *GuildPlayerFactory) CreatePlayer(guildID string) (ports.GuildPlayer, er
 
 	logger.Debug("Creando nuevo GuildPlayer")
 
-	voiceChat := voice.NewDiscordVoiceSession(f.discordSession, guildID, f.logger)
+	voiceChat := voice.NewDiscordVoiceSession(f.discordSession, guildID, f.logger,
+		voice.WithRetryConfig(5, 3*time.Second), voice.WithSendTimeout(5*time.Second))
 	songStorage := inmemory.NewInmemoryPlaylistStorage(f.logger)
 	stateStorage := inmemory.NewInmemoryPlayerStateStorage(f.logger)
 
