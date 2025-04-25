@@ -32,38 +32,6 @@ func NewInmemoryPlaylistStorage(logger logging.Logger) *InmemoryPlaylistStorage 
 	}
 }
 
-func (s *InmemoryPlaylistStorage) PrependTrack(ctx context.Context, song *entity.PlayedSong) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	logger := s.logger.With(
-		zap.String("component", "InmemoryPlaylistStorage"),
-		zap.String("trace_id", trace.GetTraceID(ctx)),
-		zap.String("method", "PrependTrack"),
-	)
-
-	if song == nil || song.DiscordSong == nil {
-		logger.Error("Intento de agregar canción inválida")
-		return errors.New("canción inválida")
-	}
-
-	// Asignar valores por defecto si no están presentes
-	if song.DiscordSong.ID == "" {
-		song.DiscordSong.ID = generateSongID()
-	}
-	if song.DiscordSong.AddedAt.IsZero() {
-		song.DiscordSong.AddedAt = time.Now()
-	}
-
-	s.songs = append([]*entity.PlayedSong{song}, s.songs...)
-
-	logger.Info("Canción agregada al inicio",
-		zap.String("song_id", song.DiscordSong.ID),
-		zap.String("title", song.DiscordSong.TitleTrack),
-		zap.Int("new_length", len(s.songs)))
-	return nil
-}
-
 func (s *InmemoryPlaylistStorage) AppendTrack(ctx context.Context, song *entity.PlayedSong) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
