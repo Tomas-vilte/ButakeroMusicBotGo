@@ -71,10 +71,6 @@ func (d *DiscordVoiceSession) SendAudio(ctx context.Context, reader io.ReadClose
 	}
 
 	defer func() {
-		if err := reader.Close(); err != nil {
-			logger.Warn("Error al cerrar reader de audio",
-				zap.Error(err))
-		}
 		if err := d.vc.Speaking(false); err != nil {
 			logger.Error("Error al dejar de hablar",
 				zap.Error(err))
