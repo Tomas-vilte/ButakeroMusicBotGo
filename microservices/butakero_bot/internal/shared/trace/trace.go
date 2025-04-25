@@ -20,7 +20,3 @@ func WithTraceID(ctx context.Context) context.Context {
 	traceID := uuid.New().String()
 	return context.WithValue(ctx, traceIDKey{}, traceID)
 }
-
-func GenerateTraceID() string {
-	return uuid.New().String()
-}

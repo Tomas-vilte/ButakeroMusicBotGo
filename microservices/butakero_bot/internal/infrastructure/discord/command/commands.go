@@ -55,7 +55,7 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "PlaySong"),
-		zap.String("trace_id", ctx.Value("trace_id").(string)),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),
@@ -88,7 +88,7 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 		return
 	}
 
-	go func() {
+	go func(ctx context.Context) {
 		song, err := h.songService.GetOrDownloadSong(ctx, userID, input, "youtube")
 		if err != nil {
 			logger.Error("Error al obtener canción", zap.Error(err))
@@ -134,7 +134,7 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 		}); err != nil {
 			logger.Error("Error al actualizar mensaje de confirmación", zap.Error(err))
 		}
-	}()
+	}(ctx)
 }
 
 func (h *CommandHandler) StopPlaying(s *discordgo.Session, ic *discordgo.InteractionCreate, _ *discordgo.ApplicationCommandInteractionDataOption) {
@@ -143,7 +143,7 @@ func (h *CommandHandler) StopPlaying(s *discordgo.Session, ic *discordgo.Interac
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "StopPlaying"),
-		zap.String("trace_id", ctx.Value("trace_id").(string)),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),
@@ -188,7 +188,7 @@ func (h *CommandHandler) isUserInVoiceChannel(s *discordgo.Session, ic *discordg
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "isUserInVoiceChannel"),
-		zap.String("trace_id", ctx.Value("trace_id").(string)),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("user_id", ic.Member.User.ID),
 		zap.String("method", "isUserInVoiceChannel"),
@@ -239,7 +239,7 @@ func (h *CommandHandler) SkipSong(s *discordgo.Session, ic *discordgo.Interactio
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "SkipSong"),
-		zap.String("trace_id", ctx.Value("trace_id").(string)),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),
@@ -271,7 +271,7 @@ func (h *CommandHandler) ListPlaylist(s *discordgo.Session, ic *discordgo.Intera
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "ListPlaylist"),
-		zap.String("trace_id", ctx.Value("trace_id").(string)),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),
@@ -329,7 +329,7 @@ func (h *CommandHandler) RemoveSong(s *discordgo.Session, ic *discordgo.Interact
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "RemoveSong"),
-		zap.String("trace_id", ctx.Value("trace_id").(string)),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),
@@ -378,7 +378,7 @@ func (h *CommandHandler) GetPlayingSong(s *discordgo.Session, ic *discordgo.Inte
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "GetPlayingSong"),
-		zap.String("trace_id", ctx.Value("trace_id").(string)),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),
@@ -437,7 +437,7 @@ func (h *CommandHandler) PauseSong(s *discordgo.Session, ic *discordgo.Interacti
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "PauseSong"),
-		zap.String("trace_id", ctx.Value("trace_id").(string)),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),
@@ -482,7 +482,7 @@ func (h *CommandHandler) ResumeSong(s *discordgo.Session, ic *discordgo.Interact
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "ResumeSong"),
-		zap.String("trace_id", ctx.Value("trace_id").(string)),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("guild_id", ic.GuildID),
 		zap.String("channel_id", ic.ChannelID),
 		zap.String("user_id", ic.Member.User.ID),

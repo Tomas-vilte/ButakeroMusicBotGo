@@ -110,6 +110,7 @@ func (h *EventHandler) GuildDelete(_ *discordgo.Session, event *discordgo.GuildD
 
 // RegisterEventHandlers registra los manejadores de eventos en la sesión de Discord.
 func (h *EventHandler) RegisterEventHandlers(ctx context.Context, s *discordgo.Session) {
+	ctx = trace.WithTraceID(ctx)
 	logger := h.logger.With(
 		zap.String("component", "EventHandler"),
 		zap.String("method", "RegisterEventHandlers"),
@@ -122,8 +123,7 @@ func (h *EventHandler) RegisterEventHandlers(ctx context.Context, s *discordgo.S
 	})
 	s.AddHandler(h.GuildDelete)
 	s.AddHandler(func(session *discordgo.Session, event *discordgo.VoiceStateUpdate) {
-		voiceCtx := context.WithValue(ctx, TraceIDKey, trace.GenerateTraceID())
-		h.VoiceStateUpdate(voiceCtx, session, event)
+		h.VoiceStateUpdate(ctx, session, event)
 	})
 
 	logger.Info("Manejadores de eventos registrados")
