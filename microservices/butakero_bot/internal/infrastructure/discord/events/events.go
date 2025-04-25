@@ -68,21 +68,12 @@ func (h *EventHandler) GuildCreate(ctx context.Context, _ *discordgo.Session, ev
 		return
 	}
 
-	guildPlayer, err := h.guildManager.GetGuildPlayer(event.ID)
+	_, err := h.guildManager.GetGuildPlayer(event.ID)
 	if err != nil {
 		logger.Error("Error al obtener GuildPlayer",
 			zap.Error(err))
 		return
 	}
-
-	go func() {
-		if err := guildPlayer.Run(ctx); err != nil {
-			logger.Error("Error al iniciar GuildPlayer",
-				zap.Error(err))
-		} else {
-			logger.Info("GuildPlayer iniciado exitosamente")
-		}
-	}()
 }
 
 // GuildDelete se llama cuando el bot es removido de un servidor.

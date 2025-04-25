@@ -76,7 +76,20 @@ func (gp *GuildPlayer) AddSong(ctx context.Context, textChannelID, voiceChannelI
 
 	logger.Info("Canción agregada a la lista",
 		zap.Any("text_channel", textChannelID),
-		zap.Any("voice_channel", voiceChannelID))
+		zap.Any("voice_channel", voiceChannelID),
+	)
+
+	gp.mu.Lock()
+	shouldStart := !gp.running
+	gp.mu.Unlock()
+
+	if shouldStart {
+		go func() {
+			if err := gp.Run(ctx); err != nil {
+				logger.Error("Error al iniciar reproducción", zap.Error(err))
+			}
+		}()
+	}
 
 	return nil
 }
@@ -315,10 +328,7 @@ func (gp *GuildPlayer) Run(ctx context.Context) error {
 		}
 	}
 
-	fmt.Println("seso")
-
 	for {
-		fmt.Println("seso1")
 		select {
 		case <-ctx.Done():
 			logger.Info("Contexto cancelado - cerrando GuildPlayer")
