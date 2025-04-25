@@ -7,6 +7,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/errors_app"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
@@ -62,6 +63,7 @@ func (c *MediaAPIClient) GetMediaByID(ctx context.Context, id string) (*model.Me
 	logger := c.logger.With(
 		zap.String("component", "MediaAPIClient"),
 		zap.String("method", "GetMediaByID"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("id", id),
 	)
 
@@ -132,6 +134,7 @@ func (c *MediaAPIClient) SearchMediaByTitle(ctx context.Context, title string) (
 	logger := c.logger.With(
 		zap.String("component", "MediaAPIClient"),
 		zap.String("method", "SearchMediaByTitle"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("title", title),
 	)
 

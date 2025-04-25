@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/queue"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
@@ -49,6 +50,7 @@ func NewProducerSQS(cfgApplication *config.Config, log logging.Logger) (ports.So
 func (p *ProducerSQS) PublishDownloadRequest(ctx context.Context, message *queue.DownloadRequestMessage) error {
 	log := p.logger.With(
 		zap.String("component", "ProducerSQS"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "PublishDownloadRequest"),
 		zap.String("queue_url", p.cfg.QueueConfig.SQSConfig.Queues.BotDownloadRequestsQueueURL),
 	)

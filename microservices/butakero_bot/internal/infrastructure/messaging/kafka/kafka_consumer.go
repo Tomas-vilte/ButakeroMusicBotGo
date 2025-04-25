@@ -7,6 +7,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/queue"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"sync"
 
 	"github.com/IBM/sarama"
@@ -83,7 +84,8 @@ func NewKafkaConsumer(config ConfigKafka, logger logging.Logger) (ports.SongDown
 func (k *ConsumerKafka) SubscribeToDownloadEvents(ctx context.Context) error {
 	logger := k.logger.With(
 		zap.String("component", "ConsumerKafka"),
-		zap.String("method", "SubscribeToDownloadEvents"))
+		zap.String("method", "SubscribeToDownloadEvents"),
+		zap.String("trace_id", trace.GetTraceID(ctx)))
 	logger.Info("Iniciando consumo de mensajes")
 
 	exists, err := k.TopicExists(k.topic)
@@ -136,6 +138,7 @@ func (k *ConsumerKafka) consumePartition(ctx context.Context, pc sarama.Partitio
 	logger := k.logger.With(
 		zap.String("component", "ConsumerKafka"),
 		zap.String("method", "consumePartition"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.Int32("partition", partition),
 	)
 

@@ -242,6 +242,10 @@ func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedS
 				}
 			}
 
+			if err := pc.stateStorage.SetCurrentTrack(ctx, nil); err != nil {
+				logger.Error("Error al limpiar estado de canción actual", zap.Error(err))
+			}
+
 			pc.mu.Lock()
 			pc.stateManager.SetState(StateIdle)
 			pc.currentSong = nil

@@ -8,6 +8,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/queue"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -48,7 +49,9 @@ func NewSQSConsumer(client ClientSQS, config *config.Config, logger logging.Logg
 func (s *ConsumerSQS) SubscribeToDownloadEvents(ctx context.Context) error {
 	logger := s.logger.With(
 		zap.String("component", "ConsumerSQS"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "SubscribeToDownloadEvents"))
+
 	logger.Info("Iniciando consumo de mensajes SQS")
 
 	s.wg.Add(1)
@@ -72,6 +75,7 @@ func (s *ConsumerSQS) SubscribeToDownloadEvents(ctx context.Context) error {
 func (s *ConsumerSQS) receiveAndProcessMessages(ctx context.Context) {
 	logger := s.logger.With(
 		zap.String("component", "ConsumerSQS"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "receiveAndProcessMessages"))
 
 	input := &sqs.ReceiveMessageInput{
@@ -99,6 +103,7 @@ func (s *ConsumerSQS) receiveAndProcessMessages(ctx context.Context) {
 func (s *ConsumerSQS) handleMessage(ctx context.Context, msg types.Message) {
 	logger := s.logger.With(
 		zap.String("component", "ConsumerSQS"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "handleMessage"),
 	)
 
@@ -134,6 +139,7 @@ func (s *ConsumerSQS) deleteMessage(ctx context.Context, msg types.Message) {
 	logger := s.logger.With(
 		zap.String("component", "ConsumerSQS"),
 		zap.String("method", "deleteMessage"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("messageID", *msg.MessageId),
 	)
 
