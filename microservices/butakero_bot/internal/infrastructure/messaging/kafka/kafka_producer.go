@@ -10,6 +10,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"go.uber.org/zap"
 	"time"
 )
@@ -69,6 +70,7 @@ func (p *ProducerKafka) PublishDownloadRequest(ctx context.Context, message *que
 	log := p.logger.With(
 		zap.String("component", "ProducerKafka"),
 		zap.String("method", "PublishDownloadRequest"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("topic", p.cfg.QueueConfig.KafkaConfig.Topics.BotDownloadRequest),
 		zap.String("request_id", message.RequestID),
 	)

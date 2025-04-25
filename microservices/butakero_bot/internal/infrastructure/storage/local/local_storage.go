@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"go.uber.org/zap"
 	"io"
 	"os"
@@ -29,6 +30,8 @@ func (s *LocalStorage) GetAudio(ctx context.Context, songPath string) (io.ReadCl
 	}
 
 	logger := s.logger.With(
+		zap.String("component", "LocalStorage"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "GetAudio"),
 		zap.String("songPath", songPath),
 	)

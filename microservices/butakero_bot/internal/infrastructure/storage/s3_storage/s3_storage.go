@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsCfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -49,6 +50,8 @@ func (s *S3Storage) GetAudio(ctx context.Context, songPath string) (io.ReadClose
 	}
 
 	logger := s.logger.With(
+		zap.String("component", "S3Storage"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "GetAudio"),
 		zap.String("songPath", songPath),
 	)

@@ -8,6 +8,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/queue"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"regexp"
@@ -46,6 +47,7 @@ func (s *songService) GetOrDownloadSong(ctx context.Context, userID, songInput, 
 	input, isURL := s.extractURLOrTitle(songInput)
 	s.logger.Info("Procesando solicitud de canción",
 		zap.String("requestID", requestID),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("userID", userID),
 		zap.String("input", input),
 		zap.Bool("isURL", isURL))
