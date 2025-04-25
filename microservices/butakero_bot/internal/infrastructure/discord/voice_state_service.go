@@ -66,7 +66,7 @@ func (m *BotMover) MoveBotToNewChannel(ctx context.Context, guildPlayer ports.Gu
 		return fmt.Errorf("error al actualizar el canal de voz: %w", err)
 	}
 
-	if err := guildPlayer.JoinVoiceChannel(newChannelID); err != nil {
+	if err := guildPlayer.JoinVoiceChannel(ctx, newChannelID); err != nil {
 		logger.Error("Error al mover el bot al nuevo canal", zap.Error(err))
 		return fmt.Errorf("error al mover el bot al nuevo canal: %w", err)
 	}

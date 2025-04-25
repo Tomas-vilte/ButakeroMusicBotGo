@@ -20,11 +20,6 @@ type MockGuildPlayer struct {
 	mock.Mock
 }
 
-func (m *MockGuildPlayer) Run(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
 func (m *MockGuildPlayer) Stop(ctx context.Context) error {
 	args := m.Called(ctx)
 	return args.Error(0)
@@ -69,8 +64,8 @@ func (m *MockGuildPlayer) StateStorage() ports.PlayerStateStorage {
 	return args.Get(0).(ports.PlayerStateStorage)
 }
 
-func (m *MockGuildPlayer) JoinVoiceChannel(channelID string) error {
-	args := m.Called(channelID)
+func (m *MockGuildPlayer) JoinVoiceChannel(ctx context.Context, channelID string) error {
+	args := m.Called(ctx, channelID)
 	return args.Error(0)
 }
 
