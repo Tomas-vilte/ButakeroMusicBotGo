@@ -288,13 +288,13 @@ func (gp *GuildPlayer) Run(ctx context.Context) error {
 	gp.running = true
 	gp.mu.Unlock()
 
-	logger.Info("Iniciando GuildPlayer")
+	logger.Debug("Iniciando GuildPlayer")
 
 	defer func() {
 		gp.mu.Lock()
 		gp.running = false
 		gp.mu.Unlock()
-		logger.Info("GuildPlayer detenido")
+		logger.Debug("GuildPlayer detenido")
 	}()
 
 	currentSong, err := gp.stateStorage.GetCurrentTrack(ctx)
@@ -315,7 +315,10 @@ func (gp *GuildPlayer) Run(ctx context.Context) error {
 		}
 	}
 
+	fmt.Println("seso")
+
 	for {
+		fmt.Println("seso1")
 		select {
 		case <-ctx.Done():
 			logger.Info("Contexto cancelado - cerrando GuildPlayer")
