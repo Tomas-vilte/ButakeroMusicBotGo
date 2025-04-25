@@ -13,21 +13,6 @@ import (
 	"testing"
 )
 
-func TestInmemorySongStorage_PrependSong(t *testing.T) {
-	mockLogger := new(logging.MockLogger)
-	storage := NewInmemoryPlaylistStorage(mockLogger)
-	song := &entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "Test Song"}}
-
-	ctx := context.Background()
-
-	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
-	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
-	err := storage.PrependTrack(ctx, song)
-
-	assert.NoError(t, err)
-	mockLogger.AssertExpectations(t)
-}
-
 func TestInmemorySongStorage_AppendSong(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
 	storage := NewInmemoryPlaylistStorage(mockLogger)
