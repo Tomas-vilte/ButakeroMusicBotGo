@@ -421,7 +421,7 @@ func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayEvent) err
 		return fmt.Errorf("error al unirse al canal de voz: %w", err)
 	}
 
-	logger.Info("Comenzando reproducción de playlist")
+	logger.Debug("Comenzando reproducción de playlist")
 
 	for {
 		song, err := gp.playlistHandler.GetNextSong(ctx)
