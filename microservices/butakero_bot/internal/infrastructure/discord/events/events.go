@@ -15,12 +15,6 @@ import (
 // GuildID representa el ID de un servidor de Discord.
 type GuildID string
 
-type ContextKey string
-
-const (
-	TraceIDKey ContextKey = "trace_id"
-)
-
 // EventHandler maneja los eventos de Discord.
 type EventHandler struct {
 	guildManager      ports.GuildManager
@@ -109,24 +103,17 @@ func (h *EventHandler) GuildDelete(_ *discordgo.Session, event *discordgo.GuildD
 }
 
 // RegisterEventHandlers registra los manejadores de eventos en la sesión de Discord.
-func (h *EventHandler) RegisterEventHandlers(ctx context.Context, s *discordgo.Session) {
-	ctx = trace.WithTraceID(ctx)
-	logger := h.logger.With(
-		zap.String("component", "EventHandler"),
-		zap.String("method", "RegisterEventHandlers"),
-		zap.String("trace_id", trace.GetTraceID(ctx)),
-	)
-
+func (h *EventHandler) RegisterEventHandlers(s *discordgo.Session) {
 	s.AddHandler(h.Ready)
 	s.AddHandler(func(session *discordgo.Session, event *discordgo.GuildCreate) {
-		h.GuildCreate(ctx, session, event)
+		eventCtx := trace.WithTraceID(context.Background())
+		h.GuildCreate(eventCtx, session, event)
 	})
 	s.AddHandler(h.GuildDelete)
 	s.AddHandler(func(session *discordgo.Session, event *discordgo.VoiceStateUpdate) {
-		h.VoiceStateUpdate(ctx, session, event)
+		eventCtx := trace.WithTraceID(context.Background())
+		h.VoiceStateUpdate(eventCtx, session, event)
 	})
-
-	logger.Info("Manejadores de eventos registrados")
 }
 
 func (h *EventHandler) VoiceStateUpdate(ctx context.Context, s *discordgo.Session, vs *discordgo.VoiceStateUpdate) {
