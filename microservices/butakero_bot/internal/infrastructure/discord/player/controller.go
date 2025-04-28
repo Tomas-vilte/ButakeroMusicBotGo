@@ -3,6 +3,7 @@ package player
 import (
 	"context"
 	"errors"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"sync"
 	"sync/atomic"
@@ -18,7 +19,7 @@ type PlaybackController struct {
 	voiceSession  ports.VoiceSession
 	storageAudio  ports.StorageAudio
 	stateStorage  ports.PlayerStateStorage
-	messenger     ports.DiscordMessenger
+	messenger     interfaces.DiscordMessenger
 	logger        logging.Logger
 	stateManager  *StateManager
 	currentCancel context.CancelFunc
@@ -32,7 +33,7 @@ func NewPlaybackController(
 	voiceSession ports.VoiceSession,
 	storageAudio ports.StorageAudio,
 	stateStorage ports.PlayerStateStorage,
-	messenger ports.DiscordMessenger,
+	messenger interfaces.DiscordMessenger,
 	logger logging.Logger,
 ) *PlaybackController {
 	return &PlaybackController{

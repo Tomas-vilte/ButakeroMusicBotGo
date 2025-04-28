@@ -3,6 +3,7 @@ package discord
 import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/player"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/voice"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/inmemory"
@@ -21,12 +22,12 @@ type PlayerFactory interface {
 type GuildPlayerFactory struct {
 	discordSession *discordgo.Session
 	storageAudio   ports.StorageAudio
-	messenger      ports.DiscordMessenger
+	messenger      interfaces.DiscordMessenger
 	logger         logging.Logger
 }
 
 func NewGuildPlayerFactory(session *discordgo.Session, storageAudio ports.StorageAudio,
-	messenger ports.DiscordMessenger, logger logging.Logger) PlayerFactory {
+	messenger interfaces.DiscordMessenger, logger logging.Logger) PlayerFactory {
 	return &GuildPlayerFactory{
 		discordSession: session,
 		storageAudio:   storageAudio,
