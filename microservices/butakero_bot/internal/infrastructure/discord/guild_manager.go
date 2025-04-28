@@ -48,15 +48,19 @@ func (f *GuildPlayerFactory) CreatePlayer(guildID string) (ports.GuildPlayer, er
 		voice.WithRetryConfig(5, 3*time.Second), voice.WithSendTimeout(5*time.Second))
 	songStorage := inmemory.NewInmemoryPlaylistStorage(f.logger)
 	stateStorage := inmemory.NewInmemoryPlayerStateStorage(f.logger)
+	playbackHandler := player.NewPlaybackController(voiceChat, f.storageAudio, stateStorage, f.messenger, f.logger)
+	playlistHandler := player.NewPlaylistManager(songStorage, f.logger)
 
 	guildPlayer := player.NewGuildPlayer(
 		player.Config{
-			VoiceSession: voiceChat,
-			SongStorage:  songStorage,
-			StateStorage: stateStorage,
-			Messenger:    f.messenger,
-			StorageAudio: f.storageAudio,
-			Logger:       f.logger,
+			VoiceSession:    voiceChat,
+			PlaybackHandler: playbackHandler,
+			PlaylistHandler: playlistHandler,
+			SongStorage:     songStorage,
+			StateStorage:    stateStorage,
+			Messenger:       f.messenger,
+			StorageAudio:    f.storageAudio,
+			Logger:          f.logger,
 		},
 	)
 

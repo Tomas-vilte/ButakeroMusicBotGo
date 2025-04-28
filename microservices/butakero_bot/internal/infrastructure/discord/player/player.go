@@ -14,6 +14,18 @@ import (
 	"go.uber.org/zap"
 )
 
+// Config contiene todas las dependencias necesarias para el reproductor
+type Config struct {
+	VoiceSession    ports.VoiceSession
+	PlaybackHandler PlaybackHandler
+	PlaylistHandler PlaylistHandler
+	SongStorage     ports.PlaylistStorage
+	StateStorage    ports.PlayerStateStorage
+	Messenger       ports.DiscordMessenger
+	StorageAudio    ports.StorageAudio
+	Logger          logging.Logger
+}
+
 type GuildPlayer struct {
 	playbackHandler PlaybackHandler
 	playlistHandler PlaylistHandler
@@ -25,19 +37,9 @@ type GuildPlayer struct {
 }
 
 func NewGuildPlayer(cfg Config) *GuildPlayer {
-	playbackCtrl := NewPlaybackController(
-		cfg.VoiceSession,
-		cfg.StorageAudio,
-		cfg.StateStorage,
-		cfg.Messenger,
-		cfg.Logger,
-	)
-
-	playlistMgr := NewPlaylistManager(cfg.SongStorage, cfg.Logger)
-
 	return &GuildPlayer{
-		playbackHandler: playbackCtrl,
-		playlistHandler: playlistMgr,
+		playbackHandler: cfg.PlaybackHandler,
+		playlistHandler: cfg.PlaylistHandler,
 		stateStorage:    cfg.StateStorage,
 		eventCh:         make(chan PlayerEvent, 100),
 		logger:          cfg.Logger,
