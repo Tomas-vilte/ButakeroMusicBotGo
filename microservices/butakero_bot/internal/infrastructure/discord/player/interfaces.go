@@ -3,7 +3,6 @@ package player
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 )
 
 // PlaybackHandler maneja la reproducción de audio
@@ -13,7 +12,6 @@ type PlaybackHandler interface {
 	Resume(ctx context.Context) error
 	Stop(ctx context.Context)
 	CurrentState() PlayerState
-	GetVoiceSession() ports.VoiceSession
 }
 
 // PlaylistHandler maneja operaciones con la lista de reproducción

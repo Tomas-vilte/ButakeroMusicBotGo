@@ -93,10 +93,10 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 		song, err := h.songService.GetOrDownloadSong(ctx, userID, input, "youtube")
 		if err != nil {
 			logger.Error("Error al obtener canción", zap.Error(err))
-			if err := h.messenger.EditOriginalResponse(ic.Interaction, &discordgo.WebhookEdit{
-				Content: shared.StringPtr("❌ No se pudo encontrar o descargar la canción. Verifica el enlace o inténtalo de nuevo"),
-			}); err != nil {
-				logger.Error("Error al actualizar mensaje de error", zap.Error(err))
+			if followupErr := h.messenger.CreateFollowupMessage(ic.Interaction, &discordgo.WebhookParams{
+				Content: "❌ No se pudo encontrar o descargar la canción. Verifica el enlace o inténtalo de nuevo",
+			}); followupErr != nil {
+				logger.Error("Error al enviar mensaje de confirmación", zap.Error(err))
 			}
 			return
 		}

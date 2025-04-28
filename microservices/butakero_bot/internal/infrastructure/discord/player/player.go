@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/voice"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"sync"
 	"time"
@@ -17,7 +18,7 @@ import (
 
 // Config contiene todas las dependencias necesarias para el reproductor
 type Config struct {
-	VoiceSession    ports.VoiceSession
+	VoiceSession    voice.VoiceSession
 	PlaybackHandler PlaybackHandler
 	PlaylistHandler PlaylistHandler
 	SongStorage     ports.PlaylistStorage
@@ -30,6 +31,7 @@ type Config struct {
 type GuildPlayer struct {
 	playbackHandler PlaybackHandler
 	playlistHandler PlaylistHandler
+	voiceSession    voice.VoiceSession
 	stateStorage    ports.PlayerStateStorage
 	eventCh         chan PlayerEvent
 	logger          logging.Logger
@@ -41,6 +43,7 @@ func NewGuildPlayer(cfg Config) *GuildPlayer {
 	return &GuildPlayer{
 		playbackHandler: cfg.PlaybackHandler,
 		playlistHandler: cfg.PlaylistHandler,
+		voiceSession:    cfg.VoiceSession,
 		stateStorage:    cfg.StateStorage,
 		eventCh:         make(chan PlayerEvent, 100),
 		logger:          cfg.Logger,
@@ -190,6 +193,8 @@ func (gp *GuildPlayer) Stop(ctx context.Context) error {
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 	)
 
+	gp.clearEventChannel()
+
 	currentSong, err := gp.stateStorage.GetCurrentTrack(ctx)
 	if err != nil {
 		logger.Error("Error al obtener canción actual para detener",
@@ -211,7 +216,7 @@ func (gp *GuildPlayer) Stop(ctx context.Context) error {
 	}
 
 	gp.playbackHandler.Stop(ctx)
-	if err := gp.playbackHandler.GetVoiceSession().LeaveVoiceChannel(ctx); err != nil {
+	if err := gp.voiceSession.LeaveVoiceChannel(ctx); err != nil {
 		logger.Error("Error al abandonar el canal de voz",
 			zap.Error(err))
 		return fmt.Errorf("error al abandonar el canal de voz: %w", err)
@@ -219,6 +224,19 @@ func (gp *GuildPlayer) Stop(ctx context.Context) error {
 
 	logger.Info("Reproducción detenida y lista limpiada")
 	return nil
+}
+
+func (gp *GuildPlayer) clearEventChannel() {
+	gp.mu.Lock()
+	defer gp.mu.Unlock()
+
+	for {
+		select {
+		case <-gp.eventCh:
+		default:
+			return
+		}
+	}
 }
 
 func (gp *GuildPlayer) RemoveSong(ctx context.Context, position int) (*entity.DiscordEntity, error) {
@@ -341,10 +359,19 @@ func (gp *GuildPlayer) Run(ctx context.Context) error {
 			logger.Debug("Evento recibido",
 				zap.String("event_type", event.Type()))
 
+			if event.Type() == "stop" {
+				logger.Debug("Evento de stop recibido, terminando procesamiento")
+				return nil
+			}
+
 			if err := gp.handleEvent(ctx, event); err != nil {
 				logger.Error("Error al manejar evento del reproductor",
 					zap.String("event", event.Type()),
 					zap.Error(err))
+
+				if errors.Is(err, voice.ErrNoVoiceConnection) {
+					time.Sleep(2 * time.Second)
+				}
 			}
 		}
 	}
@@ -399,24 +426,24 @@ func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayEvent) err
 		zap.Any("voice_channel", event.VoiceChannelID),
 	)
 
-	logger.Info("Manejando evento de reproducción")
+	logger.Info("Procesando evento PlayEvent")
 
 	if event.TextChannelID != nil {
+		logger.Debug("Estableciendo canal de texto en stateStorage")
 		if err := gp.stateStorage.SetTextChannelID(ctx, *event.TextChannelID); err != nil {
 			logger.Error("Error al establecer canal de texto",
 				zap.Error(err))
 			return fmt.Errorf("error al setear el canal de texto: %w", err)
 		}
-		logger.Debug("Canal de texto establecido")
 	}
 
 	if event.VoiceChannelID != nil {
+		logger.Debug("Estableciendo canal de voz en stateStorage")
 		if err := gp.stateStorage.SetVoiceChannelID(ctx, *event.VoiceChannelID); err != nil {
 			logger.Error("Error al establecer canal de voz",
 				zap.Error(err))
 			return fmt.Errorf("error al setear el canal de voz: %w", err)
 		}
-		logger.Debug("Canal de voz establecido")
 	}
 
 	voiceChannel, textChannel, err := gp.getVoiceAndTextChannels(ctx)
@@ -431,13 +458,14 @@ func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayEvent) err
 		zap.String("text_channel", textChannel),
 	)
 
+	logger.Info("Intentando unirse al canal de voz")
 	if err := gp.JoinVoiceChannel(ctx, voiceChannel); err != nil {
 		logger.Error("Error al unirse al canal de voz",
 			zap.Error(err))
 		return fmt.Errorf("error al unirse al canal de voz: %w", err)
 	}
 
-	logger.Debug("Comenzando reproducción de playlist")
+	logger.Info("Unión al canal de voz exitosa. Iniciando reproducción de playlist...")
 
 	for {
 		song, err := gp.playlistHandler.GetNextSong(ctx)
@@ -452,7 +480,7 @@ func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayEvent) err
 					return nil
 				}
 			default:
-				if err := gp.playbackHandler.GetVoiceSession().LeaveVoiceChannel(ctx); err != nil {
+				if err := gp.voiceSession.LeaveVoiceChannel(ctx); err != nil {
 					logger.Error("Error al salir del canal de voz",
 						zap.Error(err))
 				}
@@ -517,7 +545,7 @@ func (gp *GuildPlayer) getVoiceAndTextChannels(ctx context.Context) (voiceChanne
 }
 
 func (gp *GuildPlayer) JoinVoiceChannel(ctx context.Context, channelID string) error {
-	voiceSession := gp.playbackHandler.GetVoiceSession()
+	voiceSession := gp.voiceSession
 	return voiceSession.JoinVoiceChannel(ctx, channelID)
 }
 

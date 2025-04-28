@@ -20,6 +20,20 @@ var (
 	ErrSendTimeout       = errors.New("tiempo de espera agotado al enviar el frame de audio")
 )
 
+// VoiceSession define una interfaz para manejar sesiones de voz.
+type VoiceSession interface {
+	// JoinVoiceChannel une a un canal de voz especificado por channelID.
+	JoinVoiceChannel(ctx context.Context, channelID string) error
+	// LeaveVoiceChannel deja el canal de voz actual.
+	LeaveVoiceChannel(ctx context.Context) error
+	// SendAudio envía audio a través de la sesión de voz.
+	SendAudio(ctx context.Context, reader io.ReadCloser) error
+	// Pause pausa la sesión de voz.
+	Pause()
+	// Resume reanuda la sesión de voz.
+	Resume()
+}
+
 type DiscordVoiceSession struct {
 	session     *discordgo.Session
 	guildID     string
@@ -75,6 +89,16 @@ func (d *DiscordVoiceSession) JoinVoiceChannel(ctx context.Context, channelID st
 		zap.String("guild_id", d.guildID),
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 	)
+
+	if channelID == "" {
+		return errors.New("ID de canal de voz vacío")
+	}
+
+	if d.vc != nil && d.channelID == channelID && d.vc.Ready {
+		d.logger.Debug("Ya conectado al canal de voz solicitado",
+			zap.String("channelID", channelID))
+		return nil
+	}
 
 	d.channelID = channelID
 	var err error

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/voice"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"sync"
 	"sync/atomic"
@@ -16,7 +17,7 @@ import (
 )
 
 type PlaybackController struct {
-	voiceSession  ports.VoiceSession
+	voiceSession  voice.VoiceSession
 	storageAudio  ports.StorageAudio
 	stateStorage  ports.PlayerStateStorage
 	messenger     interfaces.DiscordMessenger
@@ -30,7 +31,7 @@ type PlaybackController struct {
 }
 
 func NewPlaybackController(
-	voiceSession ports.VoiceSession,
+	voiceSession voice.VoiceSession,
 	storageAudio ports.StorageAudio,
 	stateStorage ports.PlayerStateStorage,
 	messenger interfaces.DiscordMessenger,
@@ -150,10 +151,6 @@ func (pc *PlaybackController) Stop(ctx context.Context) {
 
 func (pc *PlaybackController) CurrentState() PlayerState {
 	return pc.stateManager.GetState()
-}
-
-func (pc *PlaybackController) GetVoiceSession() ports.VoiceSession {
-	return pc.voiceSession
 }
 
 func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedSong, textChannel string) {
