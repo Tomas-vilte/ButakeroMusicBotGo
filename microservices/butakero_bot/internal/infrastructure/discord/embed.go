@@ -3,12 +3,12 @@ package discord
 import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/discord"
+	"github.com/bwmarrin/discordgo"
 	"time"
 )
 
 // GeneratePlayingSongEmbed genera un embed para mostrar una canción en reproducción.
-func GeneratePlayingSongEmbed(playMsg *entity.PlayedSong) *discord.Embed {
+func GeneratePlayingSongEmbed(playMsg *entity.PlayedSong) *discordgo.MessageEmbed {
 	if playMsg == nil || playMsg.DiscordSong == nil {
 		return nil
 	}
@@ -24,11 +24,11 @@ func GeneratePlayingSongEmbed(playMsg *entity.PlayedSong) *discord.Embed {
 		20,
 	)
 
-	embed := &discord.Embed{
+	embed := &discordgo.MessageEmbed{
 		Title:       "🎵 **Reproduciendo:** " + playMsg.DiscordSong.TitleTrack,
 		Description: fmt.Sprintf("%s\n**%s / %s**", progressBar, formatDuration(elapsed), formatDuration(duration)),
 		Color:       0x1DB954,
-		Fields: []*discord.EmbedField{
+		Fields: []*discordgo.MessageEmbedField{
 			{
 				Name:   "**Plataforma**",
 				Value:  playMsg.DiscordSong.Platform,
@@ -43,14 +43,14 @@ func GeneratePlayingSongEmbed(playMsg *entity.PlayedSong) *discord.Embed {
 	}
 
 	if playMsg.DiscordSong.ThumbnailURL != "" {
-		embed.Thumbnail = &discord.EmbedThumbnail{
+		embed.Thumbnail = &discordgo.MessageEmbedThumbnail{
 			URL:    playMsg.DiscordSong.ThumbnailURL,
 			Width:  1280,
 			Height: 720,
 		}
 	}
 
-	embed.Footer = &discord.EmbedFooter{
+	embed.Footer = &discordgo.MessageEmbedFooter{
 		Text: "Butakero Music Bot 🎶",
 	}
 

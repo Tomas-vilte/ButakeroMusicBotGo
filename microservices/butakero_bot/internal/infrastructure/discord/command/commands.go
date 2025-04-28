@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/discord"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/events"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
@@ -26,7 +26,7 @@ type CommandHandler struct {
 	storage      ports.InteractionStorage
 	logger       logging.Logger
 	songService  ports.SongService
-	messenger    ports.DiscordMessenger
+	messenger    interfaces.DiscordMessenger
 	eventHandler *events.EventHandler
 	guildManager ports.GuildManager
 }
@@ -36,7 +36,7 @@ func NewCommandHandler(
 	logger logging.Logger,
 	songService ports.SongService,
 	guildManager ports.GuildManager,
-	messenger ports.DiscordMessenger,
+	messenger interfaces.DiscordMessenger,
 	eventHandler *events.EventHandler,
 ) *CommandHandler {
 	return &CommandHandler{
@@ -78,11 +78,12 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 	}
 
 	input := opt.Options[0].StringValue()
-	domainInteraction := toDomainInteraction(ic.Interaction)
 
-	if err := h.messenger.Respond(domainInteraction, discord.InteractionResponse{
-		Type:    discord.InteractionResponseChannelMessageWithSource,
-		Content: "🔍 Buscando tu canción... Esto puede tomar unos momentos.",
+	if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "🔍 Buscando tu canción... Esto puede tomar unos momentos.",
+		},
 	}); err != nil {
 		logger.Error("Error al enviar la respuesta inicial", zap.Error(err))
 		return
@@ -92,7 +93,7 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 		song, err := h.songService.GetOrDownloadSong(ctx, userID, input, "youtube")
 		if err != nil {
 			logger.Error("Error al obtener canción", zap.Error(err))
-			if err := h.messenger.EditOriginalResponse(domainInteraction, &discord.WebhookEdit{
+			if err := h.messenger.EditOriginalResponse(ic.Interaction, &discordgo.WebhookEdit{
 				Content: shared.StringPtr("❌ No se pudo encontrar o descargar la canción. Verifica el enlace o inténtalo de nuevo"),
 			}); err != nil {
 				logger.Error("Error al actualizar mensaje de error", zap.Error(err))
@@ -116,7 +117,7 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 
 		if err := guildPlayer.AddSong(ctx, &ic.ChannelID, &vs.ChannelID, playedSong); err != nil {
 			logger.Error("Error al agregar la canción", zap.String("voice_channel_id", vs.ChannelID), zap.Error(err))
-			if err := h.messenger.EditOriginalResponse(domainInteraction, &discord.WebhookEdit{
+			if err := h.messenger.EditOriginalResponse(ic.Interaction, &discordgo.WebhookEdit{
 				Content: shared.StringPtr(ErrorMessageFailedToAddSong),
 			}); err != nil {
 				logger.Error("Error al actualizar mensaje de error", zap.Error(err))
@@ -129,7 +130,7 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 			zap.String("voice_channel_id", vs.ChannelID),
 		)
 
-		if err := h.messenger.EditOriginalResponse(domainInteraction, &discord.WebhookEdit{
+		if err := h.messenger.EditOriginalResponse(ic.Interaction, &discordgo.WebhookEdit{
 			Content: shared.StringPtr("✅ Canción agregada a la cola: " + song.TitleTrack),
 		}); err != nil {
 			logger.Error("Error al actualizar mensaje de confirmación", zap.Error(err))
@@ -171,12 +172,13 @@ func (h *CommandHandler) StopPlaying(s *discordgo.Session, ic *discordgo.Interac
 		return
 	}
 
-	domainInteraction := toDomainInteraction(ic.Interaction)
 	logger.Debug("Reproducción detenida exitosamente")
 
-	if err := h.messenger.Respond(domainInteraction, discord.InteractionResponse{
-		Type:    discord.InteractionResponseChannelMessageWithSource,
-		Content: "⏹️ Reproducción detenida",
+	if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "⏹️ Reproducción detenida",
+		},
 	}); err != nil {
 		logger.Error("Error al enviar mensaje de confirmación", zap.Error(err))
 	}
@@ -195,22 +197,20 @@ func (h *CommandHandler) isUserInVoiceChannel(s *discordgo.Session, ic *discordg
 	)
 
 	if ic.Member == nil {
-		domainInteraction := toDomainInteraction(ic.Interaction)
-		if err := h.messenger.RespondWithMessage(domainInteraction, ErrorMessageNotInVoiceChannel); err != nil {
+		if err := h.messenger.RespondWithMessage(ic.Interaction, ErrorMessageNotInVoiceChannel); err != nil {
 			logger.Error("Error al enviar mensaje de error de canal de voz", zap.Error(err))
 		}
 		return nil, false
 	}
 
-	domainInteraction := toDomainInteraction(ic.Interaction)
-
 	vs, err := s.State.VoiceState(ic.GuildID, ic.Member.User.ID)
 	if err != nil {
 		logger.Warn("Error al obtener estado de voz del usuario", zap.Error(err))
-		if err := h.messenger.Respond(domainInteraction, discord.InteractionResponse{
-			Type:    discord.InteractionResponseChannelMessageWithSource,
-			Content: ErrorMessageNotInVoiceChannel,
-		}); err != nil {
+		if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: ErrorMessageNotInVoiceChannel,
+			}}); err != nil {
 			logger.Error("Error al enviar mensaje de error de canal de voz", zap.Error(err))
 		}
 		return nil, false
@@ -218,9 +218,11 @@ func (h *CommandHandler) isUserInVoiceChannel(s *discordgo.Session, ic *discordg
 
 	if vs == nil || vs.ChannelID == "" {
 		logger.Warn("Usuario no está en canal de voz")
-		if err := h.messenger.Respond(domainInteraction, discord.InteractionResponse{
-			Type:    discord.InteractionResponseChannelMessageWithSource,
-			Content: ErrorMessageNotInVoiceChannel,
+		if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: ErrorMessageNotInVoiceChannel,
+			},
 		}); err != nil {
 			logger.Error("Error al enviar mensaje de error de canal de voz", zap.Error(err))
 		}
@@ -310,13 +312,14 @@ func (h *CommandHandler) ListPlaylist(s *discordgo.Session, ic *discordgo.Intera
 		message += fmt.Sprintf("%d. %s\n", i+1, song)
 	}
 
-	domainInteraction := toDomainInteraction(ic.Interaction)
 	logger.Debug("Mostrando lista de reproducción", zap.Int("total_canciones", len(songs)))
 
-	if err := h.messenger.Respond(domainInteraction, discord.InteractionResponse{
-		Type: discord.InteractionResponseChannelMessageWithSource,
-		Embeds: []*discord.Embed{
-			{Title: "Lista de reproducción:", Description: message},
+	if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: []*discordgo.MessageEmbed{
+				{Title: "Lista de reproducción:", Description: message},
+			},
 		},
 	}); err != nil {
 		logger.Error("Error al enviar mensaje de error", zap.Error(err))
@@ -359,14 +362,15 @@ func (h *CommandHandler) RemoveSong(s *discordgo.Session, ic *discordgo.Interact
 		return
 	}
 
-	domainInteraction := toDomainInteraction(ic.Interaction)
 	logger.Debug("Canción eliminada exitosamente",
 		zap.String("song_title", song.TitleTrack),
 	)
 
-	if err := h.messenger.Respond(domainInteraction, discord.InteractionResponse{
-		Type:    discord.InteractionResponseChannelMessageWithSource,
-		Content: fmt.Sprintf("🗑️ Canción **%s** eliminada de la lista", song.TitleTrack),
+	if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: fmt.Sprintf("🗑️ Canción **%s** eliminada de la lista", song.TitleTrack),
+		},
 	}); err != nil {
 		logger.Error("Error al enviar mensaje de confirmación", zap.Error(err))
 	}
@@ -411,22 +415,22 @@ func (h *CommandHandler) GetPlayingSong(s *discordgo.Session, ic *discordgo.Inte
 		h.respondWithError(ic, ErrorMessageNoCurrentSong)
 		return
 	}
-	domainInteraction := toDomainInteraction(ic.Interaction)
 	logger.Debug("Mostrando canción actual",
 		zap.String("song_title", song.DiscordSong.TitleTrack),
 	)
 
-	if err := h.messenger.Respond(domainInteraction, discord.InteractionResponse{
-		Type:    discord.InteractionResponseChannelMessageWithSource,
-		Content: fmt.Sprintf("🎵 Reproduciendo: %s", song.DiscordSong.TitleTrack),
+	if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: fmt.Sprintf("🎵 Reproduciendo: %s", song.DiscordSong.TitleTrack),
+		},
 	}); err != nil {
 		logger.Error("Error al enviar mensaje de error", zap.Error(err))
 	}
 }
 
 func (h *CommandHandler) respondWithError(ic *discordgo.InteractionCreate, message string) {
-	domainInteraction := toDomainInteraction(ic.Interaction)
-	if err := h.messenger.RespondWithMessage(domainInteraction, message); err != nil {
+	if err := h.messenger.RespondWithMessage(ic.Interaction, message); err != nil {
 		h.logger.Error("Error al enviar mensaje de error", zap.Error(err))
 	}
 }
@@ -465,12 +469,13 @@ func (h *CommandHandler) PauseSong(s *discordgo.Session, ic *discordgo.Interacti
 		return
 	}
 
-	domainInteraction := toDomainInteraction(ic.Interaction)
 	logger.Debug("Reproducción pausada exitosamente")
 
-	if err := h.messenger.Respond(domainInteraction, discord.InteractionResponse{
-		Type:    discord.InteractionResponseChannelMessageWithSource,
-		Content: "⏸️ Reproducción pausada",
+	if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "⏸️ Reproducción pausada",
+		},
 	}); err != nil {
 		logger.Error("Error al enviar mensaje de confirmación", zap.Error(err))
 	}
@@ -510,36 +515,14 @@ func (h *CommandHandler) ResumeSong(s *discordgo.Session, ic *discordgo.Interact
 		return
 	}
 
-	domainInteraction := toDomainInteraction(ic.Interaction)
 	logger.Debug("Reproducción reanudada exitosamente")
 
-	if err := h.messenger.Respond(domainInteraction, discord.InteractionResponse{
-		Type:    discord.InteractionResponseChannelMessageWithSource,
-		Content: "▶️ Reproducción reanudada",
+	if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: "▶️ Reproducción reanudada",
+		},
 	}); err != nil {
 		logger.Error("Error al enviar mensaje de confirmación", zap.Error(err))
-	}
-}
-
-func toDomainInteraction(discordInteraction *discordgo.Interaction) *discord.Interaction {
-	if discordInteraction == nil {
-		return nil
-	}
-
-	var member *discord.Member
-	if discordInteraction.Member != nil && discordInteraction.Member.User != nil {
-		member = &discord.Member{
-			UserID:   discordInteraction.Member.User.ID,
-			Username: discordInteraction.Member.User.Username,
-		}
-	}
-
-	return &discord.Interaction{
-		ID:        discordInteraction.ID,
-		AppID:     discordInteraction.AppID,
-		ChannelID: discordInteraction.ChannelID,
-		GuildID:   discordInteraction.GuildID,
-		Member:    member,
-		Token:     discordInteraction.Token,
 	}
 }

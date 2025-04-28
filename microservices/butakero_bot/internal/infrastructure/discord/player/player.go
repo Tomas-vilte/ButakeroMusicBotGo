@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"sync"
 	"time"
@@ -21,7 +22,7 @@ type Config struct {
 	PlaylistHandler PlaylistHandler
 	SongStorage     ports.PlaylistStorage
 	StateStorage    ports.PlayerStateStorage
-	Messenger       ports.DiscordMessenger
+	Messenger       interfaces.DiscordMessenger
 	StorageAudio    ports.StorageAudio
 	Logger          logging.Logger
 }

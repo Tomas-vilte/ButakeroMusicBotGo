@@ -3,7 +3,7 @@ package player
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/discord"
+	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/mock"
 	"io"
 )
@@ -89,7 +89,7 @@ type MockDiscordMessenger struct {
 	mock.Mock
 }
 
-func (m *MockDiscordMessenger) RespondWithMessage(interaction *discord.Interaction, message string) error {
+func (m *MockDiscordMessenger) RespondWithMessage(interaction *discordgo.Interaction, message string) error {
 	args := m.Called(interaction, message)
 	return args.Error(0)
 }
@@ -109,17 +109,17 @@ func (m *MockDiscordMessenger) SendText(channelID, text string) error {
 	return args.Error(0)
 }
 
-func (m *MockDiscordMessenger) Respond(interaction *discord.Interaction, response discord.InteractionResponse) error {
+func (m *MockDiscordMessenger) Respond(interaction *discordgo.Interaction, response *discordgo.InteractionResponse) error {
 	args := m.Called(interaction, response)
 	return args.Error(0)
 }
 
-func (m *MockDiscordMessenger) CreateFollowupMessage(interaction *discord.Interaction, params discord.WebhookParams) error {
+func (m *MockDiscordMessenger) CreateFollowupMessage(interaction *discordgo.Interaction, params *discordgo.WebhookParams) error {
 	args := m.Called(interaction, params)
 	return args.Error(0)
 }
 
-func (m *MockDiscordMessenger) EditOriginalResponse(interaction *discord.Interaction, params *discord.WebhookEdit) error {
+func (m *MockDiscordMessenger) EditOriginalResponse(interaction *discordgo.Interaction, params *discordgo.WebhookEdit) error {
 	args := m.Called(interaction, params)
 	return args.Error(0)
 }
