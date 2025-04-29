@@ -34,6 +34,7 @@ func TestCreateGuildPlayer_Success(t *testing.T) {
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockFactory.On("CreatePlayer", guildID).Return(mockPlayer, nil)
 
 	// Act
@@ -98,7 +99,7 @@ func TestGuildManager_CreateGuildPlayer_FactoryError(t *testing.T) {
 	// Arrange
 	mockLogger := new(logging.MockLogger)
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
-	mockLogger.On("Info", mock.Anything, mock.Anything, mock.Anything).Return()
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Error", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	factoryError := errors_app.NewAppError(errors_app.ErrCodeInternalError, "Factory error", nil)
@@ -124,6 +125,7 @@ func TestGuildManager_RemoveGuildPlayer(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything, mock.Anything).Return()
+	mockLogger.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	mockGuildPlayer := new(MockGuildPlayer)
 	mockPlayerFactory := new(MockPlayerFactory)
@@ -214,6 +216,7 @@ func TestGuildManager_GetGuildPlayer_NonExisting(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything, mock.Anything).Return()
+	mockLogger.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	mockGuildPlayer := new(MockGuildPlayer)
 	mockPlayerFactory := new(MockPlayerFactory)

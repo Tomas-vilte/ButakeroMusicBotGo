@@ -113,7 +113,7 @@ func (g *GuildManager) CreateGuildPlayer(guildID string) (ports.GuildPlayer, err
 		)
 	}
 
-	logger.Info("Creando nuevo GuildPlayer para guild")
+	logger.Debug("Creando nuevo GuildPlayer para guild")
 
 	newGuildPlayer, err := g.playerFactory.CreatePlayer(guildID)
 	if err != nil {
