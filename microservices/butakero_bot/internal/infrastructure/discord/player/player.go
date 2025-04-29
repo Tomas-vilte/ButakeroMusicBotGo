@@ -7,7 +7,6 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/voice"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -35,7 +34,6 @@ type GuildPlayer struct {
 	stateStorage    ports.PlayerStateStorage
 	eventCh         chan PlayerEvent
 	logger          logging.Logger
-	mu              sync.Mutex
 	running         atomic.Bool
 }
 

@@ -25,7 +25,7 @@ type PlaybackController struct {
 	stateManager  *StateManager
 	currentCancel context.CancelFunc
 	isPaused      atomic.Bool
-	mu            sync.Mutex
+	mu            sync.RWMutex
 	currentSong   *entity.PlayedSong
 	playMsgID     string
 }
@@ -150,6 +150,8 @@ func (pc *PlaybackController) Stop(ctx context.Context) {
 }
 
 func (pc *PlaybackController) CurrentState() PlayerState {
+	pc.mu.RLock()
+	defer pc.mu.RUnlock()
 	return pc.stateManager.GetState()
 }
 
