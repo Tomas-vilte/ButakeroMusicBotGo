@@ -1,10 +1,20 @@
 package player
 
+type EventType string
+
+const (
+	EventTypePlay   EventType = "play"
+	EventTypePause  EventType = "pause"
+	EventTypeResume EventType = "resume"
+	EventTypeStop   EventType = "stop"
+	EventTypeSkip   EventType = "skip"
+)
+
 type (
 	// PlayerEvent es la interfaz que todos los eventos del reproductor deben implementar
 	PlayerEvent interface {
 		isPlayerEvent()
-		Type() string
+		Type() EventType
 	}
 )
 
@@ -23,17 +33,17 @@ type (
 	SkipEvent struct{}
 )
 
-func (e PlayEvent) Type() string   { return "play" }
-func (e PlayEvent) isPlayerEvent() {}
+func (e PlayEvent) Type() EventType { return EventTypePlay }
+func (e PlayEvent) isPlayerEvent()  {}
 
-func (e PauseEvent) Type() string   { return "pause" }
-func (e PauseEvent) isPlayerEvent() {}
+func (e PauseEvent) Type() EventType { return EventTypePause }
+func (e PauseEvent) isPlayerEvent()  {}
 
-func (e ResumeEvent) Type() string   { return "resume" }
-func (e ResumeEvent) isPlayerEvent() {}
+func (e ResumeEvent) Type() EventType { return EventTypeResume }
+func (e ResumeEvent) isPlayerEvent()  {}
 
-func (e StopEvent) Type() string   { return "stop" }
-func (e StopEvent) isPlayerEvent() {}
+func (e StopEvent) Type() EventType { return EventTypeStop }
+func (e StopEvent) isPlayerEvent()  {}
 
-func (e SkipEvent) Type() string   { return "skip" }
-func (e SkipEvent) isPlayerEvent() {}
+func (e SkipEvent) Type() EventType { return EventTypeSkip }
+func (e SkipEvent) isPlayerEvent()  {}
