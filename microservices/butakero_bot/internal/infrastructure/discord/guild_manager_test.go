@@ -131,6 +131,7 @@ func TestGuildManager_RemoveGuildPlayer(t *testing.T) {
 	mockPlayerFactory := new(MockPlayerFactory)
 	mockPlayerFactory.On("CreatePlayer", "guild123").Return(mockGuildPlayer, nil)
 	mockPlayerFactory.On("CreatePlayer", "guild123").Return(mockGuildPlayer, nil)
+	mockGuildPlayer.On("Close").Return(nil)
 
 	guildManager := NewGuildManager(mockPlayerFactory, mockLogger)
 

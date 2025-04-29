@@ -50,6 +50,7 @@ const (
 	ErrCodeInvalidGuildID           ErrorCode = "invalid_guild_id"
 	ErrCodeGuildPlayerAlreadyExists ErrorCode = "guild_player_already_exists"
 	ErrCodeGuildPlayerCreateFailed  ErrorCode = "guild_player_create_failed"
+	ErrCodeGuildPlayerCloseFailed   ErrorCode = "guild_player_close_failed"
 )
 
 var errorStatusMap = map[ErrorCode]int{
@@ -99,6 +100,7 @@ var errorStatusMap = map[ErrorCode]int{
 	ErrCodeInvalidGuildID:            http.StatusBadRequest,
 	ErrCodeGuildPlayerCreateFailed:   http.StatusInternalServerError,
 	ErrCodeGuildPlayerAlreadyExists:  http.StatusConflict,
+	ErrCodeGuildPlayerCloseFailed:    http.StatusInternalServerError,
 }
 
 type AppError struct {
@@ -178,6 +180,7 @@ var apiErrorMapping = map[string]*AppError{
 	"invalid_guild_id":            NewAppError(ErrCodeInvalidGuildID, "El ID del guild proporcionado no es válido", nil),
 	"guild_player_create_failed":  NewAppError(ErrCodeGuildPlayerCreateFailed, "Error al crear el reproductor para el guild", nil),
 	"guild_player_already_exists": NewAppError(ErrCodeGuildPlayerAlreadyExists, "El reproductor para este guild ya existe", nil),
+	"guild_player_close_failed":   NewAppError(ErrCodeGuildPlayerCloseFailed, "Error al cerrar el reproductor del guild", nil),
 }
 
 // GetAPIError devuelve un AppError basado en el código de error de la API externa.

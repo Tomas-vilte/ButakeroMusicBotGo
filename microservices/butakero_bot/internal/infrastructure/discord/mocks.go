@@ -69,6 +69,12 @@ func (m *MockGuildPlayer) JoinVoiceChannel(ctx context.Context, channelID string
 	return args.Error(0)
 }
 
+func (m *MockGuildPlayer) Close() error {
+	args := m.Called()
+	return args.Error(0)
+
+}
+
 type MockStateStorage struct {
 	mock.Mock
 }
