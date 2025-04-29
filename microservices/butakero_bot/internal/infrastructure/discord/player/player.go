@@ -357,7 +357,7 @@ func (gp *GuildPlayer) Run(ctx context.Context) error {
 
 		case event := <-gp.eventCh:
 			logger.Debug("Evento recibido",
-				zap.String("event_type", event.Type()))
+				zap.Any("event_type", event.Type()))
 
 			if event.Type() == "stop" {
 				logger.Debug("Evento de stop recibido, terminando procesamiento")
@@ -366,7 +366,7 @@ func (gp *GuildPlayer) Run(ctx context.Context) error {
 
 			if err := gp.handleEvent(ctx, event); err != nil {
 				logger.Error("Error al manejar evento del reproductor",
-					zap.String("event", event.Type()),
+					zap.Any("event", event.Type()),
 					zap.Error(err))
 
 				if errors.Is(err, voice.ErrNoVoiceConnection) {
@@ -378,41 +378,45 @@ func (gp *GuildPlayer) Run(ctx context.Context) error {
 }
 
 func (gp *GuildPlayer) handleEvent(ctx context.Context, event PlayerEvent) error {
-	switch e := event.(type) {
-	case PlayEvent:
-		return gp.handlePlayEvent(ctx, e)
+	logger := gp.logger.With(
+		zap.String("event_type", string(event.Type())),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
+	)
 
-	case PauseEvent:
+	switch event.Type() {
+	case EventTypePlay:
+		return gp.handlePlayEvent(ctx, event.(PlayEvent))
+	case EventTypePause:
 		if err := gp.Pause(ctx); err != nil {
-			gp.logger.Error("Error al pausar la reproducción", zap.Error(err))
+			logger.Error("Error al pausar la reproducción", zap.Error(err))
 			return err
 		}
-		gp.logger.Debug("Reproducción pausada")
+		logger.Debug("Reproducción pausada")
 		return nil
 
-	case ResumeEvent:
+	case EventTypeResume:
 		if err := gp.Resume(ctx); err != nil {
-			gp.logger.Error("Error al reanudar la reproducción", zap.Error(err))
+			logger.Error("Error al reanudar la reproducción", zap.Error(err))
 			return err
 		}
-		gp.logger.Debug("Reproducción reanudada")
+		logger.Debug("Reproducción reanudada")
 		return nil
 
-	case StopEvent:
+	case EventTypeStop:
 		if err := gp.Stop(ctx); err != nil {
-			gp.logger.Error("Error al detener la reproducción", zap.Error(err))
+			logger.Error("Error al detener la reproducción", zap.Error(err))
 			return err
 		}
-		gp.logger.Debug("Reproducción detenida")
+		logger.Debug("Reproducción detenida")
 		return nil
 
-	case SkipEvent:
+	case EventTypeSkip:
 		gp.SkipSong(ctx)
-		gp.logger.Debug("Canción saltada")
+		logger.Debug("Canción saltada")
 		return nil
 
 	default:
-		gp.logger.Error("Tipo de evento desconocido", zap.String("tipo", event.Type()))
+		logger.Error("Tipo de evento desconocido", zap.Any("tipo", event.Type()))
 		return fmt.Errorf("tipo de evento desconocido: %T", event)
 	}
 }
