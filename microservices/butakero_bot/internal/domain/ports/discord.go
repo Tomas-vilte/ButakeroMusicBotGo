@@ -17,6 +17,7 @@ type (
 		GetPlayedSong(ctx context.Context) (*entity.PlayedSong, error)
 		StateStorage() PlayerStateStorage
 		JoinVoiceChannel(ctx context.Context, channelID string) error
+		Close() error
 	}
 
 	GuildManager interface {

@@ -8,6 +8,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/voice"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
@@ -16,7 +17,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// Config contiene todas las dependencias necesarias para el reproductor
 type Config struct {
 	VoiceSession    voice.VoiceSession
 	PlaybackHandler PlaybackHandler
@@ -36,7 +36,7 @@ type GuildPlayer struct {
 	eventCh         chan PlayerEvent
 	logger          logging.Logger
 	mu              sync.Mutex
-	running         bool
+	running         atomic.Bool
 }
 
 func NewGuildPlayer(cfg Config) *GuildPlayer {
@@ -85,11 +85,7 @@ func (gp *GuildPlayer) AddSong(ctx context.Context, textChannelID, voiceChannelI
 		zap.Any("voice_channel", voiceChannelID),
 	)
 
-	gp.mu.Lock()
-	shouldStart := !gp.running
-	gp.mu.Unlock()
-
-	if shouldStart {
+	if !gp.running.Load() {
 		go func() {
 			if err := gp.Run(ctx); err != nil {
 				logger.Error("Error al iniciar reproducción", zap.Error(err))
@@ -227,9 +223,6 @@ func (gp *GuildPlayer) Stop(ctx context.Context) error {
 }
 
 func (gp *GuildPlayer) clearEventChannel() {
-	gp.mu.Lock()
-	defer gp.mu.Unlock()
-
 	for {
 		select {
 		case <-gp.eventCh:
@@ -313,68 +306,87 @@ func (gp *GuildPlayer) Run(ctx context.Context) error {
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 	)
 
-	gp.mu.Lock()
-	if gp.running {
-		gp.mu.Unlock()
+	if !gp.running.CompareAndSwap(false, true) {
 		logger.Warn("Intento de iniciar reproductor ya en ejecución")
 		return errors.New("el reproductor ya está ejecutándose")
 	}
-	gp.running = true
-	gp.mu.Unlock()
+
+	runCtx, cancel := context.WithCancel(ctx)
 
 	logger.Debug("Iniciando GuildPlayer")
 
 	defer func() {
-		gp.mu.Lock()
-		gp.running = false
-		gp.mu.Unlock()
+		cancel()
+		gp.running.Store(false)
 		logger.Debug("GuildPlayer detenido")
 	}()
 
-	currentSong, err := gp.stateStorage.GetCurrentTrack(ctx)
-	if err != nil {
-		logger.Error("Error al obtener estado de canción actual",
-			zap.Error(err))
-	}
-
-	if currentSong != nil {
-		currentSong.StartPosition += currentSong.Position
-		if err := gp.playlistHandler.AddSong(ctx, currentSong); err != nil {
-			logger.Error("Error al restaurar canción actual a la lista",
-				zap.Error(err),
-				zap.String("song_id", currentSong.DiscordSong.ID))
-		} else {
-			logger.Debug("Canción actual restaurada a la lista",
-				zap.String("song_id", currentSong.DiscordSong.ID))
-		}
+	if err := gp.restoreCurrentTrack(ctx); err != nil {
+		logger.Warn("No se pudo restaurar la canción actual", zap.Error(err))
 	}
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-runCtx.Done():
 			logger.Info("Contexto cancelado - cerrando GuildPlayer")
-			return nil
+			return ctx.Err()
 
 		case event := <-gp.eventCh:
-			logger.Debug("Evento recibido",
-				zap.Any("event_type", event.Type()))
+			eventType := event.Type()
+			logger.Debug("Evento recibido", zap.String("event_type", string(eventType)))
 
-			if event.Type() == "stop" {
+			if eventType == EventTypeStop {
 				logger.Debug("Evento de stop recibido, terminando procesamiento")
 				return nil
 			}
 
-			if err := gp.handleEvent(ctx, event); err != nil {
+			if err := gp.handleEvent(runCtx, event); err != nil {
 				logger.Error("Error al manejar evento del reproductor",
-					zap.Any("event", event.Type()),
+					zap.String("event", string(eventType)),
 					zap.Error(err))
 
 				if errors.Is(err, voice.ErrNoVoiceConnection) {
-					time.Sleep(2 * time.Second)
+					select {
+					case <-time.After(2 * time.Second):
+					case <-runCtx.Done():
+						return ctx.Err()
+					}
 				}
 			}
 		}
 	}
+}
+
+func (gp *GuildPlayer) restoreCurrentTrack(ctx context.Context) error {
+	logger := gp.logger.With(
+		zap.String("component", "GuildPlayer"),
+		zap.String("method", "restoreCurrentTrack"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
+	)
+
+	currentSong, err := gp.stateStorage.GetCurrentTrack(ctx)
+	if err != nil {
+		logger.Error("Error al obtener estado de canción actual", zap.Error(err))
+		return err
+	}
+
+	if currentSong == nil {
+		logger.Debug("No hay canción actual para restaurar")
+		return nil
+	}
+
+	currentSong.StartPosition += currentSong.Position
+
+	if err := gp.playlistHandler.AddSong(ctx, currentSong); err != nil {
+		logger.Error("Error al restaurar canción actual a la lista",
+			zap.Error(err),
+			zap.String("song_id", currentSong.DiscordSong.ID))
+		return err
+	}
+
+	logger.Debug("Canción actual restaurada a la lista",
+		zap.String("song_id", currentSong.DiscordSong.ID))
+	return nil
 }
 
 func (gp *GuildPlayer) handleEvent(ctx context.Context, event PlayerEvent) error {
@@ -383,42 +395,21 @@ func (gp *GuildPlayer) handleEvent(ctx context.Context, event PlayerEvent) error
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 	)
 
-	switch event.Type() {
-	case EventTypePlay:
-		return gp.handlePlayEvent(ctx, event.(PlayEvent))
-	case EventTypePause:
-		if err := gp.Pause(ctx); err != nil {
-			logger.Error("Error al pausar la reproducción", zap.Error(err))
+	err := event.HandleEvent(ctx, gp)
+
+	if err != nil {
+		logger.Error("Error al procesar evento",
+			zap.String("tipo", string(event.Type())),
+			zap.Error(err))
+
+		if errors.Is(err, voice.ErrNoVoiceConnection) {
 			return err
 		}
-		logger.Debug("Reproducción pausada")
-		return nil
-
-	case EventTypeResume:
-		if err := gp.Resume(ctx); err != nil {
-			logger.Error("Error al reanudar la reproducción", zap.Error(err))
-			return err
-		}
-		logger.Debug("Reproducción reanudada")
-		return nil
-
-	case EventTypeStop:
-		if err := gp.Stop(ctx); err != nil {
-			logger.Error("Error al detener la reproducción", zap.Error(err))
-			return err
-		}
-		logger.Debug("Reproducción detenida")
-		return nil
-
-	case EventTypeSkip:
-		gp.SkipSong(ctx)
-		logger.Debug("Canción saltada")
-		return nil
-
-	default:
-		logger.Error("Tipo de evento desconocido", zap.Any("tipo", event.Type()))
-		return fmt.Errorf("tipo de evento desconocido: %T", event)
+	} else {
+		logger.Debug("Evento procesado exitosamente",
+			zap.String("tipo", string(event.Type())))
 	}
+	return err
 }
 
 func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayEvent) error {
@@ -555,4 +546,24 @@ func (gp *GuildPlayer) JoinVoiceChannel(ctx context.Context, channelID string) e
 
 func (gp *GuildPlayer) StateStorage() ports.PlayerStateStorage {
 	return gp.stateStorage
+}
+
+func (gp *GuildPlayer) Close() error {
+	logger := gp.logger.With(
+		zap.String("component", "GuildPlayer"),
+		zap.String("method", "Close"),
+	)
+
+	logger.Info("Cerrando recursos del GuildPlayer")
+
+	stopCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := gp.Stop(stopCtx); err != nil {
+		logger.Error("Error al detener reproducción durante cierre", zap.Error(err))
+	}
+
+	gp.clearEventChannel()
+
+	return nil
 }
