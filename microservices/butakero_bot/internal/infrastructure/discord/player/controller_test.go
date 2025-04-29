@@ -97,7 +97,7 @@ func TestPlaybackController_Play(t *testing.T) {
 
 		err := pc.Play(context.Background(), song, "text-channel")
 		assert.Error(t, err)
-		assert.Equal(t, "already playing", err.Error())
+		assert.Equal(t, "ya se está reproduciendo", err.Error())
 	})
 
 	t.Run("debería pausar la reproducción correctamente", func(t *testing.T) {
@@ -136,7 +136,7 @@ func TestPlaybackController_Play(t *testing.T) {
 
 		err := pc.Pause(context.Background())
 		assert.Error(t, err)
-		assert.Equal(t, "not playing", err.Error())
+		assert.Equal(t, "no se está reproduciendo", err.Error())
 	})
 
 	t.Run("debería reanudar la reproducción correctamente", func(t *testing.T) {
@@ -177,7 +177,7 @@ func TestPlaybackController_Play(t *testing.T) {
 
 		err := pc.Resume(context.Background())
 		assert.Error(t, err)
-		assert.Equal(t, "not paused", err.Error())
+		assert.Equal(t, "no se está pausando", err.Error())
 	})
 
 	t.Run("debería detener la reproducción correctamente", func(t *testing.T) {
@@ -224,6 +224,7 @@ func TestPlaybackController_Play(t *testing.T) {
 		logger.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return(logger)
 		logger.On("Error", mock.Anything, mock.Anything, mock.Anything).Return(logger)
 		mockStateStorage.On("SetCurrentTrack", mock.Anything, song).Return(nil).Once()
+		mockStateStorage.On("SetCurrentTrack", mock.Anything, (*entity.PlayedSong)(nil)).Return(nil).Once()
 		mockMessenger.On("SendPlayStatus", "text-channel", song).Return("msg123", nil).Once()
 		mockStorageAudio.On("GetAudio", mock.Anything, "test.mp3").Return(nil, errors.New("audio error")).Once()
 
@@ -292,7 +293,7 @@ func TestPlaybackController_Play(t *testing.T) {
 		logger.On("With", mock.Anything, mock.Anything, mock.Anything).Return(logger)
 		logger.On("Info", mock.Anything, mock.Anything, mock.Anything).Return(logger)
 		logger.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return(logger)
-		logger.On("Error", "Error al enviar audio", mock.Anything).Return(logger).Once()
+		logger.On("Error", "Error al reproducir audio", mock.Anything).Return(logger).Once()
 
 		mockStateStorage.On("SetCurrentTrack", mock.Anything, song).Return(nil).Once()
 		mockStorageAudio.On("GetAudio", mock.Anything, "test.mp3").Return(&mockReadCloser{}, nil).Once()
@@ -312,7 +313,7 @@ func TestPlaybackController_Play(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 
 		// assert
-		logger.AssertCalled(t, "Error", "Error al enviar audio", mock.Anything)
+		logger.AssertCalled(t, "Error", "Error al reproducir audio", mock.Anything)
 		assert.Equal(t, StateIdle, pc.CurrentState())
 		mockVoiceSession.AssertExpectations(t)
 		mockStateStorage.AssertExpectations(t)
