@@ -6,6 +6,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/voice"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
+	"io"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,6 +15,12 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"go.uber.org/zap"
+)
+
+var (
+	ErrAlreadyPlaying = errors.New("ya se está reproduciendo")
+	ErrNotPlaying     = errors.New("no se está reproduciendo")
+	ErrNotPaused      = errors.New("no se está pausando")
 )
 
 type PlaybackController struct {
@@ -51,16 +58,11 @@ func (pc *PlaybackController) Play(ctx context.Context, song *entity.PlayedSong,
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
 
-	logger := pc.logger.With(
-		zap.String("trace_id", trace.GetTraceID(ctx)),
-		zap.String("component", "PlaybackController"),
-		zap.String("method", "Play"),
-		zap.String("song_id", song.DiscordSong.ID),
-	)
+	logger := pc.getLogger(ctx, "Play", song.DiscordSong.ID)
 
 	if pc.stateManager.GetState() == StatePlaying {
 		logger.Warn("Intento de reproducción cuando ya se está reproduciendo")
-		return errors.New("already playing")
+		return ErrAlreadyPlaying
 	}
 
 	songCtx, cancel := context.WithCancel(ctx)
@@ -80,24 +82,20 @@ func (pc *PlaybackController) Pause(ctx context.Context) error {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
 
-	logger := pc.logger.With(
-		zap.String("trace_id", trace.GetTraceID(ctx)),
-		zap.String("component", "PlaybackController"),
-		zap.String("method", "Pause"),
-	)
+	logger := pc.getLogger(ctx, "Pause", "")
 
 	if pc.stateManager.GetState() != StatePlaying {
 		logger.Warn("Intento de pausa cuando no se está reproduciendo")
-		return errors.New("not playing")
+		return ErrNotPlaying
 	}
 
 	pc.stateManager.SetState(StatePaused)
 	pc.isPaused.Store(true)
 	pc.voiceSession.Pause()
 
-	logger.Info("Reproducción pausada",
-		zap.String("song_id", pc.currentSong.DiscordSong.ID),
-	)
+	if pc.currentSong != nil {
+		logger.Info("Reproducción pausada", zap.String("song_id", pc.currentSong.DiscordSong.ID))
+	}
 	return nil
 }
 
@@ -105,24 +103,20 @@ func (pc *PlaybackController) Resume(ctx context.Context) error {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
 
-	logger := pc.logger.With(
-		zap.String("trace_id", trace.GetTraceID(ctx)),
-		zap.String("component", "PlaybackController"),
-		zap.String("method", "Resume"),
-	)
+	logger := pc.getLogger(ctx, "Resume", "")
 
 	if pc.stateManager.GetState() != StatePaused {
 		logger.Warn("Intento de reanudación cuando no se está pausando")
-		return errors.New("not paused")
+		return ErrNotPaused
 	}
 
 	pc.stateManager.SetState(StatePlaying)
 	pc.isPaused.Store(false)
 	pc.voiceSession.Resume()
 
-	logger.Info("Reproducción reanudada",
-		zap.String("song_id", pc.currentSong.DiscordSong.ID),
-	)
+	if pc.currentSong != nil {
+		logger.Info("Reproducción reanudada", zap.String("song_id", pc.currentSong.DiscordSong.ID))
+	}
 	return nil
 }
 
@@ -130,11 +124,7 @@ func (pc *PlaybackController) Stop(ctx context.Context) {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
 
-	logger := pc.logger.With(
-		zap.String("trace_id", trace.GetTraceID(ctx)),
-		zap.String("component", "PlaybackController"),
-		zap.String("method", "Stop"),
-	)
+	logger := pc.getLogger(ctx, "Stop", "")
 
 	if pc.currentCancel != nil {
 		pc.currentCancel()
@@ -143,8 +133,7 @@ func (pc *PlaybackController) Stop(ctx context.Context) {
 	pc.stateManager.SetState(StateIdle)
 
 	if pc.currentSong != nil {
-		logger.Info("Reproducción detenida",
-			zap.String("song_id", pc.currentSong.DiscordSong.ID))
+		logger.Info("Reproducción detenida", zap.String("song_id", pc.currentSong.DiscordSong.ID))
 		pc.currentSong = nil
 	}
 }
@@ -155,43 +144,83 @@ func (pc *PlaybackController) CurrentState() PlayerState {
 	return pc.stateManager.GetState()
 }
 
-func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedSong, textChannel string) {
-	logger := pc.logger.With(
+func (pc *PlaybackController) getLogger(ctx context.Context, method, songID string) logging.Logger {
+	fields := []zap.Field{
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("component", "PlaybackController"),
-		zap.String("method", "playSong"),
-		zap.String("song_id", song.DiscordSong.ID),
-	)
-
-	if err := pc.stateStorage.SetCurrentTrack(ctx, song); err != nil {
-		logger.Error("Error al establecer canción actual", zap.Error(err))
-		return
+		zap.String("method", method),
 	}
 
-	msgID, err := pc.messenger.SendPlayStatus(textChannel, song)
-	if err != nil {
-		logger.Error("Error al enviar estado de reproducción", zap.Error(err))
-	} else {
-		pc.playMsgID = msgID
-		logger.Debug("Mensaje de estado enviado", zap.String("message_id", msgID))
+	if songID != "" {
+		fields = append(fields, zap.String("song_id", songID))
+	}
+
+	return pc.logger.With(fields...)
+}
+
+func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedSong, textChannel string) {
+	logger := pc.getLogger(ctx, "playSong", song.DiscordSong.ID)
+
+	if err := pc.setInitialPlaybackState(ctx, song, textChannel); err != nil {
+		logger.Error("Error en la configuración inicial de reproducción", zap.Error(err))
+		return
 	}
 
 	audioData, err := pc.storageAudio.GetAudio(ctx, song.DiscordSong.FilePath)
 	if err != nil {
 		logger.Error("Error al obtener audio", zap.Error(err))
+		pc.cleanupAfterPlayback(ctx)
 		return
 	}
 
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
+	defer func() {
+		if err := audioData.Close(); err != nil {
+			logger.Error("Error al cerrar audio", zap.Error(err))
+		}
+	}()
 
+	done := pc.startPlaybackMonitoring(ctx, song, textChannel)
+	defer close(done)
+
+	if err := pc.streamAudio(ctx, audioData); err != nil && !errors.Is(err, context.Canceled) {
+		logger.Error("Error al reproducir audio", zap.Error(err))
+	}
+
+	pc.finalizePlayback(ctx, song, textChannel)
+	logger.Info("Reproducción completada")
+}
+
+func (pc *PlaybackController) setInitialPlaybackState(ctx context.Context, song *entity.PlayedSong, textChannel string) error {
+	logger := pc.getLogger(ctx, "setInitialPlaybackState", song.DiscordSong.ID)
+
+	if err := pc.stateStorage.SetCurrentTrack(ctx, song); err != nil {
+		logger.Error("Error al establecer canción actual", zap.Error(err))
+		return err
+	}
+
+	msgID, err := pc.messenger.SendPlayStatus(textChannel, song)
+	if err != nil {
+		logger.Error("Error al enviar estado de reproducción", zap.Error(err))
+		return err
+	}
+
+	pc.playMsgID = msgID
+	logger.Debug("Mensaje de estado enviado", zap.String("message_id", msgID))
+	return nil
+}
+
+func (pc *PlaybackController) startPlaybackMonitoring(ctx context.Context, song *entity.PlayedSong, textChannel string) chan struct{} {
+	logger := pc.getLogger(ctx, "startPlaybackMonitoring", song.DiscordSong.ID)
+	ticker := time.NewTicker(1 * time.Second)
 	done := make(chan struct{})
+
 	startTime := time.Now()
 	var pauseStart time.Time
 	var totalPaused time.Duration
 
 	go func() {
-		defer close(done)
+		defer ticker.Stop()
+
 		for {
 			select {
 			case <-ticker.C:
@@ -215,44 +244,54 @@ func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedS
 				pc.mu.Unlock()
 			case <-ctx.Done():
 				return
+			case <-done:
+				return
 			}
 		}
 	}()
 
+	return done
+}
+
+func (pc *PlaybackController) streamAudio(ctx context.Context, audioData io.ReadCloser) error {
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Debug("Contexto cancelado, terminando reproducción")
-			return
+			return ctx.Err()
 		default:
 			if pc.isPaused.Load() {
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
 
-			err := pc.voiceSession.SendAudio(ctx, audioData)
-			if err != nil && !errors.Is(err, context.Canceled) {
-				logger.Error("Error al enviar audio", zap.Error(err))
-			}
-
-			if pc.currentSong != nil {
-				pc.currentSong.Position = pc.currentSong.DiscordSong.DurationMs
-				if err := pc.messenger.UpdatePlayStatus(textChannel, pc.playMsgID, pc.currentSong); err != nil {
-					logger.Error("Error al actualizar estado final", zap.Error(err))
-				}
-			}
-
-			if err := pc.stateStorage.SetCurrentTrack(ctx, nil); err != nil {
-				logger.Error("Error al limpiar estado de canción actual", zap.Error(err))
-			}
-
-			pc.mu.Lock()
-			pc.stateManager.SetState(StateIdle)
-			pc.currentSong = nil
-			pc.mu.Unlock()
-
-			logger.Info("Reproducción completada")
-			return
+			return pc.voiceSession.SendAudio(ctx, audioData)
 		}
 	}
+}
+
+func (pc *PlaybackController) finalizePlayback(ctx context.Context, song *entity.PlayedSong, textChannel string) {
+	logger := pc.getLogger(ctx, "finalizePlayback", song.DiscordSong.ID)
+
+	pc.mu.Lock()
+	defer pc.mu.Unlock()
+
+	if pc.currentSong != nil {
+		pc.currentSong.Position = pc.currentSong.DiscordSong.DurationMs
+		if err := pc.messenger.UpdatePlayStatus(textChannel, pc.playMsgID, pc.currentSong); err != nil {
+			logger.Error("Error al actualizar estado final", zap.Error(err))
+		}
+	}
+
+	pc.cleanupAfterPlayback(ctx)
+}
+
+func (pc *PlaybackController) cleanupAfterPlayback(ctx context.Context) {
+	logger := pc.getLogger(ctx, "cleanupAfterPlayback", "")
+
+	if err := pc.stateStorage.SetCurrentTrack(ctx, nil); err != nil {
+		logger.Error("Error al limpiar estado de canción actual", zap.Error(err))
+	}
+
+	pc.stateManager.SetState(StateIdle)
+	pc.currentSong = nil
 }
