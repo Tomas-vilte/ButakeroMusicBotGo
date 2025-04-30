@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/application/service"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/adapters/api"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/adapters/health"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/command"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/events"
@@ -18,6 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/bwmarrin/discordgo"
 	"go.uber.org/zap"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -135,6 +137,33 @@ func StartBot() error {
 	defer func() {
 		if err := discordClient.Close(); err != nil {
 			logger.Error("Error al cerrar la conexión con Discord", zap.Error(err))
+		}
+	}()
+
+	discordChecker := health.NewDiscordChecker(discordClient, logger)
+	serviceBChecker, err := health.NewServiceBChecker(&health.ServiceConfig{
+		BaseURL: cfg.ExternalService.BaseURL,
+		Timeout: 5 * time.Second,
+	}, logger)
+	if err != nil {
+		logger.Error("Error al crear el verificador de salud de Service B", zap.Error(err))
+		return fmt.Errorf("error al crear el verificador de salud de Service B: %v", err)
+	}
+
+	healthHandler := api.NewHealthHandler(discordChecker, serviceBChecker, logger, cfg)
+
+	router := http.NewServeMux()
+	router.HandleFunc("/api/v1/health", healthHandler.Handle)
+
+	server := &http.Server{
+		Addr:    ":8081",
+		Handler: router,
+	}
+
+	go func() {
+		logger.Info("Iniciando servidor HTTP en el puerto 8080")
+		if err := server.ListenAndServe(); err != nil {
+			logger.Error("Error al iniciar el servidor HTTP", zap.Error(err))
 		}
 	}()
 
