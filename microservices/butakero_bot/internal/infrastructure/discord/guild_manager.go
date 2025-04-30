@@ -65,7 +65,7 @@ func (f *GuildPlayerFactory) CreatePlayer(guildID string) (ports.GuildPlayer, er
 		},
 	)
 
-	logger.Info("GuildPlayer creado exitosamente")
+	logger.Debug("GuildPlayer creado exitosamente")
 	return guildPlayer, nil
 }
 
@@ -129,7 +129,7 @@ func (gm *GuildManager) CreateGuildPlayer(guildID string) (ports.GuildPlayer, er
 	}
 
 	gm.players[guildID] = newGuildPlayer
-	logger.Info("GuildPlayer creado exitosamente",
+	logger.Debug("GuildPlayer creado exitosamente",
 		zap.Int("total_players", len(gm.players)))
 
 	return newGuildPlayer, nil
@@ -208,6 +208,6 @@ func (gm *GuildManager) GetGuildPlayer(guildID string) (ports.GuildPlayer, error
 		return guildPlayer, nil
 	}
 
-	logger.Info("GuildPlayer no encontrado, creando nuevo")
+	logger.Debug("GuildPlayer no encontrado, creando nuevo")
 	return gm.CreateGuildPlayer(guildID)
 }

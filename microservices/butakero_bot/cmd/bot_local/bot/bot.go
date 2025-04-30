@@ -166,7 +166,7 @@ func StartBot() error {
 	}
 
 	go func() {
-		logger.Info("Iniciando servidor HTTP en el puerto 8080")
+		logger.Info("Iniciando servidor HTTP en el puerto 8081")
 		if err := server.ListenAndServe(); err != nil {
 			logger.Error("Error al iniciar el servidor HTTP", zap.Error(err))
 		}

@@ -208,7 +208,6 @@ func LoadConfigAws() (*Config, error) {
 	}
 
 	cfg := &Config{
-		AppVersion:    secrets["APP_VERSION"],
 		CommandPrefix: secrets["COMMAND_PREFIX"],
 		Discord: Discord{
 			Token: secrets["DISCORD_TOKEN"],
