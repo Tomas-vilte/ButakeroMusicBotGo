@@ -20,6 +20,7 @@ type (
 		QueueConfig     QueueConfig
 		DatabaseConfig  DatabaseConfig
 		ExternalService ExternalService
+		AppVersion      string
 	}
 
 	DatabaseConfig struct {
@@ -125,6 +126,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("MONGO_RETRY_WRITES", true)
 	viper.SetDefault("LOCAL_STORAGE_DIRECTORY", "/app/data/audio-files")
 	viper.SetDefault("AUDIO_PROCESSOR_URL", "http://localhost:8080")
+	viper.SetDefault("APP_VERSION", "1.0.0")
 
 	var mongoHosts []Host
 	for _, host := range viper.GetStringSlice("MONGO_HOSTS") {
@@ -135,6 +137,7 @@ func LoadConfig() (*Config, error) {
 	}
 
 	cfg := &Config{
+		AppVersion:    viper.GetString("APP_VERSION"),
 		CommandPrefix: viper.GetString("COMMAND_PREFIX"),
 		QueueConfig: QueueConfig{
 			KafkaConfig: KafkaConfig{
@@ -205,6 +208,7 @@ func LoadConfigAws() (*Config, error) {
 	}
 
 	cfg := &Config{
+		AppVersion:    secrets["APP_VERSION"],
 		CommandPrefix: secrets["COMMAND_PREFIX"],
 		Discord: Discord{
 			Token: secrets["DISCORD_TOKEN"],
