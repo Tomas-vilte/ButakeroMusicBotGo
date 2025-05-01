@@ -33,7 +33,6 @@ func TestCreateGuildPlayer_Success(t *testing.T) {
 	mockPlayer := new(MockGuildPlayer)
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
-	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockFactory.On("CreatePlayer", guildID).Return(mockPlayer, nil)
 
