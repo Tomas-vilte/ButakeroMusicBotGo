@@ -13,7 +13,12 @@ RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w" -o main cmd/
 
 FROM alpine:3.21.3
 
+RUN apk add --no-cache curl
+
+
 WORKDIR /root/
 COPY --from=builder /app/main .
+
+EXPOSE 8081
 
 CMD ["./main"]

@@ -14,6 +14,7 @@ module "ecs" {
   source = "./modules/ecs"
   cluster_name              = data.terraform_remote_state.shared_resources.outputs.ecs_cluster_name
   music_bot_image           = "${module.ecr.repository_url}:latest"
+  container_port = var.container_port
   cpu                       = "256"
   memory                    = "512"
   desired_count             = 1

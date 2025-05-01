@@ -15,3 +15,9 @@ variable "discord_token" {
   type        = string
   sensitive   = true
 }
+
+variable "container_port" {
+    description = "Puerto del contenedor"
+    type        = number
+    default     = 8081
+}

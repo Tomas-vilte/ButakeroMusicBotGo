@@ -7,7 +7,6 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/events"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"github.com/bwmarrin/discordgo"
@@ -117,10 +116,10 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 
 		if err := guildPlayer.AddSong(ctx, &ic.ChannelID, &vs.ChannelID, playedSong); err != nil {
 			logger.Error("Error al agregar la canción", zap.String("voice_channel_id", vs.ChannelID), zap.Error(err))
-			if err := h.messenger.EditOriginalResponse(ic.Interaction, &discordgo.WebhookEdit{
-				Content: shared.StringPtr(ErrorMessageFailedToAddSong),
+			if err := h.messenger.CreateFollowupMessage(ic.Interaction, &discordgo.WebhookParams{
+				Content: ErrorMessageFailedToAddSong,
 			}); err != nil {
-				logger.Error("Error al actualizar mensaje de error", zap.Error(err))
+				logger.Error("Error al tener un seguimiento del mensaje", zap.Error(err))
 			}
 			return
 		}
@@ -130,10 +129,10 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 			zap.String("voice_channel_id", vs.ChannelID),
 		)
 
-		if err := h.messenger.EditOriginalResponse(ic.Interaction, &discordgo.WebhookEdit{
-			Content: shared.StringPtr("✅ Canción agregada a la cola: " + song.TitleTrack),
+		if err := h.messenger.CreateFollowupMessage(ic.Interaction, &discordgo.WebhookParams{
+			Content: "✅ Canción agregada a la cola: " + song.TitleTrack,
 		}); err != nil {
-			logger.Error("Error al actualizar mensaje de confirmación", zap.Error(err))
+			logger.Error("Error al tener un seguimiento del mensaje", zap.Error(err))
 		}
 	}(ctx)
 }

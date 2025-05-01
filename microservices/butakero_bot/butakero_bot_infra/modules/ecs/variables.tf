@@ -20,6 +20,12 @@ variable "memory" {
   default     = "512"
 }
 
+variable "container_port" {
+    description = "Puerto del contenedor para el bot de música"
+    type        = number
+    default     = 8081
+}
+
 variable "desired_count" {
   description = "Número de tareas deseadas para el servicio ECS"
   type        = number

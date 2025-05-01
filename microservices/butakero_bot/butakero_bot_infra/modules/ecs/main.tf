@@ -12,6 +12,12 @@ resource "aws_ecs_task_definition" "music_bot" {
       name      = "music-bot"
       image     = var.music_bot_image
       essential = true
+      portMappings = [
+        {
+          containerPort = var.container_port
+          protocol = "tcp"
+        }
+      ]
       environment = [
         {
           name  = "AWS_REGION"
@@ -31,6 +37,15 @@ resource "aws_ecs_task_definition" "music_bot" {
           awslogs-stream-prefix = "music-bot"
         }
       }
+      healthCheck = {
+        command =   ["CMD-SHELL", "curl -f http://localhost:${var.container_port}/api/v1/health || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
+
+      essential = true
     }
   ])
   runtime_platform {
@@ -50,6 +65,15 @@ resource "aws_ecs_service" "music_bot_service" {
   desired_count   = var.desired_count
   launch_type     = "FARGATE"
   force_new_deployment = true
+  deployment_minimum_healthy_percent = 50
+  deployment_maximum_percent = 200
+  health_check_grace_period_seconds = 80
+  enable_execute_command = true
+
+  deployment_circuit_breaker {
+    enable = true
+    rollback = true
+  }
 
   network_configuration {
     subnets          = var.public_subnet_ids
