@@ -29,7 +29,6 @@ func (m *MockSQSClient) DeleteMessage(ctx context.Context, params *sqs.DeleteMes
 func (m *MockSQSClient) ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
 	args := m.Called(ctx, params, optFns)
 	return args.Get(0).(*sqs.ReceiveMessageOutput), args.Error(1)
-
 }
 
 func TestNewSQSConsumer(t *testing.T) {
@@ -67,6 +66,10 @@ func TestSQSConsumer_ConsumeMessages(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
 
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
+
+	mockClient.On("ReceiveMessage", mock.Anything, mock.Anything, mock.Anything).Return(
+		&sqs.ReceiveMessageOutput{Messages: []types.Message{}}, nil)
 
 	cfg := &config.Config{
 		QueueConfig: config.QueueConfig{
@@ -79,18 +82,20 @@ func TestSQSConsumer_ConsumeMessages(t *testing.T) {
 			},
 		},
 	}
-	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 
 	consumer := NewSQSConsumer(mockClient, cfg, mockLogger)
 	ctx, cancel := context.WithCancel(context.Background())
+
+	time.AfterFunc(100*time.Millisecond, cancel)
 
 	err := consumer.SubscribeToDownloadEvents(ctx)
 
 	assert.NoError(t, err)
 	mockLogger.AssertCalled(t, "Info", "Iniciando consumo de mensajes SQS", mock.Anything)
 
-	cancel()
 	consumer.wg.Wait()
+
+	mockClient.AssertExpectations(t)
 }
 
 func TestSQSConsumer_receiveAndProcessMessages_Success(t *testing.T) {
@@ -106,7 +111,7 @@ func TestSQSConsumer_receiveAndProcessMessages_Success(t *testing.T) {
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
-	mockClient.On("ReceiveMessage", ctx, mock.Anything, mock.Anything, mock.Anything).Return(&sqs.ReceiveMessageOutput{
+	mockClient.On("ReceiveMessage", ctx, mock.Anything, mock.Anything).Return(&sqs.ReceiveMessageOutput{
 		Messages: []types.Message{
 			{
 				MessageId:     &msgID,
