@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/viper"
 	"math"
 	"strconv"
-	"time"
 )
 
 type (
@@ -18,14 +17,8 @@ type (
 		CommandPrefix   string
 		Discord         Discord
 		QueueConfig     QueueConfig
-		DatabaseConfig  DatabaseConfig
 		ExternalService ExternalService
 		AppVersion      string
-	}
-
-	DatabaseConfig struct {
-		MongoDB  MongoConfig
-		DynamoDB DynamoDBConfig
 	}
 
 	DynamoDBConfig struct {
@@ -83,25 +76,6 @@ type (
 	ExternalService struct {
 		BaseURL string
 	}
-
-	Host struct {
-		Address string
-		Port    int
-	}
-	MongoConfig struct {
-		Hosts         []Host
-		ReplicaSet    string
-		Username      string
-		Password      string
-		Database      string
-		Collection    string
-		AuthSource    string
-		Timeout       time.Duration
-		TLS           shared.TLSConfig
-		DirectConnect bool
-		RetryWrites   bool
-		Port          int
-	}
 )
 
 func LoadConfig() (*Config, error) {
@@ -110,31 +84,9 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("COMMAND_PREFIX", "test")
 	viper.SetDefault("KAFKA_BROKERS", []string{"localhost:9092"})
 	viper.SetDefault("KAFKA_TOPIC", "notifications")
-	viper.SetDefault("MONGO_HOSTS", []string{"localhost"})
-	viper.SetDefault("MONGO_PORT", 27017)
-	viper.SetDefault("MONGO_DATABASE", "audio_service")
-	viper.SetDefault("MONGO_COLLECTION", "songs")
-	viper.SetDefault("MONGO_USERNAME", "root")
-	viper.SetDefault("MONGO_PASSWORD", "root")
-	viper.SetDefault("MONGO_AUTH_SOURCE", "admin")
-	viper.SetDefault("MONGO_TIMEOUT", 10*time.Second)
-	viper.SetDefault("MONGO_TLS_ENABLED", false)
-	viper.SetDefault("MONGO_TLS_CA_FILE", "")
-	viper.SetDefault("MONGO_TLS_CERT_FILE", "")
-	viper.SetDefault("MONGO_TLS_KEY_FILE", "")
-	viper.SetDefault("MONGO_DIRECT_CONNECT", true)
-	viper.SetDefault("MONGO_RETRY_WRITES", true)
 	viper.SetDefault("LOCAL_STORAGE_DIRECTORY", "/app/data/audio-files")
 	viper.SetDefault("AUDIO_PROCESSOR_URL", "http://localhost:8080")
-	viper.SetDefault("APP_VERSION", "1.0.0")
-
-	var mongoHosts []Host
-	for _, host := range viper.GetStringSlice("MONGO_HOSTS") {
-		mongoHosts = append(mongoHosts, Host{
-			Address: host,
-			Port:    27017,
-		})
-	}
+	viper.SetDefault("APP_VERSION", "1.1.0")
 
 	cfg := &Config{
 		AppVersion:    viper.GetString("APP_VERSION"),
@@ -156,27 +108,6 @@ func LoadConfig() (*Config, error) {
 		},
 		Discord: Discord{
 			Token: viper.GetString("DISCORD_TOKEN"),
-		},
-		DatabaseConfig: DatabaseConfig{
-			MongoDB: MongoConfig{
-				Hosts:      mongoHosts,
-				ReplicaSet: viper.GetString("MONGO_REPLICA_SET_NAME"),
-				Username:   viper.GetString("MONGO_USERNAME"),
-				Port:       viper.GetInt("MONGO_PORT"),
-				Password:   viper.GetString("MONGO_PASSWORD"),
-				Database:   viper.GetString("MONGO_DATABASE"),
-				Collection: viper.GetString("MONGO_COLLECTION"),
-				AuthSource: viper.GetString("MONGO_AUTH_SOURCE"),
-				Timeout:    viper.GetDuration("MONGO_TIMEOUT"),
-				TLS: shared.TLSConfig{
-					Enabled:  viper.GetBool("MONGO_TLS_ENABLED"),
-					CAFile:   viper.GetString("MONGO_TLS_CA_FILE"),
-					CertFile: viper.GetString("MONGO_TLS_CERT_FILE"),
-					KeyFile:  viper.GetString("MONGO_TLS_KEY_FILE"),
-				},
-				DirectConnect: viper.GetBool("MONGO_DIRECT_CONNECT"),
-				RetryWrites:   viper.GetBool("MONGO_RETRY_WRITES"),
-			},
 		},
 		Storage: StorageConfig{
 			LocalConfig: LocalConfig{
@@ -220,11 +151,6 @@ func LoadConfigAws() (*Config, error) {
 		},
 		AWS: AWSConfig{
 			Region: region,
-		},
-		DatabaseConfig: DatabaseConfig{
-			DynamoDB: DynamoDBConfig{
-				SongsTable: secrets["DYNAMODB_TABLE_SONGS"],
-			},
 		},
 		ExternalService: ExternalService{
 			BaseURL: secrets["AUDIO_PROCESSOR_URL"],

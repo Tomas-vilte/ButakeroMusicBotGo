@@ -3,7 +3,7 @@
 set -e
 
 DOCKER_HUB_USERNAME="tomasvilte"
-VERSION="1.0.0"
+VERSION="1.1.0"
 
 echo "Introduce tu contraseña de Docker Hub:"
 read -s DOCKER_HUB_PASSWORD
