@@ -22,12 +22,12 @@ type MockSQSClient struct {
 }
 
 func (m *MockSQSClient) DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error) {
-	args := m.Called(ctx, params)
+	args := m.Called(ctx, params, optFns)
 	return args.Get(0).(*sqs.DeleteMessageOutput), args.Error(1)
 }
 
 func (m *MockSQSClient) ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error) {
-	args := m.Called(ctx, params)
+	args := m.Called(ctx, params, optFns)
 	return args.Get(0).(*sqs.ReceiveMessageOutput), args.Error(1)
 
 }
@@ -106,7 +106,7 @@ func TestSQSConsumer_receiveAndProcessMessages_Success(t *testing.T) {
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
-	mockClient.On("ReceiveMessage", ctx, mock.Anything).Return(&sqs.ReceiveMessageOutput{
+	mockClient.On("ReceiveMessage", ctx, mock.Anything, mock.Anything, mock.Anything).Return(&sqs.ReceiveMessageOutput{
 		Messages: []types.Message{
 			{
 				MessageId:     &msgID,
@@ -115,7 +115,7 @@ func TestSQSConsumer_receiveAndProcessMessages_Success(t *testing.T) {
 			},
 		},
 	}, nil)
-	mockClient.On("DeleteMessage", mock.Anything, mock.Anything).Return(
+	mockClient.On("DeleteMessage", mock.Anything, mock.Anything, mock.Anything).Return(
 		&sqs.DeleteMessageOutput{}, nil)
 
 	cfg := &config.Config{
@@ -167,7 +167,7 @@ func TestSQSConsumer_receiveAndProcessMessages_Error(t *testing.T) {
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
-	mockClient.On("ReceiveMessage", mock.Anything, mock.Anything).Return(
+	mockClient.On("ReceiveMessage", mock.Anything, mock.Anything, mock.Anything).Return(
 		&sqs.ReceiveMessageOutput{}, errors.New("test error"))
 
 	cfg := &config.Config{
@@ -187,7 +187,7 @@ func TestSQSConsumer_receiveAndProcessMessages_Error(t *testing.T) {
 	consumer.receiveAndProcessMessages(ctx)
 
 	// Assert
-	mockClient.AssertCalled(t, "ReceiveMessage", mock.Anything, mock.Anything)
+	mockClient.AssertCalled(t, "ReceiveMessage", mock.Anything, mock.Anything, mock.Anything)
 	mockLogger.AssertCalled(t, "Error", "Error al recibir mensajes de la cola SQS", mock.Anything)
 }
 
@@ -205,7 +205,7 @@ func TestSQSConsumer_handleMessage_Success(t *testing.T) {
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
-	mockClient.On("DeleteMessage", mock.Anything, mock.Anything).Return(
+	mockClient.On("DeleteMessage", mock.Anything, mock.Anything, mock.Anything).Return(
 		&sqs.DeleteMessageOutput{}, nil)
 
 	cfg := &config.Config{
@@ -240,7 +240,7 @@ func TestSQSConsumer_handleMessage_Success(t *testing.T) {
 	consumer.handleMessage(ctx, msg)
 
 	// Assert
-	mockClient.AssertCalled(t, "DeleteMessage", mock.Anything, mock.Anything)
+	mockClient.AssertCalled(t, "DeleteMessage", mock.Anything, mock.Anything, mock.Anything)
 	mockLogger.AssertCalled(t, "Debug", "Mensaje recibido", mock.Anything)
 	mockLogger.AssertCalled(t, "Info", "Mensaje procesado exitosamente", mock.Anything)
 }
@@ -259,7 +259,7 @@ func TestSQSConsumer_handleMessage_WarningStatus(t *testing.T) {
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Warn", mock.Anything, mock.Anything).Return()
 
-	mockClient.On("DeleteMessage", mock.Anything, mock.Anything).Return(
+	mockClient.On("DeleteMessage", mock.Anything, mock.Anything, mock.Anything).Return(
 		&sqs.DeleteMessageOutput{}, nil)
 
 	cfg := &config.Config{
@@ -285,7 +285,7 @@ func TestSQSConsumer_handleMessage_WarningStatus(t *testing.T) {
 	consumer.handleMessage(ctx, msg)
 
 	// Assert
-	mockClient.AssertCalled(t, "DeleteMessage", mock.Anything, mock.Anything)
+	mockClient.AssertCalled(t, "DeleteMessage", mock.Anything, mock.Anything, mock.Anything)
 	mockLogger.AssertCalled(t, "Debug", "Mensaje recibido", mock.Anything)
 	mockLogger.AssertCalled(t, "Warn", "Mensaje recibido con estado de error", mock.Anything)
 }
