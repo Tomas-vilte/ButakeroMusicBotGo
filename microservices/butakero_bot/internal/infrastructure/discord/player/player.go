@@ -7,6 +7,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/voice"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -35,6 +36,7 @@ type GuildPlayer struct {
 	eventCh         chan PlayerEvent
 	logger          logging.Logger
 	running         atomic.Bool
+	mu              sync.RWMutex
 }
 
 func NewGuildPlayer(cfg Config) *GuildPlayer {
@@ -49,6 +51,9 @@ func NewGuildPlayer(cfg Config) *GuildPlayer {
 }
 
 func (gp *GuildPlayer) AddSong(ctx context.Context, textChannelID, voiceChannelID *string, playedSong *entity.PlayedSong) error {
+	gp.mu.Lock()
+	defer gp.mu.Unlock()
+
 	logger := gp.logger.With(
 		zap.String("component", "GuildPlayer"),
 		zap.String("method", "AddSong"),
@@ -253,6 +258,9 @@ func (gp *GuildPlayer) RemoveSong(ctx context.Context, position int) (*entity.Di
 }
 
 func (gp *GuildPlayer) GetPlaylist(ctx context.Context) ([]string, error) {
+	gp.mu.RLock()
+	defer gp.mu.RUnlock()
+
 	logger := gp.logger.With(
 		zap.String("component", "GuildPlayer"),
 		zap.String("method", "GetPlaylist"),
@@ -418,6 +426,9 @@ func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayEvent) err
 		zap.Any("text_channel", event.TextChannelID),
 		zap.Any("voice_channel", event.VoiceChannelID),
 	)
+
+	gp.mu.Lock()
+	defer gp.mu.Unlock()
 
 	logger.Info("Procesando evento PlayEvent")
 

@@ -90,7 +90,7 @@ func (h *EventHandler) GuildDelete(_ *discordgo.Session, event *discordgo.GuildD
 		return
 	}
 
-	logger.Info("GuildPlayer eliminado exitosamente")
+	logger.Debug("GuildPlayer eliminado exitosamente")
 }
 
 // RegisterEventHandlers registra los manejadores de eventos en la sesión de Discord.

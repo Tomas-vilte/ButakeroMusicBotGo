@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
+	"sort"
 	"sync"
 	"time"
 
@@ -47,7 +48,6 @@ func (s *InmemoryPlaylistStorage) AppendTrack(ctx context.Context, song *entity.
 		return errors.New("canción inválida")
 	}
 
-	// Asignar valores por defecto si no están presentes
 	if song.DiscordSong.ID == "" {
 		song.DiscordSong.ID = generateSongID()
 	}
@@ -57,17 +57,23 @@ func (s *InmemoryPlaylistStorage) AppendTrack(ctx context.Context, song *entity.
 
 	s.songs = append(s.songs, song)
 
+	sort.Slice(s.songs, func(i, j int) bool {
+		return s.songs[i].DiscordSong.AddedAt.Before(s.songs[j].DiscordSong.AddedAt)
+	})
+
 	logger.Info("Canción agregada al final",
 		zap.String("song_id", song.DiscordSong.ID),
 		zap.String("title", song.DiscordSong.TitleTrack),
+		zap.Time("added_at", song.DiscordSong.AddedAt),
 		zap.Int("new_length", len(s.songs)))
 	return nil
 }
 
 func (s *InmemoryPlaylistStorage) RemoveTrack(ctx context.Context, position int) (*entity.PlayedSong, error) {
-	index := position - 1
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	index := position - 1
 
 	logger := s.logger.With(
 		zap.String("component", "InmemoryPlaylistStorage"),
@@ -84,7 +90,6 @@ func (s *InmemoryPlaylistStorage) RemoveTrack(ctx context.Context, position int)
 
 	song := s.songs[index]
 
-	// Eliminar la canción manteniendo el orden
 	copy(s.songs[index:], s.songs[index+1:])
 	s.songs[len(s.songs)-1] = nil
 	s.songs = s.songs[:len(s.songs)-1]
@@ -125,7 +130,6 @@ func (s *InmemoryPlaylistStorage) GetAllTracks(ctx context.Context) ([]*entity.P
 		zap.String("method", "GetAllTracks"),
 	)
 
-	// Copia defensiva para evitar modificaciones externas
 	songs := make([]*entity.PlayedSong, len(s.songs))
 	copy(songs, s.songs)
 
@@ -155,6 +159,7 @@ func (s *InmemoryPlaylistStorage) PopNextTrack(ctx context.Context) (*entity.Pla
 	logger.Info("Primera canción obtenida",
 		zap.String("song_id", song.DiscordSong.ID),
 		zap.String("title", song.DiscordSong.TitleTrack),
+		zap.Time("added_at", song.DiscordSong.AddedAt),
 		zap.Int("remaining", len(s.songs)))
 
 	return song, nil
