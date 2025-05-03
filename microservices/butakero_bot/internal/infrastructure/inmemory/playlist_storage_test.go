@@ -1,16 +1,19 @@
-//go:build !integration
+////go:build !integration
 
 package inmemory
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"reflect"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestInmemorySongStorage_AppendSong(t *testing.T) {
@@ -79,6 +82,38 @@ func TestInmemorySongStorage_RemoveSong(t *testing.T) {
 	}
 
 	mockLogger.AssertExpectations(t)
+}
+
+func TestPlaylistConcurrency(t *testing.T) {
+	mockLogger := new(logging.MockLogger)
+
+	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
+	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+	storage := NewInmemoryPlaylistStorage(mockLogger)
+	var wg sync.WaitGroup
+
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			song := &entity.PlayedSong{
+				DiscordSong: &entity.DiscordEntity{ID: fmt.Sprintf("song%d", i), AddedAt: time.Now()},
+			}
+			_ = storage.AppendTrack(context.Background(), song)
+		}(i)
+	}
+
+	wg.Wait()
+
+	if len(storage.songs) != 100 {
+		t.Errorf("Expected 100 songs, got %d", len(storage.songs))
+	}
+
+	for i := 1; i < len(storage.songs); i++ {
+		if storage.songs[i-1].DiscordSong.AddedAt.After(storage.songs[i].DiscordSong.AddedAt) {
+			t.Errorf("Playlist not in chronological order")
+		}
+	}
 }
 
 func TestInmemorySongStorage_GetSongs(t *testing.T) {

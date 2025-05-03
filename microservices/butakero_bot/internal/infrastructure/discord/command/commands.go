@@ -69,15 +69,6 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 		return
 	}
 
-	g, err := s.State.Guild(ic.GuildID)
-	if err != nil {
-		logger.Error("Error al obtener el servidor", zap.Error(err))
-		h.respondWithError(ic, ErrorMessageServerNotFound)
-		return
-	}
-
-	input := opt.Options[0].StringValue()
-
 	if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
@@ -88,7 +79,15 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 		return
 	}
 
+	g, err := s.State.Guild(ic.GuildID)
+	if err != nil {
+		logger.Error("Error al obtener el servidor", zap.Error(err))
+		h.respondWithError(ic, ErrorMessageServerNotFound)
+		return
+	}
+
 	go func(ctx context.Context) {
+		input := opt.Options[0].StringValue()
 		song, err := h.songService.GetOrDownloadSong(ctx, userID, input, "youtube")
 		if err != nil {
 			logger.Error("Error al obtener canción", zap.Error(err))

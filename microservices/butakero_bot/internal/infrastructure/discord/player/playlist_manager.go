@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
+	"sync"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
@@ -18,6 +19,7 @@ var ErrPlaylistEmpty = errors.New("la playlist está vacía")
 type PlaylistManager struct {
 	songStorage ports.PlaylistStorage
 	logger      logging.Logger
+	mu          sync.RWMutex
 }
 
 func NewPlaylistManager(songStorage ports.PlaylistStorage, logger logging.Logger) *PlaylistManager {
@@ -28,6 +30,9 @@ func NewPlaylistManager(songStorage ports.PlaylistStorage, logger logging.Logger
 }
 
 func (pm *PlaylistManager) AddSong(ctx context.Context, song *entity.PlayedSong) error {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
 	logger := pm.logger.With(
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "AddSong"),
@@ -47,11 +52,15 @@ func (pm *PlaylistManager) AddSong(ctx context.Context, song *entity.PlayedSong)
 
 	logger.Info("Canción agregada exitosamente",
 		zap.String("song_id", song.DiscordSong.ID),
-		zap.String("title", song.DiscordSong.TitleTrack))
+		zap.String("title", song.DiscordSong.TitleTrack),
+		zap.Time("added_at", song.DiscordSong.AddedAt))
 	return nil
 }
 
 func (pm *PlaylistManager) RemoveSong(ctx context.Context, position int) (*entity.DiscordEntity, error) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
 	logger := pm.logger.With(
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "RemoveSong"),
@@ -71,6 +80,9 @@ func (pm *PlaylistManager) RemoveSong(ctx context.Context, position int) (*entit
 }
 
 func (pm *PlaylistManager) GetPlaylist(ctx context.Context) ([]string, error) {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+
 	logger := pm.logger.With(
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "GetPlaylist"),
@@ -92,6 +104,9 @@ func (pm *PlaylistManager) GetPlaylist(ctx context.Context) ([]string, error) {
 }
 
 func (pm *PlaylistManager) ClearPlaylist(ctx context.Context) error {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
 	logger := pm.logger.With(
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "ClearPlaylist"),
@@ -107,6 +122,9 @@ func (pm *PlaylistManager) ClearPlaylist(ctx context.Context) error {
 }
 
 func (pm *PlaylistManager) GetNextSong(ctx context.Context) (*entity.PlayedSong, error) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
 	logger := pm.logger.With(
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "GetNextSong"),
@@ -124,6 +142,7 @@ func (pm *PlaylistManager) GetNextSong(ctx context.Context) (*entity.PlayedSong,
 
 	logger.Info("Siguiente canción obtenida",
 		zap.String("song_id", song.DiscordSong.ID),
-		zap.String("title", song.DiscordSong.TitleTrack))
+		zap.String("title", song.DiscordSong.TitleTrack),
+		zap.Time("added_at", song.DiscordSong.AddedAt))
 	return song, nil
 }
