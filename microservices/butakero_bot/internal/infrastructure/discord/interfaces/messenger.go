@@ -12,12 +12,10 @@ type DiscordMessenger interface {
 	SendPlayStatus(channelID string, playMsg *entity.PlayedSong) (messageID string, err error)
 	// UpdatePlayStatus actualiza un mensaje de estado existente
 	UpdatePlayStatus(channelID, messageID string, playMsg *entity.PlayedSong) error
-	// SendText envía un mensaje de texto simple
-	SendText(channelID, text string) error
 	// Respond responde a una interacción con una respuesta estructurada
 	Respond(interaction *discordgo.Interaction, response *discordgo.InteractionResponse) error
-	// CreateFollowupMessage crea un mensaje de seguimiento
-	CreateFollowupMessage(interaction *discordgo.Interaction, params *discordgo.WebhookParams) error
-	// EditOriginalResponse edita la respuesta original
-	EditOriginalResponse(interaction *discordgo.Interaction, params *discordgo.WebhookEdit) error
+	// GetOriginalResponseID obtiene el ID de la respuesta original de una interacción
+	GetOriginalResponseID(interaction *discordgo.Interaction) (string, error)
+	// EditMessageByID edita un mensaje por ID
+	EditMessageByID(channelID, messageID string, content string) error
 }
