@@ -50,32 +50,24 @@ func (m *DiscordMessengerAdapter) UpdatePlayStatus(channelID, messageID string, 
 	return err
 }
 
-func (m *DiscordMessengerAdapter) SendText(channelID, text string) error {
-	_, err := m.session.ChannelMessageSend(channelID, text)
-	if err != nil {
-		m.logger.Error("Error al enviar mensaje de texto", zap.Error(err))
-	}
-	return err
-}
-
 func (m *DiscordMessengerAdapter) Respond(interaction *discordgo.Interaction, response *discordgo.InteractionResponse) error {
 	return m.session.InteractionRespond(interaction, response)
 }
 
-func (m *DiscordMessengerAdapter) CreateFollowupMessage(interaction *discordgo.Interaction, params *discordgo.WebhookParams) error {
-	_, err := m.session.FollowupMessageCreate(interaction, true, params)
+func (m *DiscordMessengerAdapter) EditMessageByID(channelID, messageID string, content string) error {
+	_, err := m.session.ChannelMessageEdit(channelID, messageID, content)
 	if err != nil {
-		m.logger.Error("No se pudo crear el mensaje de seguimiento", zap.Error(err))
+		m.logger.Error("No se pudo editar la respuesta messageid", zap.Error(err))
 		return err
 	}
 	return nil
 }
 
-func (m *DiscordMessengerAdapter) EditOriginalResponse(interaction *discordgo.Interaction, params *discordgo.WebhookEdit) error {
-	_, err := m.session.InteractionResponseEdit(interaction, params)
+func (m *DiscordMessengerAdapter) GetOriginalResponseID(interaction *discordgo.Interaction) (string, error) {
+	msg, err := m.session.InteractionResponse(interaction)
 	if err != nil {
-		m.logger.Error("No se pudo editar la respuesta original", zap.Error(err))
-		return err
+		m.logger.Error("No se pudo obtener la respuesta original", zap.Error(err))
+		return "", err
 	}
-	return nil
+	return msg.ID, nil
 }

@@ -79,6 +79,11 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 		return
 	}
 
+	originalMsgID, err := h.messenger.GetOriginalResponseID(ic.Interaction)
+	if err != nil {
+		logger.Warn("No se pudo obtener el ID del mensaje original", zap.Error(err))
+	}
+
 	g, err := s.State.Guild(ic.GuildID)
 	if err != nil {
 		logger.Error("Error al obtener el servidor", zap.Error(err))
@@ -91,10 +96,12 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 		song, err := h.songService.GetOrDownloadSong(ctx, userID, input, "youtube")
 		if err != nil {
 			logger.Error("Error al obtener canción", zap.Error(err))
-			if followupErr := h.messenger.CreateFollowupMessage(ic.Interaction, &discordgo.WebhookParams{
-				Content: "❌ No se pudo encontrar o descargar la canción. Verifica el enlace o inténtalo de nuevo",
-			}); followupErr != nil {
-				logger.Error("Error al enviar mensaje de confirmación", zap.Error(err))
+
+			if originalMsgID != "" {
+				if editErr := h.messenger.EditMessageByID(ic.ChannelID, originalMsgID,
+					"❌ No se pudo encontrar o descargar la canción. Verifica el enlace o inténtalo de nuevo"); editErr != nil {
+					logger.Error("Error al editar el mensaje original", zap.Error(editErr))
+				}
 			}
 			return
 		}
@@ -115,10 +122,11 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 
 		if err := guildPlayer.AddSong(ctx, &ic.ChannelID, &vs.ChannelID, playedSong); err != nil {
 			logger.Error("Error al agregar la canción", zap.String("voice_channel_id", vs.ChannelID), zap.Error(err))
-			if err := h.messenger.CreateFollowupMessage(ic.Interaction, &discordgo.WebhookParams{
-				Content: ErrorMessageFailedToAddSong,
-			}); err != nil {
-				logger.Error("Error al tener un seguimiento del mensaje", zap.Error(err))
+
+			if originalMsgID != "" {
+				if editErr := h.messenger.EditMessageByID(ic.ChannelID, originalMsgID, ErrorMessageFailedToAddSong); editErr != nil {
+					logger.Error("Error al editar el mensaje original", zap.Error(editErr))
+				}
 			}
 			return
 		}
@@ -128,10 +136,11 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 			zap.String("voice_channel_id", vs.ChannelID),
 		)
 
-		if err := h.messenger.CreateFollowupMessage(ic.Interaction, &discordgo.WebhookParams{
-			Content: "✅ Canción agregada a la cola: " + song.TitleTrack,
-		}); err != nil {
-			logger.Error("Error al tener un seguimiento del mensaje", zap.Error(err))
+		successMessage := "✅ Canción agregada a la cola: " + song.TitleTrack
+		if originalMsgID != "" {
+			if editErr := h.messenger.EditMessageByID(ic.ChannelID, originalMsgID, successMessage); editErr != nil {
+				logger.Error("Error al editar el mensaje original", zap.Error(editErr))
+			}
 		}
 	}(ctx)
 }
