@@ -104,24 +104,22 @@ func (m *MockDiscordMessenger) UpdatePlayStatus(channelID, messageID string, pla
 	return args.Error(0)
 }
 
-func (m *MockDiscordMessenger) SendText(channelID, text string) error {
-	args := m.Called(channelID, text)
-	return args.Error(0)
-}
-
 func (m *MockDiscordMessenger) Respond(interaction *discordgo.Interaction, response *discordgo.InteractionResponse) error {
 	args := m.Called(interaction, response)
 	return args.Error(0)
 }
 
-func (m *MockDiscordMessenger) CreateFollowupMessage(interaction *discordgo.Interaction, params *discordgo.WebhookParams) error {
-	args := m.Called(interaction, params)
+func (m *MockDiscordMessenger) EditMessageByID(channelID, messageID string, content string) error {
+	args := m.Called(channelID, messageID, content)
 	return args.Error(0)
 }
 
-func (m *MockDiscordMessenger) EditOriginalResponse(interaction *discordgo.Interaction, params *discordgo.WebhookEdit) error {
-	args := m.Called(interaction, params)
-	return args.Error(0)
+func (m *MockDiscordMessenger) GetOriginalResponseID(interaction *discordgo.Interaction) (string, error) {
+	args := m.Called(interaction)
+	if args.Get(0) == nil {
+		return "", args.Error(1)
+	}
+	return args.String(0), args.Error(1)
 }
 
 type MockPlayerStateStorage struct {
@@ -157,4 +155,81 @@ func (m *MockPlayerStateStorage) SetTextChannelID(ctx context.Context, channelID
 	args := m.Called(ctx, channelID)
 	return args.Error(0)
 
+}
+
+type MockPlaylistHandler struct {
+	mock.Mock
+}
+
+func (m *MockPlaylistHandler) AddSong(ctx context.Context, song *entity.PlayedSong) error {
+	args := m.Called(ctx, song)
+	return args.Error(0)
+}
+
+func (m *MockPlaylistHandler) RemoveSong(ctx context.Context, position int) (*entity.DiscordEntity, error) {
+	args := m.Called(ctx, position)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.DiscordEntity), args.Error(1)
+}
+
+func (m *MockPlaylistHandler) GetPlaylist(ctx context.Context) ([]string, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]string), args.Error(1)
+}
+
+func (m *MockPlaylistHandler) GetNextSong(ctx context.Context) (*entity.PlayedSong, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.PlayedSong), args.Error(1)
+}
+
+func (m *MockPlaylistHandler) ClearPlaylist(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+type MockPlaybackHandler struct {
+	mock.Mock
+}
+
+func (m *MockPlaybackHandler) Play(ctx context.Context, song *entity.PlayedSong, textChannelID string) error {
+	args := m.Called(ctx, song, textChannelID)
+	return args.Error(0)
+}
+
+func (m *MockPlaybackHandler) Stop(ctx context.Context) {
+	m.Called(ctx)
+}
+
+func (m *MockPlaybackHandler) Pause(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *MockPlaybackHandler) Resume(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *MockPlaybackHandler) CurrentState() PlayerState {
+	args := m.Called()
+	return args.Get(0).(PlayerState)
+}
+
+type MockPlayerEvent struct {
+	mock.Mock
+}
+
+func (m *MockPlayerEvent) Type() EventType {
+	args := m.Called()
+	return args.Get(0).(EventType)
+}
+
+func (m *MockPlayerEvent) HandleEvent(ctx context.Context, player *GuildPlayer) error {
+	args := m.Called(ctx, player)
+	return args.Error(0)
 }

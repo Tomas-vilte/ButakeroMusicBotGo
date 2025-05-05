@@ -457,11 +457,6 @@ func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayEvent) err
 		return fmt.Errorf("error al obtener los canales: %w", err)
 	}
 
-	logger = logger.With(
-		zap.String("voice_channel", voiceChannel),
-		zap.String("text_channel", textChannel),
-	)
-
 	logger.Info("Intentando unirse al canal de voz")
 	if err := gp.JoinVoiceChannel(ctx, voiceChannel); err != nil {
 		logger.Error("Error al unirse al canal de voz",
