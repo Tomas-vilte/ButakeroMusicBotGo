@@ -11,8 +11,11 @@ type (
 	// el microservicio de descarga envía el resultado a una cola. Los estados posibles
 	// son "success" y "error".
 	SongDownloadEventSubscriber interface {
+		// SubscribeToDownloadEvents inicia la suscripción a los eventos de descarga.
 		SubscribeToDownloadEvents(ctx context.Context) error
+		// DownloadEventsChannel devuelve un canal para recibir mensajes de estado de descarga.
 		DownloadEventsChannel() <-chan *queue.DownloadStatusMessage
+		// CloseSubscription cierra la suscripción a los eventos de descarga.
 		CloseSubscription() error
 	}
 
@@ -22,7 +25,9 @@ type (
 	// El mensaje incluye la información necesaria como el ID de interacción,
 	// el ID del usuario y los detalles de la canción solicitada.
 	SongDownloadRequestPublisher interface {
+		// PublishDownloadRequest envía un mensaje de solicitud de descarga a la cola.
 		PublishDownloadRequest(ctx context.Context, request *queue.DownloadRequestMessage) error
+		// ClosePublisher cierra la conexión del publicador.
 		ClosePublisher() error
 	}
 )

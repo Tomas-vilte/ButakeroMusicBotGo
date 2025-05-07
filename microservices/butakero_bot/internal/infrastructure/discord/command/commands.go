@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/events"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
@@ -26,7 +25,6 @@ type CommandHandler struct {
 	logger       logging.Logger
 	songService  ports.SongService
 	messenger    interfaces.DiscordMessenger
-	eventHandler *events.EventHandler
 	guildManager ports.GuildManager
 }
 
@@ -36,14 +34,12 @@ func NewCommandHandler(
 	songService ports.SongService,
 	guildManager ports.GuildManager,
 	messenger interfaces.DiscordMessenger,
-	eventHandler *events.EventHandler,
 ) *CommandHandler {
 	return &CommandHandler{
 		storage:      storage,
 		logger:       logger,
 		songService:  songService,
 		messenger:    messenger,
-		eventHandler: eventHandler,
 		guildManager: guildManager,
 	}
 }

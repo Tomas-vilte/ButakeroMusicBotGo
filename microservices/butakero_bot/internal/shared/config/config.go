@@ -86,7 +86,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("KAFKA_TOPIC", "notifications")
 	viper.SetDefault("LOCAL_STORAGE_DIRECTORY", "/app/data/audio-files")
 	viper.SetDefault("AUDIO_PROCESSOR_URL", "http://localhost:8080")
-	viper.SetDefault("APP_VERSION", "1.1.0")
+	viper.SetDefault("APP_VERSION", "1.1.1")
 
 	cfg := &Config{
 		AppVersion:    viper.GetString("APP_VERSION"),
@@ -124,6 +124,7 @@ func LoadConfig() (*Config, error) {
 
 func LoadConfigAws() (*Config, error) {
 	viper.AutomaticEnv()
+	viper.SetDefault("APP_VERSION", "1.1.1")
 
 	region := viper.GetString("AWS_REGION")
 	secretName := viper.GetString("AWS_SECRET_NAME")
@@ -139,6 +140,7 @@ func LoadConfigAws() (*Config, error) {
 	}
 
 	cfg := &Config{
+		AppVersion:    viper.GetString("APP_VERSION"),
 		CommandPrefix: secrets["COMMAND_PREFIX"],
 		Discord: Discord{
 			Token: secrets["DISCORD_TOKEN"],
