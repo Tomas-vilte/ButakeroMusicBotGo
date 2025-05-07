@@ -47,8 +47,6 @@ func NewCommandHandler(
 func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.InteractionCreate, opt *discordgo.ApplicationCommandInteractionDataOption) {
 	ctx := trace.WithTraceID(context.Background())
 
-	h.logger.Info("SESOOOOOOOOOOOOOOOOOOOOOO", zap.String("GUILD_ID SESO", ic.GuildID))
-
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "PlaySong"),
@@ -88,7 +86,6 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 		h.respondWithError(ic, ErrorMessageServerNotFound)
 		return
 	}
-	h.logger.Info("SEXO ANALLLL", zap.String("GUILD_ID SEXO ANAL", g.ID))
 
 	go func(ctx context.Context) {
 		input := opt.Options[0].StringValue()
