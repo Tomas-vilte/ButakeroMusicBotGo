@@ -111,7 +111,6 @@ func StartBot() error {
 		songService,
 		guildManager,
 		discordMessenger,
-		eventsHandler,
 	)
 
 	commandRegistry := command.NewCommandRegistry()

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/events"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
@@ -26,7 +25,6 @@ type CommandHandler struct {
 	logger       logging.Logger
 	songService  ports.SongService
 	messenger    interfaces.DiscordMessenger
-	eventHandler *events.EventHandler
 	guildManager ports.GuildManager
 }
 
@@ -36,20 +34,20 @@ func NewCommandHandler(
 	songService ports.SongService,
 	guildManager ports.GuildManager,
 	messenger interfaces.DiscordMessenger,
-	eventHandler *events.EventHandler,
 ) *CommandHandler {
 	return &CommandHandler{
 		storage:      storage,
 		logger:       logger,
 		songService:  songService,
 		messenger:    messenger,
-		eventHandler: eventHandler,
 		guildManager: guildManager,
 	}
 }
 
 func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.InteractionCreate, opt *discordgo.ApplicationCommandInteractionDataOption) {
 	ctx := trace.WithTraceID(context.Background())
+
+	h.logger.Info("SESOOOOOOOOOOOOOOOOOOOOOO", zap.String("GUILD_ID SESO", ic.GuildID))
 
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
@@ -90,6 +88,7 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 		h.respondWithError(ic, ErrorMessageServerNotFound)
 		return
 	}
+	h.logger.Info("SEXO ANALLLL", zap.String("GUILD_ID SEXO ANAL", g.ID))
 
 	go func(ctx context.Context) {
 		input := opt.Options[0].StringValue()
