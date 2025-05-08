@@ -91,17 +91,18 @@ type (
 
 	// MongoConfig configuración específica de MongoDB
 	MongoConfig struct {
-		User           string
-		Password       string
-		Port           string
-		Host           []string
-		Database       string
-		Collections    Collections
-		CaFile         string
-		CertFile       string
-		KeyFile        string
-		EnableTLS      bool
-		ReplicaSetName string
+		User             string
+		Password         string
+		Port             string
+		Host             []string
+		Database         string
+		Collections      Collections
+		CaFile           string
+		CertFile         string
+		KeyFile          string
+		EnableTLS        bool
+		ReplicaSetName   string
+		DirectConnection bool
 	}
 
 	// DynamoDBConfig configuración específica de DynamoDB

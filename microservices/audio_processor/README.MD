@@ -166,7 +166,7 @@ docker compose down
 - Minikube (para desarrollo local)
 
 #### Configuración de Credenciales
-Antes de ejecutar el despliegue, debes configurar las credenciales en el archivo [secret.yaml](/k8s/bases/backend/secret.yaml):
+Antes de ejecutar el despliegue, debes configurar las credenciales en el archivo [secret.yaml](/k8s/bases/backend/download-service/secret.yaml):
 ```yaml
 apiVersion: v1
 kind: Secret

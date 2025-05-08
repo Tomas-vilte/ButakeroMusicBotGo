@@ -1,7 +1,21 @@
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic
 metadata:
-  name: notifications
+  name: bot.download.status
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: 86400000
+    segment.bytes: 1073741824
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: bot.download.requests
   namespace: kafka
   labels:
     strimzi.io/cluster: my-cluster

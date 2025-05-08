@@ -187,8 +187,23 @@ func (c *ConsumerKafka) EnsureTopicExists(topic string) error {
 		zap.String("topic", topic),
 	)
 
+	cfgKafka := sarama.NewConfig()
+
+	if c.cfg.Messaging.Kafka.EnableTLS {
+		tlsConfig, err := utils.NewTLSConfig(&utils.TLSConfig{
+			CaFile:   c.cfg.Messaging.Kafka.CaFile,
+			CertFile: c.cfg.Messaging.Kafka.CertFile,
+			KeyFile:  c.cfg.Messaging.Kafka.KeyFile,
+		})
+		if err != nil {
+			return err
+		}
+		cfgKafka.Net.TLS.Enable = true
+		cfgKafka.Net.TLS.Config = tlsConfig
+	}
+
 	log.Debug("Creando administrador de clúster Kafka")
-	admin, err := sarama.NewClusterAdmin(c.cfg.Messaging.Kafka.Brokers, sarama.NewConfig())
+	admin, err := sarama.NewClusterAdmin(c.cfg.Messaging.Kafka.Brokers, cfgKafka)
 	if err != nil {
 		log.Error("Error al crear el administrador de Kafka", zap.Error(err))
 		return errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("error al crear el administrador de Kafka: %v", err))

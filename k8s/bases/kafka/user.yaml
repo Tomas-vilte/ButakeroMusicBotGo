@@ -13,29 +13,41 @@ spec:
       metadata:
         annotations:
           reflector.v1.k8s.emberstack.com/reflection-allowed: "true"
-          reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "backend" 
-          reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true" 
+          reflector.v1.k8s.emberstack.com/reflection-allowed-namespaces: "backend"
+          reflector.v1.k8s.emberstack.com/reflection-auto-enabled: "true"
           reflector.v1.k8s.emberstack.com/reflection-auto-namespaces: "backend"
   authorization:
     type: simple
     acls:
-      # Permisos para producir mensajes
+      # Permisos para los topics
       - resource:
           type: topic
-          name: notifications
+          name: "bot.download.status"
           patternType: literal
         operations:
-          - Write
+          - Describe
           - Create
+          - Write
+          - Read
         host: "*"
-      
-      # Permisos para consumir mensajes
+
       - resource:
           type: topic
-          name: notifications
+          name: "bot.download.requests"
           patternType: literal
         operations:
+          - Describe
+          - Create
+          - Write
           - Read
+        host: "*"
+
+      # Permisos para operaciones administrativas
+      - resource:
+          type: cluster
+          name: "kafka-cluster"
+          patternType: literal
+        operations:
           - Describe
         host: "*"
       

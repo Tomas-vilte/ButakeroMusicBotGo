@@ -83,7 +83,6 @@ func LoadConfig() (*Config, error) {
 
 	viper.SetDefault("COMMAND_PREFIX", "test")
 	viper.SetDefault("KAFKA_BROKERS", []string{"localhost:9092"})
-	viper.SetDefault("KAFKA_TOPIC", "notifications")
 	viper.SetDefault("LOCAL_STORAGE_DIRECTORY", "/app/data/audio-files")
 	viper.SetDefault("AUDIO_PROCESSOR_URL", "http://localhost:8080")
 	viper.SetDefault("APP_VERSION", "1.1.1")

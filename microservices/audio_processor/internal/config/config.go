@@ -16,6 +16,7 @@ func LoadConfigLocal() *Config {
 	viper.SetDefault("GIN_MODE", "debug")
 	viper.SetDefault("KAFKA_ENABLE_TLS", false)
 	viper.SetDefault("MONGO_ENABLE_TLS", false)
+	viper.SetDefault("MONGO_DIRECT_CONNECTION", true)
 	viper.SetDefault("LOCAL_STORAGE_PATH", "audio-files/")
 	viper.SetDefault("ENVIRONMENT", "local")
 
@@ -58,16 +59,17 @@ func LoadConfigLocal() *Config {
 		Database: DatabaseConfig{
 			Type: "mongodb",
 			Mongo: &MongoConfig{
-				User:           viper.GetString("MONGO_USER"),
-				Password:       viper.GetString("MONGO_PASSWORD"),
-				Port:           viper.GetString("MONGO_PORT"),
-				Host:           viper.GetStringSlice("MONGO_HOST"),
-				CaFile:         viper.GetString("MONGO_CA_FILE"),
-				CertFile:       viper.GetString("MONGO_CERT_FILE"),
-				KeyFile:        viper.GetString("MONGO_KEY_FILE"),
-				Database:       viper.GetString("MONGO_DATABASE"),
-				ReplicaSetName: viper.GetString("MONGO_REPLICA_SET_NAME"),
-				EnableTLS:      viper.GetBool("MONGO_ENABLE_TLS"),
+				User:             viper.GetString("MONGO_USER"),
+				Password:         viper.GetString("MONGO_PASSWORD"),
+				Port:             viper.GetString("MONGO_PORT"),
+				Host:             viper.GetStringSlice("MONGO_HOST"),
+				CaFile:           viper.GetString("MONGO_CA_FILE"),
+				CertFile:         viper.GetString("MONGO_CERT_FILE"),
+				KeyFile:          viper.GetString("MONGO_KEY_FILE"),
+				Database:         viper.GetString("MONGO_DATABASE"),
+				DirectConnection: viper.GetBool("MONGO_DIRECT_CONNECTION"),
+				ReplicaSetName:   viper.GetString("MONGO_REPLICA_SET_NAME"),
+				EnableTLS:        viper.GetBool("MONGO_ENABLE_TLS"),
 				Collections: Collections{
 					Songs: viper.GetString("MONGO_COLLECTION_SONGS"),
 				},
