@@ -10,7 +10,7 @@ echo "==========================="
 kubectl apply -f k8s/bases/kafka/namespace.yaml
 kubectl apply -f k8s/bases/mongodb/namespace.yaml
 kubectl apply -f k8s/bases/prometheus-operator/namespace.yaml
-kubectl apply -f k8s/bases/backend/namespace.yaml
+kubectl apply -f k8s/bases/backend/download-service/namespace.yaml
 
 kubectl apply -f k8s/reflector.yaml
 
@@ -125,10 +125,15 @@ kubectl apply -f k8s/bases/cadvisor
 echo "==========================="
 echo "Aplicando Backend..."
 echo "==========================="
-kubectl apply -f k8s/bases/backend/
+kubectl apply -f k8s/bases/backend/download-service/
 
-echo "Esperando que los pods de Backend estén listos..."
-kubectl wait --for=condition=Ready --timeout=600s pod -l app=backend-processing-audio -n backend
+echo "Esperando que los pods del servicio de descarga estén listos..."
+kubectl wait --for=condition=Ready --timeout=600s pod -l app=audio-processing-service -n backend
+
+kubectl apply -f k8s/bases/backend/discord-bot/
+
+echo "Esperando que los pods del servicio de descarga estén listos..."
+kubectl wait --for=condition=Ready --timeout=600s pod -l app=discord-bot -n backend
 
 # ===========================
 # Verificación Final
