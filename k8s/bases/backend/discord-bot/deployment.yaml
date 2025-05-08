@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discord-bot
+  namespace: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: discord-bot
+  template:
+    metadata:
+      labels:
+        app: discord-bot
+    spec:
+      containers:
+        - name: discord-bot
+          volumeMounts:
+            - name: audio-storage
+              mountPath: /shared-audio
+            - name: kafka-user-cert
+              mountPath: /etc/kafka/user-certs
+              readOnly: true
+            - name: kafka-ca-cert
+              mountPath: /etc/kafka/ca-certs
+              readOnly: true
+          image: tomasvilte/butakero_bot:1.1.1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: discord-bot-config
+            - secretRef:
+                name: discord-bot-secrets
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 150m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: audio-storage
+          persistentVolumeClaim:
+            claimName: audio-files-pvc
+        - name: kafka-user-cert
+          secret:
+            secretName: my-kafka-user
+            items:
+              - key: user.crt
+                path: user.crt
+              - key: user.key
+                path: user.key
+        - name: kafka-ca-cert
+          secret:
+            secretName: kafka-server-cert
+            items:
+              - key: ca.crt
+                path: ca.crt
