@@ -1,4 +1,3 @@
----
 apiVersion: mongodbcommunity.mongodb.com/v1
 kind: MongoDBCommunity
 metadata:
@@ -44,11 +43,11 @@ spec:
     - name: enableSharding
       db: admin
     - name: readWrite
-      db: audio_service_db
+      db: audio_service
     - name: dbOwner
-      db: audio_service_db
+      db: audio_service
     - name: dbAdmin
-      db: audio_service_db
+      db: audio_service
     scramCredentialsSecretName: my-scram
   additionalMongodConfig:
     storage.wiredTiger.engineConfig.journalCompressor: zlib

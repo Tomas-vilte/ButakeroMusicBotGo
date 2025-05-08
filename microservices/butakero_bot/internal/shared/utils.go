@@ -7,10 +7,6 @@ import (
 	"os"
 )
 
-func StringPtr(s string) *string {
-	return &s
-}
-
 type TLSConfig struct {
 	Enabled  bool
 	CAFile   string
