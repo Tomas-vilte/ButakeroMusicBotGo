@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: discord-bot-service
+  namespace: backend
+  labels:
+    app: discord-bot
+    component: bot
+spec:
+  selector:
+    app: discord-bot
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP

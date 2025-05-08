@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: discord-bot-config
+  namespace: backend
+data:
+  COMMAND_PREFIX: "test"
+  KAFKA_TLS_CA_FILE: "/etc/kafka/ca-certs/ca.crt"
+  KAFKA_TLS_CERT_FILE: "/etc/kafka/user-certs/user.crt"
+  KAFKA_TLS_KEY_FILE: "/etc/kafka/user-certs/user.key"
+  KAFKA_TLS_ENABLED: "true"
+  KAFKA_BROKERS: "my-cluster-kafka-bootstrap.kafka.svc.cluster.local:9093"
+  KAFKA_BOT_DOWNLOAD_STATUS: "bot.download.status"
+  KAFKA_BOT_DOWNLOAD_REQUESTS: "bot.download.requests"
+  LOCAL_STORAGE_DIRECTORY: "/shared-audio"
+  AUDIO_PROCESSOR_URL: "http://audio-processing-service.backend.svc.cluster.local:8080"
