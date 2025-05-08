@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audio-processing-service
+  namespace: backend
+  labels:
+    app: audio-processing-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: audio-processing-service
+  template:
+    metadata:
+      labels:
+        app: audio-processing-service
+    spec:
+      containers:
+      - name: audio-processing-service
+        image: tomasvilte/audio_processor:1.1.1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        envFrom:
+          - configMapRef:
+              name: app-config
+          - secretRef:
+              name: backend-secret
+        volumeMounts:
+        - name: yt-cookies-volume
+          mountPath: /root/configurations/yt-cookies.txt
+          subPath: yt-cookies.txt
+        - name: kafka-user-cert
+          mountPath: /etc/kafka/user-certs
+          readOnly: true
+        - name: kafka-ca-cert
+          mountPath: /etc/kafka/ca-certs
+          readOnly: true
+        - name: mongodb-cert
+          mountPath: /etc/mongodb/certs
+          readOnly: true
+        - name: audio-storage
+          mountPath: /data/audio
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 150m
+            memory: 256Mi
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: yt-cookies-volume
+        secret:
+          secretName: backend-secret
+          items:
+          - key: YT_COOKIES
+            path: yt-cookies.txt
+      - name: audio-storage
+        persistentVolumeClaim:
+          claimName: audio-files-pvc
+      - name: kafka-user-cert
+        secret:
+          secretName: my-kafka-user
+          items:
+          - key: user.crt
+            path: user.crt
+          - key: user.key
+            path: user.key
+      - name: kafka-ca-cert
+        secret:
+          secretName: kafka-server-cert
+          items:
+          - key: ca.crt
+            path: ca.crt
+      - name: mongodb-cert
+        secret:
+          secretName: mongodb-cert
+          items:
+          - key: ca.crt
+            path: ca.crt
+          - key: tls.crt
+            path: tls.crt
+          - key: tls.key
+            path: tls.key

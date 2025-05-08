@@ -1,12 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: backend-service
+  name: audio-processing-service
   namespace: backend
 spec:
   selector:
-    app: backend-processing-audio
-  spec:
+    app: audio-processing-service
   ports:
     - protocol: TCP
       port: 8080
