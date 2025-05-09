@@ -15,7 +15,7 @@ import (
 type coreService struct {
 	mediaRepository      ports.MediaRepository
 	audioStorageService  ports.AudioStorageService
-	topicPublisher       ports.TopicPublisherService
+	topicPublisher       ports.MessageProducer
 	audioDownloadService ports.AudioDownloadService
 	logger               logger.Logger
 	cfg                  *config.Config
@@ -24,7 +24,7 @@ type coreService struct {
 func NewCoreService(
 	mediaRepository ports.MediaRepository,
 	audioStorageService ports.AudioStorageService,
-	topicPublisher ports.TopicPublisherService,
+	topicPublisher ports.MessageProducer,
 	audioDownloadService ports.AudioDownloadService,
 	logger logger.Logger,
 	cfg *config.Config,
@@ -109,7 +109,7 @@ func (s *coreService) ProcessMedia(ctx context.Context, media *model.Media, user
 			return lastError
 		}
 
-		if err := s.topicPublisher.PublishMediaProcessed(ctx, message); err != nil {
+		if err := s.topicPublisher.Publish(ctx, message); err != nil {
 			log.Error("Error al publicar el evento de procesamiento exitoso", zap.Error(err))
 			lastError = err
 			return lastError

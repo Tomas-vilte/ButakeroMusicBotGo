@@ -106,9 +106,8 @@ func StartServer() error {
 	}
 
 	audioStorageService := service.NewAudioStorageService(storage, log)
-	topicPublisherService := service.NewMediaProcessingPublisherService(kafkaProducer, log)
 	audioDownloadService := service.NewAudioDownloaderService(downloaderMusic, encoderAudio, log)
-	coreService := service.NewCoreService(mediaRepository, audioStorageService, topicPublisherService, audioDownloadService, log, cfg)
+	coreService := service.NewCoreService(mediaRepository, audioStorageService, kafkaProducer, audioDownloadService, log, cfg)
 	providerService := service.NewVideoService(providers, log)
 	healthCheck := controller.NewHealthHandler(cfg)
 	mediaController := controller.NewMediaController(mediaRepository)

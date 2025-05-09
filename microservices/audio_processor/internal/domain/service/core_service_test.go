@@ -18,7 +18,7 @@ import (
 func TestCoreService_ProcessMedia_Success(t *testing.T) {
 	mockMediaRepository := new(MockMediaRepository)
 	mockAudioStorageService := new(MockAudioStorageService)
-	mockTopicPublisher := new(MockTopicPublisherService)
+	mockTopicPublisher := new(MockMessageQueue)
 	mockAudioDownloadService := new(MockAudioDownloadService)
 	mockLogger := new(logger.MockLogger)
 
@@ -65,7 +65,7 @@ func TestCoreService_ProcessMedia_Success(t *testing.T) {
 	mockAudioDownloadService.On("DownloadAndEncode", mock.Anything, media.Metadata.URL).Return(audioBuffer, nil)
 	mockAudioStorageService.On("StoreAudio", mock.Anything, audioBuffer, media.TitleLower).Return(fileData, nil)
 	mockMediaRepository.On("UpdateMedia", mock.Anything, media.VideoID, mock.AnythingOfType("*model.Media")).Return(nil)
-	mockTopicPublisher.On("PublishMediaProcessed", mock.Anything, mock.AnythingOfType("*model.MediaProcessingMessage")).Return(nil)
+	mockTopicPublisher.On("Publish", mock.Anything, mock.AnythingOfType("*model.MediaProcessingMessage")).Return(nil)
 
 	err := service.ProcessMedia(context.Background(), media, userID, interactionID)
 
@@ -81,7 +81,7 @@ func TestCoreService_ProcessMedia_DownloadError(t *testing.T) {
 	// Arrange
 	mockMediaRepository := new(MockMediaRepository)
 	mockAudioStorageService := new(MockAudioStorageService)
-	mockTopicPublisher := new(MockTopicPublisherService)
+	mockTopicPublisher := new(MockMessageQueue)
 	mockAudioDownloadService := new(MockAudioDownloadService)
 	mockLogger := new(logger.MockLogger)
 
@@ -133,14 +133,14 @@ func TestCoreService_ProcessMedia_DownloadError(t *testing.T) {
 	mockAudioDownloadService.AssertExpectations(t)
 	mockAudioStorageService.AssertNotCalled(t, "StoreAudio")
 	mockMediaRepository.AssertNotCalled(t, "UpdateMedia")
-	mockTopicPublisher.AssertNotCalled(t, "PublishMediaProcessed")
+	mockTopicPublisher.AssertNotCalled(t, "Publish")
 }
 
 func TestCoreService_ProcessMedia_StorageError(t *testing.T) {
 	// Arrange
 	mockMediaRepository := new(MockMediaRepository)
 	mockAudioStorageService := new(MockAudioStorageService)
-	mockTopicPublisher := new(MockTopicPublisherService)
+	mockTopicPublisher := new(MockMessageQueue)
 	mockAudioDownloadService := new(MockAudioDownloadService)
 	mockLogger := new(logger.MockLogger)
 
@@ -193,14 +193,14 @@ func TestCoreService_ProcessMedia_StorageError(t *testing.T) {
 	mockAudioDownloadService.AssertExpectations(t)
 	mockAudioStorageService.AssertExpectations(t)
 	mockMediaRepository.AssertNotCalled(t, "UpdateMedia")
-	mockTopicPublisher.AssertNotCalled(t, "PublishMediaProcessed")
+	mockTopicPublisher.AssertNotCalled(t, "Publish")
 }
 
 func TestCoreService_ProcessMedia_UpdateMediaError(t *testing.T) {
 	// Arrange
 	mockMediaRepository := new(MockMediaRepository)
 	mockAudioStorageService := new(MockAudioStorageService)
-	mockTopicPublisher := new(MockTopicPublisherService)
+	mockTopicPublisher := new(MockMessageQueue)
 	mockAudioDownloadService := new(MockAudioDownloadService)
 	mockLogger := new(logger.MockLogger)
 
@@ -260,14 +260,14 @@ func TestCoreService_ProcessMedia_UpdateMediaError(t *testing.T) {
 	mockAudioDownloadService.AssertExpectations(t)
 	mockAudioStorageService.AssertExpectations(t)
 	mockMediaRepository.AssertExpectations(t)
-	mockTopicPublisher.AssertNotCalled(t, "PublishMediaProcessed")
+	mockTopicPublisher.AssertNotCalled(t, "Publish")
 }
 
 func TestCoreService_ProcessMedia_PublishError(t *testing.T) {
 	// Arrange
 	mockMediaRepository := new(MockMediaRepository)
 	mockAudioStorageService := new(MockAudioStorageService)
-	mockTopicPublisher := new(MockTopicPublisherService)
+	mockTopicPublisher := new(MockMessageQueue)
 	mockAudioDownloadService := new(MockAudioDownloadService)
 	mockLogger := new(logger.MockLogger)
 
@@ -316,7 +316,7 @@ func TestCoreService_ProcessMedia_PublishError(t *testing.T) {
 	mockAudioDownloadService.On("DownloadAndEncode", mock.Anything, media.Metadata.URL).Return(audioBuffer, nil)
 	mockAudioStorageService.On("StoreAudio", mock.Anything, audioBuffer, media.TitleLower).Return(fileData, nil)
 	mockMediaRepository.On("UpdateMedia", mock.Anything, media.VideoID, mock.AnythingOfType("*model.Media")).Return(nil)
-	mockTopicPublisher.On("PublishMediaProcessed", mock.Anything, mock.AnythingOfType("*model.MediaProcessingMessage")).Return(expectedError)
+	mockTopicPublisher.On("Publish", mock.Anything, mock.AnythingOfType("*model.MediaProcessingMessage")).Return(expectedError)
 
 	// Act
 	err := service.ProcessMedia(context.Background(), media, userID, interactionID)

@@ -29,10 +29,6 @@ type (
 		mock.Mock
 	}
 
-	MockTopicPublisherService struct {
-		mock.Mock
-	}
-
 	MockAudioDownloadService struct {
 		mock.Mock
 	}
@@ -101,11 +97,6 @@ func (m *MockStorage) GetFileContent(ctx context.Context, path string, key strin
 func (m *MockAudioStorageService) StoreAudio(ctx context.Context, buffer *bytes.Buffer, songName string) (*model.FileData, error) {
 	args := m.Called(ctx, buffer, songName)
 	return args.Get(0).(*model.FileData), args.Error(1)
-}
-
-func (m *MockTopicPublisherService) PublishMediaProcessed(ctx context.Context, message *model.MediaProcessingMessage) error {
-	args := m.Called(ctx, message)
-	return args.Error(0)
 }
 
 func (m *MockAudioDownloadService) DownloadAndEncode(ctx context.Context, url string) (*bytes.Buffer, error) {

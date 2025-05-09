@@ -19,10 +19,6 @@ type (
 		StoreAudio(ctx context.Context, buffer *bytes.Buffer, songName string) (*model.FileData, error)
 	}
 
-	TopicPublisherService interface {
-		PublishMediaProcessed(ctx context.Context, message *model.MediaProcessingMessage) error
-	}
-
 	CoreService interface {
 		ProcessMedia(ctx context.Context, media *model.Media, userID, requestID string) error
 	}

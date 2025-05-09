@@ -102,9 +102,8 @@ func StartServer() error {
 
 	encoderAudio := encoder.NewFFmpegEncoder(log)
 	audioStorageService := service.NewAudioStorageService(storage, log)
-	topicPublisherService := service.NewMediaProcessingPublisherService(sqsProducer, log)
 	audioDownloadService := service.NewAudioDownloaderService(downloaderMusic, encoderAudio, log)
-	coreService := service.NewCoreService(mediaRepository, audioStorageService, topicPublisherService, audioDownloadService, log, cfg)
+	coreService := service.NewCoreService(mediaRepository, audioStorageService, sqsProducer, audioDownloadService, log, cfg)
 	providerService := service.NewVideoService(providers, log)
 	healthCheck := controller.NewHealthHandler(cfg)
 	mediaController := controller.NewMediaController(mediaRepository)
