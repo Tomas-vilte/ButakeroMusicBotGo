@@ -110,12 +110,11 @@ func StartServer() error {
 	topicPublisherService := service.NewMediaProcessingPublisherService(kafkaProducer, log)
 	audioDownloadService := service.NewAudioDownloaderService(downloaderMusic, encoderAudio, log)
 	coreService := service.NewCoreService(mediaService, audioStorageService, topicPublisherService, audioDownloadService, log, cfg)
-	operationService := service.NewOperationService(mediaService, log)
 	providerService := service.NewVideoService(providers, log)
 	healthCheck := controller.NewHealthHandler(cfg)
 	mediaController := controller.NewMediaController(mediaService)
 
-	downloadService := processor.NewDownloadService(cfg.NumWorkers, kafkaConsumer, mediaService, providerService, coreService, operationService, log)
+	downloadService := processor.NewDownloadService(cfg.NumWorkers, kafkaConsumer, mediaService, providerService, coreService, log)
 
 	gin.SetMode(cfg.GinConfig.Mode)
 	r := gin.New()
