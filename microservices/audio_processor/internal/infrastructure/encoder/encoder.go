@@ -8,10 +8,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"go.uber.org/zap"
 	"io"
 	"mccoy.space/g/ogg"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -19,38 +22,29 @@ import (
 	"time"
 )
 
-var (
-	AudioApplicationVoip     AudioApplication = "voip"     // Aplicación de audio para voz sobre IP (VoIP)
-	AudioApplicationAudio    AudioApplication = "audio"    // Aplicación de audio general
-	AudioApplicationLowDelay AudioApplication = "lowdelay" // Aplicación de audio con baja latencia
+type (
+	FFmpegEncoder struct {
+		log logger.Logger
+	}
 
-	// StdEncodeOptions Opciones predeterminadas para la codificación de audio.
-	StdEncodeOptions = &EncodeOptions{
-		Volume:           256,                   // Nivel de volumen (256 es el valor normal)
-		Channels:         2,                     // Número de canales de audio (por ej. 2 para estéreo)
-		FrameRate:        48000,                 // Frecuencia de muestreo del audio en Hz (por ej. 48000 Hz)
-		FrameDuration:    20,                    // Duración del marco de audio en ms (puede ser 20, 40 o 60 ms)
-		Bitrate:          96,                    // Tasa de bits en kb/s (por ej. 64 kb/s)
-		Application:      AudioApplicationAudio, // Aplicación de audio a usar
-		CompressionLevel: 10,                    // Nivel de compresión (0 a 10, donde 10 es la máxima compresión y menor velocidad de codificación)
-		PacketLoss:       1,                     // Porcentaje de pérdida de paquetes esperado
-		BufferedFrames:   100,                   // Tamaño del búfer de cuadros
-		VBR:              true,                  // Si se usa VBR (tasa de bits variable) o no
-		StartTime:        0,                     // Tiempo de inicio de la secuencia de entrada en segundos
+	// encodeSessionimpl representa una sesión de codificación de audio.
+	encodeSessionimpl struct {
+		sync.Mutex                          // Mutex para sincronización concurrente
+		options      *model.EncodeOptions   // Opciones de codificación
+		pipeReader   io.Reader              // Lector para el pipe
+		filePath     string                 // Ruta del archivo a codificar
+		running      bool                   // Indica si la sesión está en ejecución
+		started      time.Time              // Hora de inicio de la sesión
+		frameChannel chan *model.AudioFrame // Canal para transmitir los marcos de audio
+		process      *os.Process            // Proceso de codificación
+		lastStats    *model.EncodeStats     // Últimas estadísticas de codificación
+		lastFrame    int                    // Último marco procesado
+		err          error                  // Error que ocurrió durante la codificación
+		ffmpegOutput string                 // Salida del proceso ffmpeg
+		buf          bytes.Buffer           // Búfer para almacenar bytes no leídos (cuadros incompletos), utilizado para implementar io.Reader
+		log          logger.Logger
 	}
 )
-
-type EncodeSession interface {
-	ReadFrame() ([]byte, error)
-	Read(p []byte) (n int, err error)
-	Stop() error
-	FFMPEGMessages() string
-	Cleanup()
-}
-
-type FFmpegEncoder struct {
-	log logger.Logger
-}
 
 func NewFFmpegEncoder(log logger.Logger) *FFmpegEncoder {
 	return &FFmpegEncoder{
@@ -58,45 +52,9 @@ func NewFFmpegEncoder(log logger.Logger) *FFmpegEncoder {
 	}
 }
 
-// PCMFrameLen calcula la longitud en cuadros PCM basada en las opciones de codificación.
-// Devuelve el número de muestras de PCM para un cuadro dado.
-func (opts *EncodeOptions) PCMFrameLen() int {
-	return 960 * opts.Channels * (opts.FrameDuration / 20)
-}
-
-// Validate valida las opciones de codificación para asegurarse de que están dentro de los límites permitidos.
-// Devuelve un error si alguna opción es inválida.
-func (opts *EncodeOptions) Validate() error {
-	if opts.Volume < 0 || opts.Volume > 512 {
-		return ErrInvalidVolume
-	}
-
-	if opts.FrameDuration != 20 && opts.FrameDuration != 40 && opts.FrameDuration != 60 {
-		return ErrInvalidFrameDuration
-	}
-
-	if opts.PacketLoss < 0 || opts.PacketLoss > 100 {
-		return ErrInvalidPacketLoss
-	}
-
-	if opts.Application != AudioApplicationAudio && opts.Application != AudioApplicationVoip && opts.Application != AudioApplicationLowDelay {
-		return ErrInvalidAudioApplication
-	}
-
-	if opts.CompressionLevel < 0 || opts.CompressionLevel > 10 {
-		return ErrInvalidCompressionLevel
-	}
-
-	if opts.Threads < 0 {
-		return ErrInvalidThreads
-	}
-
-	return nil
-}
-
 // Encode crea una nueva sesión de codificación en memoria usando las opciones proporcionadas.
 // Valida las opciones antes de iniciar la sesión. Devuelve la sesión de codificación o un error si las opciones son inválidas.
-func (f *FFmpegEncoder) Encode(ctx context.Context, r io.Reader, options *EncodeOptions) (EncodeSession, error) {
+func (f *FFmpegEncoder) Encode(ctx context.Context, r io.Reader, options *model.EncodeOptions) (ports.EncodeSession, error) {
 	if err := options.Validate(); err != nil {
 		return nil, err
 	}
@@ -104,7 +62,7 @@ func (f *FFmpegEncoder) Encode(ctx context.Context, r io.Reader, options *Encode
 	session := &encodeSessionimpl{
 		options:      options,
 		pipeReader:   r,
-		frameChannel: make(chan *Frame, options.BufferedFrames),
+		frameChannel: make(chan *model.AudioFrame, options.BufferedFrames),
 		log:          f.log,
 	}
 	go session.run(ctx)
@@ -142,7 +100,7 @@ func (e *encodeSessionimpl) run(ctx context.Context) {
 	}
 
 	if e.options == nil {
-		e.options = StdEncodeOptions
+		e.options = model.StdEncodeOptions
 	}
 
 	vbrStr := "on"
@@ -237,8 +195,8 @@ func (e *encodeSessionimpl) run(ctx context.Context) {
 
 func (e *encodeSessionimpl) writeMetadataFrame() {
 	// Crea los metadatos de la codificación Opus y el origen del archivo.
-	metadata := Metadata{
-		Opus: &OpusMetadata{
+	metadata := model.AudioMetadata{
+		Opus: &model.OpusMetadata{
 			Bitrate:     e.options.Bitrate * 1000,
 			SampleRate:  e.options.FrameRate,
 			Application: string(e.options.Application),
@@ -246,7 +204,7 @@ func (e *encodeSessionimpl) writeMetadataFrame() {
 			Channels:    e.options.Channels,
 			VBR:         e.options.VBR,
 		},
-		Origin: &OriginMetadata{
+		Origin: &model.OriginMetadata{
 			Source:   "file",
 			Channels: e.options.Channels,
 			Bitrate:  e.options.Bitrate * 1000,
@@ -274,7 +232,7 @@ func (e *encodeSessionimpl) writeMetadataFrame() {
 	// Escribe el JSON serializado en el búfer.
 	buf.Write(jsonData)
 	// Envía el búfer con el frame de metadatos al canal de frames.
-	e.frameChannel <- &Frame{buf.Bytes(), true}
+	e.frameChannel <- &model.AudioFrame{Data: buf.Bytes(), Metadata: true}
 }
 
 func (e *encodeSessionimpl) readStderr(stderr io.ReadCloser, wg *sync.WaitGroup) {
@@ -328,7 +286,7 @@ func (e *encodeSessionimpl) handleStderrLine(line string) {
 	}
 
 	fields := strings.Fields(line)
-	stats := &EncodeStats{}
+	stats := &model.EncodeStats{}
 
 	for _, field := range fields {
 		switch {
@@ -427,7 +385,7 @@ func (e *encodeSessionimpl) writeOpusFrame(opusFrame []byte) error {
 		return err
 	}
 
-	e.frameChannel <- &Frame{dcaBuf.Bytes(), false}
+	e.frameChannel <- &model.AudioFrame{Data: dcaBuf.Bytes(), Metadata: false}
 
 	e.Lock()
 	e.lastFrame++
@@ -481,7 +439,7 @@ func (e *encodeSessionimpl) ReadFrame() (frame []byte, err error) {
 		return nil, io.EOF
 	}
 
-	return f.data, nil
+	return f.Data, nil
 }
 
 // Running devuelve true si se está ejecutando
@@ -495,8 +453,8 @@ func (e *encodeSessionimpl) Running() (running bool) {
 // Stats devuelve estadísticas de ffmpeg. NOTA: no se trata de estadísticas de reproducción sino de transcodificación.
 // Para saber qué tan avanzado estás en la reproducción
 // tenes que realizar un seguimiento del número de fotogramas enviados a Discord vos mismo
-func (e *encodeSessionimpl) Stats() *EncodeStats {
-	s := &EncodeStats{}
+func (e *encodeSessionimpl) Stats() *model.EncodeStats {
+	s := &model.EncodeStats{}
 	e.Lock()
 	if e.lastStats != nil {
 		*s = *e.lastStats
@@ -507,7 +465,7 @@ func (e *encodeSessionimpl) Stats() *EncodeStats {
 }
 
 // Options Devuelve las opciones que se esta usando para la codificacion
-func (e *encodeSessionimpl) Options() *EncodeOptions {
+func (e *encodeSessionimpl) Options() *model.EncodeOptions {
 	return e.options
 }
 

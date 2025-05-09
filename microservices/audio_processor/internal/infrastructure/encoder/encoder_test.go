@@ -4,6 +4,7 @@ package encoder
 
 import (
 	"context"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"io"
 	"os"
@@ -27,7 +28,7 @@ func TestEncoder(t *testing.T) {
 
 	sessionEncoder := NewFFmpegEncoder(logging)
 
-	session, err := sessionEncoder.Encode(ctx, inputFile, StdEncodeOptions)
+	session, err := sessionEncoder.Encode(ctx, inputFile, model.StdEncodeOptions)
 	if err != nil {
 		t.Fatalf("Error al crear la sesión de codificación: %v", err)
 	}
