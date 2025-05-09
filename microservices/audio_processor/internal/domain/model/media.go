@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -70,3 +71,18 @@ type (
 		Provider     string
 	}
 )
+
+func (m *Media) Validate() error {
+	if m == nil {
+		return fmt.Errorf("media no puede ser nil")
+	}
+
+	if m.Metadata == nil || m.Metadata.Title == "" {
+		return fmt.Errorf("el título es requerido")
+	}
+
+	if m.VideoID == "" {
+		return fmt.Errorf("el ID del video es requerido")
+	}
+	return nil
+}

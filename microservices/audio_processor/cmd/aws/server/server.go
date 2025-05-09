@@ -101,16 +101,15 @@ func StartServer() error {
 	}
 
 	encoderAudio := encoder.NewFFmpegEncoder(log)
-	mediaService := service.NewMediaService(mediaRepository, log)
 	audioStorageService := service.NewAudioStorageService(storage, log)
 	topicPublisherService := service.NewMediaProcessingPublisherService(sqsProducer, log)
 	audioDownloadService := service.NewAudioDownloaderService(downloaderMusic, encoderAudio, log)
-	coreService := service.NewCoreService(mediaService, audioStorageService, topicPublisherService, audioDownloadService, log, cfg)
+	coreService := service.NewCoreService(mediaRepository, audioStorageService, topicPublisherService, audioDownloadService, log, cfg)
 	providerService := service.NewVideoService(providers, log)
 	healthCheck := controller.NewHealthHandler(cfg)
-	mediaController := controller.NewMediaController(mediaService)
+	mediaController := controller.NewMediaController(mediaRepository)
 
-	downloadService := processor.NewDownloadService(cfg.NumWorkers, sqsConsumer, mediaService, providerService, coreService, log)
+	downloadService := processor.NewDownloadService(cfg.NumWorkers, sqsConsumer, mediaRepository, providerService, coreService, log)
 
 	gin.SetMode(cfg.GinConfig.Mode)
 	r := gin.New()

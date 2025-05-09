@@ -105,16 +105,15 @@ func StartServer() error {
 		"youtube": youtubeAPI,
 	}
 
-	mediaService := service.NewMediaService(mediaRepository, log)
 	audioStorageService := service.NewAudioStorageService(storage, log)
 	topicPublisherService := service.NewMediaProcessingPublisherService(kafkaProducer, log)
 	audioDownloadService := service.NewAudioDownloaderService(downloaderMusic, encoderAudio, log)
-	coreService := service.NewCoreService(mediaService, audioStorageService, topicPublisherService, audioDownloadService, log, cfg)
+	coreService := service.NewCoreService(mediaRepository, audioStorageService, topicPublisherService, audioDownloadService, log, cfg)
 	providerService := service.NewVideoService(providers, log)
 	healthCheck := controller.NewHealthHandler(cfg)
-	mediaController := controller.NewMediaController(mediaService)
+	mediaController := controller.NewMediaController(mediaRepository)
 
-	downloadService := processor.NewDownloadService(cfg.NumWorkers, kafkaConsumer, mediaService, providerService, coreService, log)
+	downloadService := processor.NewDownloadService(cfg.NumWorkers, kafkaConsumer, mediaRepository, providerService, coreService, log)
 
 	gin.SetMode(cfg.GinConfig.Mode)
 	r := gin.New()

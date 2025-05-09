@@ -5,25 +5,26 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/utils"
 	"go.uber.org/zap"
 	"time"
 )
 
 type MediaProcessor struct {
-	mediaService ports.MediaService
+	mediaRepo    ports.MediaRepository
 	videoService ports.VideoService
 	coreService  ports.CoreService
 	logger       logger.Logger
 }
 
 func NewMediaProcessor(
-	mediaService ports.MediaService,
+	mediaRepo ports.MediaRepository,
 	videoService ports.VideoService,
 	coreService ports.CoreService,
 	logger logger.Logger,
 ) *MediaProcessor {
 	return &MediaProcessor{
-		mediaService: mediaService,
+		mediaRepo:    mediaRepo,
 		videoService: videoService,
 		coreService:  coreService,
 		logger:       logger,
@@ -48,13 +49,14 @@ func (p *MediaProcessor) ProcessRequest(ctx context.Context, req *model.MediaReq
 	media := &model.Media{
 		VideoID:    mediaDetails.ID,
 		Status:     "starting",
-		TitleLower: "",
+		Message:    "Iniciando descarga de la cancion",
+		TitleLower: utils.NormalizeString(mediaDetails.Title),
 		Metadata: &model.PlatformMetadata{
 			Title:        mediaDetails.Title,
-			DurationMs:   0,
-			URL:          "",
-			ThumbnailURL: "",
-			Platform:     "",
+			DurationMs:   mediaDetails.DurationMs,
+			URL:          mediaDetails.URL,
+			ThumbnailURL: mediaDetails.ThumbnailURL,
+			Platform:     mediaDetails.Provider,
 		},
 		FileData:       &model.FileData{},
 		ProcessingDate: time.Now(),
@@ -65,12 +67,17 @@ func (p *MediaProcessor) ProcessRequest(ctx context.Context, req *model.MediaReq
 		UpdatedAt:      time.Now(),
 	}
 
-	if err := p.mediaService.CreateMedia(ctx, media); err != nil {
+	if err := media.Validate(); err != nil {
+		log.Error("Validacion fallida", zap.Error(err))
+		return err
+	}
+
+	if err := p.mediaRepo.SaveMedia(ctx, media); err != nil {
 		log.Error("Error al crear registro inicial", zap.Error(err))
 		return err
 	}
 
-	if err := p.coreService.ProcessMedia(reqCtx, mediaDetails, req.UserID, req.RequestID); err != nil {
+	if err := p.coreService.ProcessMedia(reqCtx, media, req.UserID, req.RequestID); err != nil {
 		log.Error("Error al procesar media", zap.Error(err))
 		return err
 	}

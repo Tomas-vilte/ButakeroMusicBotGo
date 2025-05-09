@@ -13,7 +13,7 @@ import (
 )
 
 type coreService struct {
-	mediaService         ports.MediaService
+	mediaRepository      ports.MediaRepository
 	audioStorageService  ports.AudioStorageService
 	topicPublisher       ports.TopicPublisherService
 	audioDownloadService ports.AudioDownloadService
@@ -22,7 +22,7 @@ type coreService struct {
 }
 
 func NewCoreService(
-	mediaService ports.MediaService,
+	mediaRepository ports.MediaRepository,
 	audioStorageService ports.AudioStorageService,
 	topicPublisher ports.TopicPublisherService,
 	audioDownloadService ports.AudioDownloadService,
@@ -30,7 +30,7 @@ func NewCoreService(
 	cfg *config.Config,
 ) ports.CoreService {
 	return &coreService{
-		mediaService:         mediaService,
+		mediaRepository:      mediaRepository,
 		audioStorageService:  audioStorageService,
 		topicPublisher:       topicPublisher,
 		audioDownloadService: audioDownloadService,
@@ -39,11 +39,11 @@ func NewCoreService(
 	}
 }
 
-func (s *coreService) ProcessMedia(ctx context.Context, mediaDetails *model.MediaDetails, userID, requestID string) error {
+func (s *coreService) ProcessMedia(ctx context.Context, media *model.Media, userID, requestID string) error {
 	log := s.logger.With(
 		zap.String("component", "CoreService"),
 		zap.String("method", "ProcessMedia"),
-		zap.String("song", mediaDetails.ID),
+		zap.String("song", media.VideoID),
 	)
 
 	ctx, cancel := context.WithTimeout(ctx, s.cfg.Service.Timeout)
@@ -52,7 +52,7 @@ func (s *coreService) ProcessMedia(ctx context.Context, mediaDetails *model.Medi
 	attempts := 0
 
 	s.logger.Info("Iniciando procesamiento de audio",
-		zap.String("title", mediaDetails.Title),
+		zap.String("title", media.Metadata.Title),
 	)
 
 	var lastError error
@@ -70,40 +70,27 @@ func (s *coreService) ProcessMedia(ctx context.Context, mediaDetails *model.Medi
 				zap.Int("max_attempts", s.cfg.Service.MaxAttempts))
 		}
 
-		audioBuffer, err := s.audioDownloadService.DownloadAndEncode(ctx, mediaDetails.URL)
+		audioBuffer, err := s.audioDownloadService.DownloadAndEncode(ctx, media.Metadata.URL)
 		if err != nil {
 			log.Error("Error al descargar y codificar el audio", zap.Error(err))
 			lastError = err
 			return lastError
 		}
 
-		fileData, err := s.audioStorageService.StoreAudio(ctx, audioBuffer, mediaDetails.Title)
+		fileData, err := s.audioStorageService.StoreAudio(ctx, audioBuffer, media.TitleLower)
 		if err != nil {
 			log.Error("Error al almacenar el archivo de audio", zap.Error(err))
 			lastError = err
 			return lastError
 		}
 
-		media := &model.Media{
-			VideoID:    mediaDetails.ID,
-			TitleLower: mediaDetails.Title,
-			Status:     "success",
-			Message:    "Procesamiento completado exitosamente",
-			Metadata: &model.PlatformMetadata{
-				Title:        mediaDetails.Title,
-				DurationMs:   mediaDetails.DurationMs,
-				URL:          mediaDetails.URL,
-				ThumbnailURL: mediaDetails.ThumbnailURL,
-				Platform:     "youtube",
-			},
-			FileData:       fileData,
-			ProcessingDate: time.Now(),
-			Success:        true,
-			Attempts:       1,
-			Failures:       0,
-			CreatedAt:      time.Now(),
-			UpdatedAt:      time.Now(),
-		}
+		media.Status = "success"
+		media.Message = "Procesamiento completado exitosamente"
+		media.FileData = fileData
+		media.Success = true
+		media.Attempts = attempts
+		media.Failures = 0
+		media.UpdatedAt = time.Now()
 
 		message := &model.MediaProcessingMessage{
 			RequestID:        requestID,
@@ -116,7 +103,7 @@ func (s *coreService) ProcessMedia(ctx context.Context, mediaDetails *model.Medi
 			Message:          media.Message,
 		}
 
-		if err := s.mediaService.UpdateMedia(ctx, media.VideoID, media); err != nil {
+		if err := s.mediaRepository.UpdateMedia(ctx, media.VideoID, media); err != nil {
 			log.Error("Error al actualizar la operación", zap.String("video_id", media.VideoID), zap.Error(err))
 			lastError = err
 			return lastError

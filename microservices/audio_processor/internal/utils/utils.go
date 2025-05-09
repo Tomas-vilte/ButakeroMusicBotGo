@@ -7,6 +7,7 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"os"
 	"strings"
+	"unicode"
 
 	"github.com/pkg/errors"
 )
@@ -48,4 +49,15 @@ func BuildMongoURI(cfg *config.Config) string {
 		cfg.Database.Mongo.DirectConnection,
 		cfg.Database.Mongo.EnableTLS,
 	)
+}
+
+func NormalizeString(s string) string {
+	normalized := strings.ToLower(s)
+	normalized = strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) || unicode.IsSpace(r) {
+			return r
+		}
+		return -1
+	}, normalized)
+	return normalized
 }

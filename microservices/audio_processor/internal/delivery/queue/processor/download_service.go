@@ -15,13 +15,13 @@ type DownloadService struct {
 func NewDownloadService(
 	numWorkers int,
 	consumer ports.MessageConsumer,
-	mediaService ports.MediaService,
+	mediaRepo ports.MediaRepository,
 	videoService ports.VideoService,
 	coreService ports.CoreService,
 	logger logger.Logger,
 ) *DownloadService {
 	processor := NewMediaProcessor(
-		mediaService,
+		mediaRepo,
 		videoService,
 		coreService,
 		logger,
