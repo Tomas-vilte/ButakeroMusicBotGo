@@ -101,7 +101,7 @@ func StartServer() error {
 		"youtube": youtubeAPI,
 	}
 
-	encoderAudio := encoder.NewFFmpegEncoder(log)
+	encoderAudio := encoder.NewFFMPEGEncoder(log)
 	audioStorageService := service.NewAudioStorageService(storage, log)
 	audioDownloadService := service.NewAudioDownloaderService(downloaderMusic, encoderAudio, log, model.StdEncodeOptions)
 	coreService := service.NewCoreService(mediaRepository, audioStorageService, sqsProducer, audioDownloadService, log, cfg)

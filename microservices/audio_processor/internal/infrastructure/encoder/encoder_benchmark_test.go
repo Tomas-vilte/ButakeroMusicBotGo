@@ -34,7 +34,7 @@ func BenchmarkAudioEncoding(b *testing.B) {
 		b.Run(tc.name, func(b *testing.B) {
 			log, err := logger.NewDevelopmentLogger()
 			require.NoError(b, err)
-			ffmpegEncoder := encoder.NewFFmpegEncoder(log)
+			ffmpegEncoder := encoder.NewFFMPEGEncoder(log)
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
@@ -81,7 +81,7 @@ func BenchmarkResourceUsage(b *testing.B) {
 		b.Run(tc.name, func(b *testing.B) {
 			log, err := logger.NewDevelopmentLogger()
 			require.NoError(b, err)
-			ffmpegEncoder := encoder.NewFFmpegEncoder(log)
+			ffmpegEncoder := encoder.NewFFMPEGEncoder(log)
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
