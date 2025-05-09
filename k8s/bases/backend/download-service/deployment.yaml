@@ -40,7 +40,7 @@ spec:
           mountPath: /etc/mongodb/certs
           readOnly: true
         - name: audio-storage
-          mountPath: /data/audio
+          mountPath: /root/shared-audio
         resources:
           requests:
             cpu: 50m
@@ -52,14 +52,20 @@ spec:
           httpGet:
             path: /api/v1/health
             port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
+          initialDelaySeconds: 60
+          periodSeconds: 35
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
         livenessProbe:
           httpGet:
             path: /api/v1/health
             port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
+          initialDelaySeconds: 75
+          periodSeconds: 45
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
       volumes:
       - name: yt-cookies-volume
         secret:
