@@ -101,7 +101,7 @@ func StartServer() error {
 	}
 
 	youtubeAPI := adapters.NewYouTubeClient(cfg.API.YouTube.ApiKey, log)
-	encoderAudio := encoder.NewFFmpegEncoder(log)
+	encoderAudio := encoder.NewFFMPEGEncoder(log)
 	providers := map[string]ports.VideoProvider{
 		"youtube": youtubeAPI,
 	}
