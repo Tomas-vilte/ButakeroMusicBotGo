@@ -2,10 +2,10 @@ package mongodb
 
 import (
 	"context"
-	"errors"
+	errors2 "errors"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
-	errorsApp "github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -30,11 +30,8 @@ type (
 
 // NewMediaRepository crea una nueva instancia de MediaRepository.
 func NewMediaRepository(opts MediaRepositoryOptions) (*MediaRepository, error) {
-	if opts.Collection == nil {
-		return nil, errorsApp.ErrInvalidInput.WithMessage("collection no puede ser nil")
-	}
-	if opts.Log == nil {
-		return nil, errorsApp.ErrInvalidInput.WithMessage("logger no puede ser nil")
+	if opts.Collection == nil || opts.Log == nil {
+		return nil, errors.ErrInvalidInput.WithMessage("collection y logger son requeridos")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -47,7 +44,7 @@ func NewMediaRepository(opts MediaRepositoryOptions) (*MediaRepository, error) {
 
 	_, err := opts.Collection.Indexes().CreateOne(ctx, indexModel)
 	if err != nil {
-		opts.Log.Warn("Error al crear el índice", zap.Error(err))
+		opts.Log.Warn("Error al crear el índice", zap.Error(errors.ErrMongoDBIndexCreation.Wrap(err)))
 	}
 
 	return &MediaRepository{
@@ -67,10 +64,10 @@ func (r *MediaRepository) SaveMedia(ctx context.Context, media *model.Media) err
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			log.Warn("ID duplicado al guardar el registro de media, intentando actualizar", zap.Error(err))
-			return errorsApp.ErrDuplicateRecord.WithMessage(fmt.Sprintf("El video con ID '%s' ya está registrado.", media.VideoID), media.VideoID)
+			return errors.ErrDuplicateRecord.WithMessage(fmt.Sprintf("El video con ID '%s' ya está registrado.", media.VideoID), media.VideoID)
 		}
 		log.Error("Error al guardar el registro de media", zap.Error(err))
-		return errorsApp.ErrCodeSaveMediaFailed.WithMessage(fmt.Sprintf("error al guardar el registro de media: %v", err))
+		return errors.ErrCodeSaveMediaFailed.Wrap(err)
 	}
 
 	log.Info("Registro de media guardado exitosamente")
@@ -98,7 +95,7 @@ func (r *MediaRepository) GetMediaByTitle(ctx context.Context, title string) ([]
 	cursor, err := r.collection.Find(ctx, filter, findOptions)
 	if err != nil {
 		log.Error("Error al buscar canciones", zap.Error(err))
-		return result, err
+		return result, errors.ErrCodeSearchSongsFailed.WithMessage(fmt.Sprintf("error al buscar canciones: %v", err))
 	}
 	defer func() {
 		if err := cursor.Close(ctx); err != nil {
@@ -108,7 +105,7 @@ func (r *MediaRepository) GetMediaByTitle(ctx context.Context, title string) ([]
 
 	if err = cursor.All(ctx, &result); err != nil {
 		log.Error("Error al decodificar canciones", zap.Error(err))
-		return result, err
+		return result, errors.ErrCodeSearchSongsFailed.WithMessage(fmt.Sprintf("error al decodificar canciones: %v", err))
 	}
 
 	log.Info("Búsqueda de canciones completada", zap.Int("count", len(result)))
@@ -130,15 +127,15 @@ func (r *MediaRepository) GetMediaByID(ctx context.Context, videoID string) (*mo
 	var media model.Media
 	err := r.collection.FindOne(ctx, filter).Decode(&media)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
+		if errors2.Is(err, mongo.ErrNoDocuments) {
 			log.Warn("Registro de media no encontrado")
-			return nil, errorsApp.ErrCodeMediaNotFound.WithMessage(
+			return nil, errors.ErrCodeMediaNotFound.WithMessage(
 				"Media no encontrado",
 				videoID,
 			)
 		}
 		log.Error("Error al obtener el registro de media", zap.Error(err))
-		return nil, errorsApp.ErrGetMediaDetailsFailed.WithMessage(fmt.Sprintf("error al obtener el registro de media: %v", err))
+		return nil, errors.ErrGetMediaDetailsFailed.WithMessage(fmt.Sprintf("error al obtener el registro de media: %v", err))
 	}
 
 	log.Info("Registro de media recuperado exitosamente")
@@ -160,12 +157,12 @@ func (r *MediaRepository) DeleteMedia(ctx context.Context, videoID string) error
 	result, err := r.collection.DeleteOne(ctx, filter)
 	if err != nil {
 		log.Error("Error al eliminar el registro de media", zap.Error(err))
-		return errorsApp.ErrCodeDeleteMediaFailed.WithMessage(fmt.Sprintf("error al eliminar el registro de media: %v", err))
+		return errors.ErrCodeDeleteMediaFailed.WithMessage(fmt.Sprintf("error al eliminar el registro de media: %v", err))
 	}
 
 	if result.DeletedCount == 0 {
 		log.Warn("Registro de media no encontrado para eliminar")
-		return errorsApp.ErrCodeMediaNotFound
+		return errors.ErrCodeMediaNotFound
 	}
 
 	log.Info("Registro de media eliminado exitosamente")
@@ -205,12 +202,12 @@ func (r *MediaRepository) UpdateMedia(ctx context.Context, videoID string, media
 	result, err := r.collection.UpdateOne(ctx, filter, update, opts)
 	if err != nil {
 		log.Error("Error al actualizar el registro de media", zap.Error(err))
-		return errorsApp.ErrUpdateMediaFailed.WithMessage(fmt.Sprintf("error al actualizar el registro de media: %v", err))
+		return errors.ErrUpdateMediaFailed.WithMessage(fmt.Sprintf("error al actualizar el registro de media: %v", err))
 	}
 
 	if result.MatchedCount == 0 && result.UpsertedCount == 0 {
 		log.Warn("Registro de media no encontrado para actualizar")
-		return errorsApp.ErrCodeMediaNotFound
+		return errors.ErrCodeMediaNotFound
 	}
 
 	log.Info("Registro de media actualizado exitosamente")

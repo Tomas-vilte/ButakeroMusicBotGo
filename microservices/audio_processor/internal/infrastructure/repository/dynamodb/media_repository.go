@@ -183,12 +183,12 @@ func (r *MediaRepositoryDynamoDB) GetMediaByTitle(ctx context.Context, title str
 	result, err := r.client.Query(ctx, input)
 	if err != nil {
 		log.Error("Error al buscar canciones", zap.Error(err))
-		return nil, err
+		return nil, errorsApp.ErrDynamoDBQueryFailed.Wrap(err)
 	}
 
 	if err := attributevalue.UnmarshalListOfMaps(result.Items, &songs); err != nil {
 		log.Error("Error de deserialización", zap.Error(err))
-		return nil, err
+		return nil, errorsApp.ErrDynamoDBUnmarshalFailed.Wrap(err)
 	}
 
 	log.Info("Búsqueda de canciones completada", zap.Int("count", len(songs)))
@@ -228,7 +228,7 @@ func (r *MediaRepositoryDynamoDB) UpdateMedia(ctx context.Context, videoID strin
 func (r *MediaRepositoryDynamoDB) toAttributeValueMap(media *model.Media) (map[string]types.AttributeValue, error) {
 	item, err := attributevalue.MarshalMap(media)
 	if err != nil {
-		return nil, fmt.Errorf("error al convertir media a atributos de DynamoDB: %w", err)
+		return nil, errorsApp.ErrDynamoDBMarshalFailed.Wrap(err)
 	}
 	return item, nil
 }
@@ -237,7 +237,7 @@ func (r *MediaRepositoryDynamoDB) fromAttributeValueMap(item map[string]types.At
 	var media model.Media
 	err := attributevalue.UnmarshalMap(item, &media)
 	if err != nil {
-		return nil, fmt.Errorf("error al convertir atributos de DynamoDB a media: %w", err)
+		return nil, errorsApp.ErrDynamoDBUnmarshalFailed.Wrap(err)
 	}
 	return &media, nil
 }
