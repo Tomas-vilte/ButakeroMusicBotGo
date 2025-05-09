@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"github.com/IBM/sarama"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
@@ -38,7 +37,7 @@ func NewConsumerKafka(cfg *config.Config, logger logger.Logger) (ports.MessageCo
 		})
 		if err != nil {
 			logger.Error("Error en configuración TLS", zap.Error(err))
-			return nil, errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("Error configurando conexion de TLS de Kafka: %v", err))
+			return nil, errors.ErrKafkaTLSConfig.Wrap(err)
 		}
 	}
 
@@ -56,7 +55,7 @@ func NewConsumerKafka(cfg *config.Config, logger logger.Logger) (ports.MessageCo
 	c, err := sarama.NewConsumer(cfg.Messaging.Kafka.Brokers, cfgKafka)
 	if err != nil {
 		logger.Error("Error al crear consumidor Sarama", zap.Error(err))
-		return nil, fmt.Errorf("error al crear el consumidor: %w", err)
+		return nil, errors.ErrKafkaConnectionFailed.Wrap(err)
 	}
 
 	consumerKafka := &ConsumerKafka{
@@ -69,7 +68,7 @@ func NewConsumerKafka(cfg *config.Config, logger logger.Logger) (ports.MessageCo
 		zap.String("topic", cfg.Messaging.Kafka.Topics.BotDownloadRequests))
 	if err := consumerKafka.EnsureTopicExists(cfg.Messaging.Kafka.Topics.BotDownloadRequests); err != nil {
 		logger.Error("Error al verificar tópico", zap.Error(err))
-		return nil, errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("Error al asegurar que el topic existe: %v", err))
+		return nil, errors.ErrKafkaTopicCreation.Wrap(err)
 	}
 
 	logger.Info("Consumidor Kafka inicializado correctamente")
@@ -93,7 +92,7 @@ func (c *ConsumerKafka) GetRequestsChannel(ctx context.Context) (<-chan *model.M
 	partitionConsumer, err := c.saramaConsumer.ConsumePartition(c.cfg.Messaging.Kafka.Topics.BotDownloadRequests, 0, sarama.OffsetNewest)
 	if err != nil {
 		log.Error("Error al consumir la partición", zap.Error(err))
-		return nil, fmt.Errorf("error al consumir la partición: %w", err)
+		return nil, errors.ErrKafkaMessageConsume.Wrap(err)
 	}
 
 	out := make(chan *model.MediaRequest)
@@ -140,7 +139,7 @@ func (c *ConsumerKafka) consumeLoop(ctx context.Context, pc sarama.PartitionCons
 			var request model.MediaRequest
 			if err := json.Unmarshal(msg.Value, &request); err != nil {
 				log.Error("Error deserializando mensaje",
-					zap.Error(err),
+					zap.Error(errors.ErrKafkaMessageConsume.Wrap(err)),
 					zap.Int64("offset", offset),
 					zap.ByteString("payload", msg.Value))
 				continue
@@ -154,8 +153,7 @@ func (c *ConsumerKafka) consumeLoop(ctx context.Context, pc sarama.PartitionCons
 			out <- &request
 
 		case err := <-pc.Errors():
-			log.Error("Error en consumidor", zap.Error(err))
-
+			log.Error("Error en consumidor", zap.Error(errors.ErrKafkaMessageConsume.Wrap(err)))
 		case <-ctx.Done():
 			log.Info("Contexto cancelado, finalizando loop de consumo")
 			return
@@ -173,7 +171,7 @@ func (c *ConsumerKafka) Close() error {
 
 	if err := c.saramaConsumer.Close(); err != nil {
 		log.Error("Error cerrando el consumidor", zap.Error(err))
-		return err
+		return errors.ErrKafkaConnectionFailed.Wrap(err)
 	}
 
 	log.Info("Consumidor Kafka cerrado correctamente")
@@ -206,7 +204,7 @@ func (c *ConsumerKafka) EnsureTopicExists(topic string) error {
 	admin, err := sarama.NewClusterAdmin(c.cfg.Messaging.Kafka.Brokers, cfgKafka)
 	if err != nil {
 		log.Error("Error al crear el administrador de Kafka", zap.Error(err))
-		return errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("error al crear el administrador de Kafka: %v", err))
+		return errors.ErrKafkaAdminClient.Wrap(err)
 	}
 	defer func() {
 		log.Debug("Cerrando administrador de clúster")
@@ -219,7 +217,7 @@ func (c *ConsumerKafka) EnsureTopicExists(topic string) error {
 	topics, err := admin.ListTopics()
 	if err != nil {
 		log.Error("Error al listar los tópicos", zap.Error(err))
-		return errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("error al listar los topics: %v", err))
+		return errors.ErrKafkaAdminClient.Wrap(err)
 	}
 
 	if _, exists := topics[topic]; !exists {
@@ -236,7 +234,7 @@ func (c *ConsumerKafka) EnsureTopicExists(topic string) error {
 		err := admin.CreateTopic(topic, topicDetail, false)
 		if err != nil {
 			log.Error("Error al crear el tópico", zap.Error(err))
-			return errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("error al crear el topic: %v", err))
+			return errors.ErrKafkaTopicCreation.Wrap(err)
 		}
 		log.Info("Tópico creado exitosamente", zap.String("topic", topic))
 	} else {

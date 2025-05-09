@@ -69,6 +69,19 @@ var (
 
 	ErrYTDLPCommandFailed = NewAppError("ytdlp_command_failed", "Error al ejecutar el comando yt-dlp")
 	ErrYTDLPInvalidOutput = NewAppError("ytdlp_invalid_output", "Salida inválida de yt-dlp")
+
+	ErrKafkaConnectionFailed = NewAppError("kafka_connection_failed", "Error de conexión con Kafka")
+	ErrKafkaTopicCreation    = NewAppError("kafka_topic_creation", "Error al crear tópico")
+	ErrKafkaMessagePublish   = NewAppError("kafka_publish_failed", "Error al publicar mensaje")
+	ErrKafkaMessageConsume   = NewAppError("kafka_consume_failed", "Error al consumir mensaje")
+	ErrKafkaTLSConfig        = NewAppError("kafka_tls_config", "Error en configuración TLS")
+	ErrKafkaAdminClient      = NewAppError("kafka_admin_error", "Error en cliente administrativo")
+
+	ErrSQSAWSConfig          = NewAppError("sqs_aws_config", "Error en configuración AWS")
+	ErrSQSMessagePublish     = NewAppError("sqs_publish_failed", "Error al publicar mensaje")
+	ErrSQSMessageConsume     = NewAppError("sqs_consume_failed", "Error al consumir mensaje")
+	ErrSQSMessageDelete      = NewAppError("sqs_delete_failed", "Error al eliminar mensaje")
+	ErrSQSMessageDeserialize = NewAppError("sqs_deserialize_failed", "Error al deserializar mensaje")
 )
 
 type AppError struct {
