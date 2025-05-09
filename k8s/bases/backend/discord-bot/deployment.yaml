@@ -17,7 +17,7 @@ spec:
         - name: discord-bot
           volumeMounts:
             - name: audio-storage
-              mountPath: /shared-audio
+              mountPath: /root/shared-audio
             - name: kafka-user-cert
               mountPath: /etc/kafka/user-certs
               readOnly: true
@@ -44,14 +44,20 @@ spec:
             httpGet:
               path: /api/v1/health
               port: 8081
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            initialDelaySeconds: 45
+            periodSeconds: 30
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 1
           livenessProbe:
             httpGet:
               path: /api/v1/health
               port: 8081
-            initialDelaySeconds: 30
-            periodSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 40
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 3
       volumes:
         - name: audio-storage
           persistentVolumeClaim:
