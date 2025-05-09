@@ -10,26 +10,23 @@ import (
 )
 
 type MediaProcessor struct {
-	mediaService     ports.MediaService
-	videoService     ports.VideoService
-	coreService      ports.CoreService
-	operationService ports.OperationService
-	logger           logger.Logger
+	mediaService ports.MediaService
+	videoService ports.VideoService
+	coreService  ports.CoreService
+	logger       logger.Logger
 }
 
 func NewMediaProcessor(
 	mediaService ports.MediaService,
 	videoService ports.VideoService,
 	coreService ports.CoreService,
-	operationService ports.OperationService,
 	logger logger.Logger,
 ) *MediaProcessor {
 	return &MediaProcessor{
-		mediaService:     mediaService,
-		videoService:     videoService,
-		coreService:      coreService,
-		operationService: operationService,
-		logger:           logger,
+		mediaService: mediaService,
+		videoService: videoService,
+		coreService:  coreService,
+		logger:       logger,
 	}
 }
 
@@ -48,8 +45,28 @@ func (p *MediaProcessor) ProcessRequest(ctx context.Context, req *model.MediaReq
 		return err
 	}
 
-	_, err = p.operationService.StartOperation(ctx, mediaDetails)
-	if err != nil {
+	media := &model.Media{
+		VideoID:    mediaDetails.ID,
+		Status:     "starting",
+		TitleLower: "",
+		Metadata: &model.PlatformMetadata{
+			Title:        mediaDetails.Title,
+			DurationMs:   0,
+			URL:          "",
+			ThumbnailURL: "",
+			Platform:     "",
+		},
+		FileData:       &model.FileData{},
+		ProcessingDate: time.Now(),
+		Success:        false,
+		Attempts:       0,
+		Failures:       0,
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+	}
+
+	if err := p.mediaService.CreateMedia(ctx, media); err != nil {
+		log.Error("Error al crear registro inicial", zap.Error(err))
 		return err
 	}
 

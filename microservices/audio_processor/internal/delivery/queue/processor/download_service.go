@@ -18,14 +18,12 @@ func NewDownloadService(
 	mediaService ports.MediaService,
 	videoService ports.VideoService,
 	coreService ports.CoreService,
-	operationService ports.OperationService,
 	logger logger.Logger,
 ) *DownloadService {
 	processor := NewMediaProcessor(
 		mediaService,
 		videoService,
 		coreService,
-		operationService,
 		logger,
 	)
 
