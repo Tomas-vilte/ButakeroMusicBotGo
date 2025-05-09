@@ -32,6 +32,10 @@ func (s *videoService) GetMediaDetails(ctx context.Context, input string, provid
 		zap.String("providerType", providerType),
 	)
 
+	if input == "" || providerType == "" {
+		return nil, errors.ErrInvalidInput.WithMessage("El input y el tipo de proveedor no pueden estar vacíos")
+	}
+
 	providerTypeLower := strings.ToLower(providerType)
 	provider, ok := s.providers[providerTypeLower]
 	if !ok {
@@ -42,14 +46,14 @@ func (s *videoService) GetMediaDetails(ctx context.Context, input string, provid
 	videoID, err := provider.SearchVideoID(ctx, input)
 	if err != nil {
 		log.Error("Error al buscar ID de video", zap.Error(err), zap.String("provider_type", providerType))
-		return nil, err
+		return nil, errors.ErrCodeSearchVideoIDFailed.Wrap(err)
 	}
 
 	log.Debug("Obteniendo detalles de la cancion", zap.String("provider_type", providerType), zap.String("video_id", videoID))
 	mediaDetails, err := provider.GetVideoDetails(ctx, videoID)
 	if err != nil {
 		log.Error("Error al obtener detalles del medio", zap.Error(err), zap.String("provider_type", providerType), zap.String("video_id", videoID))
-		return nil, err
+		return nil, errors.ErrGetMediaDetailsFailed.Wrap(err)
 	}
 	return mediaDetails, nil
 }
