@@ -12,31 +12,31 @@ import (
 	"testing"
 )
 
-func TestWorker_Start_ProcessesRequest(t *testing.T) {
+func TestDownloadTaskWorker_Run_ProcessesTask(t *testing.T) {
 	mockProcessor := new(MockProcessor)
 	mockLogger := new(logger.MockLogger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	requestChan := make(chan *model.MediaRequest, 1)
+	taskChan := make(chan *model.MediaRequest, 1)
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	worker := NewWorker(1, mockProcessor, mockLogger)
+	worker := NewDownloadTaskWorker(1, mockProcessor, mockLogger)
 
-	request := &model.MediaRequest{
+	task := &model.MediaRequest{
 		RequestID: "test-request-id",
 		Song:      "https://test-url.com",
 	}
 
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
-	mockProcessor.On("ProcessRequest", ctx, request).Return(nil)
+	mockProcessor.On("ProcessDownloadTask", ctx, task).Return(nil)
 
-	go worker.Start(ctx, &wg, requestChan)
-	requestChan <- request
+	go worker.Run(ctx, &wg, taskChan)
+	taskChan <- task
 
-	close(requestChan)
+	close(taskChan)
 
 	wg.Wait()
 
@@ -44,34 +44,34 @@ func TestWorker_Start_ProcessesRequest(t *testing.T) {
 	mockLogger.AssertExpectations(t)
 }
 
-func TestWorker_Start_HandlesProcessingError(t *testing.T) {
+func TestDownloadTaskWorker_Run_HandlesProcessingError(t *testing.T) {
 	mockProcessor := new(MockProcessor)
 	mockLogger := new(logger.MockLogger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	requestChan := make(chan *model.MediaRequest, 1)
+	taskChan := make(chan *model.MediaRequest, 1)
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	worker := NewWorker(1, mockProcessor, mockLogger)
+	worker := NewDownloadTaskWorker(1, mockProcessor, mockLogger)
 
-	request := &model.MediaRequest{
+	task := &model.MediaRequest{
 		RequestID: "test-request-id",
 		Song:      "https://test-url.com",
 	}
 
-	expectedError := errors.New("error procesando solicitud")
+	expectedError := errors.New("error procesando tarea")
 
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
-	mockProcessor.On("ProcessRequest", ctx, request).Return(expectedError)
+	mockProcessor.On("ProcessDownloadTask", ctx, task).Return(expectedError)
 
-	go worker.Start(ctx, &wg, requestChan)
-	requestChan <- request
+	go worker.Run(ctx, &wg, taskChan)
+	taskChan <- task
 
-	close(requestChan)
+	close(taskChan)
 
 	wg.Wait()
 
@@ -79,21 +79,21 @@ func TestWorker_Start_HandlesProcessingError(t *testing.T) {
 	mockLogger.AssertExpectations(t)
 }
 
-func TestWorker_Start_HandlesContextCancellation(t *testing.T) {
+func TestDownloadTaskWorker_Run_HandlesContextCancellation(t *testing.T) {
 	mockProcessor := new(MockProcessor)
 	mockLogger := new(logger.MockLogger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	requestChan := make(chan *model.MediaRequest)
+	taskChan := make(chan *model.MediaRequest)
 	var wg sync.WaitGroup
 	wg.Add(1)
 
-	worker := NewWorker(1, mockProcessor, mockLogger)
+	worker := NewDownloadTaskWorker(1, mockProcessor, mockLogger)
 
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
-	go worker.Start(ctx, &wg, requestChan)
+	go worker.Run(ctx, &wg, taskChan)
 
 	cancel()
 

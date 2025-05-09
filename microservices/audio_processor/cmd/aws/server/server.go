@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/worker"
 	"io"
 	"net/http"
 	"os"
@@ -109,7 +110,11 @@ func StartServer() error {
 	healthCheck := controller.NewHealthHandler(cfg)
 	mediaController := controller.NewMediaController(mediaRepository)
 
-	downloadService := processor.NewDownloadService(cfg.NumWorkers, sqsConsumer, mediaRepository, providerService, coreService, log)
+	mediaProcessor := processor.NewMediaProcessor(mediaRepository, providerService, coreService, log)
+	workerFactory := worker.NewWorkerFactory()
+	workerPool := worker.NewDownloadWorkerPool(2, sqsConsumer, mediaProcessor, log, workerFactory)
+
+	downloadService := processor.NewDownloadService(workerPool, log)
 
 	gin.SetMode(cfg.GinConfig.Mode)
 	r := gin.New()

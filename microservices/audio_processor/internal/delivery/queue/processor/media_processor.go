@@ -31,7 +31,7 @@ func NewMediaProcessor(
 	}
 }
 
-func (p *MediaProcessor) ProcessRequest(ctx context.Context, req *model.MediaRequest) error {
+func (p *MediaProcessor) ProcessDownloadTask(ctx context.Context, req *model.MediaRequest) error {
 	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
