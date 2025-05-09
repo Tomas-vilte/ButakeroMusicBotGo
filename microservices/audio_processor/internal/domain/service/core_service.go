@@ -46,6 +46,10 @@ func (s *coreService) ProcessMedia(ctx context.Context, media *model.Media, user
 		zap.String("song", media.VideoID),
 	)
 
+	if err := media.Validate(); err != nil {
+		return fmt.Errorf("error al validar el media: %w", err)
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, s.cfg.Service.Timeout)
 	defer cancel()
 
@@ -74,45 +78,27 @@ func (s *coreService) ProcessMedia(ctx context.Context, media *model.Media, user
 		if err != nil {
 			log.Error("Error al descargar y codificar el audio", zap.Error(err))
 			lastError = err
-			return lastError
+			return err
 		}
 
 		fileData, err := s.audioStorageService.StoreAudio(ctx, audioBuffer, media.TitleLower)
 		if err != nil {
 			log.Error("Error al almacenar el archivo de audio", zap.Error(err))
 			lastError = err
-			return lastError
+			return err
 		}
 
-		media.Status = "success"
-		media.Message = "Procesamiento completado exitosamente"
-		media.FileData = fileData
-		media.Success = true
-		media.Attempts = attempts
-		media.Failures = 0
-		media.UpdatedAt = time.Now()
-
-		message := &model.MediaProcessingMessage{
-			RequestID:        requestID,
-			UserID:           userID,
-			VideoID:          media.VideoID,
-			FileData:         media.FileData,
-			PlatformMetadata: media.Metadata,
-			Status:           media.Status,
-			Success:          media.Success,
-			Message:          media.Message,
-		}
-
+		media.UpdateAsSuccess(fileData, attempts)
 		if err := s.mediaRepository.UpdateMedia(ctx, media.VideoID, media); err != nil {
 			log.Error("Error al actualizar la operación", zap.String("video_id", media.VideoID), zap.Error(err))
 			lastError = err
-			return lastError
+			return err
 		}
 
-		if err := s.topicPublisher.Publish(ctx, message); err != nil {
+		if err := s.topicPublisher.Publish(ctx, media.ToMessage(requestID, userID)); err != nil {
 			log.Error("Error al publicar el evento de procesamiento exitoso", zap.Error(err))
 			lastError = err
-			return lastError
+			return err
 		}
 
 		log.Info("Procesamiento de medios completado exitosamente", zap.String("video_id", media.VideoID))
@@ -121,15 +107,7 @@ func (s *coreService) ProcessMedia(ctx context.Context, media *model.Media, user
 
 	bo := backoff.NewExponentialBackOff()
 	bo.MaxElapsedTime = s.cfg.Service.Timeout
-	bo.MaxInterval = 30 * time.Second
-
-	err := backoff.Retry(operation, bo)
-	if err != nil {
-		s.logger.Error("Procesamiento fallido después de reintentos",
-			zap.Error(err),
-			zap.Int("final_attempts", attempts))
-		return err
-	}
-
-	return nil
+	return backoff.RetryNotify(operation, bo, func(err error, d time.Duration) {
+		log.Warn("Reintentando después de error", zap.Error(err), zap.Duration("delay", d))
+	})
 }

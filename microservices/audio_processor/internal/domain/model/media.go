@@ -86,3 +86,24 @@ func (m *Media) Validate() error {
 	}
 	return nil
 }
+
+func (m *Media) UpdateAsSuccess(fileData *FileData, attempts int) {
+	m.Status = "success"
+	m.FileData = fileData
+	m.Success = true
+	m.Attempts = attempts
+	m.UpdatedAt = time.Now()
+}
+
+func (m *Media) ToMessage(requestID, userID string) *MediaProcessingMessage {
+	return &MediaProcessingMessage{
+		RequestID:        requestID,
+		UserID:           userID,
+		VideoID:          m.VideoID,
+		FileData:         m.FileData,
+		PlatformMetadata: m.Metadata,
+		Status:           m.Status,
+		Success:          m.Success,
+		Message:          m.Message,
+	}
+}

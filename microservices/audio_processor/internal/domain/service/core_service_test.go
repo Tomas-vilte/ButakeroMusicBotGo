@@ -120,6 +120,7 @@ func TestCoreService_ProcessMedia_DownloadError(t *testing.T) {
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Warn", mock.Anything, mock.Anything).Return()
 	mockAudioDownloadService.On("DownloadAndEncode", mock.Anything, media.Metadata.URL).Return((*bytes.Buffer)(nil), expectedError)
 
 	// Act
@@ -181,6 +182,7 @@ func TestCoreService_ProcessMedia_StorageError(t *testing.T) {
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Warn", mock.Anything, mock.Anything).Return()
 	mockAudioDownloadService.On("DownloadAndEncode", mock.Anything, media.Metadata.URL).Return(audioBuffer, nil)
 	mockAudioStorageService.On("StoreAudio", mock.Anything, audioBuffer, media.TitleLower).Return((*model.FileData)(nil), expectedError)
 
@@ -246,6 +248,7 @@ func TestCoreService_ProcessMedia_UpdateMediaError(t *testing.T) {
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Warn", mock.Anything, mock.Anything).Return()
 	mockAudioDownloadService.On("DownloadAndEncode", mock.Anything, media.Metadata.URL).Return(audioBuffer, nil)
 	mockAudioStorageService.On("StoreAudio", mock.Anything, audioBuffer, media.TitleLower).Return(fileData, nil)
 	mockMediaRepository.On("UpdateMedia", mock.Anything, media.VideoID, mock.AnythingOfType("*model.Media")).Return(expectedError)
@@ -313,6 +316,7 @@ func TestCoreService_ProcessMedia_PublishError(t *testing.T) {
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
+	mockLogger.On("Warn", mock.Anything, mock.Anything).Return()
 	mockAudioDownloadService.On("DownloadAndEncode", mock.Anything, media.Metadata.URL).Return(audioBuffer, nil)
 	mockAudioStorageService.On("StoreAudio", mock.Anything, audioBuffer, media.TitleLower).Return(fileData, nil)
 	mockMediaRepository.On("UpdateMedia", mock.Anything, media.VideoID, mock.AnythingOfType("*model.Media")).Return(nil)
