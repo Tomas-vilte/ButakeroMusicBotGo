@@ -3,7 +3,6 @@ package sqs
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
@@ -32,7 +31,7 @@ func NewConsumerSQS(cfgApplication *config.Config, log logger.Logger) (ports.Mes
 		awsCfg.WithRegion(cfgApplication.AWS.Region))
 	if err != nil {
 		log.Error("Error cargando configuración AWS", zap.Error(err))
-		return nil, errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("error cargando configuración AWS: %v", err))
+		return nil, errors.ErrSQSAWSConfig.Wrap(err)
 	}
 
 	log.Debug("Creando cliente SQS")
@@ -117,7 +116,7 @@ func (c *ConsumerSQS) receiveMessages(ctx context.Context, out chan<- *model.Med
 
 	result, err := c.client.ReceiveMessage(ctx, input)
 	if err != nil {
-		log.Error("Error recibiendo mensajes de SQS", zap.Error(err))
+		log.Error("Error recibiendo mensajes de SQS", zap.Error(errors.ErrSQSMessageConsume.Wrap(err)))
 		return
 	}
 
@@ -138,7 +137,7 @@ func (c *ConsumerSQS) receiveMessages(ctx context.Context, out chan<- *model.Med
 		if err := json.Unmarshal([]byte(*msg.Body), &req); err != nil {
 			log.Error("Error deserializando mensaje SQS",
 				zap.String("message_id", *msg.MessageId),
-				zap.Error(err),
+				zap.Error(errors.ErrSQSMessageDeserialize.Wrap(err)),
 				zap.String("body", *msg.Body))
 			continue
 		}
@@ -179,7 +178,7 @@ func (c *ConsumerSQS) deleteMessage(ctx context.Context, receiptHandle *string) 
 	if err != nil {
 		log.Error("Error eliminando mensaje de SQS",
 			zap.String("receipt_handle", *receiptHandle),
-			zap.Error(err))
+			zap.Error(errors.ErrSQSMessageDelete.Wrap(err)))
 		return
 	}
 

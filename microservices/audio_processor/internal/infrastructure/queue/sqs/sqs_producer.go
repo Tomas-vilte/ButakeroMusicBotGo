@@ -3,7 +3,6 @@ package sqs
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
@@ -30,7 +29,7 @@ func NewProducerSQS(cfgApplication *config.Config, log logger.Logger) (ports.Mes
 		awsCfg.WithRegion(cfgApplication.AWS.Region))
 	if err != nil {
 		log.Error("Error cargando configuración AWS", zap.Error(err))
-		return nil, errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("error cargando configuración AWS: %v", err))
+		return nil, errors.ErrSQSAWSConfig.Wrap(err)
 	}
 
 	log.Debug("Creando cliente SQS")
@@ -54,7 +53,7 @@ func (p *ProducerSQS) Publish(ctx context.Context, msg *model.MediaProcessingMes
 	body, err := json.Marshal(msg)
 	if err != nil {
 		log.Error("Error serializando mensaje", zap.Error(err))
-		return err
+		return errors.ErrSQSMessageDeserialize.Wrap(err)
 	}
 
 	log.Debug("Mensaje serializado", zap.Int("payload_size", len(body)))
@@ -71,7 +70,7 @@ func (p *ProducerSQS) Publish(ctx context.Context, msg *model.MediaProcessingMes
 		log.Error("Error publicando mensaje en SQS",
 			zap.String("queue_url", p.cfg.Messaging.SQS.QueueURLs.BotDownloadStatusURL),
 			zap.Error(err))
-		return err
+		return errors.ErrSQSMessagePublish.Wrap(err)
 	}
 
 	log.Info("Mensaje publicado exitosamente en SQS",

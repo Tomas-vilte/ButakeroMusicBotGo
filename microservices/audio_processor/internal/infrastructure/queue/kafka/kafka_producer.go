@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"github.com/IBM/sarama"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
@@ -39,7 +38,7 @@ func NewProducerKafka(cfg *config.Config, logger logger.Logger) (ports.MessagePr
 		})
 		if err != nil {
 			logger.Error("Error en configuración TLS", zap.Error(err))
-			return nil, errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("Error configurando conexion de TLS de Kafka: %v", err))
+			return nil, errors.ErrKafkaTLSConfig.Wrap(err)
 		}
 	}
 
@@ -60,7 +59,7 @@ func NewProducerKafka(cfg *config.Config, logger logger.Logger) (ports.MessagePr
 	p, err := sarama.NewSyncProducer(cfg.Messaging.Kafka.Brokers, cfgKafka)
 	if err != nil {
 		logger.Error("Error al crear productor Sarama", zap.Error(err))
-		return nil, fmt.Errorf("error al crear el ProducerKafka: %w", err)
+		return nil, errors.ErrKafkaConnectionFailed.Wrap(err)
 	}
 
 	producerKafka := &ProducerKafka{
@@ -73,7 +72,7 @@ func NewProducerKafka(cfg *config.Config, logger logger.Logger) (ports.MessagePr
 		zap.String("topic", cfg.Messaging.Kafka.Topics.BotDownloadStatus))
 	if err := producerKafka.EnsureTopicExists(cfg.Messaging.Kafka.Topics.BotDownloadStatus); err != nil {
 		logger.Error("Error al verificar tópico", zap.Error(err))
-		return nil, errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("Error al asegurar que el topic existe: %v", err))
+		return nil, errors.ErrKafkaTopicCreation.Wrap(err)
 	}
 
 	logger.Info("Productor Kafka inicializado correctamente")
@@ -89,7 +88,7 @@ func (p *ProducerKafka) Publish(ctx context.Context, msg *model.MediaProcessingM
 
 	select {
 	case <-ctx.Done():
-		return fmt.Errorf("contexto cancelado antes de publicar: %w", ctx.Err())
+		return errors.ErrKafkaMessagePublish.Wrap(ctx.Err()).WithMessage("contexto cancelado antes de publicar mensaje")
 	default:
 	}
 
@@ -97,7 +96,7 @@ func (p *ProducerKafka) Publish(ctx context.Context, msg *model.MediaProcessingM
 	payload, err := json.Marshal(msg)
 	if err != nil {
 		log.Error("Error al serializar el mensaje", zap.Error(err))
-		return fmt.Errorf("error al serializar el mensaje: %w", err)
+		return errors.ErrKafkaMessagePublish.Wrap(err)
 	}
 
 	kafkaMsg := &sarama.ProducerMessage{
@@ -127,7 +126,7 @@ func (p *ProducerKafka) Publish(ctx context.Context, msg *model.MediaProcessingM
 	case err := <-done:
 		return err
 	case <-ctx.Done():
-		return fmt.Errorf("operación cancelada mientras se publicaba: %w", ctx.Err())
+		return errors.ErrKafkaMessagePublish.Wrap(ctx.Err()).WithMessage("contexto cancelado antes de recibir respuesta")
 	}
 }
 
@@ -141,7 +140,7 @@ func (p *ProducerKafka) Close() error {
 
 	if err := p.saramaProducer.Close(); err != nil {
 		log.Error("Error al cerrar el productor", zap.Error(err))
-		return fmt.Errorf("error al cerrar el ProducerKafka: %w", err)
+		return errors.ErrKafkaConnectionFailed.Wrap(err)
 	}
 
 	log.Info("Productor Kafka cerrado correctamente")
@@ -164,7 +163,7 @@ func (p *ProducerKafka) EnsureTopicExists(topic string) error {
 			KeyFile:  p.config.Messaging.Kafka.KeyFile,
 		})
 		if err != nil {
-			return err
+			return errors.ErrKafkaTLSConfig.Wrap(err)
 		}
 		cfgKafka.Net.TLS.Enable = true
 		cfgKafka.Net.TLS.Config = tlsConfig
@@ -174,7 +173,7 @@ func (p *ProducerKafka) EnsureTopicExists(topic string) error {
 	admin, err := sarama.NewClusterAdmin(p.config.Messaging.Kafka.Brokers, cfgKafka)
 	if err != nil {
 		log.Error("Error al crear el administrador de Kafka", zap.Error(err))
-		return errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("error al crear el administrador de Kafka: %v", err))
+		return errors.ErrKafkaAdminClient.Wrap(err)
 	}
 	defer func() {
 		log.Debug("Cerrando administrador de clúster")
@@ -187,7 +186,7 @@ func (p *ProducerKafka) EnsureTopicExists(topic string) error {
 	topics, err := admin.ListTopics()
 	if err != nil {
 		log.Error("Error al listar los tópicos", zap.Error(err))
-		return errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("error al listar los topics: %v", err))
+		return errors.ErrKafkaAdminClient.Wrap(err)
 	}
 
 	if _, exists := topics[topic]; !exists {
@@ -204,7 +203,7 @@ func (p *ProducerKafka) EnsureTopicExists(topic string) error {
 		err := admin.CreateTopic(topic, topicDetail, false)
 		if err != nil {
 			log.Error("Error al crear el tópico", zap.Error(err))
-			return errors.ErrCodeDBConnectionFailed.WithMessage(fmt.Sprintf("error al crear el topic: %v", err))
+			return errors.ErrKafkaTopicCreation.Wrap(err)
 		}
 		log.Info("Tópico creado exitosamente", zap.String("topic", topic))
 	} else {
@@ -220,6 +219,5 @@ func (p *ProducerKafka) EnsureTopicExists(topic string) error {
 				zap.Int("partition_count", len(metadata[0].Partitions)))
 		}
 	}
-
 	return nil
 }
