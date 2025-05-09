@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -70,3 +71,39 @@ type (
 		Provider     string
 	}
 )
+
+func (m *Media) Validate() error {
+	if m == nil {
+		return fmt.Errorf("media no puede ser nil")
+	}
+
+	if m.Metadata == nil || m.Metadata.Title == "" {
+		return fmt.Errorf("el título es requerido")
+	}
+
+	if m.VideoID == "" {
+		return fmt.Errorf("el ID del video es requerido")
+	}
+	return nil
+}
+
+func (m *Media) UpdateAsSuccess(fileData *FileData, attempts int) {
+	m.Status = "success"
+	m.FileData = fileData
+	m.Success = true
+	m.Attempts = attempts
+	m.UpdatedAt = time.Now()
+}
+
+func (m *Media) ToMessage(requestID, userID string) *MediaProcessingMessage {
+	return &MediaProcessingMessage{
+		RequestID:        requestID,
+		UserID:           userID,
+		VideoID:          m.VideoID,
+		FileData:         m.FileData,
+		PlatformMetadata: m.Metadata,
+		Status:           m.Status,
+		Success:          m.Success,
+		Message:          m.Message,
+	}
+}

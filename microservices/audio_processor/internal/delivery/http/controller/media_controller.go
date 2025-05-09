@@ -8,11 +8,11 @@ import (
 )
 
 type MediaController struct {
-	mediaService ports.MediaService
+	mediaRepository ports.MediaRepository
 }
 
-func NewMediaController(mediaService ports.MediaService) *MediaController {
-	return &MediaController{mediaService: mediaService}
+func NewMediaController(mediaRepository ports.MediaRepository) *MediaController {
+	return &MediaController{mediaRepository: mediaRepository}
 }
 
 func (mc *MediaController) GetMediaByID(c *gin.Context) {
@@ -28,7 +28,7 @@ func (mc *MediaController) GetMediaByID(c *gin.Context) {
 		return
 	}
 
-	media, err := mc.mediaService.GetMediaByID(c.Request.Context(), videoID)
+	media, err := mc.mediaRepository.GetMediaByID(c.Request.Context(), videoID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -47,7 +47,7 @@ func (mc *MediaController) SearchMediaByTitle(c *gin.Context) {
 		return
 	}
 
-	medias, err := mc.mediaService.GetMediaByTitle(c.Request.Context(), title)
+	medias, err := mc.mediaRepository.GetMediaByTitle(c.Request.Context(), title)
 	if err != nil {
 		_ = c.Error(err)
 		return

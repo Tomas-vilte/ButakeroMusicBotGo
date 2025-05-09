@@ -25,15 +25,7 @@ type (
 		mock.Mock
 	}
 
-	MockMediaService struct {
-		mock.Mock
-	}
-
 	MockAudioStorageService struct {
-		mock.Mock
-	}
-
-	MockTopicPublisherService struct {
 		mock.Mock
 	}
 
@@ -102,38 +94,9 @@ func (m *MockStorage) GetFileContent(ctx context.Context, path string, key strin
 	return args.Get(0).(io.ReadCloser), args.Error(1)
 }
 
-func (m *MockMediaService) CreateMedia(ctx context.Context, media *model.Media) error {
-	args := m.Called(ctx, media)
-	return args.Error(0)
-}
-func (m *MockMediaService) GetMediaByID(ctx context.Context, videoID string) (*model.Media, error) {
-	args := m.Called(ctx, videoID)
-	return args.Get(0).(*model.Media), args.Error(1)
-}
-
-func (m *MockMediaService) UpdateMedia(ctx context.Context, videoID string, status *model.Media) error {
-	args := m.Called(ctx, videoID, status)
-	return args.Error(0)
-}
-
-func (m *MockMediaService) GetMediaByTitle(ctx context.Context, title string) ([]*model.Media, error) {
-	args := m.Called(ctx, title)
-	return args.Get(0).([]*model.Media), args.Error(1)
-}
-
-func (m *MockMediaService) DeleteMedia(ctx context.Context, videoID string) error {
-	args := m.Called(ctx, videoID)
-	return args.Error(0)
-}
-
 func (m *MockAudioStorageService) StoreAudio(ctx context.Context, buffer *bytes.Buffer, songName string) (*model.FileData, error) {
 	args := m.Called(ctx, buffer, songName)
 	return args.Get(0).(*model.FileData), args.Error(1)
-}
-
-func (m *MockTopicPublisherService) PublishMediaProcessed(ctx context.Context, message *model.MediaProcessingMessage) error {
-	args := m.Called(ctx, message)
-	return args.Error(0)
 }
 
 func (m *MockAudioDownloadService) DownloadAndEncode(ctx context.Context, url string) (*bytes.Buffer, error) {

@@ -19,19 +19,7 @@ type (
 		StoreAudio(ctx context.Context, buffer *bytes.Buffer, songName string) (*model.FileData, error)
 	}
 
-	TopicPublisherService interface {
-		PublishMediaProcessed(ctx context.Context, message *model.MediaProcessingMessage) error
-	}
-
-	MediaService interface {
-		CreateMedia(ctx context.Context, media *model.Media) error
-		GetMediaByID(ctx context.Context, videoID string) (*model.Media, error)
-		GetMediaByTitle(ctx context.Context, title string) ([]*model.Media, error)
-		UpdateMedia(ctx context.Context, videoID string, status *model.Media) error
-		DeleteMedia(ctx context.Context, videoID string) error
-	}
-
 	CoreService interface {
-		ProcessMedia(ctx context.Context, mediaDetails *model.MediaDetails, userID, requestID string) error
+		ProcessMedia(ctx context.Context, media *model.Media, userID, requestID string) error
 	}
 )
