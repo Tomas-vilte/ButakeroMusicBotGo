@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"net/http"
 	"os"
 	"os/signal"
@@ -106,7 +107,7 @@ func StartServer() error {
 	}
 
 	audioStorageService := service.NewAudioStorageService(storage, log)
-	audioDownloadService := service.NewAudioDownloaderService(downloaderMusic, encoderAudio, log)
+	audioDownloadService := service.NewAudioDownloaderService(downloaderMusic, encoderAudio, log, model.StdEncodeOptions)
 	coreService := service.NewCoreService(mediaRepository, audioStorageService, kafkaProducer, audioDownloadService, log, cfg)
 	providerService := service.NewVideoService(providers, log)
 	healthCheck := controller.NewHealthHandler(cfg)

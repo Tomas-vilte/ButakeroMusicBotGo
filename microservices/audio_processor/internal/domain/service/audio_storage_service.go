@@ -10,6 +10,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const audioFileExtension = ".dca"
+
 type audioStorageService struct {
 	storage ports.Storage
 	log     logger.Logger
@@ -28,8 +30,12 @@ func (as *audioStorageService) StoreAudio(ctx context.Context, buffer *bytes.Buf
 		zap.String("method", "StoreAudio"),
 		zap.String("songName", songName),
 	)
-	keyName := fmt.Sprintf("%s%s", songName, ".dca")
 
+	if songName == "" {
+		return nil, fmt.Errorf("songName no puede ser vacío")
+	}
+
+	keyName := songName + audioFileExtension
 	if err := as.storage.UploadFile(ctx, keyName, buffer); err != nil {
 		log.Error("Error al subir el archivo", zap.Error(err))
 		return nil, err
