@@ -26,7 +26,7 @@ func TestEncoder(t *testing.T) {
 		}
 	}()
 
-	sessionEncoder := NewFFmpegEncoder(logging)
+	sessionEncoder := NewFFMPEGEncoder(logging)
 
 	session, err := sessionEncoder.Encode(ctx, inputFile, model.StdEncodeOptions)
 	if err != nil {

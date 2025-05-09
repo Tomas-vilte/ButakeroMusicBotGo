@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
 	"github.com/stretchr/testify/mock"
 	"io"
 )
@@ -30,6 +31,18 @@ type (
 	}
 
 	MockAudioDownloadService struct {
+		mock.Mock
+	}
+
+	MockDownloader struct {
+		mock.Mock
+	}
+
+	MockAudioEncoder struct {
+		mock.Mock
+	}
+
+	MockEncodeSession struct {
 		mock.Mock
 	}
 )
@@ -102,4 +115,47 @@ func (m *MockAudioStorageService) StoreAudio(ctx context.Context, buffer *bytes.
 func (m *MockAudioDownloadService) DownloadAndEncode(ctx context.Context, url string) (*bytes.Buffer, error) {
 	args := m.Called(ctx, url)
 	return args.Get(0).(*bytes.Buffer), args.Error(1)
+}
+
+func (m *MockDownloader) DownloadAudio(ctx context.Context, url string) (io.Reader, error) {
+	args := m.Called(ctx, url)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(io.Reader), args.Error(1)
+}
+
+func (m *MockAudioEncoder) Encode(ctx context.Context, reader io.Reader, options *model.EncodeOptions) (ports.EncodeSession, error) {
+	args := m.Called(ctx, reader, options)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(ports.EncodeSession), args.Error(1)
+}
+
+func (m *MockEncodeSession) ReadFrame() ([]byte, error) {
+	args := m.Called()
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (m *MockEncodeSession) Read(p []byte) (n int, err error) {
+	args := m.Called(p)
+	return args.Int(0), args.Error(1)
+}
+
+func (m *MockEncodeSession) Stop() error {
+	args := m.Called()
+	return args.Error(0)
+}
+
+func (m *MockEncodeSession) FFMPEGMessages() string {
+	args := m.Called()
+	return args.String(0)
+}
+
+func (m *MockEncodeSession) Cleanup() {
+	m.Called()
 }
