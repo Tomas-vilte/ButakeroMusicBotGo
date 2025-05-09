@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/utils"
-	"github.com/pkg/errors"
 	"time"
 
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/config"
@@ -44,7 +44,7 @@ func NewMongoDB(opts MongoOptions) (*MongoDB, error) {
 			KeyFile:  opts.Config.Database.Mongo.KeyFile,
 		})
 		if err != nil {
-			return nil, errors.Wrap(err, "Error configurando conexion de TLS de MongoDB")
+			return nil, errors.ErrMongoDBTLSConfig.Wrap(err)
 		}
 	}
 
@@ -61,12 +61,12 @@ func NewMongoDB(opts MongoOptions) (*MongoDB, error) {
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		opts.Log.Error("Error al conectar a MongoDB", zap.Error(err))
-		return nil, err
+		return nil, errors.ErrMongoDBConnectionFailed.Wrap(err)
 	}
 
 	err = client.Ping(ctx, readpref.PrimaryPreferred())
 	if err != nil {
-		return nil, fmt.Errorf("error al hacer ping a MongoDB: %w", err)
+		return nil, errors.ErrMongoDBPingFailed.Wrap(err)
 	}
 
 	opts.Log.Info("Conexion exitosa a MongoDB", zap.String("Database", opts.Config.Database.Mongo.Database),
@@ -86,5 +86,8 @@ func (db *MongoDB) GetCollection(collectionName string) *mongo.Collection {
 }
 
 func (db *MongoDB) Close(ctx context.Context) error {
-	return db.client.Disconnect(ctx)
+	if err := db.client.Disconnect(ctx); err != nil {
+		return errors.ErrMongoDBConnectionFailed.Wrap(err)
+	}
+	return nil
 }
