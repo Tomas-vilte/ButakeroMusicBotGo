@@ -13,10 +13,12 @@ import (
 	"time"
 )
 
-func TestWorkerPool_Start_Success(t *testing.T) {
+func TestDownloadWorkerPool_Start_Success(t *testing.T) {
 	mockProcessor := new(MockProcessor)
 	mockLogger := new(logger.MockLogger)
 	mockConsumer := new(MockConsumer)
+	mockFactory := new(MockWorkerFactory)
+	mockWorker := new(MockTaskWorker)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	requestChan := make(chan *model.MediaRequest)
@@ -26,7 +28,19 @@ func TestWorkerPool_Start_Success(t *testing.T) {
 	mockConsumer.On("GetRequestsChannel", ctx).Return((<-chan *model.MediaRequest)(requestChan), nil)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
-	workerPool := NewWorkerPool(numWorkers, mockConsumer, mockProcessor, mockLogger)
+	// Expectativas para la fábrica
+	for i := 0; i < numWorkers; i++ {
+		mockFactory.On("NewWorker", i, mockProcessor, mockLogger).Return(mockWorker)
+		mockWorker.On("Run", ctx, mock.AnythingOfType("*sync.WaitGroup"), (<-chan *model.MediaRequest)(requestChan)).Return()
+	}
+
+	workerPool := NewDownloadWorkerPool(
+		numWorkers,
+		mockConsumer,
+		mockProcessor,
+		mockLogger,
+		mockFactory,
+	)
 
 	go func() {
 		time.Sleep(100 * time.Millisecond)
@@ -38,20 +52,28 @@ func TestWorkerPool_Start_Success(t *testing.T) {
 	assert.NoError(t, err)
 	mockConsumer.AssertExpectations(t)
 	mockLogger.AssertExpectations(t)
-	assert.Len(t, workerPool.workers, numWorkers)
+	mockFactory.AssertExpectations(t)
+	mockWorker.AssertExpectations(t)
 }
 
-func TestWorkerPool_Start_GetRequestsChannelError(t *testing.T) {
+func TestDownloadWorkerPool_Start_GetRequestsChannelError(t *testing.T) {
 	mockProcessor := new(MockProcessor)
 	mockLogger := new(logger.MockLogger)
 	mockConsumer := new(MockConsumer)
+	mockFactory := new(MockWorkerFactory)
 
 	ctx := context.Background()
 	expectedError := errors.New("error al obtener canal de solicitudes")
 
 	mockConsumer.On("GetRequestsChannel", ctx).Return((<-chan *model.MediaRequest)(nil), expectedError)
 
-	workerPool := NewWorkerPool(2, mockConsumer, mockProcessor, mockLogger)
+	workerPool := NewDownloadWorkerPool(
+		2,
+		mockConsumer,
+		mockProcessor,
+		mockLogger,
+		mockFactory,
+	)
 
 	err := workerPool.Start(ctx)
 
@@ -60,19 +82,26 @@ func TestWorkerPool_Start_GetRequestsChannelError(t *testing.T) {
 	mockConsumer.AssertExpectations(t)
 }
 
-func TestNewWorkerPool_Initialization(t *testing.T) {
+func TestNewDownloadWorkerPool_Initialization(t *testing.T) {
 	mockProcessor := new(MockProcessor)
 	mockLogger := new(logger.MockLogger)
 	mockConsumer := new(MockConsumer)
+	mockFactory := new(MockWorkerFactory)
 
 	numWorkers := 3
 
-	workerPool := NewWorkerPool(numWorkers, mockConsumer, mockProcessor, mockLogger)
+	workerPool := NewDownloadWorkerPool(
+		numWorkers,
+		mockConsumer,
+		mockProcessor,
+		mockLogger,
+		mockFactory,
+	)
 
 	assert.NotNil(t, workerPool)
-	assert.Equal(t, numWorkers, workerPool.numWorkers)
+	assert.Equal(t, numWorkers, workerPool.workerCount)
 	assert.Equal(t, mockConsumer, workerPool.consumer)
 	assert.Equal(t, mockProcessor, workerPool.processor)
 	assert.Equal(t, mockLogger, workerPool.logger)
-	assert.Len(t, workerPool.workers, numWorkers)
+	assert.Equal(t, mockFactory, workerPool.workerFactory)
 }

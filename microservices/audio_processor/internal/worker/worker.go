@@ -8,28 +8,28 @@ import (
 	"sync"
 )
 
-type Worker struct {
+type DownloadTaskWorker struct {
 	id        int
-	processor Processor
+	processor AudioTaskProcessor
 	logger    logger.Logger
 }
 
-func NewWorker(id int, processor Processor, logger logger.Logger) *Worker {
-	return &Worker{
+func NewDownloadTaskWorker(id int, processor AudioTaskProcessor, logger logger.Logger) *DownloadTaskWorker {
+	return &DownloadTaskWorker{
 		id:        id,
 		processor: processor,
 		logger:    logger,
 	}
 }
 
-func (w *Worker) Start(ctx context.Context, wg *sync.WaitGroup, requestChan <-chan *model.MediaRequest) {
+func (w *DownloadTaskWorker) Run(ctx context.Context, wg *sync.WaitGroup, taskChan <-chan *model.MediaRequest) {
 	defer wg.Done()
 
 	w.logger.Info("Iniciando worker", zap.Int("worker_id", w.id))
 
 	for {
 		select {
-		case req, ok := <-requestChan:
+		case req, ok := <-taskChan:
 			if !ok {
 				w.logger.Info("Canal de solicitudes cerrado, finalizando worker", zap.Int("worker_id", w.id))
 				return
@@ -37,7 +37,7 @@ func (w *Worker) Start(ctx context.Context, wg *sync.WaitGroup, requestChan <-ch
 
 			w.logger.Info("Procesando requests", zap.Int("worker_id", w.id), zap.String("requests_id", req.RequestID))
 
-			if err := w.processor.ProcessRequest(ctx, req); err != nil {
+			if err := w.processor.ProcessDownloadTask(ctx, req); err != nil {
 				w.logger.Error("Error al procesar la solicitud", zap.Int("worker_id", w.id), zap.String("requests_id", req.RequestID), zap.Error(err))
 			}
 		case <-ctx.Done():

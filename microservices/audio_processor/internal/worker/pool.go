@@ -9,45 +9,44 @@ import (
 	"sync"
 )
 
-type WorkerPool struct {
-	numWorkers int
-	consumer   ports.MessageConsumer
-	processor  Processor
-	logger     logger.Logger
-	workers    []*Worker
+type DownloadWorkerPool struct {
+	workerCount   int
+	consumer      ports.MessageConsumer
+	processor     AudioTaskProcessor
+	logger        logger.Logger
+	workerFactory WorkerFactory
 }
 
-func NewWorkerPool(
-	numWorkers int,
+func NewDownloadWorkerPool(
+	workerCount int,
 	consumer ports.MessageConsumer,
-	processor Processor,
+	processor AudioTaskProcessor,
 	logger logger.Logger,
-) *WorkerPool {
-	return &WorkerPool{
-		numWorkers: numWorkers,
-		consumer:   consumer,
-		processor:  processor,
-		logger:     logger,
-		workers:    make([]*Worker, numWorkers),
+	workerFactory WorkerFactory,
+) *DownloadWorkerPool {
+	return &DownloadWorkerPool{
+		workerCount:   workerCount,
+		consumer:      consumer,
+		processor:     processor,
+		logger:        logger,
+		workerFactory: workerFactory,
 	}
 }
 
-func (wp *WorkerPool) Start(ctx context.Context) error {
-	requestChan, err := wp.consumer.GetRequestsChannel(ctx)
+func (wp *DownloadWorkerPool) Start(ctx context.Context) error {
+	taskChan, err := wp.consumer.GetRequestsChannel(ctx)
 	if err != nil {
 		return fmt.Errorf("error al obtener el canal de solicitudes: %w", err)
 	}
 
-	wp.logger.Info("Iniciando WorkerPool", zap.Int("num_workers", wp.numWorkers))
+	wp.logger.Info("Iniciando DownloadWorkerPool", zap.Int("num_workers", wp.workerCount))
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < wp.numWorkers; i++ {
+	for i := 0; i < wp.workerCount; i++ {
 		wg.Add(1)
-		worker := NewWorker(i, wp.processor, wp.logger)
-		wp.workers[i] = worker
-
-		go worker.Start(ctx, &wg, requestChan)
+		worker := wp.workerFactory.NewWorker(i, wp.processor, wp.logger)
+		go worker.Run(ctx, &wg, taskChan)
 	}
 
 	<-ctx.Done()
