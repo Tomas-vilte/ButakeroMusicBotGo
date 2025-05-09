@@ -3,8 +3,8 @@ package service
 import (
 	"bytes"
 	"context"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/ports"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/encoder"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"io"
 )
@@ -29,7 +29,7 @@ func (ad *audioDownloaderService) DownloadAndEncode(ctx context.Context, url str
 		return nil, err
 	}
 
-	session, err := ad.encoder.Encode(ctx, reader, encoder.StdEncodeOptions)
+	session, err := ad.encoder.Encode(ctx, reader, model.StdEncodeOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (ad *audioDownloaderService) DownloadAndEncode(ctx context.Context, url str
 	return ad.readAudioFramesToBuffer(session)
 }
 
-func (ad *audioDownloaderService) readAudioFramesToBuffer(session encoder.EncodeSession) (*bytes.Buffer, error) {
+func (ad *audioDownloaderService) readAudioFramesToBuffer(session ports.EncodeSession) (*bytes.Buffer, error) {
 	var buffer bytes.Buffer
 
 	for {

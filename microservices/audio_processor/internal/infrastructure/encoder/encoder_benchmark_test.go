@@ -3,6 +3,7 @@ package encoder_test
 import (
 	"bytes"
 	"context"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/infrastructure/encoder"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/audio_processor/internal/logger"
 	"github.com/stretchr/testify/require"
@@ -41,7 +42,7 @@ func BenchmarkAudioEncoding(b *testing.B) {
 
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 
-				session, err := ffmpegEncoder.Encode(ctx, audioData, encoder.StdEncodeOptions)
+				session, err := ffmpegEncoder.Encode(ctx, audioData, model.StdEncodeOptions)
 				if err != nil {
 					cancel()
 					b.Fatalf("Failed to start encoding: %v", err)
@@ -93,7 +94,7 @@ func BenchmarkResourceUsage(b *testing.B) {
 				runtime.ReadMemStats(&memStats)
 				startAlloc := memStats.Alloc
 
-				session, err := ffmpegEncoder.Encode(ctx, audioData, encoder.StdEncodeOptions)
+				session, err := ffmpegEncoder.Encode(ctx, audioData, model.StdEncodeOptions)
 				if err != nil {
 					cancel()
 					b.Fatalf("Failed to start encoding: %v", err)
