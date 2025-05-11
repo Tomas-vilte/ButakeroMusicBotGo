@@ -312,7 +312,7 @@ func (h *CommandHandler) ListPlaylist(s *discordgo.Session, ic *discordgo.Intera
 
 	message := "🎵 Lista de reproducción:\n"
 	for i, song := range songs {
-		message += fmt.Sprintf("%d. %s\n", i+1, song)
+		message += fmt.Sprintf("%d. %s\n", i+1, song.DiscordSong.TitleTrack)
 	}
 
 	logger.Debug("Mostrando lista de reproducción", zap.Int("total_canciones", len(songs)))
@@ -366,13 +366,13 @@ func (h *CommandHandler) RemoveSong(s *discordgo.Session, ic *discordgo.Interact
 	}
 
 	logger.Debug("Canción eliminada exitosamente",
-		zap.String("song_title", song.TitleTrack),
+		zap.String("song_title", song.DiscordSong.TitleTrack),
 	)
 
 	if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: fmt.Sprintf("🗑️ Canción **%s** eliminada de la lista", song.TitleTrack),
+			Content: fmt.Sprintf("🗑️ Canción **%s** eliminada de la lista", song.DiscordSong.TitleTrack),
 		},
 	}); err != nil {
 		logger.Error("Error al enviar mensaje de confirmación", zap.Error(err))

@@ -51,6 +51,11 @@ const (
 	ErrCodeGuildPlayerAlreadyExists ErrorCode = "guild_player_already_exists"
 	ErrCodeGuildPlayerCreateFailed  ErrorCode = "guild_player_create_failed"
 	ErrCodeGuildPlayerCloseFailed   ErrorCode = "guild_player_close_failed"
+
+	ErrCodePlaylistEmpty         ErrorCode = "playlist_empty"
+	ErrCodeInvalidTrackPosition  ErrorCode = "invalid_track_position"
+	ErrCodeInvalidSong           ErrorCode = "invalid_song"
+	ErrCodePlaylistOperationFail ErrorCode = "playlist_operation_fail"
 )
 
 var errorStatusMap = map[ErrorCode]int{
@@ -101,6 +106,10 @@ var errorStatusMap = map[ErrorCode]int{
 	ErrCodeGuildPlayerCreateFailed:   http.StatusInternalServerError,
 	ErrCodeGuildPlayerAlreadyExists:  http.StatusConflict,
 	ErrCodeGuildPlayerCloseFailed:    http.StatusInternalServerError,
+	ErrCodePlaylistEmpty:             http.StatusNotFound,
+	ErrCodeInvalidTrackPosition:      http.StatusBadRequest,
+	ErrCodeInvalidSong:               http.StatusBadRequest,
+	ErrCodePlaylistOperationFail:     http.StatusInternalServerError,
 }
 
 type AppError struct {
@@ -181,6 +190,9 @@ var apiErrorMapping = map[string]*AppError{
 	"guild_player_create_failed":  NewAppError(ErrCodeGuildPlayerCreateFailed, "Error al crear el reproductor para el guild", nil),
 	"guild_player_already_exists": NewAppError(ErrCodeGuildPlayerAlreadyExists, "El reproductor para este guild ya existe", nil),
 	"guild_player_close_failed":   NewAppError(ErrCodeGuildPlayerCloseFailed, "Error al cerrar el reproductor del guild", nil),
+	"playlist_empty":              NewAppError(ErrCodePlaylistEmpty, "No hay canciones disponibles en la playlist", nil),
+	"invalid_track_position":      NewAppError(ErrCodeInvalidTrackPosition, "Posición de la canción inválida", nil),
+	"invalid_song":                NewAppError(ErrCodeInvalidSong, "La canción proporcionada no es válida", nil),
 }
 
 // GetAPIError devuelve un AppError basado en el código de error de la API externa.

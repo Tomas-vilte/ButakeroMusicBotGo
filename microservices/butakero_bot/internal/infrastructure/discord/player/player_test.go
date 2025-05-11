@@ -1,4 +1,4 @@
-//go:build !integration
+////go:build !integration
 
 package player
 
@@ -7,6 +7,7 @@ import (
 	"errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/voice"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/errors_app"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -16,11 +17,13 @@ import (
 	"time"
 )
 
+var errPlaylistEmpty = errors_app.NewAppError(errors_app.ErrCodePlaylistEmpty, "No hay canciones disponibles en la playlist", nil)
+
 func TestAddSongConcurrently(t *testing.T) {
 	ctx := context.Background()
 
-	guildPlayer1, mockPlaylistHandler1, mockStateStorage1, mockVoiceSession1, mockPlaybackHandler1, mockLogger1 := setupGuildPlayer("server1")
-	guildPlayer2, mockPlaylistHandler2, mockStateStorage2, mockVoiceSession2, mockPlaybackHandler2, mockLogger2 := setupGuildPlayer("server2")
+	guildPlayer1, mockSongStorage1, mockStateStorage1, mockVoiceSession1, mockPlaybackHandler1, mockLogger1 := setupGuildPlayer("server1")
+	guildPlayer2, mockSongStorage2, mockStateStorage2, mockVoiceSession2, mockPlaybackHandler2, mockLogger2 := setupGuildPlayer("server2")
 
 	server1TextChannel := "text-channel-server1"
 	server1VoiceChannel := "voice-channel-server1"
@@ -50,20 +53,23 @@ func TestAddSongConcurrently(t *testing.T) {
 	mockStateStorage2.On("GetTextChannelID", mock.Anything).Return(server2TextChannel, nil)
 	mockStateStorage2.On("GetCurrentTrack", mock.Anything).Return((*entity.PlayedSong)(nil), nil)
 
-	mockPlaylistHandler1.On("AddSong", mock.Anything, song1).Return(nil)
-	mockPlaylistHandler2.On("AddSong", mock.Anything, song2).Return(nil)
+	mockSongStorage1.On("AppendTrack", mock.Anything, song1).Return(nil)
+	mockSongStorage2.On("AppendTrack", mock.Anything, song2).Return(nil)
 
-	mockPlaylistHandler1.On("ClearPlaylist", mock.Anything).Return(nil)
-	mockPlaylistHandler2.On("ClearPlaylist", mock.Anything).Return(nil)
+	mockSongStorage1.On("ClearPlaylist", mock.Anything).Return(nil)
+	mockSongStorage2.On("ClearPlaylist", mock.Anything).Return(nil)
 
 	mockPlaybackHandler1.On("Stop", mock.Anything).Return(nil)
 	mockPlaybackHandler2.On("Stop", mock.Anything).Return(nil)
 
+	mockPlaybackHandler1.On("CurrentState").Return(StateIdle)
+	mockPlaybackHandler2.On("CurrentState").Return(StateIdle)
+
 	mockVoiceSession1.On("JoinVoiceChannel", mock.Anything, server1VoiceChannel).Return(nil)
 	mockVoiceSession2.On("JoinVoiceChannel", mock.Anything, server2VoiceChannel).Return(nil)
 
-	mockPlaylistHandler1.On("GetNextSong", mock.Anything).Return(nil, ErrPlaylistEmpty)
-	mockPlaylistHandler2.On("GetNextSong", mock.Anything).Return(nil, ErrPlaylistEmpty)
+	mockSongStorage1.On("PopNextTrack", mock.Anything).Return((*entity.PlayedSong)(nil), errPlaylistEmpty)
+	mockSongStorage2.On("PopNextTrack", mock.Anything).Return((*entity.PlayedSong)(nil), errPlaylistEmpty)
 
 	mockVoiceSession1.On("LeaveVoiceChannel", mock.Anything).Return(nil)
 	mockVoiceSession2.On("LeaveVoiceChannel", mock.Anything).Return(nil)
@@ -87,11 +93,11 @@ func TestAddSongConcurrently(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	mockPlaylistHandler1.AssertCalled(t, "AddSong", mock.Anything, song1)
-	mockPlaylistHandler1.AssertNotCalled(t, "AddSong", mock.Anything, song2)
+	mockSongStorage1.AssertCalled(t, "AppendTrack", mock.Anything, song1)
+	mockSongStorage1.AssertNotCalled(t, "AppendTrack", mock.Anything, song2)
 
-	mockPlaylistHandler2.AssertCalled(t, "AddSong", mock.Anything, song2)
-	mockPlaylistHandler2.AssertNotCalled(t, "AddSong", mock.Anything, song1)
+	mockSongStorage2.AssertCalled(t, "AppendTrack", mock.Anything, song2)
+	mockSongStorage2.AssertNotCalled(t, "AppendTrack", mock.Anything, song1)
 
 	mockVoiceSession1.AssertCalled(t, "JoinVoiceChannel", mock.Anything, server1VoiceChannel)
 	mockVoiceSession1.AssertNotCalled(t, "JoinVoiceChannel", mock.Anything, server2VoiceChannel)
@@ -106,7 +112,7 @@ func TestAddSongConcurrently(t *testing.T) {
 func TestAddSongRaceCondition(t *testing.T) {
 	ctx := context.Background()
 
-	guildPlayer1, mockPlaylistHandler1, mockStateStorage1, mockVoiceSession1, mockPlaybackHandler1, mockLogger1 := setupGuildPlayer("server1")
+	guildPlayer1, mockSongStorage1, mockStateStorage1, mockVoiceSession1, mockPlaybackHandler1, mockLogger1 := setupGuildPlayer("server1")
 
 	server1TextChannel := "text-channel-server1"
 	server1VoiceChannel := "voice-channel-server1"
@@ -115,7 +121,7 @@ func TestAddSongRaceCondition(t *testing.T) {
 	mockLogger1.On("With", mock.Anything, mock.Anything).Return(mockLogger1)
 	mockLogger1.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger1.On("Debug", mock.Anything, mock.Anything).Return()
-	mockPlaylistHandler1.On("ClearPlaylist", mock.Anything).Return(nil)
+	mockSongStorage1.On("ClearPlaylist", mock.Anything).Return(nil)
 	mockPlaybackHandler1.On("Stop", mock.Anything).Return(nil)
 
 	song1 := createTestSong("song1", "Song 1 Title")
@@ -127,10 +133,12 @@ func TestAddSongRaceCondition(t *testing.T) {
 	mockStateStorage1.On("GetTextChannelID", mock.Anything).Return(server1TextChannel, nil)
 	mockStateStorage1.On("GetCurrentTrack", mock.Anything).Return((*entity.PlayedSong)(nil), nil)
 
-	mockPlaylistHandler1.On("AddSong", mock.Anything, song1).Return(nil)
+	mockSongStorage1.On("AppendTrack", mock.Anything, song1).Return(nil)
+
+	mockPlaybackHandler1.On("CurrentState").Return(StateIdle)
 
 	mockVoiceSession1.On("JoinVoiceChannel", mock.Anything, wrongVoiceChannel).Return(nil)
-	mockPlaylistHandler1.On("GetNextSong", mock.Anything).Return(nil, ErrPlaylistEmpty)
+	mockSongStorage1.On("PopNextTrack", mock.Anything).Return((*entity.PlayedSong)(nil), errPlaylistEmpty)
 	mockVoiceSession1.On("LeaveVoiceChannel", mock.Anything).Return(nil)
 
 	err := guildPlayer1.AddSong(ctx, &server1TextChannel, &server1VoiceChannel, song1)
@@ -177,9 +185,9 @@ func TestConcurrentAddAndSkip(t *testing.T) {
 
 	mockStateStorage.On("GetCurrentTrack", mock.Anything).Return(currentSong, nil)
 
-	mockPlaylistHandler.On("AddSong", mock.Anything, song).Return(nil)
-	mockPlaylistHandler.On("GetNextSong", mock.Anything).Return(song, nil).Once()
-	mockPlaylistHandler.On("GetNextSong", mock.Anything).Return(nil, ErrPlaylistEmpty).After(time.Millisecond * 500)
+	mockPlaylistHandler.On("AppendTrack", mock.Anything, song).Return(nil)
+	mockPlaylistHandler.On("PopNextTrack", mock.Anything).Return(song, nil).Once()
+	mockPlaylistHandler.On("PopNextTrack", mock.Anything).Return(nil, errPlaylistEmpty).After(time.Millisecond * 500)
 
 	mockVoiceSession.On("JoinVoiceChannel", mock.Anything, voiceChannel).Return(nil)
 	mockVoiceSession.On("LeaveVoiceChannel", mock.Anything).Return(nil)
@@ -368,18 +376,20 @@ func TestRemoveSongPlayer(t *testing.T) {
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 
 	position := 2
-	removedSong := &entity.DiscordEntity{
-		ID:         "removed-song",
-		TitleTrack: "Removed Song",
+	removedSong := &entity.PlayedSong{
+		DiscordSong: &entity.DiscordEntity{
+			ID:         "removed-song",
+			TitleTrack: "Removed Song",
+		},
 	}
 
-	mockPlaylistHandler.On("RemoveSong", mock.Anything, position).Return(removedSong, nil)
+	mockPlaylistHandler.On("RemoveTrack", mock.Anything, position).Return(removedSong, nil)
 
 	song, err := guildPlayer.RemoveSong(ctx, position)
 
 	assert.NoError(t, err)
 	assert.Equal(t, removedSong, song)
-	mockPlaylistHandler.AssertCalled(t, "RemoveSong", mock.Anything, position)
+	mockPlaylistHandler.AssertCalled(t, "RemoveTrack", mock.Anything, position)
 }
 
 func TestRemoveSongError(t *testing.T) {
@@ -394,14 +404,14 @@ func TestRemoveSongError(t *testing.T) {
 	position := 2
 	expectedErr := errors.New("canción no encontrada")
 
-	mockPlaylistHandler.On("RemoveSong", mock.Anything, position).Return(nil, expectedErr)
+	mockPlaylistHandler.On("RemoveTrack", mock.Anything, position).Return(nil, expectedErr)
 
 	song, err := guildPlayer.RemoveSong(ctx, position)
 
 	assert.Error(t, err)
 	assert.Nil(t, song)
 	assert.True(t, strings.Contains(err.Error(), "error al remover la cancion"))
-	mockPlaylistHandler.AssertCalled(t, "RemoveSong", mock.Anything, position)
+	mockPlaylistHandler.AssertCalled(t, "RemoveTrack", mock.Anything, position)
 }
 
 func TestGetPlaylistPlayer(t *testing.T) {
@@ -413,19 +423,25 @@ func TestGetPlaylistPlayer(t *testing.T) {
 	mockLogger.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return()
 	mockLogger.On("Error", mock.Anything, mock.Anything).Return()
 
-	expectedPlaylist := []string{
-		"Canción 1 - Artista 1",
-		"Canción 2 - Artista 2",
-		"Canción 3 - Artista 3",
+	expectedPlaylist := []*entity.PlayedSong{
+		{DiscordSong: &entity.DiscordEntity{
+			ID: "Canción 1 - Artista 1",
+		}},
+		{DiscordSong: &entity.DiscordEntity{
+			ID: "Canción 2 - Artista 2",
+		}},
+		{DiscordSong: &entity.DiscordEntity{
+			ID: "Canción 3 - Artista 3",
+		}},
 	}
 
-	mockPlaylistHandler.On("GetPlaylist", mock.Anything).Return(expectedPlaylist, nil)
+	mockPlaylistHandler.On("GetAllTracks", mock.Anything).Return(expectedPlaylist, nil)
 
 	playlist, err := guildPlayer.GetPlaylist(ctx)
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedPlaylist, playlist)
-	mockPlaylistHandler.AssertCalled(t, "GetPlaylist", mock.Anything)
+	mockPlaylistHandler.AssertCalled(t, "GetAllTracks", mock.Anything)
 }
 
 func TestGetPlaylistError(t *testing.T) {
@@ -438,14 +454,14 @@ func TestGetPlaylistError(t *testing.T) {
 	mockLogger.On("Error", mock.Anything, mock.Anything, mock.Anything).Return()
 
 	expectedErr := errors.New("error al obtener playlist")
-	mockPlaylistHandler.On("GetPlaylist", mock.Anything).Return([]string{}, expectedErr)
+	mockPlaylistHandler.On("GetAllTracks", mock.Anything).Return([]*entity.PlayedSong{}, expectedErr)
 
 	playlist, err := guildPlayer.GetPlaylist(ctx)
 
 	assert.Error(t, err)
 	assert.Nil(t, playlist)
 	assert.True(t, strings.Contains(err.Error(), "error al obtener la playlist"))
-	mockPlaylistHandler.AssertCalled(t, "GetPlaylist", mock.Anything)
+	mockPlaylistHandler.AssertCalled(t, "GetAllTracks", mock.Anything)
 }
 
 func TestGetPlayedSong(t *testing.T) {
@@ -588,7 +604,7 @@ func TestRestoreCurrentTrack(t *testing.T) {
 	}
 
 	mockStateStorage.On("GetCurrentTrack", mock.Anything).Return(currentSong, nil)
-	mockPlaylistHandler.On("AddSong", mock.Anything, mock.MatchedBy(func(s *entity.PlayedSong) bool {
+	mockPlaylistHandler.On("AppendTrack", mock.Anything, mock.MatchedBy(func(s *entity.PlayedSong) bool {
 		return s.StartPosition == 50 && s.DiscordSong.ID == "song-id"
 	})).Return(nil)
 
@@ -596,7 +612,7 @@ func TestRestoreCurrentTrack(t *testing.T) {
 
 	assert.NoError(t, err)
 	mockStateStorage.AssertCalled(t, "GetCurrentTrack", mock.Anything)
-	mockPlaylistHandler.AssertCalled(t, "AddSong", mock.Anything, mock.MatchedBy(func(s *entity.PlayedSong) bool {
+	mockPlaylistHandler.AssertCalled(t, "AppendTrack", mock.Anything, mock.MatchedBy(func(s *entity.PlayedSong) bool {
 		return s.StartPosition == expectedRestoredSong.StartPosition &&
 			s.DiscordSong.ID == expectedRestoredSong.DiscordSong.ID
 	}))
@@ -643,23 +659,23 @@ func TestClose(t *testing.T) {
 	mockVoiceSession.AssertCalled(t, "LeaveVoiceChannel", mock.Anything)
 }
 
-func setupGuildPlayer(_ string) (*GuildPlayer, *MockPlaylistHandler, *MockPlayerStateStorage, *MockVoiceSession, *MockPlaybackHandler, *logging.MockLogger) {
-	mockPlaylistHandler := new(MockPlaylistHandler)
+func setupGuildPlayer(_ string) (*GuildPlayer, *MockSongStorage, *MockPlayerStateStorage, *MockVoiceSession, *MockPlaybackHandler, *logging.MockLogger) {
+	mockSongStorage := new(MockSongStorage)
 	mockPlaybackHandler := new(MockPlaybackHandler)
 	mockVoiceSession := new(MockVoiceSession)
 	mockStateStorage := new(MockPlayerStateStorage)
 	logger := new(logging.MockLogger)
 
 	guildPlayer := &GuildPlayer{
-		playlistHandler: mockPlaylistHandler,
 		playbackHandler: mockPlaybackHandler,
 		voiceSession:    mockVoiceSession,
 		stateStorage:    mockStateStorage,
+		songStorage:     mockSongStorage,
 		eventCh:         make(chan PlayerEvent, 100),
 		logger:          logger,
 	}
 
-	return guildPlayer, mockPlaylistHandler, mockStateStorage, mockVoiceSession, mockPlaybackHandler, logger
+	return guildPlayer, mockSongStorage, mockStateStorage, mockVoiceSession, mockPlaybackHandler, logger
 }
 
 func createTestSong(id, title string) *entity.PlayedSong {

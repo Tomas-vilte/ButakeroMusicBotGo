@@ -1,4 +1,4 @@
-////go:build !integration
+//go:build !integration
 
 package inmemory
 
@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/errors_app"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -15,6 +16,9 @@ import (
 	"testing"
 	"time"
 )
+
+var errRemoveInvalidPosition = errors_app.NewAppError(errors_app.ErrCodeInvalidTrackPosition, "Posición de la canción inválida", nil)
+var errPlaylistEmpty = errors_app.NewAppError(errors_app.ErrCodePlaylistEmpty, "No hay canciones disponibles en la playlist", nil)
 
 func TestInmemorySongStorage_AppendSong(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
@@ -70,18 +74,36 @@ func TestInmemorySongStorage_RemoveSong(t *testing.T) {
 	}
 
 	// Test case: Eliminar canción en posición inválida
-	_, err = storage.RemoveTrack(ctx, 0)
-	if !errors.Is(err, ErrRemoveInvalidPosition) {
-		t.Errorf("Error esperado: %v, Error obtenido: %v", ErrRemoveInvalidPosition, err)
+	_, err = storage.RemoveTrack(ctx, -1)
+	if !compareErrors(t, errRemoveInvalidPosition, err) {
+		t.Errorf("Error esperado: %v, Error obtenido: %v", errRemoveInvalidPosition, err)
 	}
 
 	// Test case: Eliminar canción en posición inválida (fuera de rango)
-	_, err = storage.RemoveTrack(ctx, 4)
-	if !errors.Is(err, ErrRemoveInvalidPosition) {
-		t.Errorf("Error esperado: %v, Error obtenido: %v", ErrRemoveInvalidPosition, err)
+	_, err = storage.RemoveTrack(ctx, 100)
+	if !compareErrors(t, errRemoveInvalidPosition, err) {
+		t.Errorf("Error esperado: %v, Error obtenido: %v", errRemoveInvalidPosition, err)
 	}
 
 	mockLogger.AssertExpectations(t)
+}
+
+func compareErrors(t *testing.T, expected, got error) bool {
+	var expectedAppErr *errors_app.AppError
+	var gotAppErr *errors_app.AppError
+
+	if !errors.As(expected, &expectedAppErr) || !errors.As(got, &gotAppErr) {
+		t.Errorf("Uno o ambos errores no son del tipo AppError")
+		return false
+	}
+
+	if expectedAppErr.Code != gotAppErr.Code {
+		t.Errorf("Códigos de error diferentes. Esperado: %v, Obtenido: %v",
+			expectedAppErr.Code, gotAppErr.Code)
+		return false
+	}
+
+	return true
 }
 
 func TestPlaylistConcurrency(t *testing.T) {
@@ -184,8 +206,8 @@ func TestInmemorySongStorage_PopFirstSong(t *testing.T) {
 
 	// Test case: Intentar eliminar canción de una lista de reproducción vacía
 	_, err = storage.PopNextTrack(ctx)
-	if !errors.Is(err, ErrNoSongs) {
-		t.Errorf("Error esperado: %v, Error obtenido: %v", ErrNoSongs, err)
+	if !compareErrors(t, errPlaylistEmpty, err) {
+		t.Errorf("Error esperado: %v, Error obtenido: %v", errPlaylistEmpty, err)
 	}
 
 	mockLogger.AssertExpectations(t)

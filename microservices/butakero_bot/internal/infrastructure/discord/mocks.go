@@ -44,14 +44,14 @@ func (m *MockGuildPlayer) AddSong(ctx context.Context, textChannelID, voiceChann
 	return args.Error(0)
 }
 
-func (m *MockGuildPlayer) RemoveSong(ctx context.Context, position int) (*entity.DiscordEntity, error) {
+func (m *MockGuildPlayer) RemoveSong(ctx context.Context, position int) (*entity.PlayedSong, error) {
 	args := m.Called(ctx, position)
-	return args.Get(0).(*entity.DiscordEntity), args.Error(1)
+	return args.Get(0).(*entity.PlayedSong), args.Error(1)
 }
 
-func (m *MockGuildPlayer) GetPlaylist(ctx context.Context) ([]string, error) {
+func (m *MockGuildPlayer) GetPlaylist(ctx context.Context) ([]*entity.PlayedSong, error) {
 	args := m.Called(ctx)
-	return args.Get(0).([]string), args.Error(1)
+	return args.Get(0).([]*entity.PlayedSong), args.Error(1)
 }
 
 func (m *MockGuildPlayer) GetPlayedSong(ctx context.Context) (*entity.PlayedSong, error) {
