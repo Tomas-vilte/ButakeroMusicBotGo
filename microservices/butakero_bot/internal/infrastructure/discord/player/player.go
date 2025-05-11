@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/voice"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/errors_app"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"sync"
 	"sync/atomic"
@@ -20,7 +21,6 @@ import (
 type Config struct {
 	VoiceSession    voice.VoiceSession
 	PlaybackHandler PlaybackHandler
-	PlaylistHandler PlaylistHandler
 	SongStorage     ports.PlaylistStorage
 	StateStorage    ports.PlayerStateStorage
 	Messenger       interfaces.DiscordMessenger
@@ -30,9 +30,9 @@ type Config struct {
 
 type GuildPlayer struct {
 	playbackHandler PlaybackHandler
-	playlistHandler PlaylistHandler
 	voiceSession    voice.VoiceSession
 	stateStorage    ports.PlayerStateStorage
+	songStorage     ports.PlaylistStorage
 	eventCh         chan PlayerEvent
 	logger          logging.Logger
 	running         atomic.Bool
@@ -42,7 +42,7 @@ type GuildPlayer struct {
 func NewGuildPlayer(cfg Config) *GuildPlayer {
 	return &GuildPlayer{
 		playbackHandler: cfg.PlaybackHandler,
-		playlistHandler: cfg.PlaylistHandler,
+		songStorage:     cfg.SongStorage,
 		voiceSession:    cfg.VoiceSession,
 		stateStorage:    cfg.StateStorage,
 		eventCh:         make(chan PlayerEvent, 100),
@@ -51,9 +51,6 @@ func NewGuildPlayer(cfg Config) *GuildPlayer {
 }
 
 func (gp *GuildPlayer) AddSong(ctx context.Context, textChannelID, voiceChannelID *string, playedSong *entity.PlayedSong) error {
-	gp.mu.Lock()
-	defer gp.mu.Unlock()
-
 	logger := gp.logger.With(
 		zap.String("component", "GuildPlayer"),
 		zap.String("method", "AddSong"),
@@ -70,7 +67,7 @@ func (gp *GuildPlayer) AddSong(ctx context.Context, textChannelID, voiceChannelI
 		zap.String("title", playedSong.DiscordSong.TitleTrack),
 	)
 
-	if err := gp.playlistHandler.AddSong(ctx, playedSong); err != nil {
+	if err := gp.songStorage.AppendTrack(ctx, playedSong); err != nil {
 		logger.Error("Error al agregar canción a playlist",
 			zap.Error(err),
 			zap.Any("text_channel", textChannelID),
@@ -78,17 +75,19 @@ func (gp *GuildPlayer) AddSong(ctx context.Context, textChannelID, voiceChannelI
 		return fmt.Errorf("error al agregar la canción: %w", err)
 	}
 
-	gp.eventCh <- PlayEvent{
-		TextChannelID:  textChannelID,
-		VoiceChannelID: voiceChannelID,
-	}
-
 	logger.Info("Canción agregada a la lista",
 		zap.Any("text_channel", textChannelID),
 		zap.Any("voice_channel", voiceChannelID),
 	)
 
-	if !gp.running.Load() {
+	running := gp.running.Load()
+
+	gp.eventCh <- PlayEvent{
+		TextChannelID:  textChannelID,
+		VoiceChannelID: voiceChannelID,
+	}
+
+	if !running {
 		go func() {
 			if err := gp.Run(ctx); err != nil {
 				logger.Error("Error al iniciar reproducción", zap.Error(err))
@@ -208,7 +207,7 @@ func (gp *GuildPlayer) Stop(ctx context.Context) error {
 		)
 	}
 
-	if err := gp.playlistHandler.ClearPlaylist(ctx); err != nil {
+	if err := gp.songStorage.ClearPlaylist(ctx); err != nil {
 		logger.Error("Error al limpiar la lista de reproducción",
 			zap.Error(err))
 		return fmt.Errorf("error al limpiar la lista: %w", err)
@@ -235,7 +234,7 @@ func (gp *GuildPlayer) clearEventChannel() {
 	}
 }
 
-func (gp *GuildPlayer) RemoveSong(ctx context.Context, position int) (*entity.DiscordEntity, error) {
+func (gp *GuildPlayer) RemoveSong(ctx context.Context, position int) (*entity.PlayedSong, error) {
 	logger := gp.logger.With(
 		zap.String("component", "GuildPlayer"),
 		zap.String("method", "RemoveSong"),
@@ -243,7 +242,7 @@ func (gp *GuildPlayer) RemoveSong(ctx context.Context, position int) (*entity.Di
 		zap.Int("position", position),
 	)
 
-	song, err := gp.playlistHandler.RemoveSong(ctx, position)
+	song, err := gp.songStorage.RemoveTrack(ctx, position)
 	if err != nil {
 		logger.Error("Error al remover canción de la playlist",
 			zap.Error(err))
@@ -251,13 +250,13 @@ func (gp *GuildPlayer) RemoveSong(ctx context.Context, position int) (*entity.Di
 	}
 
 	logger.Info("Canción removida de la playlist",
-		zap.String("song_id", song.ID),
-		zap.String("title", song.TitleTrack))
+		zap.String("song_id", song.DiscordSong.ID),
+		zap.String("title", song.DiscordSong.TitleTrack))
 
 	return song, nil
 }
 
-func (gp *GuildPlayer) GetPlaylist(ctx context.Context) ([]string, error) {
+func (gp *GuildPlayer) GetPlaylist(ctx context.Context) ([]*entity.PlayedSong, error) {
 	gp.mu.RLock()
 	defer gp.mu.RUnlock()
 
@@ -267,7 +266,7 @@ func (gp *GuildPlayer) GetPlaylist(ctx context.Context) ([]string, error) {
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 	)
 
-	playlist, err := gp.playlistHandler.GetPlaylist(ctx)
+	playlist, err := gp.songStorage.GetAllTracks(ctx)
 	if err != nil {
 		logger.Error("Error al obtener la playlist",
 			zap.Error(err))
@@ -346,19 +345,17 @@ func (gp *GuildPlayer) Run(ctx context.Context) error {
 				return nil
 			}
 
-			if err := gp.handleEvent(runCtx, event); err != nil {
-				logger.Error("Error al manejar evento del reproductor",
-					zap.String("event", string(eventType)),
-					zap.Error(err))
+			go func(e PlayerEvent) {
+				if err := gp.handleEvent(runCtx, e); err != nil {
+					logger.Error("Error al manejar evento del reproductor",
+						zap.String("event", string(e.Type())),
+						zap.Error(err))
 
-				if errors.Is(err, voice.ErrNoVoiceConnection) {
-					select {
-					case <-time.After(2 * time.Second):
-					case <-runCtx.Done():
-						return ctx.Err()
+					if errors.Is(err, voice.ErrNoVoiceConnection) {
+						time.Sleep(2 * time.Second)
 					}
 				}
-			}
+			}(event)
 		}
 	}
 }
@@ -383,7 +380,7 @@ func (gp *GuildPlayer) restoreCurrentTrack(ctx context.Context) error {
 
 	currentSong.StartPosition += currentSong.Position
 
-	if err := gp.playlistHandler.AddSong(ctx, currentSong); err != nil {
+	if err := gp.songStorage.AppendTrack(ctx, currentSong); err != nil {
 		logger.Error("Error al restaurar canción actual a la lista",
 			zap.Error(err),
 			zap.String("song_id", currentSong.DiscordSong.ID))
@@ -464,54 +461,91 @@ func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayEvent) err
 		return fmt.Errorf("error al unirse al canal de voz: %w", err)
 	}
 
-	logger.Info("Unión al canal de voz exitosa. Iniciando reproducción de playlist...")
+	logger.Info("Unión al canal de voz exitosa. Verificando si hay que iniciar reproducción...")
+
+	if gp.playbackHandler.CurrentState() == StateIdle {
+		go gp.startPlaybackLoop(ctx, textChannel)
+	}
+
+	return nil
+}
+
+func (gp *GuildPlayer) startPlaybackLoop(ctx context.Context, textChannel string) {
+	logger := gp.logger.With(
+		zap.String("component", "GuildPlayer"),
+		zap.String("method", "startPlaybackLoop"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
+	)
+
+	logger.Info("Iniciando bucle de reproducción")
 
 	for {
-		song, err := gp.playlistHandler.GetNextSong(ctx)
-		if errors.Is(err, ErrPlaylistEmpty) {
+		songCtx, cancel := context.WithCancel(ctx)
+
+		gp.mu.Lock()
+		song, err := gp.songStorage.PopNextTrack(songCtx)
+		gp.mu.Unlock()
+
+		if errors_app.IsAppError(err) {
 			logger.Info("Playlist vacía - terminando reproducción")
 
 			select {
-			case event := <-gp.eventCh:
-				if event.Type() == "play" {
-					logger.Debug("Nuevo evento Play recibido - reiniciando reproducción")
-					gp.eventCh <- event
-					return nil
-				}
-			default:
+			case <-time.After(10 * time.Second):
 				if err := gp.voiceSession.LeaveVoiceChannel(ctx); err != nil {
-					logger.Error("Error al salir del canal de voz",
-						zap.Error(err))
+					logger.Error("Error al salir del canal de voz", zap.Error(err))
 				}
 				logger.Info("Desconectado del canal de voz - playlist vacía")
+				cancel()
+				return
+
+			case <-ctx.Done():
+				cancel()
+				return
+
+			case event := <-gp.eventCh:
+				if event.Type() == "play" {
+					logger.Debug("Nuevo evento Play recibido - reiniciando bucle de reproducción")
+					cancel()
+					continue
+				}
 			}
-
-			return nil
-		}
-		if err != nil {
-			logger.Error("Error al obtener siguiente canción",
-				zap.Error(err))
-			return fmt.Errorf("error al obtener la siguiente canción: %w", err)
 		}
 
-		logger.Info("Reproduciendo canción",
-			zap.String("song_id", song.DiscordSong.ID),
-			zap.String("title", song.DiscordSong.TitleTrack))
+		if err != nil && !errors_app.IsAppError(err) {
+			logger.Error("Error al obtener siguiente canción", zap.Error(err))
+			cancel()
+			return
+		}
 
-		if err := gp.playbackHandler.Play(ctx, song, textChannel); err != nil {
-			if errors.Is(err, context.Canceled) {
-				logger.Info("Reproducción cancelada por contexto")
-				return nil
-			}
-			logger.Error("Error en reproducción - reintentando",
+		if song != nil {
+			logger.Info("Reproduciendo canción",
 				zap.String("song_id", song.DiscordSong.ID),
-				zap.Error(err))
-			continue
+				zap.String("title", song.DiscordSong.TitleTrack))
+
+			if err := gp.playbackHandler.Play(songCtx, song, textChannel); err != nil {
+				if errors.Is(err, context.Canceled) {
+					logger.Info("Reproducción cancelada por contexto")
+					cancel()
+					return
+				}
+				logger.Error("Error en reproducción - continuando con siguiente canción",
+					zap.String("song_id", song.DiscordSong.ID),
+					zap.Error(err))
+				cancel()
+				continue
+			}
+
+			for gp.playbackHandler.CurrentState() != StateIdle {
+				select {
+				case <-time.After(500 * time.Millisecond):
+				case <-ctx.Done():
+					cancel()
+					return
+				}
+			}
 		}
 
-		for gp.playbackHandler.CurrentState() != StateIdle {
-			time.Sleep(500 * time.Millisecond)
-		}
+		cancel()
 	}
 }
 

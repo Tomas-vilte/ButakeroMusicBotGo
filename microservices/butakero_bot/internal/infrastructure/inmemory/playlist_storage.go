@@ -2,8 +2,8 @@ package inmemory
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/errors_app"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"sort"
 	"sync"
@@ -12,11 +12,6 @@ import (
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"go.uber.org/zap"
-)
-
-var (
-	ErrNoSongs               = errors.New("no hay canciones disponibles")
-	ErrRemoveInvalidPosition = errors.New("posición inválida")
 )
 
 type InmemoryPlaylistStorage struct {
@@ -45,7 +40,7 @@ func (s *InmemoryPlaylistStorage) AppendTrack(ctx context.Context, song *entity.
 
 	if song == nil || song.DiscordSong == nil {
 		logger.Error("Intento de agregar canción inválida")
-		return errors.New("canción inválida")
+		return errors_app.NewAppError(errors_app.ErrCodeInvalidSong, "La canción proporcionada no es válida", nil)
 	}
 
 	if song.DiscordSong.ID == "" {
@@ -85,7 +80,7 @@ func (s *InmemoryPlaylistStorage) RemoveTrack(ctx context.Context, position int)
 	if index >= len(s.songs) || index < 0 {
 		logger.Error("Posición inválida",
 			zap.Int("playlist_length", len(s.songs)))
-		return nil, ErrRemoveInvalidPosition
+		return nil, errors_app.NewAppError(errors_app.ErrCodeInvalidTrackPosition, "Posición de la canción inválida", nil)
 	}
 
 	song := s.songs[index]
@@ -150,7 +145,7 @@ func (s *InmemoryPlaylistStorage) PopNextTrack(ctx context.Context) (*entity.Pla
 
 	if len(s.songs) == 0 {
 		logger.Debug("Intento de obtener canción de playlist vacía")
-		return nil, ErrNoSongs
+		return nil, errors_app.NewAppError(errors_app.ErrCodePlaylistEmpty, "No hay canciones disponibles en la playlist", nil)
 	}
 
 	song := s.songs[0]

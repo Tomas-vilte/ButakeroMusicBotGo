@@ -8,44 +8,6 @@ import (
 	"io"
 )
 
-type MockPlaylistStorage struct {
-	mock.Mock
-}
-
-func (m *MockPlaylistStorage) AppendTrack(ctx context.Context, song *entity.PlayedSong) error {
-	args := m.Called(ctx, song)
-	return args.Error(0)
-}
-
-func (m *MockPlaylistStorage) RemoveTrack(ctx context.Context, position int) (*entity.PlayedSong, error) {
-	args := m.Called(ctx, position)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.PlayedSong), args.Error(1)
-}
-
-func (m *MockPlaylistStorage) GetAllTracks(ctx context.Context) ([]*entity.PlayedSong, error) {
-	args := m.Called(ctx)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]*entity.PlayedSong), args.Error(1)
-}
-
-func (m *MockPlaylistStorage) ClearPlaylist(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
-func (m *MockPlaylistStorage) PopNextTrack(ctx context.Context) (*entity.PlayedSong, error) {
-	args := m.Called(ctx)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.PlayedSong), args.Error(1)
-}
-
 type MockVoiceSession struct {
 	mock.Mock
 }
@@ -157,41 +119,6 @@ func (m *MockPlayerStateStorage) SetTextChannelID(ctx context.Context, channelID
 
 }
 
-type MockPlaylistHandler struct {
-	mock.Mock
-}
-
-func (m *MockPlaylistHandler) AddSong(ctx context.Context, song *entity.PlayedSong) error {
-	args := m.Called(ctx, song)
-	return args.Error(0)
-}
-
-func (m *MockPlaylistHandler) RemoveSong(ctx context.Context, position int) (*entity.DiscordEntity, error) {
-	args := m.Called(ctx, position)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.DiscordEntity), args.Error(1)
-}
-
-func (m *MockPlaylistHandler) GetPlaylist(ctx context.Context) ([]string, error) {
-	args := m.Called(ctx)
-	return args.Get(0).([]string), args.Error(1)
-}
-
-func (m *MockPlaylistHandler) GetNextSong(ctx context.Context) (*entity.PlayedSong, error) {
-	args := m.Called(ctx)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*entity.PlayedSong), args.Error(1)
-}
-
-func (m *MockPlaylistHandler) ClearPlaylist(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
 type MockPlaybackHandler struct {
 	mock.Mock
 }
@@ -232,4 +159,39 @@ func (m *MockPlayerEvent) Type() EventType {
 func (m *MockPlayerEvent) HandleEvent(ctx context.Context, player *GuildPlayer) error {
 	args := m.Called(ctx, player)
 	return args.Error(0)
+}
+
+type MockSongStorage struct {
+	mock.Mock
+}
+
+func (m *MockSongStorage) AppendTrack(ctx context.Context, track *entity.PlayedSong) error {
+	args := m.Called(ctx, track)
+	if args.Get(0) == nil {
+		return nil
+	}
+	return args.Error(0)
+}
+
+func (m *MockSongStorage) RemoveTrack(ctx context.Context, position int) (*entity.PlayedSong, error) {
+	args := m.Called(ctx, position)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.PlayedSong), args.Error(1)
+}
+
+func (m *MockSongStorage) ClearPlaylist(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *MockSongStorage) GetAllTracks(ctx context.Context) ([]*entity.PlayedSong, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]*entity.PlayedSong), args.Error(1)
+}
+
+func (m *MockSongStorage) PopNextTrack(ctx context.Context) (*entity.PlayedSong, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(*entity.PlayedSong), args.Error(1)
 }

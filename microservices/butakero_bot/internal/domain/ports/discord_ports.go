@@ -24,10 +24,10 @@ type (
 		AddSong(ctx context.Context, textChannelID, voiceChannelID *string, playedSong *entity.PlayedSong) error
 
 		// RemoveSong elimina una canción de la lista por su posición
-		RemoveSong(ctx context.Context, position int) (*entity.DiscordEntity, error)
+		RemoveSong(ctx context.Context, position int) (*entity.PlayedSong, error)
 
 		// GetPlaylist obtiene la lista actual de canciones
-		GetPlaylist(ctx context.Context) ([]string, error)
+		GetPlaylist(ctx context.Context) ([]*entity.PlayedSong, error)
 
 		// GetPlayedSong obtiene la información de la canción que se está reproduciendo
 		GetPlayedSong(ctx context.Context) (*entity.PlayedSong, error)
