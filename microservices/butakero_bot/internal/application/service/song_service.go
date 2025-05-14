@@ -41,24 +41,13 @@ func (s *songService) extractURLOrTitle(input string) (string, bool) {
 	return input, urlRegex.MatchString(input)
 }
 
-func (s *songService) GetOrDownloadSong(ctx context.Context, userID, songInput, providerType string) (*entity.DiscordEntity, error) {
-	requestID := uuid.New().String()
-
-	input, isURL := s.extractURLOrTitle(songInput)
-	s.logger.Info("Procesando solicitud de canción",
-		zap.String("requestID", requestID),
-		zap.String("trace_id", trace.GetTraceID(ctx)),
-		zap.String("userID", userID),
-		zap.String("input", input),
-		zap.Bool("isURL", isURL))
-
-	var media *model.Media
-	var err error
+func (s *songService) GetSongFromAPI(ctx context.Context, input string) (*entity.DiscordEntity, error) {
+	_, isURL := s.extractURLOrTitle(input)
 
 	if isURL {
 		videoID := extractVideoID(input)
 		if videoID != "" {
-			media, err = s.mediaClient.GetMediaByID(ctx, videoID)
+			media, err := s.mediaClient.GetMediaByID(ctx, videoID)
 			if err == nil && media != nil {
 				s.logger.Info("Media encontrada a través de la API por videoID",
 					zap.String("videoID", videoID))
@@ -74,8 +63,17 @@ func (s *songService) GetOrDownloadSong(ctx context.Context, userID, songInput, 
 		}
 	}
 
-	s.logger.Info("Media no encontrada a través de la API, enviando solicitud a través de la queue",
-		zap.String("input", input))
+	return nil, fmt.Errorf("canción no encontrada en la API")
+}
+
+func (s *songService) DownloadSongViaQueue(ctx context.Context, userID, input, providerType string) (*entity.DiscordEntity, error) {
+	requestID := uuid.New().String()
+
+	s.logger.Info("Enviando solicitud a través de la queue",
+		zap.String("input", input),
+		zap.String("requestID", requestID),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
+		zap.String("userID", userID))
 
 	message := &queue.DownloadRequestMessage{
 		RequestID:    requestID,
@@ -91,20 +89,23 @@ func (s *songService) GetOrDownloadSong(ctx context.Context, userID, songInput, 
 			zap.Error(err))
 		return nil, fmt.Errorf("error al solicitar la descarga: %w", err)
 	}
-	s.logger.Info("Solicitud enviada a través de la queue, esperando respuesta",
-		zap.String("requestID", requestID),
-		zap.String("song", input))
 
+	return s.waitForDownloadResponse(ctx, requestID)
+}
+
+func (s *songService) waitForDownloadResponse(ctx context.Context, requestID string) (*entity.DiscordEntity, error) {
 	msgChan := s.messageConsumer.DownloadEventsChannel()
 
 	for {
 		select {
 		case msg := <-msgChan:
-			if msg.RequestID == requestID {
-				s.logger.Info("Mensaje recibido para solicitud actual",
-					zap.String("requestID", requestID),
-					zap.String("status", msg.Status))
+			if msg.RequestID != requestID {
+				continue
 			}
+
+			s.logger.Info("Mensaje recibido para solicitud actual",
+				zap.String("requestID", requestID),
+				zap.String("status", msg.Status))
 
 			if msg.Status == "success" {
 				s.logger.Info("Descarga completada exitosamente",
@@ -132,6 +133,20 @@ func (s *songService) GetOrDownloadSong(ctx context.Context, userID, songInput, 
 	}
 }
 
+func (s *songService) GetOrDownloadSong(ctx context.Context, userID, songInput, providerType string) (*entity.DiscordEntity, error) {
+	song, err := s.GetSongFromAPI(ctx, songInput)
+	if err == nil {
+		return song, nil
+	}
+
+	s.logger.Info("Media no encontrada a través de la API, intentando descarga",
+		zap.String("input", songInput),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
+		zap.String("userID", userID))
+
+	return s.DownloadSongViaQueue(ctx, userID, songInput, providerType)
+}
+
 func mediaToDiscordEntity(media *model.Media) *entity.DiscordEntity {
 	return &entity.DiscordEntity{
 		TitleTrack:   media.Metadata.Title,
@@ -144,7 +159,6 @@ func mediaToDiscordEntity(media *model.Media) *entity.DiscordEntity {
 }
 
 func extractVideoID(url string) string {
-	// Patrones para diferentes formatos de URL de YouTube
 	patterns := []*regexp.Regexp{
 		regexp.MustCompile(`youtube\.com/watch\?v=([^&]+)`),
 		regexp.MustCompile(`youtu\.be/([^?]+)`),

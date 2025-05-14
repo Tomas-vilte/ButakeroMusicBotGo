@@ -187,57 +187,6 @@ func (h *CommandHandler) StopPlaying(s *discordgo.Session, ic *discordgo.Interac
 	}
 }
 
-func (h *CommandHandler) isUserInVoiceChannel(s *discordgo.Session, ic *discordgo.InteractionCreate) (*discordgo.VoiceState, bool) {
-	ctx := trace.WithTraceID(context.Background())
-
-	logger := h.logger.With(
-		zap.String("component", "CommandHandler"),
-		zap.String("method", "isUserInVoiceChannel"),
-		zap.String("trace_id", trace.GetTraceID(ctx)),
-		zap.String("guild_id", ic.GuildID),
-		zap.String("user_id", ic.Member.User.ID),
-		zap.String("method", "isUserInVoiceChannel"),
-	)
-
-	if ic.Member == nil {
-		if err := h.messenger.RespondWithMessage(ic.Interaction, ErrorMessageNotInVoiceChannel); err != nil {
-			logger.Error("Error al enviar mensaje de error de canal de voz", zap.Error(err))
-		}
-		return nil, false
-	}
-
-	vs, err := s.State.VoiceState(ic.GuildID, ic.Member.User.ID)
-	if err != nil {
-		logger.Warn("Error al obtener estado de voz del usuario", zap.Error(err))
-		if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: ErrorMessageNotInVoiceChannel,
-			}}); err != nil {
-			logger.Error("Error al enviar mensaje de error de canal de voz", zap.Error(err))
-		}
-		return nil, false
-	}
-
-	if vs == nil || vs.ChannelID == "" {
-		logger.Warn("Usuario no está en canal de voz")
-		if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: ErrorMessageNotInVoiceChannel,
-			},
-		}); err != nil {
-			logger.Error("Error al enviar mensaje de error de canal de voz", zap.Error(err))
-		}
-		return nil, false
-	}
-
-	logger.Debug("Usuario encontrado en canal de voz",
-		zap.String("voice_channel_id", vs.ChannelID),
-	)
-	return vs, true
-}
-
 func (h *CommandHandler) SkipSong(s *discordgo.Session, ic *discordgo.InteractionCreate, _ *discordgo.ApplicationCommandInteractionDataOption) {
 	ctx := trace.WithTraceID(context.Background())
 
@@ -432,12 +381,6 @@ func (h *CommandHandler) GetPlayingSong(s *discordgo.Session, ic *discordgo.Inte
 	}
 }
 
-func (h *CommandHandler) respondWithError(ic *discordgo.InteractionCreate, message string) {
-	if err := h.messenger.RespondWithMessage(ic.Interaction, message); err != nil {
-		h.logger.Error("Error al enviar mensaje de error", zap.Error(err))
-	}
-}
-
 func (h *CommandHandler) PauseSong(s *discordgo.Session, ic *discordgo.InteractionCreate) {
 	ctx := trace.WithTraceID(context.Background())
 
@@ -528,4 +471,61 @@ func (h *CommandHandler) ResumeSong(s *discordgo.Session, ic *discordgo.Interact
 	}); err != nil {
 		logger.Error("Error al enviar mensaje de confirmación", zap.Error(err))
 	}
+}
+
+func (h *CommandHandler) respondWithError(ic *discordgo.InteractionCreate, message string) {
+	if err := h.messenger.RespondWithMessage(ic.Interaction, message); err != nil {
+		h.logger.Error("Error al enviar mensaje de error", zap.Error(err))
+	}
+}
+
+func (h *CommandHandler) isUserInVoiceChannel(s *discordgo.Session, ic *discordgo.InteractionCreate) (*discordgo.VoiceState, bool) {
+	ctx := trace.WithTraceID(context.Background())
+
+	logger := h.logger.With(
+		zap.String("component", "CommandHandler"),
+		zap.String("method", "isUserInVoiceChannel"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
+		zap.String("guild_id", ic.GuildID),
+		zap.String("user_id", ic.Member.User.ID),
+		zap.String("method", "isUserInVoiceChannel"),
+	)
+
+	if ic.Member == nil {
+		if err := h.messenger.RespondWithMessage(ic.Interaction, ErrorMessageNotInVoiceChannel); err != nil {
+			logger.Error("Error al enviar mensaje de error de canal de voz", zap.Error(err))
+		}
+		return nil, false
+	}
+
+	vs, err := s.State.VoiceState(ic.GuildID, ic.Member.User.ID)
+	if err != nil {
+		logger.Warn("Error al obtener estado de voz del usuario", zap.Error(err))
+		if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: ErrorMessageNotInVoiceChannel,
+			}}); err != nil {
+			logger.Error("Error al enviar mensaje de error de canal de voz", zap.Error(err))
+		}
+		return nil, false
+	}
+
+	if vs == nil || vs.ChannelID == "" {
+		logger.Warn("Usuario no está en canal de voz")
+		if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: ErrorMessageNotInVoiceChannel,
+			},
+		}); err != nil {
+			logger.Error("Error al enviar mensaje de error de canal de voz", zap.Error(err))
+		}
+		return nil, false
+	}
+
+	logger.Debug("Usuario encontrado en canal de voz",
+		zap.String("voice_channel_id", vs.ChannelID),
+	)
+	return vs, true
 }
