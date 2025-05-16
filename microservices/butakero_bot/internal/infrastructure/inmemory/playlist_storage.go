@@ -3,9 +3,9 @@ package inmemory
 import (
 	"context"
 	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/errors_app"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
-	"sort"
 	"sync"
 	"time"
 
@@ -14,26 +14,28 @@ import (
 	"go.uber.org/zap"
 )
 
-type InmemoryPlaylistStorage struct {
+var _ ports.PlaylistStorage = (*MemoryPlaylistStore)(nil)
+
+type MemoryPlaylistStore struct {
 	mu     sync.RWMutex
 	songs  []*entity.PlayedSong
 	logger logging.Logger
 }
 
-func NewInmemoryPlaylistStorage(logger logging.Logger) *InmemoryPlaylistStorage {
-	return &InmemoryPlaylistStorage{
+func NewMemoryPlaylistStore(logger logging.Logger) *MemoryPlaylistStore {
+	return &MemoryPlaylistStore{
 		mu:     sync.RWMutex{},
 		songs:  make([]*entity.PlayedSong, 0),
 		logger: logger,
 	}
 }
 
-func (s *InmemoryPlaylistStorage) AppendTrack(ctx context.Context, song *entity.PlayedSong) error {
+func (s *MemoryPlaylistStore) AppendTrack(ctx context.Context, song *entity.PlayedSong) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	logger := s.logger.With(
-		zap.String("component", "InmemoryPlaylistStorage"),
+		zap.String("component", "MemoryPlaylistStore"),
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "AppendTrack"),
 	)
@@ -52,10 +54,6 @@ func (s *InmemoryPlaylistStorage) AppendTrack(ctx context.Context, song *entity.
 
 	s.songs = append(s.songs, song)
 
-	sort.Slice(s.songs, func(i, j int) bool {
-		return s.songs[i].DiscordSong.AddedAt.Before(s.songs[j].DiscordSong.AddedAt)
-	})
-
 	logger.Info("Canción agregada al final",
 		zap.String("song_id", song.DiscordSong.ID),
 		zap.String("title", song.DiscordSong.TitleTrack),
@@ -64,14 +62,14 @@ func (s *InmemoryPlaylistStorage) AppendTrack(ctx context.Context, song *entity.
 	return nil
 }
 
-func (s *InmemoryPlaylistStorage) RemoveTrack(ctx context.Context, position int) (*entity.PlayedSong, error) {
+func (s *MemoryPlaylistStore) RemoveTrack(ctx context.Context, position int) (*entity.PlayedSong, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	index := position - 1
 
 	logger := s.logger.With(
-		zap.String("component", "InmemoryPlaylistStorage"),
+		zap.String("component", "MemoryPlaylistStore"),
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "RemoveTrack"),
 		zap.Int("position", position),
@@ -97,12 +95,12 @@ func (s *InmemoryPlaylistStorage) RemoveTrack(ctx context.Context, position int)
 	return song, nil
 }
 
-func (s *InmemoryPlaylistStorage) ClearPlaylist(ctx context.Context) error {
+func (s *MemoryPlaylistStore) ClearPlaylist(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	logger := s.logger.With(
-		zap.String("component", "InmemoryPlaylistStorage"),
+		zap.String("component", "MemoryPlaylistStore"),
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "ClearPlaylist"),
 	)
@@ -115,12 +113,12 @@ func (s *InmemoryPlaylistStorage) ClearPlaylist(ctx context.Context) error {
 	return nil
 }
 
-func (s *InmemoryPlaylistStorage) GetAllTracks(ctx context.Context) ([]*entity.PlayedSong, error) {
+func (s *MemoryPlaylistStore) GetAllTracks(ctx context.Context) ([]*entity.PlayedSong, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	logger := s.logger.With(
-		zap.String("component", "InmemoryPlaylistStorage"),
+		zap.String("component", "MemoryPlaylistStore"),
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "GetAllTracks"),
 	)
@@ -133,12 +131,12 @@ func (s *InmemoryPlaylistStorage) GetAllTracks(ctx context.Context) ([]*entity.P
 	return songs, nil
 }
 
-func (s *InmemoryPlaylistStorage) PopNextTrack(ctx context.Context) (*entity.PlayedSong, error) {
+func (s *MemoryPlaylistStore) PopNextTrack(ctx context.Context) (*entity.PlayedSong, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	logger := s.logger.With(
-		zap.String("component", "InmemoryPlaylistStorage"),
+		zap.String("component", "MemoryPlaylistStore"),
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("method", "PopNextTrack"),
 	)

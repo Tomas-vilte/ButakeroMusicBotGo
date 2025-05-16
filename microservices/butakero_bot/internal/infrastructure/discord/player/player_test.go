@@ -668,7 +668,7 @@ func setupGuildPlayer(_ string) (*GuildPlayer, *MockSongStorage, *MockPlayerStat
 
 	guildPlayer := &GuildPlayer{
 		playbackHandler: mockPlaybackHandler,
-		voiceSession:    mockVoiceSession,
+		voiceConnection: mockVoiceSession,
 		stateStorage:    mockStateStorage,
 		songStorage:     mockSongStorage,
 		eventCh:         make(chan PlayerEvent, 100),

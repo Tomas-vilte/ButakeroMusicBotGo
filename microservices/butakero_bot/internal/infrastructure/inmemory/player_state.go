@@ -2,9 +2,10 @@ package inmemory
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/errors_app"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"go.uber.org/zap"
@@ -12,11 +13,9 @@ import (
 	"time"
 )
 
-var (
-	ErrInvalidChannelID = errors.New("ID de canal inválido")
-)
+var _ ports.PlayerStateStorage = (*PlayerStateManager)(nil)
 
-type InmemoryPlayerStateStorage struct {
+type PlayerStateManager struct {
 	mu           sync.RWMutex
 	currentTrack *entity.PlayedSong
 	textChannel  string
@@ -24,14 +23,14 @@ type InmemoryPlayerStateStorage struct {
 	logger       logging.Logger
 }
 
-func NewInmemoryPlayerStateStorage(logger logging.Logger) *InmemoryPlayerStateStorage {
-	return &InmemoryPlayerStateStorage{
+func NewPlayerStateManager(logger logging.Logger) *PlayerStateManager {
+	return &PlayerStateManager{
 		mu:     sync.RWMutex{},
 		logger: logger,
 	}
 }
 
-func (s *InmemoryPlayerStateStorage) GetCurrentTrack(ctx context.Context) (*entity.PlayedSong, error) {
+func (s *PlayerStateManager) GetCurrentTrack(ctx context.Context) (*entity.PlayedSong, error) {
 	logger := s.logger.With(
 		zap.String("component", "player_state_storage"),
 		zap.String("method", "GetCurrentTrack"),
@@ -55,12 +54,12 @@ func (s *InmemoryPlayerStateStorage) GetCurrentTrack(ctx context.Context) (*enti
 	return s.currentTrack, nil
 }
 
-func (s *InmemoryPlayerStateStorage) SetCurrentTrack(ctx context.Context, track *entity.PlayedSong) error {
+func (s *PlayerStateManager) SetCurrentTrack(ctx context.Context, track *entity.PlayedSong) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	logger := s.logger.With(
-		zap.String("component", "InmemoryPlayerStateStorage"),
+		zap.String("component", "PlayerStateManager"),
 		zap.String("method", "SetCurrentTrack"),
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 	)
@@ -68,7 +67,11 @@ func (s *InmemoryPlayerStateStorage) SetCurrentTrack(ctx context.Context, track 
 	if track != nil {
 		if track.DiscordSong == nil {
 			logger.Error("Track no puede tener DiscordSong nil")
-			return errors.New("discord song no puede ser nil")
+			return errors_app.NewAppError(
+				errors_app.ErrCodeInvalidSong,
+				"La canción proporcionada no es válida",
+				nil,
+			)
 		}
 
 		if track.DiscordSong.ID == "" {
@@ -103,12 +106,12 @@ func (s *InmemoryPlayerStateStorage) SetCurrentTrack(ctx context.Context, track 
 	return nil
 }
 
-func (s *InmemoryPlayerStateStorage) GetVoiceChannelID(ctx context.Context) (string, error) {
+func (s *PlayerStateManager) GetVoiceChannelID(ctx context.Context) (string, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	logger := s.logger.With(
-		zap.String("component", "InmemoryPlayerStateStorage"),
+		zap.String("component", "PlayerStateManager"),
 		zap.String("method", "GetVoiceChannelID"),
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 	)
@@ -123,20 +126,25 @@ func (s *InmemoryPlayerStateStorage) GetVoiceChannelID(ctx context.Context) (str
 	return s.voiceChannel, nil
 }
 
-func (s *InmemoryPlayerStateStorage) SetVoiceChannelID(ctx context.Context, channelID string) error {
-	if channelID == "" {
-		return ErrInvalidChannelID
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
+func (s *PlayerStateManager) SetVoiceChannelID(ctx context.Context, channelID string) error {
 	logger := s.logger.With(
-		zap.String("component", "InmemoryPlayerStateStorage"),
+		zap.String("component", "PlayerStateManager"),
 		zap.String("method", "SetVoiceChannelID"),
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("channel_id", channelID),
 	)
+
+	if channelID == "" {
+		logger.Error("ID de canal inválido")
+		return errors_app.NewAppError(
+			errors_app.ErrCodeInvalidGuildID,
+			"El ID del canal proporcionado no es válido",
+			nil,
+		)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.voiceChannel = channelID
 
@@ -144,12 +152,12 @@ func (s *InmemoryPlayerStateStorage) SetVoiceChannelID(ctx context.Context, chan
 	return nil
 }
 
-func (s *InmemoryPlayerStateStorage) GetTextChannelID(ctx context.Context) (string, error) {
+func (s *PlayerStateManager) GetTextChannelID(ctx context.Context) (string, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	logger := s.logger.With(
-		zap.String("component", "InmemoryPlayerStateStorage"),
+		zap.String("component", "PlayerStateManager"),
 		zap.String("method", "GetTextChannelID"),
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 	)
@@ -164,20 +172,25 @@ func (s *InmemoryPlayerStateStorage) GetTextChannelID(ctx context.Context) (stri
 	return s.textChannel, nil
 }
 
-func (s *InmemoryPlayerStateStorage) SetTextChannelID(ctx context.Context, channelID string) error {
-	if channelID == "" {
-		return ErrInvalidChannelID
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
+func (s *PlayerStateManager) SetTextChannelID(ctx context.Context, channelID string) error {
 	logger := s.logger.With(
-		zap.String("component", "InmemoryPlayerStateStorage"),
+		zap.String("component", "PlayerStateManager"),
 		zap.String("method", "SetTextChannelID"),
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("channel_id", channelID),
 	)
+
+	if channelID == "" {
+		logger.Error("ID de canal inválido")
+		return errors_app.NewAppError(
+			errors_app.ErrCodeInvalidGuildID,
+			"El ID del canal proporcionado no es válido",
+			nil,
+		)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.textChannel = channelID
 

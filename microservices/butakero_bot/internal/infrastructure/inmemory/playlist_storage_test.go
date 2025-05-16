@@ -22,7 +22,7 @@ var errPlaylistEmpty = errors_app.NewAppError(errors_app.ErrCodePlaylistEmpty, "
 
 func TestInmemorySongStorage_AppendSong(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
-	storage := NewInmemoryPlaylistStorage(mockLogger)
+	storage := NewMemoryPlaylistStore(mockLogger)
 	song := &entity.PlayedSong{DiscordSong: &entity.DiscordEntity{TitleTrack: "Test Song"}}
 
 	ctx := context.Background()
@@ -39,7 +39,7 @@ func TestInmemorySongStorage_RemoveSong(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
-	storage := NewInmemoryPlaylistStorage(mockLogger)
+	storage := NewMemoryPlaylistStore(mockLogger)
 
 	ctx := context.Background()
 
@@ -111,7 +111,7 @@ func TestPlaylistConcurrency(t *testing.T) {
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
-	storage := NewInmemoryPlaylistStorage(mockLogger)
+	storage := NewMemoryPlaylistStore(mockLogger)
 	var wg sync.WaitGroup
 
 	for i := 0; i < 100; i++ {
@@ -130,12 +130,6 @@ func TestPlaylistConcurrency(t *testing.T) {
 	if len(storage.songs) != 100 {
 		t.Errorf("Expected 100 songs, got %d", len(storage.songs))
 	}
-
-	for i := 1; i < len(storage.songs); i++ {
-		if storage.songs[i-1].DiscordSong.AddedAt.After(storage.songs[i].DiscordSong.AddedAt) {
-			t.Errorf("Playlist not in chronological order")
-		}
-	}
 }
 
 func TestInmemorySongStorage_GetSongs(t *testing.T) {
@@ -144,7 +138,7 @@ func TestInmemorySongStorage_GetSongs(t *testing.T) {
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 
-	storage := NewInmemoryPlaylistStorage(mockLogger)
+	storage := NewMemoryPlaylistStore(mockLogger)
 
 	ctx := context.Background()
 
@@ -185,7 +179,7 @@ func TestInmemorySongStorage_PopFirstSong(t *testing.T) {
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
-	storage := NewInmemoryPlaylistStorage(mockLogger)
+	storage := NewMemoryPlaylistStore(mockLogger)
 
 	ctx := context.Background()
 
@@ -219,7 +213,7 @@ func TestInmemorySongStorage_ClearPlaylist(t *testing.T) {
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
-	storage := NewInmemoryPlaylistStorage(mockLogger)
+	storage := NewMemoryPlaylistStore(mockLogger)
 
 	ctx := context.Background()
 
