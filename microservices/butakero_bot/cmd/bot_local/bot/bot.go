@@ -105,12 +105,13 @@ func StartBot() error {
 	playerFactory := discord.NewGuildPlayerFactory(discordClient, storageAudio, discordMessenger, logger)
 	guildManager := discord.NewGuildManager(playerFactory, logger)
 	eventsHandler := events.NewEventHandler(guildManager, voiceStateService, logger, cfg)
+	queueManager := service.NewPlayRequestManager(songService, guildManager, logger)
 	handler := command.NewCommandHandler(
 		interactionStorage,
 		logger,
-		songService,
 		guildManager,
 		discordMessenger,
+		queueManager,
 	)
 
 	commandRegistry := command.NewCommandRegistry()
