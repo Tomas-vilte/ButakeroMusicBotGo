@@ -5,8 +5,11 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"io"
 )
+
+var _ interfaces.Decoder = (*OpusDecoder)(nil)
 
 var (
 	ErrNotFirstFrame     = errors.New("la metadata solo puede encontrarse en el primer marco")

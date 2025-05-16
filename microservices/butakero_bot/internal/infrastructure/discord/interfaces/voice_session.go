@@ -2,7 +2,6 @@ package interfaces
 
 import (
 	"context"
-	"io"
 )
 
 // VoiceConnection define una interfaz para manejar sesiones de voz.
@@ -12,7 +11,7 @@ type VoiceConnection interface {
 	// LeaveVoiceChannel deja el canal de voz actual.
 	LeaveVoiceChannel(ctx context.Context) error
 	// SendAudio envía audio a través de la sesión de voz.
-	SendAudio(ctx context.Context, reader io.ReadCloser) error
+	SendAudio(ctx context.Context, audioDecoder Decoder) error
 	// Pause pausa la sesión de voz.
 	Pause()
 	// Resume reanuda la sesión de voz.

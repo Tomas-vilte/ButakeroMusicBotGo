@@ -3,6 +3,7 @@ package player
 import (
 	"context"
 	"errors"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/decoder"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"io"
@@ -68,6 +69,7 @@ func (pc *PlaybackController) Play(ctx context.Context, song *entity.PlayedSong,
 	pc.currentCancel = cancel
 	pc.currentSong = song
 	pc.stateManager.SetState(StatePlaying)
+	pc.isPaused.Store(false)
 
 	logger.Info("Iniciando reproducción",
 		zap.String("title", song.DiscordSong.TitleTrack),
@@ -130,6 +132,7 @@ func (pc *PlaybackController) Stop(ctx context.Context) {
 		pc.currentCancel = nil
 	}
 	pc.stateManager.SetState(StateIdle)
+	pc.isPaused.Store(false)
 
 	if pc.currentSong != nil {
 		logger.Info("Reproducción detenida", zap.String("song_id", pc.currentSong.DiscordSong.ID))
@@ -160,8 +163,11 @@ func (pc *PlaybackController) getLogger(ctx context.Context, method, songID stri
 func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedSong, textChannel string) {
 	logger := pc.getLogger(ctx, "playSong", song.DiscordSong.ID)
 
+	pc.isPaused.Store(false)
+
 	if err := pc.setInitialPlaybackState(ctx, song, textChannel); err != nil {
 		logger.Error("Error en la configuración inicial de reproducción", zap.Error(err))
+		pc.cleanupAfterPlayback(ctx)
 		return
 	}
 
@@ -175,7 +181,7 @@ func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedS
 	done := pc.startPlaybackMonitoring(ctx, song, textChannel)
 	defer close(done)
 
-	if err := pc.streamAudio(ctx, audioData); err != nil && !errors.Is(err, context.Canceled) {
+	if err := pc.streamAudio(ctx, audioData, song.DiscordSong.ID); err != nil && !errors.Is(err, context.Canceled) {
 		logger.Error("Error al reproducir audio", zap.Error(err))
 	}
 
@@ -246,18 +252,25 @@ func (pc *PlaybackController) startPlaybackMonitoring(ctx context.Context, song 
 	return done
 }
 
-func (pc *PlaybackController) streamAudio(ctx context.Context, audioData io.ReadCloser) error {
+func (pc *PlaybackController) streamAudio(ctx context.Context, audioData io.ReadCloser, songID string) error {
+	logger := pc.getLogger(ctx, "streamAudio", songID)
+
+	opusDecoder := decoder.NewBufferedOpusDecoder(audioData)
+
 	for {
 		select {
 		case <-ctx.Done():
+			logger.Warn("Contexto cancelado antes de la llamada a SendAudio", zap.Error(ctx.Err()))
+			if errClose := opusDecoder.Close(); errClose != nil {
+				logger.Error("Error al cerrar opusDecoder en streamAudio (contexto cancelado pre-send)", zap.Error(errClose))
+			}
 			return ctx.Err()
 		default:
 			if pc.isPaused.Load() {
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
-
-			return pc.voiceConnection.SendAudio(ctx, audioData)
+			return pc.voiceConnection.SendAudio(ctx, opusDecoder)
 		}
 	}
 }
@@ -281,10 +294,10 @@ func (pc *PlaybackController) finalizePlayback(ctx context.Context, song *entity
 func (pc *PlaybackController) cleanupAfterPlayback(ctx context.Context) {
 	logger := pc.getLogger(ctx, "cleanupAfterPlayback", "")
 
+	pc.currentSong = nil
+	pc.stateManager.SetState(StateIdle)
+
 	if err := pc.stateStorage.SetCurrentTrack(ctx, nil); err != nil {
 		logger.Error("Error al limpiar estado de canción actual", zap.Error(err))
 	}
-
-	pc.stateManager.SetState(StateIdle)
-	pc.currentSong = nil
 }
