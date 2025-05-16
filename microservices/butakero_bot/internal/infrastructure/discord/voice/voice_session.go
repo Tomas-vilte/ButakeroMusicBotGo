@@ -183,6 +183,12 @@ func (d *DiscordVoiceSession) SendAudio(ctx context.Context, reader io.ReadClose
 		}
 	}()
 
+	defer func() {
+		if err := reader.Close(); err != nil {
+			logger.Error("Error al cerrar el reader", zap.Error(err))
+		}
+	}()
+
 	err := d.retryOperation(ctx, func() error {
 		vc, err := d.getValidVc()
 		if err != nil {
