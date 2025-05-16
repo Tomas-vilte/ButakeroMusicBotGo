@@ -3,7 +3,7 @@ package command
 import (
 	"context"
 	"fmt"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
@@ -14,7 +14,6 @@ import (
 
 const (
 	ErrorMessageNotInVoiceChannel = "❌ Debes estar en un canal de voz para usar este comando"
-	ErrorMessageFailedToAddSong   = "❌ No se pudo agregar la canción. Por favor, inténtalo de nuevo"
 	ErrorMessageServerNotFound    = "❌ No se pudo encontrar el servidor. Intenta de nuevo más tarde"
 	ErrorMessageSongRemovalFailed = "❌ No se pudo eliminar la canción. Verifica la posición"
 	ErrorMessageNoCurrentSong     = "🔇 No se está reproduciendo ninguna canción actualmente"
@@ -23,122 +22,83 @@ const (
 type CommandHandler struct {
 	storage      ports.InteractionStorage
 	logger       logging.Logger
-	songService  ports.SongService
 	messenger    interfaces.DiscordMessenger
 	guildManager ports.GuildManager
+	queueManager ports.PlayRequestService
 }
 
 func NewCommandHandler(
 	storage ports.InteractionStorage,
 	logger logging.Logger,
-	songService ports.SongService,
 	guildManager ports.GuildManager,
 	messenger interfaces.DiscordMessenger,
+	queueManager ports.PlayRequestService,
 ) *CommandHandler {
 	return &CommandHandler{
 		storage:      storage,
 		logger:       logger,
-		songService:  songService,
 		messenger:    messenger,
 		guildManager: guildManager,
+		queueManager: queueManager,
 	}
 }
 
 func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.InteractionCreate, opt *discordgo.ApplicationCommandInteractionDataOption) {
 	ctx := trace.WithTraceID(context.Background())
-
-	logger := h.logger.With(
-		zap.String("component", "CommandHandler"),
-		zap.String("method", "PlaySong"),
-		zap.String("trace_id", trace.GetTraceID(ctx)),
-		zap.String("guild_id", ic.GuildID),
-		zap.String("channel_id", ic.ChannelID),
-		zap.String("user_id", ic.Member.User.ID),
-		zap.String("command", "play"),
-	)
-
-	userID := ic.Member.User.ID
+	logger := h.logger.With(zap.String("guildID", ic.GuildID))
 
 	vs, ok := h.isUserInVoiceChannel(s, ic)
 	if !ok {
-		logger.Warn("Usuario no está en canal de voz")
 		return
 	}
 
 	if err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Content: "🔍 Buscando tu canción... Esto puede tomar unos momentos.",
-		},
+		Data: &discordgo.InteractionResponseData{Content: "🔍 Buscando tu canción..."},
 	}); err != nil {
-		logger.Error("Error al enviar la respuesta inicial", zap.Error(err))
+		logger.Error("Error al enviar respuesta inicial", zap.Error(err))
 		return
 	}
 
-	originalMsgID, err := h.messenger.GetOriginalResponseID(ic.Interaction)
-	if err != nil {
-		logger.Warn("No se pudo obtener el ID del mensaje original", zap.Error(err))
-	}
+	originalMsgID, _ := h.messenger.GetOriginalResponseID(ic.Interaction)
 
-	g, err := s.State.Guild(ic.GuildID)
-	if err != nil {
-		logger.Error("Error al obtener el servidor", zap.Error(err))
-		h.respondWithError(ic, ErrorMessageServerNotFound)
-		return
-	}
+	resultChan := h.queueManager.Enqueue(ic.GuildID, model.PlayRequestData{
+		Ctx:             ctx,
+		GuildID:         ic.GuildID,
+		ChannelID:       ic.ChannelID,
+		VoiceChannelID:  vs.ChannelID,
+		UserID:          ic.Member.User.ID,
+		SongInput:       opt.Options[0].StringValue(),
+		RequestedByName: ic.Member.User.Username,
+	})
 
-	go func(ctx context.Context) {
-		input := opt.Options[0].StringValue()
-		song, err := h.songService.GetOrDownloadSong(ctx, userID, input, "youtube")
-		if err != nil {
-			logger.Error("Error al obtener canción", zap.Error(err))
+	go func() {
+		result := <-resultChan
 
-			if originalMsgID != "" {
-				if editErr := h.messenger.EditMessageByID(ic.ChannelID, originalMsgID,
-					"❌ No se pudo encontrar o descargar la canción. Verifica el enlace o inténtalo de nuevo"); editErr != nil {
-					logger.Error("Error al editar el mensaje original", zap.Error(editErr))
-				}
-			}
-			return
+		var response string
+		if result.Err != nil {
+			response = fmt.Sprintf("❌ Error: %v", result.Err)
+		} else {
+			response = fmt.Sprintf("✅ Canción agregada: **%s** ", result.SongTitle)
 		}
 
-		logger.Info("Canción obtenida o descargada", zap.String("título", song.TitleTrack))
-		h.storage.SaveSongList(ic.ChannelID, []*entity.DiscordEntity{song})
-
-		guildPlayer, err := h.guildManager.GetGuildPlayer(g.ID)
-		if err != nil {
-			logger.Error("Error al obtener GuildPlayer", zap.String("guildID", g.ID), zap.Error(err))
-			return
-		}
-		playedSong := &entity.PlayedSong{
-			DiscordSong:     song,
-			RequestedByName: ic.Member.User.Username,
-			RequestedByID:   ic.Member.User.ID,
-		}
-
-		if err := guildPlayer.AddSong(ctx, &ic.ChannelID, &vs.ChannelID, playedSong); err != nil {
-			logger.Error("Error al agregar la canción", zap.String("voice_channel_id", vs.ChannelID), zap.Error(err))
-
-			if originalMsgID != "" {
-				if editErr := h.messenger.EditMessageByID(ic.ChannelID, originalMsgID, ErrorMessageFailedToAddSong); editErr != nil {
-					logger.Error("Error al editar el mensaje original", zap.Error(editErr))
-				}
-			}
-			return
-		}
-
-		logger.Info("Canción agregada a la cola",
-			zap.String("título", song.TitleTrack),
-			zap.String("voice_channel_id", vs.ChannelID),
-		)
-
-		successMessage := "✅ Canción agregada a la cola: " + song.TitleTrack
 		if originalMsgID != "" {
-			if editErr := h.messenger.EditMessageByID(ic.ChannelID, originalMsgID, successMessage); editErr != nil {
-				logger.Error("Error al editar el mensaje original", zap.Error(editErr))
+			err := h.messenger.EditMessageByID(ic.ChannelID, originalMsgID, response)
+			if err != nil {
+				logger.Error("Error al editar mensaje original", zap.Error(err))
+				return
+			}
+		} else {
+			err := h.messenger.Respond(ic.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{Content: response},
+			})
+			if err != nil {
+				logger.Error("Error al enviar mensaje de respuesta", zap.Error(err))
+				return
 			}
 		}
-	}(ctx)
+	}()
 }
 
 func (h *CommandHandler) StopPlaying(s *discordgo.Session, ic *discordgo.InteractionCreate, _ *discordgo.ApplicationCommandInteractionDataOption) {

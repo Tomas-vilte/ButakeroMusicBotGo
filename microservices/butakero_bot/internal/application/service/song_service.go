@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model"
@@ -90,7 +91,10 @@ func (s *songService) DownloadSongViaQueue(ctx context.Context, userID, input, p
 		return nil, fmt.Errorf("error al solicitar la descarga: %w", err)
 	}
 
-	return s.waitForDownloadResponse(ctx, requestID)
+	downloadCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+	defer cancel()
+
+	return s.waitForDownloadResponse(downloadCtx, requestID)
 }
 
 func (s *songService) waitForDownloadResponse(ctx context.Context, requestID string) (*entity.DiscordEntity, error) {
@@ -128,6 +132,11 @@ func (s *songService) waitForDownloadResponse(ctx context.Context, requestID str
 				return nil, fmt.Errorf("error en la descarga: %s", msg.Message)
 			}
 		case <-ctx.Done():
+			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+				s.logger.Error("Tiempo de espera agotado para la descarga",
+					zap.String("requestID", requestID))
+				return nil, fmt.Errorf("tiempo de espera agotado para la descarga: %w", ctx.Err())
+			}
 			return nil, ctx.Err()
 		}
 	}

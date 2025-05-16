@@ -29,14 +29,15 @@ type Config struct {
 }
 
 type GuildPlayer struct {
-	playbackHandler PlaybackHandler
-	voiceSession    voice.VoiceSession
-	stateStorage    ports.PlayerStateStorage
-	songStorage     ports.PlaylistStorage
-	eventCh         chan PlayerEvent
-	logger          logging.Logger
-	running         atomic.Bool
-	mu              sync.RWMutex
+	playbackHandler     PlaybackHandler
+	voiceSession        voice.VoiceSession
+	stateStorage        ports.PlayerStateStorage
+	songStorage         ports.PlaylistStorage
+	eventCh             chan PlayerEvent
+	logger              logging.Logger
+	running             atomic.Bool
+	mu                  sync.RWMutex
+	playbackLoopRunning atomic.Bool
 }
 
 func NewGuildPlayer(cfg Config) *GuildPlayer {
@@ -463,8 +464,13 @@ func (gp *GuildPlayer) handlePlayEvent(ctx context.Context, event PlayEvent) err
 
 	logger.Info("Unión al canal de voz exitosa. Verificando si hay que iniciar reproducción...")
 
-	if gp.playbackHandler.CurrentState() == StateIdle {
-		go gp.startPlaybackLoop(ctx, textChannel)
+	if gp.playbackHandler.CurrentState() == StateIdle && !gp.playbackLoopRunning.Load() {
+		if gp.playbackLoopRunning.CompareAndSwap(false, true) {
+			go func() {
+				gp.startPlaybackLoop(ctx, textChannel)
+				gp.playbackLoopRunning.Store(false)
+			}()
+		}
 	}
 
 	return nil

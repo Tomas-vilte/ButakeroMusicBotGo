@@ -12,6 +12,11 @@ type MockVoiceSession struct {
 	mock.Mock
 }
 
+func (m *MockVoiceSession) IsConnected() bool {
+	args := m.Called()
+	return args.Bool(0)
+}
+
 func (m *MockVoiceSession) JoinVoiceChannel(ctx context.Context, channelID string) error {
 	args := m.Called(ctx, channelID)
 	return args.Error(0)
