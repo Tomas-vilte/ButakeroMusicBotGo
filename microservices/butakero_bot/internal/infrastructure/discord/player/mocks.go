@@ -3,6 +3,7 @@ package player
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
 	"github.com/bwmarrin/discordgo"
 	"github.com/stretchr/testify/mock"
 	"io"
@@ -27,8 +28,8 @@ func (m *MockVoiceSession) LeaveVoiceChannel(ctx context.Context) error {
 	return args.Error(0)
 }
 
-func (m *MockVoiceSession) SendAudio(ctx context.Context, reader io.ReadCloser) error {
-	args := m.Called(ctx, reader)
+func (m *MockVoiceSession) SendAudio(ctx context.Context, audioDecoder interfaces.Decoder) error {
+	args := m.Called(ctx, audioDecoder)
 	return args.Error(0)
 }
 

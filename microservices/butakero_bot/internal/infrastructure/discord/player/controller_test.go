@@ -256,6 +256,7 @@ func TestPlaybackController_Play(t *testing.T) {
 		logger.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return(logger)
 		logger.On("Error", mock.Anything, mock.Anything, mock.Anything).Return(logger)
 		mockStateStorage.On("SetCurrentTrack", mock.Anything, song).Return(nil).Once()
+		mockStateStorage.On("SetCurrentTrack", mock.Anything, (*entity.PlayedSong)(nil)).Return(nil).Once()
 		mockMessenger.On("SendPlayStatus", "text-channel", song).Return("", errors.New("send error")).Once()
 		mockStorageAudio.On("GetAudio", mock.Anything, "test.mp3").Return(nil, errors.New("audio error")).Once()
 

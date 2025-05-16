@@ -166,7 +166,7 @@ func (d *DiscordVoiceSession) ReconnectVoiceChannel(ctx context.Context) error {
 	return d.JoinVoiceChannel(ctx, currentStoredChannelID)
 }
 
-func (d *DiscordVoiceSession) SendAudio(ctx context.Context, reader io.ReadCloser) error {
+func (d *DiscordVoiceSession) SendAudio(ctx context.Context, audioDecoder interfaces.Decoder) error {
 	logger := d.logger.With(
 		zap.String("component", "DiscordVoiceSession"),
 		zap.String("method", "SendAudio"),
@@ -184,8 +184,8 @@ func (d *DiscordVoiceSession) SendAudio(ctx context.Context, reader io.ReadClose
 	}()
 
 	defer func() {
-		if err := reader.Close(); err != nil {
-			logger.Error("Error al cerrar el reader", zap.Error(err))
+		if err := audioDecoder.Close(); err != nil {
+			logger.Error("Error al cerrar el audioDecoder", zap.Error(err))
 		}
 	}()
 
@@ -203,7 +203,6 @@ func (d *DiscordVoiceSession) SendAudio(ctx context.Context, reader io.ReadClose
 	}
 
 	logger.Debug("Iniciando transmisión de audio")
-	decoderAudio := decoder.NewBufferedOpusDecoder(reader)
 	frameCount := 0
 	consecutiveSendErrors := 0
 	maxConsecutiveSendErrors := 5
@@ -221,11 +220,15 @@ func (d *DiscordVoiceSession) SendAudio(ctx context.Context, reader io.ReadClose
 			continue
 		}
 
-		frame, err := decoderAudio.OpusFrame()
+		frame, err := audioDecoder.OpusFrame()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				logger.Debug("Transmisión de audio completada (EOF)", zap.Int("total_frames", frameCount))
 				return nil
+			}
+			if errors.Is(err, decoder.ErrDecoderClosed) {
+				logger.Warn("Intento de leer de un decoder cerrado", zap.Int("frames_sent", frameCount))
+				return err
 			}
 			logger.Error("Error decodificando frame de audio", zap.Error(err), zap.Int("frames_sent", frameCount))
 			return err
