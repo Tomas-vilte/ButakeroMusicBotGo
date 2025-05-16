@@ -4,14 +4,14 @@ package local_storage
 
 import (
 	"context"
-	"errors"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/errors_app"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 )
 
 func TestLocalStorage_GetAudio(t *testing.T) {
@@ -55,9 +55,7 @@ func TestLocalStorage_GetAudio(t *testing.T) {
 		storage := NewLocalStorage(mockLogger)
 
 		_, err := storage.GetAudio(context.Background(), filepath.Join(tempDir, "inexistente.mp3"))
-		if !os.IsNotExist(err) {
-			t.Errorf("Error esperado: %v, Obtenido: %v", os.ErrNotExist, err)
-		}
+		assert.True(t, errors_app.IsAppErrorWithCode(err, errors_app.ErrCodeLocalFileNotFound))
 	})
 
 	t.Run("Contexto cancelado", func(t *testing.T) {
@@ -66,31 +64,6 @@ func TestLocalStorage_GetAudio(t *testing.T) {
 		cancel()
 
 		_, err := storage.GetAudio(ctx, testFile)
-		if !errors.Is(err, context.Canceled) {
-			t.Errorf("Error esperado: %v, Obtenido: %v", context.Canceled, err)
-		}
-	})
-
-	t.Run("Cierre del archivo por contexto", func(t *testing.T) {
-		storage := NewLocalStorage(mockLogger)
-		ctx, cancel := context.WithCancel(context.Background())
-
-		rc, err := storage.GetAudio(ctx, testFile)
-		if err != nil {
-			t.Fatalf("Error inesperado: %v", err)
-		}
-
-		go func() {
-			time.Sleep(100 * time.Millisecond)
-			cancel()
-		}()
-
-		<-ctx.Done()
-		time.Sleep(200 * time.Millisecond)
-
-		_, err = rc.Read(make([]byte, 1))
-		if err == nil {
-			t.Error("Se esperaba error al leer archivo cerrado")
-		}
+		assert.True(t, errors_app.IsAppErrorWithCode(err, errors_app.ErrCodeLocalGetContentFailed))
 	})
 }

@@ -172,12 +172,6 @@ func (pc *PlaybackController) playSong(ctx context.Context, song *entity.PlayedS
 		return
 	}
 
-	defer func() {
-		if err := audioData.Close(); err != nil {
-			logger.Error("Error al cerrar audio", zap.Error(err))
-		}
-	}()
-
 	done := pc.startPlaybackMonitoring(ctx, song, textChannel)
 	defer close(done)
 

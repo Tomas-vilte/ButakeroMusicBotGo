@@ -2,7 +2,7 @@ package local_storage
 
 import (
 	"context"
-	"fmt"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/errors_app"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"go.uber.org/zap"
@@ -26,7 +26,11 @@ func NewLocalStorage(logger logging.Logger) *LocalStorage {
 // GetAudio obtiene un archivo de audio local con prevención de directory traversal.
 func (s *LocalStorage) GetAudio(ctx context.Context, songPath string) (io.ReadCloser, error) {
 	if songPath == "" {
-		return nil, fmt.Errorf("songPath no puede estar vacío")
+		return nil, errors_app.NewAppError(
+			errors_app.ErrCodeInvalidInput,
+			"songPath no puede estar vacío",
+			nil,
+		)
 	}
 
 	logger := s.logger.With(
@@ -39,7 +43,11 @@ func (s *LocalStorage) GetAudio(ctx context.Context, songPath string) (io.ReadCl
 	select {
 	case <-ctx.Done():
 		logger.Debug("Contexto cancelado antes de abrir el archivo")
-		return nil, ctx.Err()
+		return nil, errors_app.NewAppError(
+			errors_app.ErrCodeLocalGetContentFailed,
+			"contexto cancelado durante la obtención del archivo",
+			ctx.Err(),
+		)
 	default:
 	}
 
@@ -48,7 +56,11 @@ func (s *LocalStorage) GetAudio(ctx context.Context, songPath string) (io.ReadCl
 	if strings.Contains(fullPath, "..") {
 		logger.Error("Intento de acceso fuera del directorio permitido",
 			zap.String("path", fullPath))
-		return nil, fmt.Errorf("ruta no permitida")
+		return nil, errors_app.NewAppError(
+			errors_app.ErrCodeLocalInvalidFile,
+			"ruta no permitida",
+			nil,
+		)
 	}
 
 	logger.Debug("Obteniendo audio local",
@@ -60,18 +72,18 @@ func (s *LocalStorage) GetAudio(ctx context.Context, songPath string) (io.ReadCl
 			zap.String("path", fullPath),
 			zap.Error(err))
 		if os.IsNotExist(err) {
-			return nil, err
+			return nil, errors_app.NewAppError(
+				errors_app.ErrCodeLocalFileNotFound,
+				"archivo no encontrado",
+				err,
+			)
 		}
-		return nil, fmt.Errorf("error al abrir archivo: %w", err)
+
+		return nil, errors_app.NewAppError(
+			errors_app.ErrCodeLocalGetContentFailed,
+			"error al abrir archivo",
+			err,
+		)
 	}
-
-	go func() {
-		<-ctx.Done()
-		logger.Debug("Contexto cancelado, cerrando archivo")
-		if err := file.Close(); err != nil {
-			logger.Error("Hubo un error al cerrar el archivo: ", zap.Error(err))
-		}
-	}()
-
 	return file, nil
 }
