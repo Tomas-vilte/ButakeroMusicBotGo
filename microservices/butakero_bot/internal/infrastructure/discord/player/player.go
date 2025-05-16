@@ -19,7 +19,7 @@ import (
 )
 
 type Config struct {
-	VoiceSession    voice.VoiceSession
+	VoiceConnection interfaces.VoiceConnection
 	PlaybackHandler PlaybackHandler
 	SongStorage     ports.PlaylistStorage
 	StateStorage    ports.PlayerStateStorage
@@ -30,7 +30,7 @@ type Config struct {
 
 type GuildPlayer struct {
 	playbackHandler     PlaybackHandler
-	voiceSession        voice.VoiceSession
+	voiceConnection     interfaces.VoiceConnection
 	stateStorage        ports.PlayerStateStorage
 	songStorage         ports.PlaylistStorage
 	eventCh             chan PlayerEvent
@@ -44,7 +44,7 @@ func NewGuildPlayer(cfg Config) *GuildPlayer {
 	return &GuildPlayer{
 		playbackHandler: cfg.PlaybackHandler,
 		songStorage:     cfg.SongStorage,
-		voiceSession:    cfg.VoiceSession,
+		voiceConnection: cfg.VoiceConnection,
 		stateStorage:    cfg.StateStorage,
 		eventCh:         make(chan PlayerEvent, 100),
 		logger:          cfg.Logger,
@@ -215,7 +215,7 @@ func (gp *GuildPlayer) Stop(ctx context.Context) error {
 	}
 
 	gp.playbackHandler.Stop(ctx)
-	if err := gp.voiceSession.LeaveVoiceChannel(ctx); err != nil {
+	if err := gp.voiceConnection.LeaveVoiceChannel(ctx); err != nil {
 		logger.Error("Error al abandonar el canal de voz",
 			zap.Error(err))
 		return fmt.Errorf("error al abandonar el canal de voz: %w", err)
@@ -492,12 +492,12 @@ func (gp *GuildPlayer) startPlaybackLoop(ctx context.Context, textChannel string
 		song, err := gp.songStorage.PopNextTrack(songCtx)
 		gp.mu.Unlock()
 
-		if errors_app.IsAppError(err) {
+		if errors_app.IsAppErrorWithCode(err, errors_app.ErrCodePlaylistEmpty) {
 			logger.Info("Playlist vacía - terminando reproducción")
 
 			select {
 			case <-time.After(10 * time.Second):
-				if err := gp.voiceSession.LeaveVoiceChannel(ctx); err != nil {
+				if err := gp.voiceConnection.LeaveVoiceChannel(ctx); err != nil {
 					logger.Error("Error al salir del canal de voz", zap.Error(err))
 				}
 				logger.Info("Desconectado del canal de voz - playlist vacía")
@@ -584,7 +584,7 @@ func (gp *GuildPlayer) getVoiceAndTextChannels(ctx context.Context) (voiceChanne
 }
 
 func (gp *GuildPlayer) JoinVoiceChannel(ctx context.Context, channelID string) error {
-	voiceSession := gp.voiceSession
+	voiceSession := gp.voiceConnection
 	return voiceSession.JoinVoiceChannel(ctx, channelID)
 }
 

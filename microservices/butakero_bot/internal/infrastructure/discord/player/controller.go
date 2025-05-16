@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
-	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/voice"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"io"
 	"sync"
@@ -24,33 +23,33 @@ var (
 )
 
 type PlaybackController struct {
-	voiceSession  voice.VoiceSession
-	storageAudio  ports.StorageAudio
-	stateStorage  ports.PlayerStateStorage
-	messenger     interfaces.DiscordMessenger
-	logger        logging.Logger
-	stateManager  *StateManager
-	currentCancel context.CancelFunc
-	isPaused      atomic.Bool
-	mu            sync.RWMutex
-	currentSong   *entity.PlayedSong
-	playMsgID     string
+	voiceConnection interfaces.VoiceConnection
+	storageAudio    ports.StorageAudio
+	stateStorage    ports.PlayerStateStorage
+	messenger       interfaces.DiscordMessenger
+	logger          logging.Logger
+	stateManager    *StateManager
+	currentCancel   context.CancelFunc
+	isPaused        atomic.Bool
+	mu              sync.RWMutex
+	currentSong     *entity.PlayedSong
+	playMsgID       string
 }
 
 func NewPlaybackController(
-	voiceSession voice.VoiceSession,
+	voiceConnection interfaces.VoiceConnection,
 	storageAudio ports.StorageAudio,
 	stateStorage ports.PlayerStateStorage,
 	messenger interfaces.DiscordMessenger,
 	logger logging.Logger,
 ) *PlaybackController {
 	return &PlaybackController{
-		voiceSession: voiceSession,
-		storageAudio: storageAudio,
-		stateStorage: stateStorage,
-		messenger:    messenger,
-		logger:       logger,
-		stateManager: NewStateManager(),
+		voiceConnection: voiceConnection,
+		storageAudio:    storageAudio,
+		stateStorage:    stateStorage,
+		messenger:       messenger,
+		logger:          logger,
+		stateManager:    NewStateManager(),
 	}
 }
 
@@ -91,7 +90,7 @@ func (pc *PlaybackController) Pause(ctx context.Context) error {
 
 	pc.stateManager.SetState(StatePaused)
 	pc.isPaused.Store(true)
-	pc.voiceSession.Pause()
+	pc.voiceConnection.Pause()
 
 	if pc.currentSong != nil {
 		logger.Info("Reproducción pausada", zap.String("song_id", pc.currentSong.DiscordSong.ID))
@@ -112,7 +111,7 @@ func (pc *PlaybackController) Resume(ctx context.Context) error {
 
 	pc.stateManager.SetState(StatePlaying)
 	pc.isPaused.Store(false)
-	pc.voiceSession.Resume()
+	pc.voiceConnection.Resume()
 
 	if pc.currentSong != nil {
 		logger.Info("Reproducción reanudada", zap.String("song_id", pc.currentSong.DiscordSong.ID))
@@ -264,7 +263,7 @@ func (pc *PlaybackController) streamAudio(ctx context.Context, audioData io.Read
 				continue
 			}
 
-			return pc.voiceSession.SendAudio(ctx, audioData)
+			return pc.voiceConnection.SendAudio(ctx, audioData)
 		}
 	}
 }

@@ -52,10 +52,9 @@ const (
 	ErrCodeGuildPlayerCreateFailed  ErrorCode = "guild_player_create_failed"
 	ErrCodeGuildPlayerCloseFailed   ErrorCode = "guild_player_close_failed"
 
-	ErrCodePlaylistEmpty         ErrorCode = "playlist_empty"
-	ErrCodeInvalidTrackPosition  ErrorCode = "invalid_track_position"
-	ErrCodeInvalidSong           ErrorCode = "invalid_song"
-	ErrCodePlaylistOperationFail ErrorCode = "playlist_operation_fail"
+	ErrCodePlaylistEmpty        ErrorCode = "playlist_empty"
+	ErrCodeInvalidTrackPosition ErrorCode = "invalid_track_position"
+	ErrCodeInvalidSong          ErrorCode = "invalid_song"
 )
 
 var errorStatusMap = map[ErrorCode]int{
@@ -109,7 +108,6 @@ var errorStatusMap = map[ErrorCode]int{
 	ErrCodePlaylistEmpty:             http.StatusNotFound,
 	ErrCodeInvalidTrackPosition:      http.StatusBadRequest,
 	ErrCodeInvalidSong:               http.StatusBadRequest,
-	ErrCodePlaylistOperationFail:     http.StatusInternalServerError,
 }
 
 type AppError struct {
@@ -137,6 +135,11 @@ func IsAppError(err error) bool {
 	var appError *AppError
 	ok := errors.As(err, &appError)
 	return ok
+}
+
+func IsAppErrorWithCode(err error, code ErrorCode) bool {
+	var appErr *AppError
+	return errors.As(err, &appErr) && appErr.Code == code
 }
 
 // StatusCode devuelve el código de estado HTTP correspondiente al código de error.

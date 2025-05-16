@@ -12,7 +12,7 @@ import (
 
 func TestInmemoryStateStorage_GetCurrentSong(t *testing.T) {
 	mockLogger := new(logging.MockLogger)
-	storage := NewInmemoryPlayerStateStorage(mockLogger)
+	storage := NewPlayerStateManager(mockLogger)
 
 	mockLogger.On("With", mock.Anything, mock.Anything).Return(mockLogger)
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
@@ -45,7 +45,7 @@ func TestInmemoryStateStorage_GetVoiceChannel(t *testing.T) {
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
-	storage := NewInmemoryPlayerStateStorage(mockLogger)
+	storage := NewPlayerStateManager(mockLogger)
 	ctx := context.Background()
 
 	voiceChannelID := "123456789"
@@ -73,7 +73,7 @@ func TestInmemoryStateStorage_GetTextChannel(t *testing.T) {
 	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
 	mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
 
-	storage := NewInmemoryPlayerStateStorage(mockLogger)
+	storage := NewPlayerStateManager(mockLogger)
 
 	ctx := context.Background()
 
