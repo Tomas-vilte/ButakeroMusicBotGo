@@ -57,21 +57,17 @@ func TestBotMover_MoveBotToNewChannel_Success(t *testing.T) {
 
 	// Escenario: Mover el bot a un nuevo canal de voz exitosamente
 	guildPlayer := new(MockGuildPlayer)
-	stateStorage := new(MockStateStorage)
 
 	ctx := context.Background()
 
 	logger.On("With", mock.Anything, mock.Anything).Return(logger)
 	logger.On("Info", mock.Anything, mock.Anything).Return()
-	guildPlayer.On("StateStorage").Return(stateStorage)
-	stateStorage.On("SetVoiceChannelID", mock.Anything, "newChannel").Return(nil)
-	guildPlayer.On("JoinVoiceChannel", mock.Anything, "newChannel").Return(nil)
+	guildPlayer.On("MoveToVoiceChannel", ctx, "newChannel").Return(nil)
 
 	err := mover.MoveBotToNewChannel(ctx, guildPlayer, "newChannel", "oldChannel", "user123")
 
 	assert.NoError(t, err)
 	guildPlayer.AssertExpectations(t)
-	stateStorage.AssertExpectations(t)
 }
 
 func TestPlaybackController_HandlePlayback_StopWhenRequesterLeaves(t *testing.T) {
@@ -82,6 +78,7 @@ func TestPlaybackController_HandlePlayback_StopWhenRequesterLeaves(t *testing.T)
 	guildPlayer := new(MockGuildPlayer)
 	session := &discordgo.Session{State: discordgo.NewState()}
 	session.State.User = &discordgo.User{ID: "bot123"}
+	ctx := context.Background()
 
 	currentSong := &entity.PlayedSong{RequestedByID: "user123", DiscordSong: &entity.DiscordEntity{TitleTrack: "titleTrack"}}
 	vs := &discordgo.VoiceStateUpdate{
@@ -105,7 +102,7 @@ func TestPlaybackController_HandlePlayback_StopWhenRequesterLeaves(t *testing.T)
 	logger.On("Info", mock.Anything, mock.Anything).Return()
 	guildPlayer.On("Stop", mock.Anything).Return(nil)
 
-	err := controller.HandlePlayback(guildPlayer, currentSong, vs, botVoiceState, guild, session)
+	err := controller.HandlePlayback(ctx, guildPlayer, currentSong, vs, botVoiceState, guild, session)
 
 	assert.NoError(t, err)
 	guildPlayer.AssertExpectations(t)
@@ -165,7 +162,6 @@ func TestHandleVoiceStateChange_BotMovesWhenChannelEmpty(t *testing.T) {
 
 	// Escenario: El bot se mueve cuando el usuario abandona dejando el canal vacío
 	guildPlayer := new(MockGuildPlayer)
-	stateStorage := new(MockStateStorage)
 	session := &discordgo.Session{State: discordgo.NewState()}
 	session.State.User = &discordgo.User{ID: "bot123"}
 	ctx := context.Background()
@@ -196,15 +192,12 @@ func TestHandleVoiceStateChange_BotMovesWhenChannelEmpty(t *testing.T) {
 	logger.On("With", mock.Anything, mock.Anything).Return(logger)
 	logger.On("Info", mock.Anything, mock.Anything).Return()
 	logger.On("Debug", mock.Anything, mock.Anything).Return()
-	guildPlayer.On("StateStorage").Return(stateStorage)
-	stateStorage.On("SetVoiceChannelID", mock.Anything, "channel2").Return(nil)
-	guildPlayer.On("JoinVoiceChannel", mock.Anything, "channel2").Return(nil)
+	guildPlayer.On("MoveToVoiceChannel", ctx, "channel2").Return(nil)
 
 	err = service.HandleVoiceStateChange(ctx, guildPlayer, session, vs)
 
 	assert.NoError(t, err)
 	guildPlayer.AssertExpectations(t)
-	stateStorage.AssertExpectations(t)
 }
 
 func TestHandleVoiceStateChange_StopsPlaybackWhenRequesterLeaves(t *testing.T) {
