@@ -11,4 +11,5 @@ type PlayRequestData struct {
 	SongInput       string
 	OriginalMsgID   string
 	RequestedByName string
+	ResultChan      chan PlayResult
 }

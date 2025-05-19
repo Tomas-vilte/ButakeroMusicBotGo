@@ -47,7 +47,7 @@ func (h *CommandHandler) PlaySong(s *discordgo.Session, ic *discordgo.Interactio
 	ctx := trace.WithTraceID(context.Background())
 	logger := h.logger.With(zap.String("guildID", ic.GuildID))
 
-	vs, ok := h.isUserInVoiceChannel(s, ic)
+	vs, ok := h.isUserInVoiceChannel(ctx, s, ic)
 	if !ok {
 		return
 	}
@@ -439,9 +439,7 @@ func (h *CommandHandler) respondWithError(ic *discordgo.InteractionCreate, messa
 	}
 }
 
-func (h *CommandHandler) isUserInVoiceChannel(s *discordgo.Session, ic *discordgo.InteractionCreate) (*discordgo.VoiceState, bool) {
-	ctx := trace.WithTraceID(context.Background())
-
+func (h *CommandHandler) isUserInVoiceChannel(ctx context.Context, s *discordgo.Session, ic *discordgo.InteractionCreate) (*discordgo.VoiceState, bool) {
 	logger := h.logger.With(
 		zap.String("component", "CommandHandler"),
 		zap.String("method", "isUserInVoiceChannel"),

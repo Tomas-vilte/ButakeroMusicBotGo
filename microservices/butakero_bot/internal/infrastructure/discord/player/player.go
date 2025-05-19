@@ -588,6 +588,33 @@ func (gp *GuildPlayer) JoinVoiceChannel(ctx context.Context, channelID string) e
 	return voiceSession.JoinVoiceChannel(ctx, channelID)
 }
 
+func (gp *GuildPlayer) MoveToVoiceChannel(ctx context.Context, newChannelID string) error {
+	logger := gp.logger.With(
+		zap.String("component", "GuildPlayer"),
+		zap.String("method", "MoveToVoiceChannel"),
+		zap.String("trace_id", trace.GetTraceID(ctx)),
+		zap.String("newChannelID", newChannelID),
+	)
+
+	// 1. Actualizar el ID del canal de voz en el stateStorage del GuildPlayer
+	if err := gp.stateStorage.SetVoiceChannelID(ctx, newChannelID); err != nil {
+		logger.Error("Error al actualizar el canal de voz en el storage para GuildPlayer", zap.Error(err))
+		return fmt.Errorf("error al actualizar el canal de voz para GuildPlayer: %w", err)
+	}
+
+	// 2. Usar la voiceConnection para unirse/moverse al nuevo canal
+	// La implementación de DiscordVoiceSession.JoinVoiceChannel ya maneja la desconexión del canal anterior.
+	if err := gp.voiceConnection.JoinVoiceChannel(ctx, newChannelID); err != nil {
+		logger.Error("Error al mover el bot al nuevo canal a través de voiceConnection", zap.Error(err))
+		// Considerar si revertir stateStorage.SetVoiceChannelID si Join falla.
+		// Por ahora, retornamos el error.
+		return fmt.Errorf("error al mover el bot al nuevo canal: %w", err)
+	}
+
+	logger.Info("Bot movido exitosamente al nuevo canal por GuildPlayer")
+	return nil
+}
+
 func (gp *GuildPlayer) StateStorage() ports.PlayerStateStorage {
 	return gp.stateStorage
 }

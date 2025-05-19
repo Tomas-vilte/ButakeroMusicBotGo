@@ -1,4 +1,4 @@
-package discord
+package service
 
 import (
 	"context"
@@ -7,11 +7,33 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type MockPlayerFactory struct {
+type MockSongService struct {
 	mock.Mock
 }
 
-func (m *MockPlayerFactory) CreatePlayer(guildID string) (ports.GuildPlayer, error) {
+func (m *MockSongService) GetOrDownloadSong(ctx context.Context, userID, songInput, platform string) (*entity.DiscordEntity, error) {
+	args := m.Called(ctx, userID, songInput, platform)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*entity.DiscordEntity), args.Error(1)
+}
+
+type MockGuildManager struct {
+	mock.Mock
+}
+
+func (m *MockGuildManager) CreateGuildPlayer(guildID string) (ports.GuildPlayer, error) {
+	args := m.Called(guildID)
+	return args.Get(0).(ports.GuildPlayer), args.Error(1)
+}
+
+func (m *MockGuildManager) RemoveGuildPlayer(guildID string) error {
+	args := m.Called(guildID)
+	return args.Error(0)
+}
+
+func (m *MockGuildManager) GetGuildPlayer(guildID string) (ports.GuildPlayer, error) {
 	args := m.Called(guildID)
 	return args.Get(0).(ports.GuildPlayer), args.Error(1)
 }

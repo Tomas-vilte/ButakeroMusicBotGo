@@ -29,45 +29,46 @@ func NewPlayRequestManager(service ports.SongService, gm ports.GuildManager, log
 }
 
 func (prm *PlayRequestManager) Enqueue(guildID string, data model.PlayRequestData) <-chan model.PlayResult {
-	resultChan := make(chan model.PlayResult, 1)
+	data.ResultChan = make(chan model.PlayResult, 1)
 
 	prm.mu.Lock()
 	queue, exists := prm.guildQueues[guildID]
 	if !exists {
 		queue = make(chan model.PlayRequestData, 100)
 		prm.guildQueues[guildID] = queue
-		go prm.guildWorker(guildID, queue, resultChan)
+		go prm.guildWorker(guildID, queue)
 	}
 	prm.mu.Unlock()
 
 	queue <- data
-	return resultChan
+	return data.ResultChan
 }
 
-func (prm *PlayRequestManager) guildWorker(guildID string, queue chan model.PlayRequestData, resultChan chan<- model.PlayResult) {
-	defer close(resultChan)
-
+func (prm *PlayRequestManager) guildWorker(guildID string, queue chan model.PlayRequestData) {
 	for request := range queue {
 		workerCtx := trace.WithTraceID(request.Ctx)
-		_ = prm.logger.With(zap.String("guildID", guildID))
+		log := prm.logger.With(zap.String("guildID", guildID), zap.String("traceID", trace.GetTraceID(workerCtx)))
 
 		songEntity, err := prm.songService.GetOrDownloadSong(workerCtx, request.UserID, request.SongInput, "youtube")
 		if err != nil {
-			resultChan <- model.PlayResult{
+			request.ResultChan <- model.PlayResult{
 				Err:             fmt.Errorf("no se pudo obtener/descargar la canción: %w", err),
 				RequestedByID:   request.UserID,
 				RequestedByName: request.RequestedByName,
 			}
+			close(request.ResultChan)
 			continue
 		}
 
 		guildPlayer, err := prm.guildManager.GetGuildPlayer(request.GuildID)
 		if err != nil {
-			resultChan <- model.PlayResult{
+			log.Error("Error al obtener GuildPlayer", zap.Error(err))
+			request.ResultChan <- model.PlayResult{
 				Err:             fmt.Errorf("error al obtener GuildPlayer: %w", err),
 				RequestedByID:   request.UserID,
 				RequestedByName: request.RequestedByName,
 			}
+			close(request.ResultChan)
 			continue
 		}
 
@@ -78,19 +79,27 @@ func (prm *PlayRequestManager) guildWorker(guildID string, queue chan model.Play
 		}
 
 		if err := guildPlayer.AddSong(workerCtx, &request.ChannelID, &request.VoiceChannelID, playedSong); err != nil {
-			resultChan <- model.PlayResult{
+			log.Error("Error al agregar canción a la cola del GuildPlayer", zap.Error(err), zap.String("songTitle", songEntity.TitleTrack))
+			request.ResultChan <- model.PlayResult{
 				SongTitle:       songEntity.TitleTrack,
 				Err:             fmt.Errorf("no se pudo agregar la canción '%s' a la cola: %w", songEntity.TitleTrack, err),
 				RequestedByID:   request.UserID,
 				RequestedByName: request.RequestedByName,
 			}
+			close(request.ResultChan)
 			continue
 		}
 
-		resultChan <- model.PlayResult{
+		log.Info("Canción procesada y enviada a GuildPlayer", zap.String("songTitle", songEntity.TitleTrack))
+		request.ResultChan <- model.PlayResult{
 			SongTitle:       songEntity.TitleTrack,
 			RequestedByID:   request.UserID,
 			RequestedByName: request.RequestedByName,
 		}
+		close(request.ResultChan)
 	}
+	prm.mu.Lock()
+	delete(prm.guildQueues, guildID)
+	prm.mu.Unlock()
+	prm.logger.Info("GuildWorker finalizado", zap.String("guildID", guildID))
 }

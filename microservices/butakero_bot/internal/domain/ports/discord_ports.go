@@ -32,14 +32,11 @@ type (
 		// GetPlayedSong obtiene la información de la canción que se está reproduciendo
 		GetPlayedSong(ctx context.Context) (*entity.PlayedSong, error)
 
-		// StateStorage retorna el almacenamiento de estado del reproductor
-		StateStorage() PlayerStateStorage
-
-		// JoinVoiceChannel conecta el bot a un canal de voz específico
-		JoinVoiceChannel(ctx context.Context, channelID string) error
-
 		// Close libera los recursos asociados al reproductor
 		Close() error
+
+		// MoveToVoiceChannel mueve el bot a un nuevo canal de voz
+		MoveToVoiceChannel(ctx context.Context, newChannelID string) error
 	}
 
 	// GuildManager maneja los reproductores de música para diferentes servidores
