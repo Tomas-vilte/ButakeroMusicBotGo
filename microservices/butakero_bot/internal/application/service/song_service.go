@@ -13,14 +13,20 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"regexp"
+	"sync"
 	"time"
 )
 
-type songService struct {
+type SongService struct {
 	mediaClient     ports.MediaClient
 	messageProducer ports.SongDownloadRequestPublisher
 	messageConsumer ports.SongDownloadEventSubscriber
 	logger          logging.Logger
+
+	responseChannels map[string]chan *queue.DownloadStatusMessage
+	mu               sync.Mutex
+	stopCh           chan struct{}
+	wg               sync.WaitGroup
 }
 
 func NewSongService(
@@ -28,21 +34,63 @@ func NewSongService(
 	messageProducer ports.SongDownloadRequestPublisher,
 	messageConsumer ports.SongDownloadEventSubscriber,
 	logger logging.Logger,
-) ports.SongService {
-	return &songService{
-		mediaClient:     mediaClient,
-		messageProducer: messageProducer,
-		messageConsumer: messageConsumer,
-		logger:          logger,
+) *SongService {
+	s := &SongService{
+		mediaClient:      mediaClient,
+		messageProducer:  messageProducer,
+		messageConsumer:  messageConsumer,
+		logger:           logger,
+		responseChannels: make(map[string]chan *queue.DownloadStatusMessage),
+		stopCh:           make(chan struct{}),
 	}
+	s.wg.Add(1)
+	go s.listenForDownloadEvents()
+	return s
 }
 
-func (s *songService) extractURLOrTitle(input string) (string, bool) {
+func (s *SongService) extractURLOrTitle(input string) (string, bool) {
 	urlRegex := regexp.MustCompile(`^(https?://)?(www\.)?(youtube\.com|youtu\.?be)/.+$`)
 	return input, urlRegex.MatchString(input)
 }
 
-func (s *songService) GetSongFromAPI(ctx context.Context, input string) (*entity.DiscordEntity, error) {
+func (s *SongService) Close() {
+	close(s.stopCh)
+	s.wg.Wait()
+}
+
+func (s *SongService) listenForDownloadEvents() {
+	defer s.wg.Done()
+	msgChan := s.messageConsumer.DownloadEventsChannel()
+	for {
+		select {
+		case msg, ok := <-msgChan:
+			if !ok {
+				s.logger.Info("El canal de eventos de descarga se cerró.")
+				return
+			}
+			s.mu.Lock()
+			respCh, exists := s.responseChannels[msg.RequestID]
+			s.mu.Unlock()
+
+			if exists {
+				select {
+				case respCh <- msg:
+				default:
+					s.logger.Warn("No se pudo enviar el evento de descarga al canal de respuesta, puede estar lleno o el receptor ya no existe",
+						zap.String("requestID", msg.RequestID))
+				}
+			} else {
+				s.logger.Warn("Se recibió un evento de descarga para un requestID desconocido o expirado",
+					zap.String("requestID", msg.RequestID))
+			}
+		case <-s.stopCh:
+			s.logger.Info("Deteniendo el receptor de eventos de descarga.")
+			return
+		}
+	}
+}
+
+func (s *SongService) GetSongFromAPI(ctx context.Context, input string) (*entity.DiscordEntity, error) {
 	_, isURL := s.extractURLOrTitle(input)
 
 	if isURL {
@@ -67,7 +115,7 @@ func (s *songService) GetSongFromAPI(ctx context.Context, input string) (*entity
 	return nil, fmt.Errorf("canción no encontrada en la API")
 }
 
-func (s *songService) DownloadSongViaQueue(ctx context.Context, userID, input, providerType string) (*entity.DiscordEntity, error) {
+func (s *SongService) DownloadSongViaQueue(ctx context.Context, userID, input, providerType string) (*entity.DiscordEntity, error) {
 	requestID := uuid.New().String()
 
 	s.logger.Info("Enviando solicitud a través de la queue",
@@ -75,6 +123,19 @@ func (s *songService) DownloadSongViaQueue(ctx context.Context, userID, input, p
 		zap.String("requestID", requestID),
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 		zap.String("userID", userID))
+
+	responseChan := make(chan *queue.DownloadStatusMessage, 1)
+
+	s.mu.Lock()
+	s.responseChannels[requestID] = responseChan
+	s.mu.Unlock()
+
+	defer func() {
+		s.mu.Lock()
+		delete(s.responseChannels, requestID)
+		s.mu.Unlock()
+		close(responseChan)
+	}()
 
 	message := &queue.DownloadRequestMessage{
 		RequestID:    requestID,
@@ -94,17 +155,16 @@ func (s *songService) DownloadSongViaQueue(ctx context.Context, userID, input, p
 	downloadCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
 
-	return s.waitForDownloadResponse(downloadCtx, requestID)
+	return s.waitForDownloadResponse(downloadCtx, requestID, responseChan)
 }
 
-func (s *songService) waitForDownloadResponse(ctx context.Context, requestID string) (*entity.DiscordEntity, error) {
-	msgChan := s.messageConsumer.DownloadEventsChannel()
-
+func (s *SongService) waitForDownloadResponse(ctx context.Context, requestID string, msgChan <-chan *queue.DownloadStatusMessage) (*entity.DiscordEntity, error) {
 	for {
 		select {
-		case msg := <-msgChan:
-			if msg.RequestID != requestID {
-				continue
+		case msg, ok := <-msgChan:
+			if !ok {
+				s.logger.Warn("El canal de respuesta se cerró inesperadamente", zap.String("requestID", requestID))
+				return nil, fmt.Errorf("se cerró el canal de respuesta para el requestID %s", requestID)
 			}
 
 			s.logger.Info("Mensaje recibido para solicitud actual",
@@ -116,7 +176,7 @@ func (s *songService) waitForDownloadResponse(ctx context.Context, requestID str
 					zap.String("requestID", requestID),
 					zap.String("video_id", msg.VideoID))
 				return &entity.DiscordEntity{
-					ID:           uuid.New().String(),
+					ID:           msg.VideoID,
 					TitleTrack:   msg.PlatformMetadata.Title,
 					DurationMs:   msg.PlatformMetadata.DurationMs,
 					ThumbnailURL: msg.PlatformMetadata.ThumbnailURL,
@@ -132,17 +192,21 @@ func (s *songService) waitForDownloadResponse(ctx context.Context, requestID str
 				return nil, fmt.Errorf("error en la descarga: %s", msg.Message)
 			}
 		case <-ctx.Done():
-			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			err := ctx.Err()
+			if errors.Is(err, context.DeadlineExceeded) {
 				s.logger.Error("Tiempo de espera agotado para la descarga",
 					zap.String("requestID", requestID))
-				return nil, fmt.Errorf("tiempo de espera agotado para la descarga: %w", ctx.Err())
+				return nil, fmt.Errorf("tiempo de espera agotado para la descarga (requestID: %s): %w", requestID, err)
 			}
-			return nil, ctx.Err()
+			s.logger.Error("Contexto cancelado durante la espera de la descarga",
+				zap.String("requestID", requestID),
+				zap.Error(err))
+			return nil, err
 		}
 	}
 }
 
-func (s *songService) GetOrDownloadSong(ctx context.Context, userID, songInput, providerType string) (*entity.DiscordEntity, error) {
+func (s *SongService) GetOrDownloadSong(ctx context.Context, userID, songInput, providerType string) (*entity.DiscordEntity, error) {
 	song, err := s.GetSongFromAPI(ctx, songInput)
 	if err == nil {
 		return song, nil

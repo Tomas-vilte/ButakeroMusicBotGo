@@ -93,6 +93,7 @@ func StartBot() error {
 	}
 
 	songService := service.NewSongService(mediaClient, messageProducer, messageConsumer, logger)
+	defer songService.Close()
 	tracker := discord.NewBotChannelTracker(logger)
 	mover := discord.NewBotMover(logger)
 	playback := discord.NewPlaybackController(logger)
