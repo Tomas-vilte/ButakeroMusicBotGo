@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/entity"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model/queue"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/stretchr/testify/mock"
 )
@@ -89,4 +91,51 @@ func (m *MockGuildPlayer) MoveToVoiceChannel(ctx context.Context, newChannelID s
 func (m *MockGuildPlayer) Close() error {
 	args := m.Called()
 	return args.Error(0)
+}
+
+type MockMediaClient struct {
+	mock.Mock
+}
+
+func (m *MockMediaClient) GetMediaByID(ctx context.Context, videoID string) (*model.Media, error) {
+	args := m.Called(ctx, videoID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Media), args.Error(1)
+}
+
+func (m *MockMediaClient) SearchMediaByTitle(ctx context.Context, title string) ([]*model.Media, error) {
+	args := m.Called(ctx, title)
+	return args.Get(0).([]*model.Media), args.Error(1)
+}
+
+type MockSongDownloadRequestPublisher struct {
+	mock.Mock
+}
+
+func (m *MockSongDownloadRequestPublisher) PublishDownloadRequest(ctx context.Context, request *queue.DownloadRequestMessage) error {
+	args := m.Called(ctx, request)
+	return args.Error(0)
+}
+
+func (m *MockSongDownloadRequestPublisher) ClosePublisher() error {
+	return m.Called().Error(0)
+}
+
+type MockSongDownloadEventSubscriber struct {
+	mock.Mock
+}
+
+func (m *MockSongDownloadEventSubscriber) SubscribeToDownloadEvents(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
+func (m *MockSongDownloadEventSubscriber) DownloadEventsChannel() <-chan *queue.DownloadStatusMessage {
+	return m.Called().Get(0).(chan *queue.DownloadStatusMessage)
+}
+
+func (m *MockSongDownloadEventSubscriber) CloseSubscription() error {
+	return m.Called().Error(0)
 }
