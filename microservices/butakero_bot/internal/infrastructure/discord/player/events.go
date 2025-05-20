@@ -62,6 +62,9 @@ func (e StopEvent) HandleEvent(ctx context.Context, player *GuildPlayer) error {
 func (e SkipEvent) Type() EventType { return EventTypeSkip }
 
 func (e SkipEvent) HandleEvent(ctx context.Context, player *GuildPlayer) error {
-	player.SkipSong(ctx)
+	err := player.SkipSong(ctx)
+	if err != nil {
+		return err
+	}
 	return nil
 }
