@@ -55,6 +55,8 @@ const (
 	ErrCodePlaylistEmpty        ErrorCode = "playlist_empty"
 	ErrCodeInvalidTrackPosition ErrorCode = "invalid_track_position"
 	ErrCodeInvalidSong          ErrorCode = "invalid_song"
+	ErrCodePlayerNotPlaying     ErrorCode = "player_not_playing"
+	ErrCodePlayerNoNextToSkip   ErrorCode = "player_no_next_to_skip"
 )
 
 var errorStatusMap = map[ErrorCode]int{
@@ -108,6 +110,8 @@ var errorStatusMap = map[ErrorCode]int{
 	ErrCodePlaylistEmpty:             http.StatusNotFound,
 	ErrCodeInvalidTrackPosition:      http.StatusBadRequest,
 	ErrCodeInvalidSong:               http.StatusBadRequest,
+	ErrCodePlayerNotPlaying:          http.StatusBadRequest,
+	ErrCodePlayerNoNextToSkip:        http.StatusBadRequest,
 }
 
 type AppError struct {

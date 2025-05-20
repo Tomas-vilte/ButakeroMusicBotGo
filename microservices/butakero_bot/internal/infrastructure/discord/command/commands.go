@@ -2,10 +2,12 @@ package command
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/model"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/domain/ports"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/infrastructure/discord/interfaces"
+	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/errors_app"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/logging"
 	"github.com/Tomas-vilte/ButakeroMusicBotGo/microservices/butakero_bot/internal/shared/trace"
 	"github.com/bwmarrin/discordgo"
@@ -23,15 +25,18 @@ const (
 	ErrorMessageGenericResume           = "❌ No se pudo seguir con la música, qué garronazo"
 	ErrorMessageInvalidRemovePosition   = "❌ Tenés que poner un número de posición válido para sacar la canción, dale"
 
-	InfoMessageSearchingSongFmt  = "🔍 Buscando tu tema, dame un toque..."
-	SuccessMessageSongAddedFmt   = "✅ Listo, agregué: **%s**"
-	SuccessMessagePlayingStopped = "⏹️ Corté la música, chau"
-	SuccessMessageSongSkipped    = "⏭️ Salté esta, a la próxima"
-	InfoMessagePlaylistEmpty     = "📭 No hay nada en la lista, agregá algo che"
-	SuccessMessageSongRemovedFmt = "🗑️ Chau **%s**, la sacamos de la lista"
-	InfoMessageNowPlayingFmt     = "🎵 Sonando ahora: **%s**"
-	SuccessMessagePaused         = "⏸️ Le metí pausa"
-	SuccessMessageResumed        = "▶️ Seguimos con el tema"
+	InfoMessageSearchingSongFmt        = "🔍 Buscando tu tema, dame un toque..."
+	SuccessMessageSongAddedFmt         = "✅ Listo, agregué: **%s**"
+	SuccessMessagePlayingStopped       = "⏹️ Corté la música, chau"
+	SuccessMessageSongSkipped          = "⏭️ Salté esta, a la próxima"
+	InfoMessagePlaylistEmpty           = "📭 No hay nada en la lista, agregá algo che"
+	SuccessMessageSongRemovedFmt       = "🗑️ Chau **%s**, la sacamos de la lista"
+	InfoMessageNowPlayingFmt           = "🎵 Sonando ahora: **%s**"
+	SuccessMessagePaused               = "⏸️ Le metí pausa"
+	SuccessMessageResumed              = "▶️ Seguimos con el tema"
+	InfoMessageSongSkippedNoNextToPlay = "🤷 No hay más temas en la cola, che. Seguimos con este."
+	ErrorMessageNothingToSkip          = "🤔 No hay nada sonando para saltar, maestro"
+	ErrorMessageSkipGeneric            = "💥 Se mandó una cagada al intentar saltar el tema"
 )
 
 type CommandHandler struct {
@@ -187,7 +192,25 @@ func (h *CommandHandler) SkipSong(ic *discordgo.InteractionCreate) {
 		return
 	}
 
-	guildPlayer.SkipSong(ctx)
+	skipAppErr := guildPlayer.SkipSong(ctx)
+	if skipAppErr != nil {
+		var appErr *errors_app.AppError
+		if errors.As(skipAppErr, &appErr) {
+			if appErr.Code == errors_app.ErrCodePlayerNotPlaying {
+				logger.Info("Intento de skip pero no había canción reproduciéndose.", zap.String("error_message", appErr.Message))
+				h.sendResponse(ic.Interaction, ErrorMessageNothingToSkip)
+				return
+			}
+			if appErr.Code == errors_app.ErrCodePlayerNoNextToSkip {
+				logger.Info("Intento de skip, pero no hay siguiente canción. La actual continúa.", zap.String("error_message", appErr.Message))
+				h.sendResponse(ic.Interaction, InfoMessageSongSkippedNoNextToPlay)
+				return
+			}
+			logger.Error("Error de aplicación al procesar skip", zap.Error(appErr), zap.String("error_code", string(appErr.Code)))
+			h.sendResponse(ic.Interaction, ErrorMessageSkipGeneric)
+			return
+		}
+	}
 	logger.Debug("Solicitud de omisión de canción procesada")
 	h.sendResponse(ic.Interaction, SuccessMessageSongSkipped)
 }
