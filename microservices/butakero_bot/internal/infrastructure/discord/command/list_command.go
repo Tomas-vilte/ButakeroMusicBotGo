@@ -23,6 +23,6 @@ func NewListCommand(handler *CommandHandler, logger logging.Logger) Command {
 
 func (c *ListCommand) Handler() func(*discordgo.Session, *discordgo.InteractionCreate) {
 	return func(s *discordgo.Session, ic *discordgo.InteractionCreate) {
-		c.handler.ListPlaylist(s, ic, nil)
+		c.handler.ListPlaylist(ic)
 	}
 }

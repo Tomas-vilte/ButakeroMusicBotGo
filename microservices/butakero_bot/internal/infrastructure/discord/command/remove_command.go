@@ -36,6 +36,6 @@ func (c *RemoveCommand) Handler() func(*discordgo.Session, *discordgo.Interactio
 			return
 		}
 		opt := ic.ApplicationCommandData().Options[0]
-		c.handler.RemoveSong(s, ic, opt)
+		c.handler.RemoveSong(ic, opt)
 	}
 }

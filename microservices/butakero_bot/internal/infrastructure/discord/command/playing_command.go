@@ -23,6 +23,6 @@ func NewPlayingCommand(handler *CommandHandler, logger logging.Logger) Command {
 
 func (c *PlayingCommand) Handler() func(*discordgo.Session, *discordgo.InteractionCreate) {
 	return func(s *discordgo.Session, ic *discordgo.InteractionCreate) {
-		c.handler.GetPlayingSong(s, ic, nil)
+		c.handler.GetPlayingSong(ic)
 	}
 }
