@@ -23,6 +23,6 @@ func NewResumeCommand(handler *CommandHandler, logger logging.Logger) Command {
 
 func (r *ResumeCommand) Handler() func(session *discordgo.Session, i *discordgo.InteractionCreate) {
 	return func(session *discordgo.Session, i *discordgo.InteractionCreate) {
-		r.handler.ResumeSong(session, i)
+		r.handler.ResumeSong(i)
 	}
 }

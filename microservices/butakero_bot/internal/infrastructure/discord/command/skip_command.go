@@ -23,6 +23,6 @@ func NewSkipCommand(handler *CommandHandler, logger logging.Logger) Command {
 
 func (c *SkipCommand) Handler() func(*discordgo.Session, *discordgo.InteractionCreate) {
 	return func(s *discordgo.Session, ic *discordgo.InteractionCreate) {
-		c.handler.SkipSong(s, ic, nil)
+		c.handler.SkipSong(ic)
 	}
 }

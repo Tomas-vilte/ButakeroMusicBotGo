@@ -23,6 +23,6 @@ func NewPauseCommand(handler *CommandHandler, logger logging.Logger) Command {
 
 func (p *PauseCommand) Handler() func(session *discordgo.Session, i *discordgo.InteractionCreate) {
 	return func(session *discordgo.Session, i *discordgo.InteractionCreate) {
-		p.handler.PauseSong(session, i)
+		p.handler.PauseSong(i)
 	}
 }

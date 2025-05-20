@@ -23,6 +23,6 @@ func NewStopCommand(handler *CommandHandler, logger logging.Logger) Command {
 
 func (c *StopCommand) Handler() func(*discordgo.Session, *discordgo.InteractionCreate) {
 	return func(s *discordgo.Session, ic *discordgo.InteractionCreate) {
-		c.handler.StopPlaying(s, ic, nil)
+		c.handler.StopPlaying(ic)
 	}
 }
