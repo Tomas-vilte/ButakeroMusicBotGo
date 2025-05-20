@@ -18,6 +18,8 @@ import (
 	"go.uber.org/zap"
 )
 
+var _ ports.GuildPlayer = (*GuildPlayer)(nil)
+
 type Config struct {
 	VoiceConnection interfaces.VoiceConnection
 	PlaybackHandler PlaybackHandler
@@ -99,20 +101,30 @@ func (gp *GuildPlayer) AddSong(ctx context.Context, textChannelID, voiceChannelI
 	return nil
 }
 
-func (gp *GuildPlayer) SkipSong(ctx context.Context) {
+func (gp *GuildPlayer) SkipSong(ctx context.Context) error {
 	logger := gp.logger.With(
 		zap.String("component", "GuildPlayer"),
 		zap.String("method", "SkipSong"),
 		zap.String("trace_id", trace.GetTraceID(ctx)),
 	)
 
-	currentSong, err := gp.stateStorage.GetCurrentTrack(ctx)
-	if err != nil {
-		logger.Error("Error al obtener canción actual para skip",
-			zap.Error(err))
-		return
+	if gp.playbackHandler.CurrentState() == StateIdle {
+		logger.Info("Intento de saltar canción cuando no hay nada reproduciéndose")
+		return errors_app.NewAppError(errors_app.ErrCodePlayerNotPlaying, "No hay ninguna canción reproduciéndose para saltar.", nil)
 	}
 
+	remainingPlaylist, err := gp.songStorage.GetAllTracks(ctx)
+	if err != nil {
+		logger.Error("Error al obtener la lista de reproducción para verificar si hay siguiente canción", zap.Error(err))
+		return errors_app.NewAppError(errors_app.ErrCodeInternalError, "Error interno al verificar la cola para skip.", err)
+	}
+
+	if len(remainingPlaylist) == 0 {
+		logger.Info("Intento de saltar, pero no hay más canciones en la cola. La canción actual continuará reproduciéndose.")
+		return errors_app.NewAppError(errors_app.ErrCodePlayerNoNextToSkip, "No hay más canciones en la cola para saltar. La canción actual continuará.", nil)
+	}
+
+	currentSong, _ := gp.stateStorage.GetCurrentTrack(ctx)
 	if currentSong != nil {
 		logger = logger.With(
 			zap.String("song_id", currentSong.DiscordSong.ID),
@@ -121,7 +133,8 @@ func (gp *GuildPlayer) SkipSong(ctx context.Context) {
 	}
 
 	gp.playbackHandler.Stop(ctx)
-	logger.Info("Canción saltada")
+	logger.Info("Canción actual detenida por skip, se procederá a la siguiente.")
+	return nil
 }
 
 func (gp *GuildPlayer) Pause(ctx context.Context) error {
