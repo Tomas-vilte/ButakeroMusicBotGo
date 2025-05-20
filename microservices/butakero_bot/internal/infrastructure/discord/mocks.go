@@ -35,8 +35,9 @@ func (m *MockGuildPlayer) Resume(ctx context.Context) error {
 	return args.Error(0)
 }
 
-func (m *MockGuildPlayer) SkipSong(ctx context.Context) {
-	m.Called(ctx)
+func (m *MockGuildPlayer) SkipSong(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
 }
 
 func (m *MockGuildPlayer) AddSong(ctx context.Context, textChannelID, voiceChannelID *string, playedSong *entity.PlayedSong) error {

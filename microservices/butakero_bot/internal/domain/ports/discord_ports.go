@@ -18,7 +18,7 @@ type (
 		Resume(ctx context.Context) error
 
 		// SkipSong salta a la siguiente canción en la lista
-		SkipSong(ctx context.Context)
+		SkipSong(ctx context.Context) error
 
 		// AddSong agrega una nueva canción a la lista de reproducción
 		AddSong(ctx context.Context, textChannelID, voiceChannelID *string, playedSong *entity.PlayedSong) error
