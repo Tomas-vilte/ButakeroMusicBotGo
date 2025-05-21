@@ -60,7 +60,7 @@ services:
     restart: always
 
   audio_processor:
-    image: tomasvilte/audio_processor:1.1.1
+    image: tomasvilte/audio_processor:1.1.0
     container_name: audio_processor
     volumes:
       - ./yt-cookies.txt:/root/yt-cookies.txt
@@ -103,7 +103,7 @@ services:
       start_period: 40s
 
   butakero_bot:
-    image: tomasvilte/butakero_bot:1.1.1
+    image: tomasvilte/butakero_bot:1.2.0
     container_name: butakero_bot
     depends_on:
       audio_processor:
@@ -112,7 +112,7 @@ services:
       - audio_files:/app/data/audio-files
     environment:
       DISCORD_TOKEN: ${DISCORD_TOKEN}
-      COMMAND_PREFIX: "bot_music"
+      COMMAND_PREFIX: ${COMMAND_PREFIX}
       KAFKA_BROKERS: "kafka:29092"
       KAFKA_BOT_DOWNLOAD_REQUESTS: "bot.download.requests"
       KAFKA_BOT_DOWNLOAD_STATUS: "bot.download.status"
