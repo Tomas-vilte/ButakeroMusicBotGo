@@ -57,7 +57,6 @@ func (f *GuildPlayerFactory) CreatePlayer(guildID string) (ports.GuildPlayer, er
 			PlaybackHandler: playbackHandler,
 			SongStorage:     songStorage,
 			StateStorage:    stateStorage,
-			Messenger:       f.messenger,
 			Logger:          f.logger,
 		},
 	)

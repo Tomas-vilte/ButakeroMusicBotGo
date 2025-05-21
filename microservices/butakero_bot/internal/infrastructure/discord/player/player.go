@@ -25,7 +25,6 @@ type Config struct {
 	PlaybackHandler PlaybackHandler
 	SongStorage     ports.PlaylistStorage
 	StateStorage    ports.PlayerStateStorage
-	Messenger       interfaces.DiscordMessenger
 	StorageAudio    ports.StorageAudio
 	Logger          logging.Logger
 }
