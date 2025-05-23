@@ -70,7 +70,7 @@ func (h *HealthHandler) getServiceChecks() map[string]func(ctx context.Context) 
 	switch h.cfg.Environment {
 	case "local":
 		return map[string]func(ctx context.Context) (*api.HealthCheckMetadata, error){
-			"MongoDB": func(ctx context.Context) (*api.HealthCheckMetadata, error) {
+			"mongo_db": func(ctx context.Context) (*api.HealthCheckMetadata, error) {
 				metadata, err := api.CheckMongoDB(ctx, h.cfg)
 				if err != nil {
 					return nil, err
@@ -79,7 +79,7 @@ func (h *HealthHandler) getServiceChecks() map[string]func(ctx context.Context) 
 					Mongo: metadata,
 				}, nil
 			},
-			"Kafka": func(ctx context.Context) (*api.HealthCheckMetadata, error) {
+			"kafka": func(ctx context.Context) (*api.HealthCheckMetadata, error) {
 				metadata, err := api.CheckKafka(h.cfg)
 				if err != nil {
 					return nil, err
@@ -91,7 +91,7 @@ func (h *HealthHandler) getServiceChecks() map[string]func(ctx context.Context) 
 		}
 	case "prod":
 		return map[string]func(ctx context.Context) (*api.HealthCheckMetadata, error){
-			"DynamoDB": func(ctx context.Context) (*api.HealthCheckMetadata, error) {
+			"dynamo_db": func(ctx context.Context) (*api.HealthCheckMetadata, error) {
 				metadata, err := api.CheckDynamoDB(ctx, h.cfg)
 				if err != nil {
 					return nil, err
@@ -100,7 +100,7 @@ func (h *HealthHandler) getServiceChecks() map[string]func(ctx context.Context) 
 					DynamoDB: metadata,
 				}, nil
 			},
-			"S3": func(ctx context.Context) (*api.HealthCheckMetadata, error) {
+			"s3": func(ctx context.Context) (*api.HealthCheckMetadata, error) {
 				metadata, err := api.CheckS3(ctx, h.cfg)
 				if err != nil {
 					return nil, err

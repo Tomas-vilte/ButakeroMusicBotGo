@@ -9,7 +9,7 @@ terraform {
     bucket         = "song-download-tf-state"
     key            = "prod/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "terraform-lock-table"
+    dynamodb_table = "terraform-lock-table_audio_processing"
     encrypt        = true
   }
 }
