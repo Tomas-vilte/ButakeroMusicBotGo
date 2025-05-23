@@ -10,12 +10,12 @@ echo "Introduce tu contraseña de Docker Hub:"
 read -s DOCKER_HUB_PASSWORD
 
 echo "Construyendo la imagen para audio_processor..."
-cd microservices/audio_processor
+cd audio_processor
 docker build -t ${DOCKER_HUB_USERNAME}/audio_processor:${VERSION_AUDIO_SERVICE} --build-arg ENV=local -f Dockerfile .
 cd ../..
 
 echo "Construyendo la imagen para bot..."
-cd microservices/butakero_bot
+cd butakero_bot
 docker build -t ${DOCKER_HUB_USERNAME}/butakero_bot:${VERSION_BOT} --build-arg ENV=bot_local -f Dockerfile .
 
 echo "Construyendo la imagen del bot para debug..."
