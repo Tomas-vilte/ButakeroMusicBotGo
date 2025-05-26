@@ -27,16 +27,7 @@ https://github.com/user-attachments/assets/a46a2a20-2ac0-48bb-923e-66c1a10d7ce7
 
 3. En la pestaña de "Installation", activá las casillas "User install" y "Guild install".
 
-4. En la pestaña, activá estas opciones:
-    - **PUBLIC BOT**: Para que cualquiera pueda agregar el bot a otros servidores. Si no está activado, solo vos lo podés agregar a tu servidor.
-    - **PRESENCE INTENT**: Necesario para que tu bot pueda recibir eventos de actualización de presencia.
-        - **Nota**: Si el bot llega a 100 o más servidores, vas a tener que pedir una verificación. Leé más [aquí](https://support-dev.discord.com/hc/en-us/articles/6205754771351-How-do-I-get-Privileged-Intents-for-my-bot).
-    - **SERVER MEMBERS INTENT**: Necesario para que tu bot reciba eventos listados bajo GUILD_MEMBERS.
-        - **Nota**: Lo mismo, si el bot llega a 100 o más servidores, necesitarás la verificación.
-    - **MESSAGE CONTENT INTENT**: Necesario para que el bot lea el contenido de los mensajes en la mayoría de los casos.
-        - **Nota**: También necesitarás la verificación si el bot llega a 100 o más servidores.
-
-5. Copiate el `DISCORDTOKEN` de la sección de Bot y guardalo. Lo vas a necesitar para configurar el archivo `.env`.
+4. Copiate el `DISCORDTOKEN` de la sección de Bot y guardalo. Lo vas a necesitar para configurar el archivo `.env`.
 
 ### 🐳 Ejecución con Docker Compose: Orquestando ButakeroMusicBotGo
 
@@ -57,7 +48,7 @@ Para poner a andar el bot y sus microservicios, vamos a usar Docker Compose. Est
     ```
 
 4. **Configuración de Variables de Entorno**:  
-   Creá un archivo `.env` en la raíz del repositorio, basándote en el `.env.example` que viene con el repo. Este archivo tiene que tener estas variables esenciales. También podés exportarlas en tu terminal o configurarlas como variables de entorno del sistema:
+   Creá un archivo `.env` en la raíz del repositorio, este archivo tiene que tener estas variables esenciales. También podés exportarlas en tu terminal o configurarlas como variables de entorno del sistema:
 
     * `DISCORDTOKEN`: El token de autenticación para el bot de Discord. Este es esencial para que el bot funcione.
     * `COMMANDPREFIX`: El prefijo configurable para los comandos del bot (ej: `/seso`).
