@@ -12,6 +12,11 @@ Si querés probar el bot en tu servidor de Discord, acá te dejo la invitación 
 
 [Invitación del bot a tu server](https://discord.com/oauth2/authorize?client_id=987850036866084974)
 
+## Demo
+Aca tenes un video corto mostrando como se levanta toda la aplicación localmente con Docker Compose, y como funciona el bot en un servidor de Discord:
+
+https://github.com/user-attachments/assets/a46a2a20-2ac0-48bb-923e-66c1a10d7ce7
+
 ## 🚀 Instalación
 
 ### ⚙️ Configuración del bot en el portal de desarrolladores de Discord
@@ -65,7 +70,7 @@ Para poner a andar el bot y sus microservicios, vamos a usar Docker Compose. Est
    Una vez que Docker construya las imágenes, podés iniciar todos los servicios con:
 
     ```bash
-    docker-compose --env-file .env up
+    docker compose --env-file .env up
     ```
 
    Esto levantará la siguiente arquitectura de microservicios, pensada para ser escalable y robusta:
@@ -91,12 +96,16 @@ Para poner a andar el bot y sus microservicios, vamos a usar Docker Compose. Est
 
 Una vez que el bot esté andando, podés interactuar con él en tu servidor de Discord usando estos comandos básicos:
 
-- `/seso play <nombre de la canción>`: Reproduce una canción en el canal de voz.
-- `/seso stop`: Detiene la reproducción y desconecta al bot.
-- `/seso list`: Muestra la lista de reproducción.
-- `/seso skip`: Salta a la siguiente canción.
-- `/seso remove <número>`: Elimina una canción de la lista.
-- `/seso playing`: Muestra la canción que está sonando.
+> ⚠️ **Nota:** Aca tenés que poner el prefijo que configuraste en el archivo `.env` (ej: `/bot`).
+
+- `/<prefijo> play <nombre de la canción>`: Reproduce una canción en el canal de voz.
+- `/<prefijo> stop`: Detiene la reproducción y desconecta al bot.
+- `/<prefijo> list`: Muestra la lista de reproducción.
+- `/<prefijo> skip`: Salta a la siguiente canción.
+- `/<prefijo> remove <número>`: Elimina una canción de la lista.
+- `/<prefijo> playing`: Muestra la canción que está sonando.
+- `/<prefijo> pause`: Pausa la canción actual.
+- `/<prefijo> resume`: Reanuda la canción pausada.
 
 ## 🤝 Contribuciones
 
