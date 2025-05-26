@@ -38,13 +38,13 @@ func NewEventHandler(
 }
 
 // Ready se llama cuando el bot está listo para recibir interacciones.
-func (h *EventHandler) Ready(s *discordgo.Session, _ *discordgo.Ready) {
+func (h *EventHandler) Ready(s *discordgo.Session, r *discordgo.Ready) {
 	logger := h.logger.With(
 		zap.String("component", "EventHandler"),
 		zap.String("method", "Ready"),
 	)
 
-	if err := s.UpdateGameStatus(0, fmt.Sprintf("con tu vieja /%s", h.cfg.CommandPrefix)); err != nil {
+	if err := s.UpdateGameStatus(0, fmt.Sprintf("con %s /%s", r.User.Username, h.cfg.CommandPrefix)); err != nil {
 		logger.Error("Error al actualizar el estado del juego",
 			zap.Error(err),
 			zap.String("status", h.cfg.CommandPrefix))
