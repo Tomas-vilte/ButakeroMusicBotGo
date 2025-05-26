@@ -86,7 +86,7 @@ El despliegue con Docker Compose levanta los siguientes servicios:
 ```env
 YOUTUBE_API_KEY=TU_API_KEY_AQUI
 DISCORD_TOKEN=TU_DISCORD_TOKEN_AQUI
-COMMAND_PREFIX=bot_music # El prefijo que el bot va a escuchar en Discord (ej: !play)
+COMMAND_PREFIX=bot_music # El prefijo que el bot va a escuchar en Discord (ej: /play)
 ```
 
 #### Obtener YouTube API Key
