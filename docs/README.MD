@@ -2,7 +2,7 @@
 
 **ButakeroMusicBot** es una solución que armamos con un par de microservicios, pensados para descargar, procesar y subir audios de videos de YouTube a Amazon S3. La idea es que uses tecnologías modernas y que todo esté listo para que lo despliegues donde quieras: en la nube, con Kubernetes o acá nomás, en tu máquina con Docker Compose.
 
-## Tabla de Contenidos 📋
+## Tabla de Contenidos
 
 - [Características Principales](#características-principales)
 - [Requisitos Previos](#requisitos-previos)
@@ -19,13 +19,13 @@
 
 ## Características Principales
 
-- 🔍 Búsqueda de videos en YouTube por nombre o URL.
-- 🎧 Descarga y procesamiento de audio.
-- ☁️ Subida de archivos de audio a Amazon S3.
-- 🗃️ Registro de operaciones y metadatos en DynamoDB.
-- 🔄 Sistema de reintentos en caso de fallos.
-- 📊 Monitoreo y métricas con Prometheus/Grafana
-- 🔒 Seguridad y autenticación integrada
+- Búsqueda de videos en YouTube por nombre o URL.
+- Descarga y procesamiento de audio.
+- Subida de archivos de audio a Amazon S3.
+- Registro de operaciones y metadatos en DynamoDB.
+- Sistema de reintentos en caso de fallos.
+- Monitoreo y métricas con Prometheus/Grafana
+- Seguridad y autenticación integrada
 
 ## Requisitos Previos
 
