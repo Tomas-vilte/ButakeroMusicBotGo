@@ -2,11 +2,11 @@
 
 **ButakeroMusicBotGo** es un bot de Discord que hice en Go para que puedas escuchar música en tu servidor de Discord. Este repo tiene el código fuente del bot y las instrucciones para instalarlo y ponerlo a funcionar. Ahora mismo funciona con YouTube, pero en el futuro tengo pensado agregar otras plataformas. :D
 
-## 🏗️ Arquitectura del Bot
+## Arquitectura del Bot
 
 ¿Te pinta chusmear la arquitectura del bot en producción? Podés ver todos los detalles sobre cómo está armado y desplegado ButakeroMusicBotGo [aca](/docs/README.MD).
 
-## 🤖 Invitación al Bot
+## Invitación al Bot
 
 Si querés probar el bot en tu servidor de Discord, acá te dejo la invitación para que lo invites:
 
@@ -17,9 +17,9 @@ Aca tenes un video corto mostrando como se levanta toda la aplicación localment
 
 https://github.com/user-attachments/assets/a46a2a20-2ac0-48bb-923e-66c1a10d7ce7
 
-## 🚀 Instalación
+## Instalación
 
-### ⚙️ Configuración del bot en el portal de desarrolladores de Discord
+### Configuración del bot en el portal de desarrolladores de Discord
 
 1. Primero, andá al [Discord Developer Portal](https://discord.com/developers/applications).
 
@@ -29,7 +29,7 @@ https://github.com/user-attachments/assets/a46a2a20-2ac0-48bb-923e-66c1a10d7ce7
 
 4. Copiate el `DISCORDTOKEN` de la sección de Bot y guardalo. Lo vas a necesitar para configurar el archivo `.env`.
 
-### 🐳 Ejecución con Docker Compose: Orquestando ButakeroMusicBotGo
+### Ejecución con Docker Compose: Orquestando ButakeroMusicBotGo
 
 Para poner a andar el bot y sus microservicios, vamos a usar Docker Compose. Esta configuración está pensada para facilitar el desarrollo y las pruebas locales, encapsulando todas las dependencias necesarias.
 
@@ -66,11 +66,11 @@ Para poner a andar el bot y sus microservicios, vamos a usar Docker Compose. Est
 
    Esto levantará la siguiente arquitectura de microservicios, pensada para ser escalable y robusta:
 
-    - 🐘 `zookeeper`: Esencial para coordinar los servicios de Kafka.
-    - ⚙️ `kafka`: El broker que maneja los mensajes entre los microservicios.
-    - 💾 `mongodb`: Base de datos NoSQL para guardar metadatos de canciones y más.
-    - 🎶 `audio_processor`: Microservicio encargado de descargar y procesar audio.
-    - 🤖 `butakero_bot`: El corazón del bot, que interactúa con Discord y gestiona la cola de reproducción.
+    -  `zookeeper`: Esencial para coordinar los servicios de Kafka.
+    -  `kafka`: El broker que maneja los mensajes entre los microservicios.
+    -  `mongodb`: Base de datos NoSQL para guardar metadatos de canciones y más.
+    -  `audio_processor`: Microservicio encargado de descargar y procesar audio.
+    -  `butakero_bot`: El corazón del bot, que interactúa con Discord y gestiona la cola de reproducción.
 
 ---
 
@@ -83,7 +83,7 @@ Para poner a andar el bot y sus microservicios, vamos a usar Docker Compose. Est
 
 - `test-application`: Red personalizada para que todos los servicios se comuniquen entre sí de manera sencilla.
 
-## 🎧 Uso
+## Uso
 
 Una vez que el bot esté andando, podés interactuar con él en tu servidor de Discord usando estos comandos básicos:
 
